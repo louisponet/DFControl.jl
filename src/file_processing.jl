@@ -388,7 +388,7 @@ function write_job_files(df_job::DFJob)
     for (i,(run_command,input)) in enumerate(df_job.flow)
       filename = "$i"*df_job.job_name*"_$input"
       push!(new_filenames,filename)
-      write_DF_input(df_job.home_dir*filename,df_job.calculations[input])
+      write_df_input(df_job.home_dir*filename,df_job.calculations[input])
       write(f,"mpirun -np 24 $run_command <$filename> $(split(filename,".")[1]).out \n")      
     end
   end

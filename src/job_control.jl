@@ -1,4 +1,5 @@
-#@TODO this can easily be generalized!!!
+#TODO this can easily be generalized!!!
+#Incomplete this only reads .tt files!!
 """
 Loads a Quantum Espresso job from a directory. If no specific input filenames are supplied it will try to find them from a file with name "job".
 
@@ -13,7 +14,7 @@ Kwargs:   inputs=nothing -> specific input filenames.
 function load_qe_job(job_name::String,df_job_dir::String,T=Float32;inputs=nothing,new_homedir=nothing,server="",server_dir="")
   df_job_dir = form_directory(df_job_dir)
   if inputs==nothing
-    inputs = read_qe_inputs_from_job_file(df_job_dir*search_dir(df_job_dir,"job")[1])
+    inputs = read_qe_inputs_from_job_file(df_job_dir*search_dir(df_job_dir,".tt")[1])
   end
 
   t_calcs = Dict{String,DFInput}()
@@ -122,6 +123,38 @@ function submit_job(df_job::DFJob)
 end 
 
 """
+    check_job_data(df_job,data::Array{Symbol,1})
+
+Check the values of certain flags in a given job if they exist.
+"""
+function check_job_data(df_job,data_keys)
+  out_dict = Dict{Symbol,Any}()
+  for s in data_keys
+    for calc in values(df_job.calculations)
+      for name in fieldnames(calc)[2:end]
+        data_dict = getfield(calc,name)
+        if typeof(data_dict)<:Dict{Symbol,Dict{Symbol,Any}}
+          for (key,block) in data_dict
+            for (flag,value) in block
+              if flag == s
+                out_dict[s] = value
+              end
+            end
+          end
+        else
+          for (key,value) in data_dict
+            if key == s 
+              out_dict[s] = value
+            end
+          end
+        end
+      end
+    end
+  end
+  return out_dict
+end
+
+"""
 Mutatatively change data that is tied to a DFJob. This means that it will run through all the DFInputs and their fieldnames and their Dicts. If it finds a Symbol in one of those that matches a symbol in the new data, it will replace the value of the first symbol with the new value.
 
 Input: df_job::DFJob,
@@ -131,14 +164,30 @@ function change_job_data!(df_job::DFJob,new_data::Dict{Symbol,Any})
   for (key,calculation) in df_job.calculations
     for name in fieldnames(calculation)[2:end]
       data_dict = getfield(calculation,name)
-      for (data_key,data_val) in new_data
-        if haskey(data_dict,data_key)
-          old_data            = data_dict[data_key]
-          if typeof(old_data) == typeof(data_val)
-            data_dict[data_key] = data_val
-            println("$key:\n -> $name:\n  -> $data_key:\n      $old_data => $(data_dict[data_key])")
-          else
-            println("$key:\n -> $name:\n  -> $data_key:\n    type mismatch old:$old_data ($(typeof(old_data))), new: $data_val ($(typeof(data_val)))\n    Change not applied.")
+      if typeof(data_dict)<:Dict{Symbol,Dict{Symbol,Any}}
+        for (block_key,block) in data_dict
+          for (flag,value) in block
+            if haskey(new_data,flag)
+              old_data = value
+              if typeof(old_data) == typeof(new_data[flag])
+                block[flag] = new_data[flag]
+                println("$key:\n -> $block_key:\n  -> $flag:\n      $old_data changed to: $(new_data[flag])")
+              else
+                println("$key:\n -> $block_key:\n  -> $flag:\n    type mismatch old:$old_data ($(typeof(old_data))), new: $(new_data[flag]) ($(typeof(new_data[flag])))\n    Change not applied.")
+              end
+            end
+          end
+        end
+      else
+        for (data_key,data_val) in new_data
+          if haskey(data_dict,data_key)
+            old_data            = data_dict[data_key]
+            if typeof(old_data) == typeof(data_val)
+              data_dict[data_key] = data_val
+              println("$key:\n -> $name:\n  -> $data_key:\n      $old_data changed to $(data_dict[data_key])")
+            else
+              println("$key:\n -> $name:\n  -> $data_key:\n    type mismatch old:$old_data ($(typeof(old_data))), new: $data_val ($(typeof(data_val)))\n    Change not applied.")
+            end
           end
         end
       end

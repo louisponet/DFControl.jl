@@ -32,6 +32,7 @@ module DFControl
   export save_job
   export push_job
   export submit_job
+  export check_job_data
   export change_job_data!
   export set_job_data!
 
