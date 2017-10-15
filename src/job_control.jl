@@ -20,8 +20,8 @@ function load_qe_job(job_name::String,df_job_dir::String,T=Float32;inputs=nothin
   t_calcs = Dict{String,DFInput}()
   flow = Array{Tuple{String,String},1}()
   for (run_command,file) in inputs
-    t_calcs[split(file,"_")[end]] = read_qe_input(df_job_dir*file,T)
-    push!(flow,(run_command,split(file,"_")[end]))
+    t_calcs[split(file,"_")[end][1:end-3]] = read_qe_input(df_job_dir*file,T)
+    push!(flow,(run_command,split(file,"_")[end][1:end-3]))
   end
   if new_homedir!=nothing
     return DFJob(job_name,t_calcs,flow,new_homedir,server,server_dir)
@@ -47,7 +47,7 @@ end
 
 #---------------------------------BEGINNING GENERAL SECTION ---------------------#
 
-#@TODO should we also create a config file for each job with stuff like server etc? and other config things,
+#TODO should we also create a config file for each job with stuff like server etc? and other config things,
 #      which if not supplied could contain the default stuff?
 """
 Pulls job from server. If no specific inputs are supplied it pulls all .in and .tt files.
@@ -88,7 +88,7 @@ function save_job(df_job::DFJob)
   write_job_files(df_job)  
 end
 
-#@Incomplete everything is hardcoded for now still!!!! make it configurable
+#Incomplete everything is hardcoded for now still!!!! make it configurable
 """
 Pushes a DFJob from it's local directory to its server side directory. 
 
@@ -105,7 +105,7 @@ function push_job(df_job::DFJob)
   end
 end
 
-#@TODO only uses qsub for now. how to make it more general?
+#TODO only uses qsub for now. how to make it more general?
 """
 Submit a DFJob. First saves it locally, pushes it to the server then runs the job file on the server.
 
@@ -155,12 +155,12 @@ function check_job_data(df_job,data_keys)
 end
 
 """
-Mutatatively change data that is tied to a DFJob. This means that it will run through all the DFInputs and their fieldnames and their Dicts. If it finds a Symbol in one of those that matches a symbol in the new data, it will replace the value of the first symbol with the new value.
+    change_job_data!(df_job::DFJob,new_data::Dict{Symbol,<:Any})
 
-Input: df_job::DFJob,
-       new_data::Dict{Symbol,Any}
+Mutatatively change data that is tied to a DFJob. This means that it will run through all the DFInputs and their fieldnames and their Dicts. If it finds a Symbol in one of those that matches a symbol in the new data, it will replace the value of the first symbol with the new value.
 """
-function change_job_data!(df_job::DFJob,new_data::Dict{Symbol,Any})
+function change_job_data!(df_job::DFJob,new_data::Dict{Symbol,<:Any})
+  found_keys = Symbol[]
   for (key,calculation) in df_job.calculations
     for name in fieldnames(calculation)[2:end]
       data_dict = getfield(calculation,name)
@@ -169,6 +169,7 @@ function change_job_data!(df_job::DFJob,new_data::Dict{Symbol,Any})
           for (flag,value) in block
             if haskey(new_data,flag)
               old_data = value
+              if !(flag in found_keys) push!(found_keys,flag) end
               if typeof(old_data) == typeof(new_data[flag])
                 block[flag] = new_data[flag]
                 println("$key:\n -> $block_key:\n  -> $flag:\n      $old_data changed to: $(new_data[flag])")
@@ -181,6 +182,7 @@ function change_job_data!(df_job::DFJob,new_data::Dict{Symbol,Any})
       else
         for (data_key,data_val) in new_data
           if haskey(data_dict,data_key)
+          if !(data_key in found_keys) push!(found_keys,data_key) end
             old_data            = data_dict[data_key]
             if typeof(old_data) == typeof(data_val)
               data_dict[data_key] = data_val
@@ -193,9 +195,17 @@ function change_job_data!(df_job::DFJob,new_data::Dict{Symbol,Any})
       end
     end
   end
+  for key in found_keys
+    pop!(new_data,key)
+  end
+  if 1 < length(keys(new_data))
+    println("flags $(String.(collect(keys(new_data)))) were not found in any input file, please set them first!")
+  elseif length(keys(new_data)) == 1
+    println("flag '$(String(collect(keys(new_data))[1]))' was not found in any input file, please set it first!")
+  end
 end
 
-#@Incomplete this now assumes that there is only one calculation, would be better to interface with the flow of the DFJob
+#Incomplete this now assumes that there is only one calculation, would be better to interface with the flow of the DFJob
 """
 Sets mutatatively the job data in a calculation block of a DFJob. It will merge the supplied data with the previously present one in the block, changing all previous values to the new ones and adding non-existent ones. 
 
@@ -204,12 +214,21 @@ Input: df_job::DFJob,
        block_symbol::Symbol, -> Symbol of the datablock inside the calculation's input file.
        data::Dict{Symbol,Any} -> flags and values to be set.
 """
-function set_job_data!(df_job,calculation,block_symbol,data)
+function set_job_data!(df_job::DFJob,calculation::String,block_symbol::Symbol,data)
   if haskey(df_job.calculations,calculation)
-    setfield!(df_job.calculations[calculation],block_symbol,merge(getfield(df_job.calculations[calculation],block_symbol),data))
-    println("New input of $block_symbol in $calculation is:\n")
-    display(getfield(df_job.calculations[calculation],block_symbol))
-    println("\n")
+    if block_symbol == :control_blocks
+      for (block_key,block_dict) in data
+        df_job.calculations[calculation].control_blocks[block_key] = merge(df_job.calculations[calculation].control_blocks[block_key],data[block_key])
+        println("New input of block '$(String(block_key))' in '$(String(block_symbol))' of calculation '$calculation' is now:")
+        display(df_job.calculations[calculation].control_blocks[block_key])
+        println("\n")
+      end
+    else
+      setfield!(df_job.calculations[calculation],block_symbol,merge(getfield(df_job.calculations[calculation],block_symbol),data))
+      println("New input of '$block_symbol' in calculation '$calculation' is:\n")
+      display(getfield(df_job.calculations[calculation],block_symbol))
+      println("\n")
+    end
   end
 end
 

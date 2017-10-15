@@ -145,6 +145,13 @@ function read_qe_kpdos(filename::String,column=1;fermi=0)
   return  zmat',(ytickvals,yticks)
 end
 
+
+#Incomplete for now only allows for 1 atom of the same kind!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#Incomplete for now only allows for 1 atom of the same kind!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#Incomplete for now only allows for 1 atom of the same kind!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#Incomplete for now only allows for 1 atom of the same kind!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#Incomplete for now only allows for 1 atom of the same kind!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#Incomplete for now only allows for 1 atom of the same kind!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 """
 Reads a Quantum Espresso input file. 
 Returns a DFInput.
@@ -386,7 +393,7 @@ function write_job_files(df_job::DFJob)
     write(f,"#!/bin/bash\n","#SBATCH -N 1\n","#SBATCH --ntasks-per-node=24 \n","#SBATCH --time=24:00:00 \n","#SBATCH -J $(df_job.job_name) \n",
           "#SBATCH -p defpart\n\n","module load open-mpi/gcc/1.10.2\n","module load mkl/2016.1.056\n","\n")
     for (i,(run_command,input)) in enumerate(df_job.flow)
-      filename = "$i"*df_job.job_name*"_$input"
+      filename = "$i"*df_job.job_name*"_$input"*".in"
       push!(new_filenames,filename)
       write_df_input(df_job.home_dir*filename,df_job.calculations[input])
       write(f,"mpirun -np 24 $run_command <$filename> $(split(filename,".")[1]).out \n")      
