@@ -23,13 +23,15 @@ function read_qe_bands_file(filename::String, T=Float32)
     if contains(line,"celldm(1)")
       alat_bohr = parse(T,split(line)[2])
       prefac    = T(2pi/alat_bohr * 1.889725) 
-    elseif contains(line,"cryst.") && length(line)==2
+    end
+    if contains(line,"cryst.") && length(split(line))==2
       line = readline(f)
       while length(line) != 0
         push!(k_points_cryst,parse_k_line(line,T))
         line = readline(f)
       end
-    elseif contains(line,"cart.") && length(split(line)) == 5
+    end
+    if contains(line,"cart.") && length(split(line)) == 5
       line = readline(f)
       while line != ""
         push!(k_points_cart,prefac*parse_k_line(line,T))
@@ -103,17 +105,20 @@ Optional input: T=Float32 <: AbstractFloat (type of parsed floats)
 Return:         T
 """
 function read_fermi_from_qe_file(filename::String,T=Float32)
+  out = zero(T)
   open(filename) do f
     while !eof(f)
       line = split(readline(f))
-      for l in line
-        if l == "Fermi"
-          return parse(T,line[5])
-        end
+      if "Fermi" in line
+        out= parse(T,line[5])
       end
     end
   end
-  error("Couldn't find the Fermi level in file $filename. Is this an scf output file?")
+  if out==zero(T)
+    error("Couldn't find the Fermi level in file $filename. Is this an scf output file?")
+  else
+    return out
+  end
 end
 
 """
