@@ -1,0 +1,46 @@
+&control
+    calculation = 'bands'
+    restart_mode='from_scratch',
+    prefix='pwo',
+    pseudo_dir = './', outdir='./', disk_io = 'low', verbosity = 'high'
+/
+&system
+    ibrav = 0, nat = 2, ntyp = 2,
+    nbnd=48, nosym=.true.,
+! noinv=.true.
+starting_magnetization(2) = -0.000001
+!noncolin=.true.
+!lspinorb=.true.
+    ecutwfc =28, ecutrho =250,
+    occupations = 'smearing', smearing = 'cold', degauss     = 0.01,
+ /
+&electrons
+    diagonalization='david',
+    mixing_mode = 'plain', mixing_beta = 0.3,
+    conv_thr =  1.0e-8
+/
+&ions
+    ion_dynamics='bfgs',
+/
+&cell
+    cell_dynamics = 'bfgs'
+    press = 0
+/
+ATOMIC_SPECIES
+Ge  50  Ge.pbesol-dn-kjpaw_psl.0.2.2.UPF
+Te  50  Te.pbesol-dn-kjpaw_psl.0.2.2.UPF
+
+K_POINTS {crystal_b}
+3
+0.5 1.0 0.0 100
+0.5 0.5 0.5 100
+0.25 1.0 0.25 1
+
+CELL_PARAMETERS (bohr)
+-6.686168075203066  0.  4.55431368
+-6.686168075203066  3.944151345  -2.277156843956613
+-6.686168075203066  -3.944151345  -2.277156843956613
+
+ATOMIC_POSITIONS (crystal)
+Te       0.523252856   0.523252856   0.523252856
+Ge      -0.002252856  -0.002252856  -0.002252856

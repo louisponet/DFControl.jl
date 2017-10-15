@@ -1,0 +1,9 @@
+ &PROJWFC
+prefix='pwo'
+ngauss=-1
+degauss=0.01
+Emin=-5
+Emax=15
+kresesolveddos=.true.
+DeltaE=0.01
+/

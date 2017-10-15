@@ -1,0 +1,25 @@
+#!/bin/bash
+#SBATCH -N 1
+#SBATCH --ntasks-per-node=24
+#SBATCH --time=24:00:00
+#SBATCH -J coulintNi
+#SBATCH -p defpart
+
+module load open-mpi/gcc/1.10.2
+module load mkl/2016.1.056
+
+#mpirun -np 24 ~/bin/pw.x <GeTe_scf.in >GeTe_scf.out
+mpirun -np 24 ~/bin/pw.x <GeTe_nscf.in >02GeTe_nscf.in.o
+
+#mpirun -np 24 ~/bin/pw.x <GeTe_bands.in> GeTe_bands.out
+mpirun -np 24 ~/bin/projwfc.x <GeTe_projwfc.in> GeTe_projwfc.out
+
+#wannier90.x -pp 03GeTe_dn
+#mpirun -np 24 pw2wannier90.x <04GeTe_pw2wan_dn.in >04GeTe_pw2wan_dn.in.o
+# mpirun -np 24 postw90.x 03GeTe_up
+#wannier90.x 03GeTe_dn
+
+#wannier90.x -pp 03GeTe_up
+#mpirun -np 24 pw2wannier90.x <04GeTe_pw2wan_up.in >04GeTe_pw2wan_up.in.o
+# mpirun -np 24 postw90.x 03GeTe_dn
+#wannier90.x 03GeTe_up

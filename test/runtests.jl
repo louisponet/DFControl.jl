@@ -1,5 +1,9 @@
 using DFControl
 using Base.Test
 
-# write your own tests here
-@test 1 == 2
+
+
+
+tic()
+@testset "File processing tests" begin include("file_processing_tests.jl") end
+toc()
