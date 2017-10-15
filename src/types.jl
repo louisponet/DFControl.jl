@@ -1,3 +1,10 @@
+"Point in 3D space in cartesian coordinates with specified float type"
+struct Point3D{T<:AbstractFloat}<:AbstractFloat
+  x::T
+  y::T
+  z::T
+end
+Point3D(::Type{T},x) where T<:AbstractFloat = Point3D(T(x),T(x),T(x))
 
 abstract type Band{T<:AbstractFloat} end
 

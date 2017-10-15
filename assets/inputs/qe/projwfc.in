@@ -4,6 +4,6 @@ ngauss=-1
 degauss=0.01
 Emin=-5
 Emax=15
-kresesolveddos=.true.
+kresolveddos=.true.
 DeltaE=0.01
 /

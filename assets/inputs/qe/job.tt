@@ -8,11 +8,11 @@
 module load open-mpi/gcc/1.10.2
 module load mkl/2016.1.056
 
-#mpirun -np 24 ~/bin/pw.x <GeTe_scf.in >GeTe_scf.out
-mpirun -np 24 ~/bin/pw.x <GeTe_nscf.in >02GeTe_nscf.in.o
+mpirun -np 24 ~/bin/pw.x <scf.in >scf.out
+mpirun -np 24 ~/bin/pw.x <nscf.in >nscf.out
 
-#mpirun -np 24 ~/bin/pw.x <GeTe_bands.in> GeTe_bands.out
-mpirun -np 24 ~/bin/projwfc.x <GeTe_projwfc.in> GeTe_projwfc.out
+mpirun -np 24 ~/bin/pw.x <bands.in> bands.out
+mpirun -np 24 ~/bin/projwfc.x <projwfc.in> projwfc.out
 
 #wannier90.x -pp 03GeTe_dn
 #mpirun -np 24 pw2wannier90.x <04GeTe_pw2wan_dn.in >04GeTe_pw2wan_dn.in.o

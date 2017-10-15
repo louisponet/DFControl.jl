@@ -2,6 +2,7 @@ module DFControl
   using Reexport
   @reexport using Plots
   include("types.jl")
+  export Point3D
   export Band
   export DFBand
   export DFInput

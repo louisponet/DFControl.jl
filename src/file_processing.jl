@@ -235,7 +235,7 @@ function read_qe_input(filename,T=Float32)
         k_dict[:option] = k_option
         if k_option == :automatic
           line_segs = split(line)
-          k_dict[:nk1],k_dict[:nk2],k_dict[:nk2],k_dict[:sk1],k_dict[:sk2],k_dict[:sk3] = parse.(Int,line_segs)
+          k_dict[:nk1],k_dict[:nk2],k_dict[:nk3],k_dict[:sk1],k_dict[:sk2],k_dict[:sk3] = parse.(Int,line_segs)
         else
           nks = parse(Int,line)
           k_point_array = Array{Array{T,1},1}(nks)

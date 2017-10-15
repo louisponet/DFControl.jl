@@ -9,8 +9,8 @@
     nbnd=48, nosym=.true.,
 ! noinv=.true.
 starting_magnetization(2) = -0.000001
-!noncolin=.true.
-!lspinorb=.true.
+noncolin=.true.
+lspinorb=.true.
     ecutwfc =28, ecutrho =250,
     occupations = 'smearing', smearing = 'cold', degauss     = 0.01,
  /
@@ -27,8 +27,8 @@ starting_magnetization(2) = -0.000001
     press = 0
 /
 ATOMIC_SPECIES
-Ge  50  Ge.pbesol-dn-kjpaw_psl.0.2.2.UPF
-Te  50  Te.pbesol-dn-kjpaw_psl.0.2.2.UPF
+Ge  50  Ge.rel-pbesol-dn-kjpaw_psl.0.2.2.UPF
+Te  50  Te.rel-pbesol-dn-kjpaw_psl.0.2.2.UPF
 
 K_POINTS {crystal_b}
 3
