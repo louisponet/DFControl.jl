@@ -33,10 +33,9 @@ Input:  band::Band,
 function apply_fermi_level!(band::Band,fermi::Union{String,AbstractFloat})
   if typeof(fermi)==String
     fermi = read_fermi_from_qe_file(fermi)
-  else
-    for i=1:size(band.eigvals)[1]
-      band.eigvals[i] -= fermi
-    end
+  end
+  for i=1:size(band.eigvals)[1]
+    band.eigvals[i] -= fermi
   end
 end
 
@@ -54,13 +53,13 @@ end
 Same as above but not mutatatively.
 """
 function apply_fermi_level(band::Band,fermi)
+  T = typeof(band.eigvals[1])
   if typeof(fermi)==String
-    fermi = read_fermi_from_SCF_file(fermi)
+    fermi = read_fermi_from_qe_file(fermi)
   end
   out=deepcopy(band)
   for i1=1:size(band.eigvals)[1]
-    out.k_points[i1,:] = band.k_points[i1,:]
-    out.eigvals[i1] = band.eigvals[i1]-fermi
+    out.eigvals[i1] = band.eigvals[i1]-T(fermi)
   end
   return out
 end

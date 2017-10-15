@@ -1,4 +1,7 @@
 using DFControl, Base.Test
+TT = STDOUT
+redirect_stdout()
+
 df_job = load_qe_job("test_job",joinpath(@__DIR__,"../assets/inputs/qe"))
 df_job2 = load_qe_job("test_job",joinpath(@__DIR__,"../assets/inputs/qe"),new_homedir="blabla")
 @test df_job2.home_dir    == "blabla/"
@@ -48,3 +51,6 @@ set_job_data!(df_job,["bands","scf"],:control_blocks,set_data2)
 @test df_job.calculations["bands"].control_blocks[:control][:test]
 @test df_job.calculations["scf"].control_blocks[:control][:pseudo_dir] == "'./'"
 @test df_job.calculations["scf"].atoms[:Ze] == Point3D(1.2,3.2,1.2)
+
+redirect_stdout(TT)
+println("")
