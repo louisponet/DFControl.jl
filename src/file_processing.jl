@@ -172,7 +172,7 @@ function read_qe_input(filename,T=Float32)
   control_blocks = Dict{Symbol,Dict{Symbol,Any}}()
   cell_param     = Dict{Symbol,Any}()
   pseudos        = Dict{Symbol,String}()
-  atoms          = Dict{Symbol,Point3D}()
+  atoms          = Dict{Symbol,Array{<:Point3D,1}}()
   k_dict         = Dict{Symbol,Any}()
   
   open(filename) do f
@@ -236,7 +236,11 @@ function read_qe_input(filename,T=Float32)
           line_segs = split(line)
           atom = Symbol(line_segs[1])
           position=Point3D(parse(T,line_segs[2]),parse(T,line_segs[3]),parse(T,line_segs[4]))
-          atoms[atom] = position
+          if !haskey(atoms,atom)
+            atoms[atom]=[position]
+          else
+            push!(atoms[atom],position)
+          end
           line = readline(f)
         end
         @goto startlabel        
@@ -264,6 +268,8 @@ function read_qe_input(filename,T=Float32)
   return DFInput(:QE,control_blocks,pseudos,cell_param,atoms,k_dict)
 end
 
+
+# change atom writing!
 """
 Writes a Quantum Espresso input file.
 
@@ -309,8 +315,10 @@ function write_qe_input(filename::String,df_input::DFInput)
       
       if !isempty(df_input.atoms)
         write(f,"ATOMIC_POSITIONS (crystal)\n")
-        for (atom,point) in df_input.atoms
-          write(f,"$(String(atom))    $(point.x)    $(point.y)    $(point.z) \n")
+        for (atom,points) in df_input.atoms
+          for point in points
+            write(f,"$(String(atom))    $(point.x)    $(point.y)    $(point.z) \n")
+          end
         end
         write(f,"\n")
       end

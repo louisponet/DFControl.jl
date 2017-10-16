@@ -9,7 +9,7 @@ projwfc_input = read_qe_input(joinpath(@__DIR__,"../assets/inputs/qe/projwfc.in"
 @test scf_input.pseudos[:Te] == "Te.rel-pbesol-dn-kjpaw_psl.0.2.2.UPF"
 @test scf_input.k_points[:option] == :automatic
 @test scf_input.k_points[:nk3] == 10
-@test scf_input.atoms[:Te] == Point3D{Float64}(0.523252856, 0.523252856, 0.523252856)
+@test scf_input.atoms[:Te] == [Point3D{Float64}(0.523252856, 0.523252856, 0.523252856)]
 
 @test bands_input.control_blocks[:control][:calculation] == "'bands'"
 @test bands_input.pseudos[:Te] == scf_input.pseudos[:Te]

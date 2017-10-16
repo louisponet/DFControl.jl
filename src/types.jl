@@ -32,7 +32,7 @@ mutable struct DFInput
   control_blocks::Dict{Symbol,Dict{Symbol,Any}}
   pseudos::Dict{Symbol,String}
   cell_param::Dict{Symbol,Any}
-  atoms::Dict{Symbol,Any}
+  atoms::Dict{Symbol,Array{<:Point3D,1}}
   k_points::Dict{Symbol,Any}
 end
 

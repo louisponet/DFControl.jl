@@ -2,6 +2,7 @@ using DFControl, Base.Test
 TT = STDOUT
 redirect_stdout()
 
+
 df_job = load_qe_job("test_job",joinpath(@__DIR__,"../assets/inputs/qe"))
 df_job2 = load_qe_job("test_job",joinpath(@__DIR__,"../assets/inputs/qe"),new_homedir="blabla")
 @test df_job2.home_dir    == "blabla/"
@@ -10,7 +11,6 @@ df_job2 = load_qe_job("test_job",joinpath(@__DIR__,"../assets/inputs/qe"),new_ho
 @test df_job.home_dir     == joinpath(@__DIR__,"../assets/inputs/qe/")
 
 mkdir(joinpath(@__DIR__,"../assets/inputs/qe/test_dir/"))
-
 test_dir = joinpath(@__DIR__,"../assets/inputs/qe/test_dir/") 
 df_job.home_dir = test_dir 
 save_job(df_job)
@@ -44,13 +44,13 @@ change_job_data!(df_job,change_data2)
 check_keys = Symbol[:sk1,:prefix,:noncolin,:ecutwfc] 
 @test check_job_data(df_job,check_keys) == Dict(:sk1=>3,:prefix=>"'test'",:noncolin => false, :ecutwfc=> 35)
 
-set_data1 = Dict(:Ze => Point3D(1.2,3.2,1.2))
+set_data1 = Dict(:Ze => [Point3D(1.2,3.2,1.2)])
 set_data2 = Dict(:control => Dict(:test => true))
 set_job_data!(df_job,["bands","scf"],:atoms,set_data1)
 set_job_data!(df_job,["bands","scf"],:control_blocks,set_data2)
 @test df_job.calculations["bands"].control_blocks[:control][:test]
 @test df_job.calculations["scf"].control_blocks[:control][:pseudo_dir] == "'./'"
-@test df_job.calculations["scf"].atoms[:Ze] == Point3D(1.2,3.2,1.2)
+@test df_job.calculations["scf"].atoms[:Ze] == [Point3D(1.2,3.2,1.2)]
 
 redirect_stdout(TT)
 println("")
