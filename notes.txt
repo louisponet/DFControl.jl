@@ -1,3 +1,6 @@
-TODO: 
+TODO:
     ->fix atom issue in file processing!
     ->redo all the Documentation!
+
+TODO:
+    -> maybe for every dfinput we should have an options category, not sure

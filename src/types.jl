@@ -5,7 +5,8 @@ struct Point3D{T<:AbstractFloat}<:AbstractFloat
   z::T
 end
 Point3D(::Type{T},x) where T<:AbstractFloat = Point3D(T(x),T(x),T(x))
-
+Point3D(x::Array{<:AbstractFloat,1}) = Point3D(x[1],x[2],x[3])
+Base.display(x::Point3D) = Base.display("$(typeof(x)), x = $(x.x), y = $(x.y), z = $(x.z)")
 abstract type Band{T<:AbstractFloat} end
 
 """
@@ -18,7 +19,7 @@ mutable struct DFBand{T<:AbstractFloat} <: Band{T}
 end
 
 """
-Represents an input for DFT calculation. 
+Represents an input for DFT calculation.
 
 Fieldnames: backend::Symbol -> the DFT package that reads this input.
             control_blocks::Dict{Symbol,Dict{Symbol,Any}} -> maps different control blocks to their dict of flags and values.
@@ -29,10 +30,10 @@ Fieldnames: backend::Symbol -> the DFT package that reads this input.
 """
 mutable struct DFInput
   backend::Symbol
-  control_blocks::Dict{Symbol,Dict{Symbol,Any}}
+  control_blocks::Dict{Symbol,Any}
   pseudos::Dict{Symbol,String}
   cell_param::Dict{Symbol,Any}
-  atoms::Dict{Symbol,Array{<:Point3D,1}}
+  atoms::Dict{Symbol,Union{Symbol,Array{<:Point3D,1}}}
   k_points::Dict{Symbol,Any}
 end
 
@@ -69,7 +70,7 @@ Represents an element.
 """
 struct Element
   Z::Int64
-  Name::String 
+  Name::String
   atomic_weight::Float64
 end
 
@@ -83,4 +84,3 @@ open(joinpath(@__DIR__,"../assets/elements.txt"),"r") do f
     ELEMENTS[Symbol(line[4])] = Element(parse(Int64,line[1]),line[9],parse(Float64,line[10]))
   end
 end
-

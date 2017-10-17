@@ -22,6 +22,7 @@ module DFControl
   export read_qe_kpdos
   export read_qe_input
   export write_qe_input
+  export read_wannier_input
   export write_df_input
   export write_job_files
 

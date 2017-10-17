@@ -1,4 +1,7 @@
-using DFControl
 using Revise
-bands = read_qe_bands_file("/home/ponet/Documents/PhD/GeTe/SOC/GeTe_bands.out")
-plot(plot_qe_bands("/home/ponet/Documents/PhD/GeTe/SOC/GeTe_bands.out"),plot_qe_kpdos("/home/ponet/Documents/PhD/GeTe/NSOC/pwo.pdos_atm#2(Ge)_wfc#2(p)"))
+using DFControl
+
+test_job = load_qe_job("Test_job","assets/inputs/qe/")
+test_job.home_dir="assets/inputs/qe/tesjob/"
+save_job(test_job)
+test_wan = read_wannier_input("assets/inputs/wannier/wan.win")

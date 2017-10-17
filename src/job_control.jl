@@ -1,15 +1,9 @@
 #TODO this can easily be generalized!!!
 #Incomplete this only reads .tt files!!
 """
-Loads a Quantum Espresso job from a directory. If no specific input filenames are supplied it will try to find them from a file with name "job".
+    load_qe_job(job_name::String,df_job_dir::String,T=Float32;inputs=nothing,new_homedir=nothing,server="",server_dir="")
 
-Input:    job_name::String,
-          df_job_dir::String
-Optional: T=Float32 -> Type of parsed floats.
-Kwargs:   inputs=nothing -> specific input filenames.
-          new_home_dir=nothing -> new home directory to store the job later.
-          server="" -> server in host@servername format to later send the job to.
-          server_dir="" -> server directory where later the job should get pushed to.
+Loads a Quantum Espresso job from a directory. If no specific input filenames are supplied it will try to find them from a file with name "job".
 """
 function load_qe_job(job_name::String,df_job_dir::String,T=Float32;inputs=nothing,new_homedir=nothing,server="",server_dir="")
   df_job_dir = form_directory(df_job_dir)
@@ -27,16 +21,13 @@ function load_qe_job(job_name::String,df_job_dir::String,T=Float32;inputs=nothin
     return DFJob(job_name,t_calcs,flow,new_homedir,server,server_dir)
   else
     return DFJob(job_name,t_calcs,flow,df_job_dir,server,server_dir)
-  end    
+  end
 end
 
 """
-Pulls and loads a Quantum Espresso job.
+    load_qe_server_job(job_name::String,server::String,server_dir::String,local_dir::String,args...;inputs=nothing)
 
-Input: job_name::String, 
-       server::String, -> server in host@servername format.
-       server_dir::String, -> server side directory.
-       local_dir::String -> local directory (will get created if it doesn't exist).
+Pulls and loads a Quantum Espresso job.
 """
 function load_qe_server_job(job_name::String,server::String,server_dir::String,local_dir::String,args...;inputs=nothing)
   pull_job(server,server_dir,local_dir,inputs=inputs)
@@ -50,13 +41,14 @@ end
 #TODO should we also create a config file for each job with stuff like server etc? and other config things,
 #      which if not supplied could contain the default stuff?
 """
-Pulls job from server. If no specific inputs are supplied it pulls all .in and .tt files.
+    function pull_job(server::String, server_dir::String, local_dir::String; inputs=nothing)
 
-Input:  server::String, -> in host@servername format!
-        server_dir::String,
-        local_dir::String, -> will create the dir if necessary.
-Kwargs: inputs=nothing -> specific input filenames.
+Pulls job from server. If no specific inputs are supplied it pulls all .in and .tt files.
 """
+# Input:  server::String, -> in host@servername format!
+#         server_dir::String,
+#         local_dir::String, -> will create the dir if necessary.
+# Kwargs: inputs=nothing -> specific input filenames.
 function pull_job(server::String, server_dir::String, local_dir::String; inputs=nothing)
   server_dir = form_directory(server_dir)
   local_dir  = form_directory(local_dir)
@@ -74,9 +66,9 @@ function pull_job(server::String, server_dir::String, local_dir::String; inputs=
 end
 
 """
-Saves a DFJob, it's job file and all it's input files.
+    save_job(df_job::DFJob)
 
-Input: df_job::DFJob
+Saves a DFJob, it's job file and all it's input files.
 """
 function save_job(df_job::DFJob)
   if df_job.home_dir == ""
@@ -85,14 +77,14 @@ function save_job(df_job::DFJob)
   if !ispath(df_job.home_dir)
     mkpath(df_job.home_dir)
   end
-  write_job_files(df_job)  
+  write_job_files(df_job)
 end
 
 #Incomplete everything is hardcoded for now still!!!! make it configurable
 """
-Pushes a DFJob from it's local directory to its server side directory. 
+    push_job(df_job::DFJob)
 
-Input: df_job::DFJob
+Pushes a DFJob from it's local directory to its server side directory.
 """
 function push_job(df_job::DFJob)
   if !ispath(df_job.home_dir)
@@ -107,9 +99,9 @@ end
 
 #TODO only uses qsub for now. how to make it more general?
 """
-Submit a DFJob. First saves it locally, pushes it to the server then runs the job file on the server.
+    submit_job(df_job::DFJob)
 
-Input: df_job::DFJob
+Submit a DFJob. First saves it locally, pushes it to the server then runs the job file on the server.
 """
 function submit_job(df_job::DFJob)
   if df_job.server == ""
@@ -120,7 +112,7 @@ function submit_job(df_job::DFJob)
   save_job(df_job)
   push_job(df_job)
   run(`ssh -t $(df_job.server) cd $(df_job.server_dir) '&&' qsub job.tt`)
-end 
+end
 
 """
     check_job_data(df_job,data::Array{Symbol,1})
@@ -133,7 +125,7 @@ function check_job_data(df_job,data_keys)
     for calc in values(df_job.calculations)
       for name in fieldnames(calc)[2:end]
         data_dict = getfield(calc,name)
-        if typeof(data_dict)<:Dict{Symbol,Dict{Symbol,Any}}
+        if name == :control_blocks
           for (key,block) in data_dict
             for (flag,value) in block
               if flag == s
@@ -143,7 +135,7 @@ function check_job_data(df_job,data_keys)
           end
         else
           for (key,value) in data_dict
-            if key == s 
+            if key == s
               out_dict[s] = value
             end
           end
@@ -157,14 +149,15 @@ end
 """
     change_job_data!(df_job::DFJob,new_data::Dict{Symbol,<:Any})
 
-Mutatatively change data that is tied to a DFJob. This means that it will run through all the DFInputs and their fieldnames and their Dicts. If it finds a Symbol in one of those that matches a symbol in the new data, it will replace the value of the first symbol with the new value.
+Mutatatively change data that is tied to a DFJob. This means that it will run through all the DFInputs and their fieldnames and their Dicts.
+If it finds a Symbol in one of those that matches a symbol in the new data, it will replace the value of the first symbol with the new value.
 """
 function change_job_data!(df_job::DFJob,new_data::Dict{Symbol,<:Any})
   found_keys = Symbol[]
   for (key,calculation) in df_job.calculations
     for name in fieldnames(calculation)[2:end]
       data_dict = getfield(calculation,name)
-      if typeof(data_dict)<:Dict{Symbol,Dict{Symbol,Any}}
+      if name == :control_blocks
         for (block_key,block) in data_dict
           for (flag,value) in block
             if haskey(new_data,flag)
@@ -207,13 +200,15 @@ end
 
 #Incomplete this now assumes that there is only one calculation, would be better to interface with the flow of the DFJob
 """
-Sets mutatatively the job data in a calculation block of a DFJob. It will merge the supplied data with the previously present one in the block, changing all previous values to the new ones and adding non-existent ones. 
+    set_job_data!(df_job::DFJob,calculation::String,block_symbol::Symbol,data)
 
-Input: df_job::DFJob,
-       calculation::String, -> calculation in the DFJob.
-       block_symbol::Symbol, -> Symbol of the datablock inside the calculation's input file.
-       data::Dict{Symbol,Any} -> flags and values to be set.
+Sets mutatatively the job data in a calculation block of a DFJob. It will merge the supplied data with the previously present one in the block,
+changing all previous values to the new ones and adding non-existent ones.
 """
+# Input: df_job::DFJob,
+#        calculation::String, -> calculation in the DFJob.
+#        block_symbol::Symbol, -> Symbol of the datablock inside the calculation's input file.
+#        data::Dict{Symbol,Any} -> flags and values to be set.
 function set_job_data!(df_job::DFJob,calculation::String,block_symbol::Symbol,data)
   if haskey(df_job.calculations,calculation)
     if block_symbol == :control_blocks
@@ -233,6 +228,8 @@ function set_job_data!(df_job::DFJob,calculation::String,block_symbol::Symbol,da
 end
 
 """
+    set_job_data!(df_job,calculations::Array,block_symbol,data)
+
 Same as above but for multiple calculations.
 """
 function set_job_data!(df_job,calculations::Array,block_symbol,data)
