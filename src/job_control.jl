@@ -39,6 +39,9 @@ end
 
 #---------------------------------BEGINNING GENERAL SECTION ---------------------#
 
+function pull_file(server::String,server_dir::String,local_dir::String,filename::String)
+  run(`scp $(server*":"*server_dir*filename) $local_dir`)
+end
 #should we call this load local job?
 function load_job(job_name::String, job_dir::String, T=Float32; inputs=nothing, job_ext = ".tt", new_homedir=nothing, server="",server_dir="")
   job_dir = form_directory(job_dir)
@@ -67,28 +70,38 @@ end
 #TODO should we also create a config file for each job with stuff like server etc? and other config things,
 #      which if not supplied could contain the default stuff?
 """
-    function pull_job(server::String, server_dir::String, local_dir::String; inputs=nothing)
-
+    pull_job(server::String, server_dir::String, local_dir::String; job_fuzzy="*job*")
 Pulls job from server. If no specific inputs are supplied it pulls all .in and .tt files.
 """
 # Input:  server::String, -> in host@servername format!
 #         server_dir::String,
 #         local_dir::String, -> will create the dir if necessary.
 # Kwargs: inputs=nothing -> specific input filenames.
-function pull_job(server::String, server_dir::String, local_dir::String; inputs=nothing)
+function pull_job(server::String, server_dir::String, local_dir::String; job_fuzzy="*job*")
   server_dir = form_directory(server_dir)
   local_dir  = form_directory(local_dir)
   if !ispath(local_dir)
     mkdir(local_dir)
   end
-  if inputs == nothing
-    run(`scp -r $(server*":"*server_dir*"*.in") $local_dir`)
-    run(`scp -r $(server*":"*server_dir*"*.tt") $local_dir`)
-  else
-    for input in inputs
-      run(`scp -r $(server*":"*server_dir*"*$input") $local_dir`)
+  pull_server_file(filename) = pull_file(server,server_dir,local_dir,filename)
+  pull_server_file(job_fuzzy)
+  job_file = search_dir(local_dir,strip(job_fuzzy,'*'))[1]
+  if job_file != nothing
+    inputs = read_inputs_from_job_file(local_dir*job_file)
+    for (calculation,file) in inputs
+      pull_server_file(file)
     end
   end
+end
+
+"""
+    load_server_job(job_name::String,server::String,server_dir::String,local_dir::String;job_fuzzy="*job*")
+
+Pulls a server job to local directory and then loads it. A fuzzy search for the job file will be performed and the found input files will be pulled.
+"""
+function load_server_job(job_name::String, server::String, server_dir::String, local_dir::String; job_fuzzy="*job*")
+  pull_job(server,server_dir,local_dir)
+  return load_job(job_name,local_dir,server=server,server_dir=server_dir)
 end
 
 """

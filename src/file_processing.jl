@@ -156,7 +156,11 @@ Returns a DFInput.
 """
 function read_qe_input(filename,T=Float32)
   function get_card_option(line,length)
-    return Symbol(strip(strip(line[length+1:end]),['(',')','{','}']))
+    if contains(line,"{")
+      return Symbol(strip(split(line,"{")[end],'}'))
+    elseif contains(line,"(")
+      return Symbol(strip(split(line,"(")[end],')'))
+    end
   end
   control_blocks = Dict{Symbol,Dict{Symbol,Any}}()
   cell_param     = Dict{Symbol,Any}()
@@ -614,6 +618,7 @@ function write_job_files(df_job::DFJob)
         write_df_input(df_job.home_dir*filename,df_job.calculations[i][2])
       end
       push!(new_filenames,filename)
+      write_df_input(df_job.home_dir*filename,df_job.calculations[i][2])
     end
   end
 

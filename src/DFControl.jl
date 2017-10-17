@@ -32,6 +32,7 @@ module DFControl
   export load_qe_job
   export load_qe_server_job
   export pull_job
+  export load_sever_job
   export save_job
   export push_job
   export submit_job
