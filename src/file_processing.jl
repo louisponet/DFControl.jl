@@ -630,6 +630,7 @@ function write_job_files(df_job::DFJob)
 end
 
 #Incomplete, we should also save all job input lines that don't have input files
+#incomplete make both read inputs and read commands!
 """
     read_inputs_from_job_file(job_file)
 

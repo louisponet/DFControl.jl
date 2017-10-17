@@ -130,10 +130,11 @@ function push_job(df_job::DFJob)
   if !ispath(df_job.home_dir)
     error("Please save the job locally first using save_job(job)!")
   else
-    files_to_push = [search_dir(df_job.home_dir,".in");search_dir(df_job.home_dir,".tt")]
-    for file in files_to_push
+    calculations = read_inputs_from_job_file(df_job.home_dir*"job.tt")
+    for (calc,file) in calculations
       run(`scp $(df_job.home_dir*file) $(df_job.server*":"*df_job.server_dir)`)
     end
+    run(`scp $(df_job.home_dir*"job.tt") $(df_job.server*":"*df_job.server_dir)`)
   end
 end
 
