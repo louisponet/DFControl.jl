@@ -37,5 +37,17 @@ test_ks_cart,test_ks_cryst = read_ks_from_qe_bands_file(joinpath(@__DIR__,"../as
 
 @test read_fermi_from_qe_file(joinpath(@__DIR__,"../assets/outputs/scf.out")) == 5.1371f0
 
- 
+wan_test = read_wannier_input(joinpath(@__DIR__,"../assets/inputs/wannier/wan.win"))
+@test length(wan_test.k_points) == prod(wan_test.control_blocks[:control][:mp_grid])
+@test length(wan_test.atoms) == 3
+@test wan_test.control_blocks[:control][:write_rmn]
+@test wan_test.atoms[:Te] == [Point3D{Float32}(0.52325284,0.52325284,0.52325284)]
 
+test_filename = joinpath(@__DIR__,"../assets/inputs/wannier/wan_test.win")
+write_wannier_input(test_filename,wan_test)
+@test wan_test.control_blocks[:control] == read_wannier_input(test_filename).control_blocks[:control]
+wan_test2 = read_wannier_input(test_filename)
+@test wan_test.k_points == wan_test2.k_points
+@test wan_test.atoms == wan_test2.atoms
+@test wan_test.cell_param == wan_test2.cell_param
+rm(test_filename)

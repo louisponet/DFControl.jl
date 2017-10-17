@@ -1,0 +1,17 @@
+#!/bin/bash
+#SBATCH -N 1
+#SBATCH --ntasks-per-node=24
+#SBATCH --time=24:00:00
+#SBATCH -J test_job
+#SBATCH -p defpart
+
+module load open-mpi/gcc/1.10.2
+module load mkl/2016.1.056
+
+mpirun -np 24 ~/bin/pw.x <scf.in> scf.out
+mpirun -np 24 ~/bin/pw.x <nscf.in> nscf.out
+mpirun -np 24 ~/bin/pw.x <bands.in> bands.out
+mpirun -np 24 ~/bin/projwfc.x <projwfc.in> projwfc.out
+wannier90.x -pp wan
+mpirun -np 24 pw2wannier90.x <pw2wan.in> pw2wan.out
+wannier90.x wan

@@ -37,6 +37,7 @@ mutable struct DFInput
   k_points::Dict{Symbol,Any}
 end
 
+#having both the flow and array tuple might be overkill
 """
 Represents a full DFT job with multiple input files and calculations.
 
@@ -44,24 +45,26 @@ Fieldnames: job_name::String
             calculations::Dict{String,DFInput} -> calculation type to DFInput
             flow::Array{Tuple{String,String},1} -> flow chart of calculations. The tuple is (calculation type, input file).
             home_dir::String -> directory on local machine.
-            server::String -> server in full host@server format.
+            server::String -> server in full host@server t.
             server_dir::String -> directory on server.
 """
 mutable struct DFJob
   job_name::String
-  calculations::Dict{String,DFInput}
-  flow::Array{Tuple{String,String},1}
+  calculations::Array{Tuple{String,DFInput}}
+  # flow::Array{Tuple{String,String},1}
   home_dir::String
   server::String
   server_dir::String
-  function DFJob(job_name,calculations,flow,home_dir,server,server_dir)
+  function DFJob(job_name,calculations,home_dir,server,server_dir)
+  # function DFJob(job_name,calculations,flow,home_dir,server,server_dir)
     if home_dir != ""
       home_dir = form_directory(home_dir)
     end
     if server_dir != ""
       server_dir = form_directory(server_dir)
     end
-    new(job_name,calculations,flow,home_dir,server,server_dir)
+    new(job_name,calculations,home_dir,server,server_dir)
+    # new(job_name,calculations,flow,home_dir,server,server_dir)
   end
 end
 

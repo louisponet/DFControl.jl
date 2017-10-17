@@ -23,10 +23,12 @@ module DFControl
   export read_qe_input
   export write_qe_input
   export read_wannier_input
+  export write_wannier_input
   export write_df_input
   export write_job_files
 
   include("job_control.jl")
+  export load_job
   export load_qe_job
   export load_qe_server_job
   export pull_job

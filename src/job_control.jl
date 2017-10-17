@@ -5,17 +5,18 @@
 
 Loads a Quantum Espresso job from a directory. If no specific input filenames are supplied it will try to find them from a file with name "job".
 """
-function load_qe_job(job_name::String,df_job_dir::String,T=Float32;inputs=nothing,new_homedir=nothing,server="",server_dir="")
+function load_qe_job(job_name::String, df_job_dir::String, T=Float32; inputs=nothing, new_homedir=nothing, server="", server_dir="")
   df_job_dir = form_directory(df_job_dir)
   if inputs==nothing
     inputs = read_qe_inputs_from_job_file(df_job_dir*search_dir(df_job_dir,".tt")[1])
   end
 
-  t_calcs = Dict{String,DFInput}()
+  t_calcs = Array{Tuple{String,DFInput},1}()
   flow = Array{Tuple{String,String},1}()
   for (run_command,file) in inputs
-    t_calcs[split(file,"_")[end][1:end-3]] = read_qe_input(df_job_dir*file,T)
-    push!(flow,(run_command,split(file,"_")[end][1:end-3]))
+    filename = split(file,"_")[end][1:end-3]
+    push!(t_calcs,(filename,read_qe_input(df_job_dir*file,T)))
+    push!(flow,(run_command,filename))
   end
   if new_homedir!=nothing
     return DFJob(job_name,t_calcs,flow,new_homedir,server,server_dir)
@@ -29,7 +30,7 @@ end
 
 Pulls and loads a Quantum Espresso job.
 """
-function load_qe_server_job(job_name::String,server::String,server_dir::String,local_dir::String,args...;inputs=nothing)
+function load_qe_server_job(job_name::String, server::String, server_dir::String, local_dir::String, args...; inputs=nothing)
   pull_job(server,server_dir,local_dir,inputs=inputs)
   return load_qe_job(job_name,local_dir,args...;inputs=inputs,server=server,server_dir=server_dir)
 end
@@ -37,6 +38,31 @@ end
 #---------------------------------END QUANTUM ESPRESSO SECTION ------------------#
 
 #---------------------------------BEGINNING GENERAL SECTION ---------------------#
+
+#should we call this load local job?
+function load_job(job_name::String, job_dir::String, T=Float32; inputs=nothing, job_ext = ".tt", new_homedir=nothing, server="",server_dir="")
+  job_dir = form_directory(job_dir)
+  if inputs == nothing
+    inputs = read_inputs_from_job_file(job_dir*search_dir(job_dir,job_ext)[1])
+  end
+
+  t_calcs = Array{Tuple{String,DFInput},1}()
+  # flow    = Array{Tuple{String,String},1}()
+  #we whould probably make an automatic filereader or something
+  for (run_command,file) in inputs
+    filename = split(split(file,"_")[end],".")[1]
+    if contains(run_command,"wan") && !contains(run_command,"pw2wannier90")
+      push!(t_calcs,(run_command,read_wannier_input(job_dir*file,T)))
+    else
+      push!(t_calcs,(run_command,read_qe_input(job_dir*file,T)))
+    end
+  end
+  if new_homedir != nothing
+    return DFJob(job_name,t_calcs,new_homedir,server,server_dir)
+  else
+    return DFJob(job_name,t_calcs,job_dir,server,server_dir)
+  end
+end
 
 #TODO should we also create a config file for each job with stuff like server etc? and other config things,
 #      which if not supplied could contain the default stuff?
@@ -74,6 +100,7 @@ function save_job(df_job::DFJob)
   if df_job.home_dir == ""
     error("Please specify a valid home_dir!")
   end
+  df_job.home_dir = form_directory(df_job.home_dir)
   if !ispath(df_job.home_dir)
     mkpath(df_job.home_dir)
   end
@@ -122,7 +149,7 @@ Check the values of certain flags in a given job if they exist.
 function check_job_data(df_job,data_keys)
   out_dict = Dict{Symbol,Any}()
   for s in data_keys
-    for calc in values(df_job.calculations)
+    for (meh,calc) in df_job.calculations
       for name in fieldnames(calc)[2:end]
         data_dict = getfield(calc,name)
         if name == :control_blocks
@@ -200,7 +227,7 @@ end
 
 #Incomplete this now assumes that there is only one calculation, would be better to interface with the flow of the DFJob
 """
-    set_job_data!(df_job::DFJob,calculation::String,block_symbol::Symbol,data)
+    set_job_data!(df_job::DFJob,calculation::Int,block_symbol::Symbol,data)
 
 Sets mutatatively the job data in a calculation block of a DFJob. It will merge the supplied data with the previously present one in the block,
 changing all previous values to the new ones and adding non-existent ones.
@@ -209,21 +236,21 @@ changing all previous values to the new ones and adding non-existent ones.
 #        calculation::String, -> calculation in the DFJob.
 #        block_symbol::Symbol, -> Symbol of the datablock inside the calculation's input file.
 #        data::Dict{Symbol,Any} -> flags and values to be set.
-function set_job_data!(df_job::DFJob,calculation::String,block_symbol::Symbol,data)
-  if haskey(df_job.calculations,calculation)
-    if block_symbol == :control_blocks
-      for (block_key,block_dict) in data
-        df_job.calculations[calculation].control_blocks[block_key] = merge(df_job.calculations[calculation].control_blocks[block_key],data[block_key])
-        println("New input of block '$(String(block_key))' in '$(String(block_symbol))' of calculation '$calculation' is now:")
-        display(df_job.calculations[calculation].control_blocks[block_key])
-        println("\n")
-      end
-    else
-      setfield!(df_job.calculations[calculation],block_symbol,merge(getfield(df_job.calculations[calculation],block_symbol),data))
-      println("New input of '$block_symbol' in calculation '$calculation' is:\n")
-      display(getfield(df_job.calculations[calculation],block_symbol))
+#Incomplete possibly change calculation to a string rather than an integer but for now it's fine
+function set_job_data!(df_job::DFJob, calculation::Int, block_symbol::Symbol, data)
+  t_calc = df_job.calculations[calculation][2]
+  if block_symbol == :control_blocks
+    for (block_key,block_dict) in data
+      t_calc.control_blocks[block_key] = merge(t_calc.control_blocks[block_key],data[block_key])
+      println("New input of block '$(String(block_key))' in '$(String(block_symbol))' of calculation '$calculation' is now:")
+      display(t_calc.control_blocks[block_key])
       println("\n")
     end
+  else
+    setfield!(t_calc,block_symbol,merge(getfield(t_calc,block_symbol),data))
+    println("New input of '$block_symbol' in calculation '$calculation' is:\n")
+    display(getfield(t_calc,block_symbol))
+    println("\n")
   end
 end
 

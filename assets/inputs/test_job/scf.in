@@ -1,0 +1,58 @@
+!Generated from DFTools at 2017-10-17T18:03:22.456
+&ions
+  ion_dynamics = 'bfgs'
+/
+
+&control
+  prefix = 'pwo'
+  verbosity = 'high'
+  calculation = 'scf'
+  outdir = './'
+  pseudo_dir = './'
+  disk_io = 'low'
+  restart_mode = 'from_scratch'
+/
+
+&cell
+  cell_dynamics = 'bfgs'
+  press = 0
+/
+
+&system
+  ecutwfc = 28
+  occupations = 'smearing'
+  nbnd = 48
+  nosym = true
+  ntyp = 2
+  smearing = 'cold'
+  ibrav = 0
+  degauss = 0.01
+  lspinorb = true
+  starting_magnetization(2) = -1.0e-6
+  ecutrho = 250
+  noncolin = true
+  nat = 2
+/
+
+&electrons
+  mixing_beta = 0.3
+  conv_thr = 1.0e-8
+  mixing_mode = 'plain'
+  diagonalization = 'david'
+/
+
+ATOMIC_SPECIES
+Te   127.6   Te.rel-pbesol-dn-kjpaw_psl.0.2.2.UPF
+Ge   72.64   Ge.rel-pbesol-dn-kjpaw_psl.0.2.2.UPF
+
+CELL_PARAMETERS (bohr)
+-6.686168  0.0 4.5543137
+-6.686168  3.9441514 -2.2771568
+-6.686168  -3.9441514 -2.2771568
+
+ATOMIC_POSITIONS (crystal)
+Te    0.52325284    0.52325284    0.52325284 
+Ge    -0.002252856    -0.002252856    -0.002252856 
+
+K_POINTS (automatic)
+10  10  10  1  1  1

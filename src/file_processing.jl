@@ -362,6 +362,11 @@ end
 
 #We also use DFInput to store wannier input, the non-named block in wannier is stored in the :control
 #dictionary.
+"""
+   read_wannier_input(filename::String, T=Float32)
+
+Reads a DFInput from a wannier90 input file.
+"""
 function read_wannier_input(filename::String, T=Float32)
   strip_split(line,args...) = strip.(split(line,args...))
   control_blocks = Dict{Symbol,Any}()
@@ -440,6 +445,10 @@ function read_wannier_input(filename::String, T=Float32)
         elseif block_name == :kpoints
           i=1
           while !(contains(line,"end") || contains(line,"End"))
+            if line==""
+              line = readline(f)
+              continue
+            end
             k_points[Symbol(i)] = parse_line(T,line)
             line = readline(f)
             i+=1
@@ -471,6 +480,81 @@ function read_wannier_input(filename::String, T=Float32)
   return DFInput(:wannier,control_blocks,Dict{Symbol,String}(),cell_param_dict,atoms,k_points)
 end
 
+"""
+    write_wannier_input(filename::String,input::DFInput)
+
+Writes the input of a wannier90 input file.
+"""
+function write_wannier_input(filename::String,input::DFInput)
+  open(filename,"w") do f
+    function write_block(block)
+      for (flag,value) in block
+        if typeof(value) <: Array{<:Number,1} #mainly for mp_grid
+          write(f,"$flag = $(value[1]) $(value[2]) $(value[3])\n")
+        elseif typeof(value) == Array{Symbol,1} #projections
+          write(f,"$flag: $(value[1]) ")
+          for sym in value[2:end]
+            write(f,";$sym")
+          end
+          write(f,"\n")
+        else
+          write(f,"$flag = $value\n")
+        end
+      end
+    end
+
+    for (block_key,block) in input.control_blocks
+      if block_key == :control
+        write_block(block)
+        write(f,"\n")
+      elseif block_key == :kpoint_path
+        write(f,"begin kpoint_path\n")
+        for i = 1:2:length(block)
+          letter1, k_points1 = block[i]
+          letter2, k_points2 = block[i+1]
+          write(f,"$letter1 $(k_points1[1]) $(k_points1[2]) $(k_points1[3]) $letter2 $(k_points2[1]) $(k_points2[2]) $(k_points2[3])\n")
+        end
+        write(f,"end kpoint_path\n")
+        write(f,"\n")
+      else
+        write(f,"begin $block_key\n")
+        write_block(block)
+        write(f,"end $block_key\n")
+        write(f,"\n")
+      end
+    end
+#write the cell_param
+    write(f,"begin unit_cell_cart\n")
+    option = collect(keys(input.cell_param))[1]
+    write(f,"$option\n")
+    matrix = input.cell_param[option]
+    write(f,"$(matrix[1,1]) $(matrix[1,2]) $(matrix[1,3])\n")
+    write(f,"$(matrix[2,1]) $(matrix[2,2]) $(matrix[2,3])\n")
+    write(f,"$(matrix[3,1]) $(matrix[3,2]) $(matrix[3,3])\n")
+    write(f,"end unit_cell_cart\n")
+    write(f,"\n")
+#write the atoms
+    write(f,"begin $(input.atoms[:option])\n")
+    for (atom,points) in input.atoms
+      if atom == :option
+        continue
+      end
+      for point in points
+        write(f,"$atom $(point.x) $(point.y) $(point.z)\n")
+      end
+    end
+    write(f,"end $(input.atoms[:option])\n")
+    write(f,"\n")
+#write the atoms
+    write(f,"begin kpoints\n")
+    write(f,"\n")
+    for i=1:length(input.k_points)
+      k = input.k_points[Symbol(i)]
+      write(f,"  $(k[1]) $(k[2]) $(k[3])\n")
+    end
+    write(f,"end kpoints\n")
+  end
+end
 
 #---------------------------END WANNIER SECTION ------------------------#
 #---------------------------BEGINNING GENERAL SECTION-------------------#
@@ -483,6 +567,8 @@ Backend of DFInput decides what writing function is called.
 function write_df_input(filename::String,df_input::DFInput)
   if df_input.backend == :QE
     write_qe_input(filename,df_input)
+  elseif df_input.backend == :wannier
+    write_wannier_input(filename,df_input)
   else
     error("Backend $(df_input.backend) is not yet implemented!")
   end
@@ -493,6 +579,7 @@ end
 #@TODO actually having a flow chart wouldn't be a bad idea, now it's always the same order!
 #@Incomplete there might be the case that we want multiple different nscf or scf or whatever inputs. Maybe using array of tuple(string,dfinput)
 # would be more suitable
+#Incomplete writes only one wannier thing
 """
     write_job_files(df_job::DFJob)
 
@@ -505,11 +592,28 @@ function write_job_files(df_job::DFJob)
   open(df_job.home_dir*"job.tt","w") do f
     write(f,"#!/bin/bash\n","#SBATCH -N 1\n","#SBATCH --ntasks-per-node=24 \n","#SBATCH --time=24:00:00 \n","#SBATCH -J $(df_job.job_name) \n",
           "#SBATCH -p defpart\n\n","module load open-mpi/gcc/1.10.2\n","module load mkl/2016.1.056\n","\n")
-    for (i,(run_command,input)) in enumerate(df_job.flow)
-      filename = "$i"*df_job.job_name*"_$input"*".in"
+    for (i,(run_command,input)) in enumerate(df_job.calculations)
+      if contains(run_command,"projwfc")
+        filename = "$i"*df_job.job_name*"_projwfc"*".in"
+        write(f,"mpirun -np 24 $run_command <$filename> $(split(filename,".")[1]).out \n")
+        write_df_input(df_job.home_dir*filename,df_job.calculations[i][2])
+      elseif contains(run_command,"wannier90.x")
+        filename = "$i"*df_job.job_name*"_wan"*".win"
+        pw2wan_calculation = df_job.calculations[i+1][2]
+        pw2wan_calculation.control_blocks[:inputpp][:seedname] = "'$(filename[1:end-4])'"
+        write(f,"$run_command -pp $(filename[1:end-4])\n")
+        write(f,"mpirun -np 24 $(df_job.calculations[i+1][1]) <$i$(df_job.job_name)_pw2wan.in> $i$(df_job.job_name)_pw2wan.out\n")
+        write_df_input(df_job.home_dir*"$i$(df_job.job_name)_pw2wan.in",pw2wan_calculation)
+        write(f,"$run_command $(filename[1:end-4])\n")
+        write_df_input(df_job.home_dir*filename,df_job.calculations[i][2])
+        break
+      else
+        calc_name = input.control_blocks[:control][:calculation][2:end-1]
+        filename = "$i"*df_job.job_name*"_$calc_name"*".in"
+        write(f,"mpirun -np 24 $run_command <$filename> $(split(filename,".")[1]).out \n")
+        write_df_input(df_job.home_dir*filename,df_job.calculations[i][2])
+      end
       push!(new_filenames,filename)
-      write_df_input(df_job.home_dir*filename,df_job.calculations[input])
-      write(f,"mpirun -np 24 $run_command <$filename> $(split(filename,".")[1]).out \n")
     end
   end
 
@@ -520,4 +624,37 @@ function write_job_files(df_job::DFJob)
   end
 end
 
+#Incomplete, we should also save all job input lines that don't have input files
+"""
+    read_inputs_from_job_file(job_file)
+
+Reads all the run commands and attached input files.
+All files that are read contain "in".
+This reads QE and wannier90 inputs for now.
+"""
+function read_inputs_from_job_file(job_file)
+  inputs = Array{Tuple{String,String},1}()
+  open(job_file,"r") do f
+    while !eof(f)
+      line = readline(f)
+      if contains(line,"#")
+        continue
+
+      elseif contains(line,"pw.x") || contains(line,"projwfc.x") || contains(line,"pw2wannier90.x")
+        split_line = split(line)
+        input_file = strip.(strip.(filter(x->contains(x,".in"),split_line),'<'),'>')[1]
+        run_command = filter(x->contains(x,".x"),split_line)[1]
+        push!(inputs,(run_command,input_file))
+      elseif contains(line,"wannier90.x") && length(split(line))>2
+        split_line = split(line)
+        input_file = split_line[end]*".win"
+        run_command = filter(x->contains(x,".x"),split_line)[1]
+        if !in(input_file,[file[1] for file in inputs])
+          push!(inputs,(run_command,input_file))
+        end
+      end
+    end
+  end
+  return inputs
+end
 #---------------------------END GENERAL SECTION-------------------#
