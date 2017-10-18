@@ -1,12 +1,13 @@
 "Point in 3D space in cartesian coordinates with specified float type"
-struct Point3D{T<:AbstractFloat}<:AbstractFloat
+struct Point3D{T<:AbstractFloat}
   x::T
   y::T
   z::T
 end
+(Point3D(x::T) where T<:AbstractFloat) = Point3D(T(x),T(x),T(x))
 Point3D(::Type{T},x) where T<:AbstractFloat = Point3D(T(x),T(x),T(x))
 Point3D(x::Array{<:AbstractFloat,1}) = Point3D(x[1],x[2],x[3])
-Base.display(x::Point3D) = Base.display("$(typeof(x)), x = $(x.x), y = $(x.y), z = $(x.z)")
+
 abstract type Band{T<:AbstractFloat} end
 
 """
@@ -28,14 +29,57 @@ Fieldnames: backend::Symbol -> the DFT package that reads this input.
             atoms::Dict{Symbol,Any} -> maps atom symbol to position.
             k_points::Dict{Symbol,Any} -> maps option of k_points to k_points.
 """
-mutable struct DFInput
-  backend::Symbol
-  control_blocks::Dict{Symbol,Any}
-  pseudos::Dict{Symbol,String}
-  cell_param::Dict{Symbol,Any}
-  atoms::Dict{Symbol,Union{Symbol,Array{<:Point3D,1}}}
-  k_points::Dict{Symbol,Any}
+#these are all the control blocks, they hold the flags that guide the calculation
+abstract type ControlBlock end
+
+mutable struct QEControlBlock<:ControlBlock
+  name::Symbol
+  flags::Dict{Symbol,Any}
 end
+
+
+#these are all the data blocks, they hold the specific data for the calculation
+abstract type DataBlock end
+
+mutable struct QEDataBlock <: DataBlock
+  name::Symbol
+  option::Symbol
+  data::Any
+end
+
+mutable struct WannierDataBlock <: DataBlock
+  name::Symbol
+  option::Symbol
+  data::Any
+end
+
+#here all the different input structures for the different calculations go
+abstract type DFInput end
+
+mutable struct QEInput<:DFInput
+  filename::String
+  control_blocks::Array{QEControlBlock,1}
+  data_blocks::Array{QEDataBlock,1}
+  run_command::String  #everything before < in the job file
+  run::Bool
+end
+
+mutable struct WannierInput<:DFInput
+  filename::String
+  flags::Dict{Symbol,Any}
+  data_blocks::Array{WannierDataBlock,1}
+  run_command::String
+  run::Bool
+end
+
+# mutable struct DFInput
+#   backend::Symbol
+#   control_blocks::Dict{Symbol,Any}
+#   pseudos::Dict{Symbol,String}
+#   cell_param::Dict{Symbol,Any}
+#   atoms::Dict{Symbol,Union{Symbol,Array{<:Point3D,1}}}
+#   k_points::Dict{Symbol,Any}
+# end
 
 #having both the flow and array tuple might be overkill
 """
@@ -50,7 +94,7 @@ Fieldnames: job_name::String
 """
 mutable struct DFJob
   job_name::String
-  calculations::Array{Tuple{String,DFInput}}
+  calculations::Array{DFInput,1}
   # flow::Array{Tuple{String,String},1}
   home_dir::String
   server::String

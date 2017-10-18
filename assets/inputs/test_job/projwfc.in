@@ -1,11 +1,9 @@
-!Generated from DFTools at 2017-10-17T18:03:22.463
-&projwfc
-  prefix = 'pwo'
-  Emin = -5
-  Emax = 15
-  kresolveddos = true
-  ngauss = -1
-  DeltaE = 0.01
-  degauss = 0.01
+ &PROJWFC
+prefix='pwo'
+ngauss=-1
+degauss=0.01
+Emin=-5
+Emax=15
+kresolveddos=.true.
+DeltaE=0.01
 /
-

@@ -147,418 +147,11 @@ function read_qe_kpdos(filename::String,column=1;fermi=0)
   return  zmat',(ytickvals,yticks)
 end
 
-
-"""
-    read_qe_input(filename,T=Float32)
-
-Reads a Quantum Espresso input file.
-Returns a DFInput.
-"""
-function read_qe_input(filename,T=Float32)
-  function get_card_option(line,length)
-    if contains(line,"{")
-      return Symbol(strip(split(line,"{")[end],'}'))
-    elseif contains(line,"(")
-      return Symbol(strip(split(line,"(")[end],')'))
-    end
-  end
-  control_blocks = Dict{Symbol,Dict{Symbol,Any}}()
-  cell_param     = Dict{Symbol,Any}()
-  pseudos        = Dict{Symbol,String}()
-  atoms          = Dict{Symbol,Array{<:Point3D,1}}()
-  k_dict         = Dict{Symbol,Any}()
-
-  open(filename) do f
-    while !eof(f)
-      line = readline(f)
-      @label startlabel
-      if contains(line,"&")
-        block_symbol = Symbol(lowercase(strip(strip(line),'&')))
-        tmp_dict = Dict{Symbol,Any}()
-        line = readline(f)
-        while strip(line)!="/"
-          if contains(line,"!")
-            line = readline(f)
-            continue
-          end
-          split_line = filter(x->x!="",strip.(split(line,",")))
-          for s in split_line
-            key,val = String.(strip.(split(s,"=")))
-            #parse for ints
-            if !isnull(tryparse(Int,val))
-              tmp_dict[Symbol(key)] = get(tryparse(Int,val))
-            #parse for T<:AbstractFloat
-            elseif !isnull(tryparse(T,val))
-              tmp_dict[Symbol(key)] = get(tryparse(T,val))
-            #parse for Bools
-            elseif !isnull(tryparse(Bool,strip(val,'.')))
-              tmp_dict[Symbol(key)] = get(tryparse(Bool,strip(val,'.')))
-            else
-              tmp_dict[Symbol(key)] = val
-            end
-          end
-          line = readline(f)
-        end
-        control_blocks[block_symbol]=tmp_dict
-        @goto startlabel
-
-
-      elseif contains(line,"CELL_PARAMETERS")||contains(line,"cell_parameters")
-        cell_unit = get_card_option(line,15)
-        cell = Matrix{T}(3,3)
-        cell[1,1:3] = parse.(T,split(readline(f)))
-        cell[2,1:3] = parse.(T,split(readline(f)))
-        cell[3,1:3] = parse.(T,split(readline(f)))
-        cell_param  = Dict(cell_unit => cell)
-        line = readline(f)
-        @goto startlabel
-
-      elseif contains(line,"ATOMIC_SPECIES")||contains(line,"atomic_species")
-        line = readline(f)
-        while length(split(line))==3
-          pseudos[Symbol(split(line)[1])] = split(line)[end]
-          line = readline(f)
-        end
-        @goto startlabel
-
-#TODO fix that atoms can only be fractional!
-      elseif contains(line,"ATOMIC_POSITIONS")||contains(line,"atomic_positions")
-        pos_unit = get_card_option(line,16)
-        line = readline(f)
-        while length(split(line))==4
-          line_segs = split(line)
-          atom = Symbol(line_segs[1])
-          position=Point3D(parse(T,line_segs[2]),parse(T,line_segs[3]),parse(T,line_segs[4]))
-          if !haskey(atoms,atom)
-            atoms[atom]=[position]
-          else
-            push!(atoms[atom],position)
-          end
-          line = readline(f)
-        end
-        @goto startlabel
-
-      elseif contains(line,"K_POINTS")||contains(line,"k_points")
-        k_option = get_card_option(line,8)
-        line     = readline(f)
-        k_dict[:option] = k_option
-        if k_option == :automatic
-          line_segs = split(line)
-          k_dict[:nk1],k_dict[:nk2],k_dict[:nk3],k_dict[:sk1],k_dict[:sk2],k_dict[:sk3] = parse.(Int,line_segs)
-        else
-          nks = parse(Int,line)
-          k_point_array = Array{Array{T,1},1}(nks)
-          for i=1:nks
-            k_point_array[i] = parse.(T,split(readline(f)))
-          end
-          k_dict[:points] = k_point_array
-        end
-        @goto startlabel
-      end
-
-    end
-  end
-  return DFInput(:QE,control_blocks,pseudos,cell_param,atoms,k_dict)
-end
-
-
-"""
-    write_qe_input(filename::String,df_input::DFInput)
-
-Writes a Quantum Espresso input file.
-"""
-function write_qe_input(filename::String,df_input::DFInput)
-  if df_input.backend != :QE
-    error("Tried to write a QE input file with a DfInput of backend: $(df_input.backend).")
-  else
-    open(filename,"w") do f
-      write(f,"!Generated from DFTools at $(now())\n")
-
-      # write the control blocks first
-      for (key,value) in df_input.control_blocks
-        write(f,"&$(String(key))\n")
-        for (input_var,var_val) in df_input.control_blocks[key]
-          write(f,"  $(String(input_var)) = $(var_val)\n")
-        end
-        write(f,"/\n\n")
-      end
-
-      #write the other cards depending on whether or not they are there
-      if !isempty(df_input.atoms)
-        write(f,"ATOMIC_SPECIES\n")
-        for atom in keys(df_input.atoms)
-    #@Incomplete Once default pseudos are implemented put it in the default slot here!!!!!
-          pseudo = get(df_input.pseudos,atom,"PUT PSEUDO HERE")
-          write(f,"$(String(atom))   $(Float32(ELEMENTS[atom].atomic_weight))   $pseudo\n")
-        end
-        write(f,"\n")
-      end
-
-      if !isempty(df_input.cell_param)
-        cell_format = collect(keys(df_input.cell_param))[1]
-        cell = df_input.cell_param[cell_format]
-        write(f,"CELL_PARAMETERS ($cell_format)\n")
-        write(f,"$(cell[1,1])  $(cell[1,2]) $(cell[1,3])\n")
-        write(f,"$(cell[2,1])  $(cell[2,2]) $(cell[2,3])\n")
-        write(f,"$(cell[3,1])  $(cell[3,2]) $(cell[3,3])\n")
-        write(f,"\n")
-      end
-
-      if !isempty(df_input.atoms)
-        write(f,"ATOMIC_POSITIONS (crystal)\n")
-        for (atom,points) in df_input.atoms
-          for point in points
-            write(f,"$(String(atom))    $(point.x)    $(point.y)    $(point.z) \n")
-          end
-        end
-        write(f,"\n")
-      end
-
-      if !isempty(df_input.k_points)
-        k_option = df_input.k_points[:option]
-        write(f,"K_POINTS ($k_option)\n")
-
-        if k_option == :automatic
-          write(f,"$(df_input.k_points[:nk1])  $(df_input.k_points[:nk2])  $(df_input.k_points[:nk2])  $(df_input.k_points[:sk1])  $(df_input.k_points[:sk2])  $(df_input.k_points[:sk3])\n")
-        elseif k_option == :crystal_b
-          points = df_input.k_points[:points]
-          write(f,"$(size(points)[1])\n")
-          for point in points
-            write(f,"$(point[1])  $(point[2])  $(point[3]) $(Int(point[4]))\n")
-          end
-        else
-          points = df_input.k_points[:points]
-          write(f,"$(size(points)[1])\n")
-          for point in points
-            write(f,"$(point[1])  $(point[2])  $(point[3]) $(point[4])\n")
-          end
-        end
-
-      end
-    end
-  end
-end
-
-#@Incomplete: does not read wan input files now
-"""
-    read_qe_inputs_from_job_file(job_file)
-
-Reads a job file and all the mentioned Quantum Espresso input files.
-Returns an array of String pairs that are (calculation,input_file)
-"""
-function read_qe_inputs_from_job_file(job_file)
-  inputs = Array{Tuple{String,String},1}()
-  open(job_file,"r") do f
-    while !eof(f)
-      line = readline(f)
-      if contains(line,"pw.x")||contains(line,"projwfc.x")
-        split_line = split(line)
-        input_file = strip.(strip.(filter(x->contains(x,".in"),split_line),'<'),'>')[1]
-        run_command = filter(x->contains(x,".x"),split_line)[1]
-        push!(inputs,(run_command,input_file))
-      end
-    end
-  end
-  return inputs
-end
 #---------------------------END QUANTUM ESPRESSO SECTION----------------#
 #---------------------------START WANNIER SECTION ----------------------#
 
 #We also use DFInput to store wannier input, the non-named block in wannier is stored in the :control
 #dictionary.
-"""
-   read_wannier_input(filename::String, T=Float32)
-
-Reads a DFInput from a wannier90 input file.
-"""
-function read_wannier_input(filename::String, T=Float32)
-  strip_split(line,args...) = strip.(split(line,args...))
-  control_blocks = Dict{Symbol,Any}()
-  control_blocks[:control] = Dict{Symbol,Any}()
-  atoms = Dict{Symbol,Union{Symbol,Array{Point3D{T},1}}}()
-  k_points = Dict{Symbol,Array{T,1}}()
-  cell_param_dict = Dict{Symbol,Matrix{T}}()
-  open(filename,"r") do f
-    while !eof(f)
-      line = readline(f)
-      if contains(line,"!")||line==""
-        continue
-      end
-      if contains(line,"Begin") || contains(line,"begin")
-        block_name = Symbol(lowercase(split(line)[end]))
-        line = readline(f)
-
-        if block_name == :projections
-          if line == "random"
-            control_blocks[block_name] = Dict(:random=>Symbol[])
-          else
-            proj_dict = Dict{Symbol,Array{Symbol,1}}()
-            while !(contains(line,"End") || contains(line,"end"))
-              if contains(line,"!")
-                line = readline(f)
-                continue
-              end
-              split_line = strip_split(line,':')
-              atom = Symbol(split_line[1])
-              projections = [Symbol(proj) for proj in strip_split(split_line[2],';')]
-              proj_dict[atom] = projections
-              line = readline(f)
-            end
-            control_blocks[block_name] = proj_dict
-          end
-        elseif block_name == :kpoint_path
-          k_path_array = Array{Tuple{Symbol,Array{T,1}},1}()
-          while !(contains(line,"End") || contains(line,"end"))
-            if contains(line,"!")
-              line = readline(f)
-              continue
-            end
-            split_line = split(line)
-            push!(k_path_array,(Symbol(split_line[1]),parse_string_array(T,split_line[2:4])))
-            push!(k_path_array,(Symbol(split_line[5]),parse_string_array(T,split_line[6:8])))
-            line = readline(f)
-          end
-          control_blocks[block_name] = k_path_array
-        elseif block_name == :unit_cell_cart
-          if length(split(line)) == 1
-            option = Symbol(lowercase(line))
-          else
-            option = :ang
-          end
-          cell_param = Matrix{T}(3,3)
-          for i=1:3
-            cell_param[i,:] = parse_line(T,readline(f))
-          end
-          cell_param_dict[option] = cell_param
-          line = readline(f)
-
-        elseif block_name ==:atoms_frac || block_name == :atoms_cart
-          atoms[:option] = block_name
-          while !(contains(line,"end") || contains(line,"End"))
-            split_line = strip_split(line)
-            atom = Symbol(split_line[1])
-            position = Point3D(parse_string_array(T,split_line[2:4]))
-            if !haskey(atoms,atom)
-              atoms[atom] = [position]
-            else
-              push!(atoms[atom],position)
-            end
-            line = readline(f)
-          end
-
-        elseif block_name == :kpoints
-          i=1
-          while !(contains(line,"end") || contains(line,"End"))
-            if line==""
-              line = readline(f)
-              continue
-            end
-            k_points[Symbol(i)] = parse_line(T,line)
-            line = readline(f)
-            i+=1
-          end
-        end
-
-      else
-        if contains(line,"mp_grid")
-          control_blocks[:control][:mp_grid] = parse_string_array(Int,split(split(line,'=')[2]))
-        else
-          split_line = strip_split(line,'=')
-          flag = Symbol(split_line[1])
-          value = split_line[2]
-          if  lowercase(value)=="t" || lowercase(value) == "true"
-            control_blocks[:control][flag] = true
-          elseif lowercase(value) == "f" || lowercase(value) == "false"
-            control_blocks[:control][flag] = false
-          elseif !isnull(tryparse(Int,value))
-            control_blocks[:control][flag] = get(tryparse(Int,value))
-          elseif !isnull(tryparse(T,value))
-            control_blocks[:control][flag] = get(tryparse(T,value))
-          else
-            control_blocks[:control][flag] = value
-          end
-        end
-      end
-    end
-  end
-  return DFInput(:wannier,control_blocks,Dict{Symbol,String}(),cell_param_dict,atoms,k_points)
-end
-
-"""
-    write_wannier_input(filename::String,input::DFInput)
-
-Writes the input of a wannier90 input file.
-"""
-function write_wannier_input(filename::String,input::DFInput)
-  open(filename,"w") do f
-    function write_block(block)
-      for (flag,value) in block
-        if typeof(value) <: Array{<:Number,1} #mainly for mp_grid
-          write(f,"$flag = $(value[1]) $(value[2]) $(value[3])\n")
-        elseif typeof(value) == Array{Symbol,1} #projections
-          write(f,"$flag: $(value[1]) ")
-          for sym in value[2:end]
-            write(f,";$sym")
-          end
-          write(f,"\n")
-        else
-          write(f,"$flag = $value\n")
-        end
-      end
-    end
-
-    for (block_key,block) in input.control_blocks
-      if block_key == :control
-        write_block(block)
-        write(f,"\n")
-      elseif block_key == :kpoint_path
-        write(f,"begin kpoint_path\n")
-        for i = 1:2:length(block)
-          letter1, k_points1 = block[i]
-          letter2, k_points2 = block[i+1]
-          write(f,"$letter1 $(k_points1[1]) $(k_points1[2]) $(k_points1[3]) $letter2 $(k_points2[1]) $(k_points2[2]) $(k_points2[3])\n")
-        end
-        write(f,"end kpoint_path\n")
-        write(f,"\n")
-      else
-        write(f,"begin $block_key\n")
-        write_block(block)
-        write(f,"end $block_key\n")
-        write(f,"\n")
-      end
-    end
-#write the cell_param
-    write(f,"begin unit_cell_cart\n")
-    option = collect(keys(input.cell_param))[1]
-    write(f,"$option\n")
-    matrix = input.cell_param[option]
-    write(f,"$(matrix[1,1]) $(matrix[1,2]) $(matrix[1,3])\n")
-    write(f,"$(matrix[2,1]) $(matrix[2,2]) $(matrix[2,3])\n")
-    write(f,"$(matrix[3,1]) $(matrix[3,2]) $(matrix[3,3])\n")
-    write(f,"end unit_cell_cart\n")
-    write(f,"\n")
-#write the atoms
-    write(f,"begin $(input.atoms[:option])\n")
-    for (atom,points) in input.atoms
-      if atom == :option
-        continue
-      end
-      for point in points
-        write(f,"$atom $(point.x) $(point.y) $(point.z)\n")
-      end
-    end
-    write(f,"end $(input.atoms[:option])\n")
-    write(f,"\n")
-#write the atoms
-    write(f,"begin kpoints\n")
-    write(f,"\n")
-    for i=1:length(input.k_points)
-      k = input.k_points[Symbol(i)]
-      write(f,"  $(k[1]) $(k[2]) $(k[3])\n")
-    end
-    write(f,"end kpoints\n")
-  end
-end
 
 #---------------------------END WANNIER SECTION ------------------------#
 #---------------------------BEGINNING GENERAL SECTION-------------------#
@@ -568,21 +161,16 @@ end
 Writes the input file for a DFInput.
 Backend of DFInput decides what writing function is called.
 """
-function write_df_input(filename::String,df_input::DFInput)
-  if df_input.backend == :QE
-    write_qe_input(filename,df_input)
-  elseif df_input.backend == :wannier
-    write_wannier_input(filename,df_input)
-  else
-    error("Backend $(df_input.backend) is not yet implemented!")
+function write_df_input(df_input::DFInput,filename::String=df_input.filename)
+  if typeof(df_input) == QEInput
+    write_qe_input(df_input,filename)
+  elseif typeof(df_input) == WannierInput
+    write_wannier_input(df_input,filename)
   end
 end
 
 #@TODO after we added defaults and extra job settings to the DFJob type add those instead of hardcoded values
 #Possible issue with .in and .win .. maybe we should use the name that is presented when making the job
-#@TODO actually having a flow chart wouldn't be a bad idea, now it's always the same order!
-#@Incomplete there might be the case that we want multiple different nscf or scf or whatever inputs. Maybe using array of tuple(string,dfinput)
-# would be more suitable
 #Incomplete writes only one wannier thing
 """
     write_job_files(df_job::DFJob)
@@ -596,29 +184,38 @@ function write_job_files(df_job::DFJob)
   open(df_job.home_dir*"job.tt","w") do f
     write(f,"#!/bin/bash\n","#SBATCH -N 1\n","#SBATCH --ntasks-per-node=24 \n","#SBATCH --time=24:00:00 \n","#SBATCH -J $(df_job.job_name) \n",
           "#SBATCH -p defpart\n\n","module load open-mpi/gcc/1.10.2\n","module load mkl/2016.1.056\n","\n")
-    for (i,(run_command,input)) in enumerate(df_job.calculations)
-      if contains(run_command,"projwfc")
-        filename = "$i"*df_job.job_name*"_projwfc"*".in"
-        write(f,"mpirun -np 24 $run_command <$filename> $(split(filename,".")[1]).out \n")
-        write_df_input(df_job.home_dir*filename,df_job.calculations[i][2])
-      elseif contains(run_command,"wannier90.x")
-        filename = "$i"*df_job.job_name*"_wan"*".win"
-        pw2wan_calculation = df_job.calculations[i+1][2]
-        pw2wan_calculation.control_blocks[:inputpp][:seedname] = "'$(filename[1:end-4])'"
-        write(f,"$run_command -pp $(filename[1:end-4])\n")
-        write(f,"mpirun -np 24 $(df_job.calculations[i+1][1]) <$i$(df_job.job_name)_pw2wan.in> $i$(df_job.job_name)_pw2wan.out\n")
-        write_df_input(df_job.home_dir*"$i$(df_job.job_name)_pw2wan.in",pw2wan_calculation)
-        write(f,"$run_command $(filename[1:end-4])\n")
-        write_df_input(df_job.home_dir*filename,df_job.calculations[i][2])
+
+    for i=1:length(df_job.calculations)
+      calculation = df_job.calculations[i]
+      run_command = calculation.run_command
+      filename = calculation.filename
+      write_df_input(calculation,df_job.home_dir*filename)
+      should_run  = calculation.run
+      if contains(run_command,"wannier90.x") && !contains(run_command,"pw")
+        pw2wan = df_job.calculations[i+1]
+        pw2wan_filename =pw2wan.filename
+        push!(new_filenames,pw2wan_filename)
+        pw2wan.control_blocks[1].flags[:seedname] = "'$(filename[1:end-4])'"
+        if !should_run
+          write(f,"#$run_command $(filename[1:end-4])\n")
+          write(f,"#$(df_job.calculations[i+1].run_command) <$pw2wan_filename> $(split(pw2wan_filename,".")[1]).out \n")
+          write_df_input(pw2wan,home_dir*pw2wan_filename)
+          write(f,"#$(df_job.calculations[i+2].run_command) $(filename[1:end-4])\n")
+        else
+          write(f,"$run_command $(filename[1:end-4])\n")
+          write(f,"$(df_job.calculations[i+1].run_command) <$pw2wan_filename> $(split(pw2wan_filename,".")[1]).out \n")
+          write_df_input(pw2wan,df_job.home_dir*pw2wan_filename)
+          write(f,"$(df_job.calculations[i+2].run_command) $(filename[1:end-4])\n")
+        end
         break
       else
-        calc_name = input.control_blocks[:control][:calculation][2:end-1]
-        filename = "$i"*df_job.job_name*"_$calc_name"*".in"
-        write(f,"mpirun -np 24 $run_command <$filename> $(split(filename,".")[1]).out \n")
-        write_df_input(df_job.home_dir*filename,df_job.calculations[i][2])
+        if !should_run
+          write(f,"#$run_command <$filename> $(split(filename,".")[1]).out \n")
+        else
+          write(f,"$run_command <$filename> $(split(filename,".")[1]).out \n")
+        end
       end
       push!(new_filenames,filename)
-      write_df_input(df_job.home_dir*filename,df_job.calculations[i][2])
     end
   end
 
@@ -629,38 +226,431 @@ function write_job_files(df_job::DFJob)
   end
 end
 
-#Incomplete, we should also save all job input lines that don't have input files
-#incomplete make both read inputs and read commands!
 """
-    read_inputs_from_job_file(job_file)
+    read_job_file(job_file::String)
 
-Reads all the run commands and attached input files.
+Reads and returns the input files, run_commands and whether or not they need to be commented out.
 All files that are read contain "in".
 This reads QE and wannier90 inputs for now.
 """
-function read_inputs_from_job_file(job_file)
-  inputs = Array{Tuple{String,String},1}()
+function read_job_file(job_file::String)
+  input_files  = Array{String,1}()
+  run_commands = Array{String,1}()
+  should_run = Array{Bool,1}()
   open(job_file,"r") do f
     while !eof(f)
       line = readline(f)
-      if contains(line,"#")
+      if line == ""
         continue
+      end
+      if contains(line,".x ")
+        if contains(line,"#")
+          push!(should_run,false)
+          line = line[2:end]
+        else
+          push!(should_run,true)
+        end
 
-      elseif contains(line,"pw.x") || contains(line,"projwfc.x") || contains(line,"pw2wannier90.x")
-        split_line = split(line)
-        input_file = strip.(strip.(filter(x->contains(x,".in"),split_line),'<'),'>')[1]
-        run_command = filter(x->contains(x,".x"),split_line)[1]
-        push!(inputs,(run_command,input_file))
-      elseif contains(line,"wannier90.x") && length(split(line))>2
-        split_line = split(line)
-        input_file = split_line[end]*".win"
-        run_command = filter(x->contains(x,".x"),split_line)[1]
-        if !in(input_file,[file[1] for file in inputs])
-          push!(inputs,(run_command,input_file))
+        s_line = split(line)
+        i = 0
+        for (j,s) in enumerate(s_line)
+          if contains(s,".x")
+            i = j
+            break
+          end
+        end
+        run_command = prod([s*" " for s in s_line[1:i]])
+        if contains(s_line[i+1],"-")
+          run_command *= s_line[i+1]
+          i+=1
+        end
+        push!(run_commands,run_command)
+
+        push!(input_files,strip(strip(s_line[i+1],'>'),'<'))
+
+      end
+    end
+  end
+  return input_files,run_commands,should_run
+end
+
+#---------------------------END GENERAL SECTION-------------------#
+function write_flag_line(f,flag,data)
+  write(f,"$flag = ")
+  if typeof(data) <: Array
+    write(f,"$(data[1])")
+    for x in data[2:end]
+      write(f," $x")
+    end
+    write(f,"\n")
+  else #this should work for anything singular valued data such as bools, ''s and other types
+    write(f,"$data\n")
+  end
+end
+
+
+"""
+    read_qe_input(filename,T=Float32)
+
+Reads a Quantum Espresso input file.
+Returns a DFInput.
+"""
+function read_qe_input(filename,T=Float32;run_command ="",run=true)
+  function get_card_option(line,length)
+    if contains(line,"{")
+      return Symbol(strip(split(line,"{")[end],'}'))
+    elseif contains(line,"(")
+      return Symbol(strip(split(line,"(")[end],')'))
+    end
+  end
+  control_blocks = Array{QEControlBlock,1}()
+  data_blocks    = Array{QEDataBlock,1}()
+
+  open(filename) do f
+    line = readline(f)
+    while !eof(f)
+      @label start_label
+      if contains(line,"&")
+        c_block_name = Symbol(lowercase(strip(strip(line),'&')))
+        flag_dict = Dict{Symbol,Any}()
+        line = readline(f)
+        while strip(line)!="/"
+          if contains(line,"!")
+            line = readline(f)
+            continue
+          end
+          split_line = filter(x->x!="",strip.(split(line,",")))
+          for s in split_line
+            key,val = String.(strip.(split(s,"=")))
+            #parse for ints
+            if !isnull(tryparse(Int,val))
+              flag_dict[Symbol(key)] = get(tryparse(Int,val))
+            #parse for T<:AbstractFloat
+            elseif !isnull(tryparse(T,val))
+              flag_dict[Symbol(key)] = get(tryparse(T,val))
+            #parse for Bools
+            elseif !isnull(tryparse(Bool,strip(val,'.')))
+              flag_dict[Symbol(key)] = get(tryparse(Bool,strip(val,'.')))
+            else
+              flag_dict[Symbol(key)] = val
+            end
+          end
+          line = readline(f)
+        end
+        push!(control_blocks,QEControlBlock(c_block_name,flag_dict))
+        @goto start_label
+
+      elseif contains(line,"CELL_PARAMETERS")||contains(line,"cell_parameters")
+        cell_unit = get_card_option(line,15)
+        cell = Matrix{T}(3,3)
+        cell[1,1:3] = parse.(T,split(readline(f)))
+        cell[2,1:3] = parse.(T,split(readline(f)))
+        cell[3,1:3] = parse.(T,split(readline(f)))
+        line = readline(f)
+        push!(data_blocks,QEDataBlock(:cell_parameters,cell_unit,cell))
+        @goto start_label
+
+      elseif contains(line,"ATOMIC_SPECIES")||contains(line,"atomic_species")
+        line   = readline(f)
+        pseudos = Dict{Symbol,String}()
+        while length(split(line))==3
+          pseudos[Symbol(split(line)[1])] = split(line)[end]
+          line = readline(f)
+        end
+        push!(data_blocks,QEDataBlock(:atomic_species,:none,pseudos))
+        @goto start_label
+
+      elseif contains(line,"ATOMIC_POSITIONS")||contains(line,"atomic_positions")
+        option = get_card_option(line,16)
+        atoms  = Dict{Symbol,Array{Point3D{T},1}}()
+        line   = readline(f)
+        while length(split(line))==4
+          s_line   = split(line)
+          atom     = Symbol(s_line[1])
+          position = Point3D(parse(T,s_line[2]),parse(T,s_line[3]),parse(T,s_line[4]))
+          if !haskey(atoms,atom)
+            atoms[atom]=[position]
+          else
+            push!(atoms[atom],position)
+          end
+          line = readline(f)
+        end
+        push!(data_blocks,QEDataBlock(:atomic_positions,option,atoms))
+        @goto start_label
+
+      elseif contains(line,"K_POINTS")||contains(line,"k_points")
+        k_option = get_card_option(line,8)
+        line     = readline(f)
+        if k_option == :automatic
+          s_line = split(line)
+          k_data = parse.(Int,s_line)
+        else
+          nks = parse(Int,line)
+          k_data = Array{Array{T,1},1}(nks)
+          for i=1:nks
+            k_data[i] = parse.(T,split(readline(f)))
+          end
+        end
+        push!(data_blocks,QEDataBlock(:k_points,k_option,k_data))
+        @goto start_label
+      end
+      line = readline(f)
+    end
+  end
+  return QEInput(splitdir(filename)[2],control_blocks,data_blocks,run_command,run)
+end
+
+#can I use @generated here?
+function write_block_data(f,data)
+  if typeof(data)<:Array{Array{<:Any,1},1} #k_points
+    for x in data
+      for y in x
+        write(f," $y")
+      end
+      write(f,"\n")
+    end
+  elseif typeof(data) <:Array{Int,1}
+    for x in data
+      write(f," $x")
+    end
+    write(f,"\n")
+  elseif typeof(data) <: Matrix
+    im,jm = size(data)
+    for i=1:im
+      for j=1:jm
+        write(f," $(data[i,j])")
+      end
+      write(f,"\n")
+    end
+  elseif typeof(data)<:Dict{Symbol,<:Any}
+    for (key,value) in data
+      if typeof(value) == String
+        write(f,"$key $(Float32(ELEMENTS[key].atomic_weight))   $value\n")
+      elseif typeof(value) <: Array{<:Point3D,1}
+        for at in value
+          write(f,"$key $(at.x) $(at.y) $(at.z)\n")
         end
       end
     end
   end
-  return inputs
 end
-#---------------------------END GENERAL SECTION-------------------#
+
+"""
+    write_qe_input(filename::String,df_input::DFInput)
+
+Writes a Quantum Espresso input file.
+"""
+function write_qe_input(input::QEInput,filename::String=input.filename)
+  open(filename,"w") do f
+    write_flag(flag_data) = write_flag_line(f,flag_data[1],flag_data[2])
+    write_block(data)      = write_block_data(f,data)
+    for block in input.control_blocks
+      write(f,"&$(block.name)\n")
+      # block.flags |> write_flag
+      map(write_flag,[(flag,data) for (flag,data) in block.flags])
+      write(f,"/\n\n")
+    end
+
+    for block in input.data_blocks
+      if block.option != :none
+        write(f,"$(block.name) ($(block.option))\n")
+      else
+        write(f,"$(block.name)\n")
+      end
+      if block.name == :k_points && block.option != :automatic
+        write(f,"$(length(block.data))\n")
+        write_block(block.data)
+      else
+        write_block(block.data)
+      end
+      write(f,"\n")
+      #write the other cards depending on whether or not they are there
+    end
+  end
+end
+
+"""
+   read_wannier_input(filename::String, T=Float32)
+
+Reads a DFInput from a wannier90 input file.
+"""
+function read_wannier_input(filename::String,T=Float32;run_command="",run=true)
+  strip_split(line,args...) = strip.(split(line,args...))
+  flags = Dict{Symbol,Any}()
+  data_blocks = Array{WannierDataBlock,1}()
+  open(filename,"r") do f
+    line = readline(f)
+    while !eof(f)
+      @label start_label
+      if contains(line,"!") || line=="" || contains(lowercase(line),"end")
+        line = readline(f)
+        continue
+      end
+      if contains(lowercase(line),"begin")
+        block_name = Symbol(split(lowercase(line))[end])
+
+        if block_name == :projections
+          line = readline(f)
+          if line == "random"
+            push!(data_blocks,WannierDataBlock(:projections,:random,nothing))
+            @goto start_label
+          else
+            proj_dict = Dict{Symbol,Array{Symbol,1}}()
+            while !contains(lowercase(line),"end")
+              if contains(line,"!")
+                line = readline(f)
+                continue
+              end
+              split_line = strip_split(line,':')
+              atom = Symbol(split_line[1])
+              projections = [Symbol(proj) for proj in strip_split(split_line[2],';')]
+              proj_dict[atom] = projections
+              line = readline(f)
+            end
+            push!(data_blocks,WannierDataBlock(:projections,:none,proj_dict))
+            @goto start_label
+          end
+
+        elseif block_name == :kpoint_path
+          line = readline(f)
+          k_path_array = Array{Tuple{Symbol,Array{T,1}},1}()
+          while !contains(lowercase(line),"end")
+            if contains(line,"!")
+              line = readline(f)
+              continue
+            end
+            split_line = split(line)
+            push!(k_path_array,(Symbol(split_line[1]),parse_string_array(T,split_line[2:4])))
+            push!(k_path_array,(Symbol(split_line[5]),parse_string_array(T,split_line[6:8])))
+            line = readline(f)
+          end
+          push!(data_blocks, WannierDataBlock(:kpoint_path,:none,k_path_array))
+          @goto start_label
+
+        elseif block_name == :unit_cell_cart
+          line = readline(f)
+          if length(split(line)) == 1
+            option = Symbol(lowercase(line))
+          else
+            option = :ang
+          end
+          cell_param = Matrix{T}(3,3)
+          for i=1:3
+            cell_param[i,:] = parse_line(T,readline(f))
+          end
+          push!(data_blocks, WannierDataBlock(:unit_cell_cart,option,cell_param))
+          line = readline(f)
+          @goto start_label
+
+        elseif block_name ==:atoms_frac || block_name == :atoms_cart
+          line = readline(f)
+          atoms = Dict{Symbol,Array{Point3D{T},1}}()
+          option = Symbol(split(String(block_name),"_")[end])
+          while !contains(lowercase(line),"end")
+            split_line = strip_split(line)
+            atom = Symbol(split_line[1])
+            position = Point3D(parse_string_array(T,split_line[2:4]))
+            if !haskey(atoms,atom)
+              atoms[atom] = [position]
+            else
+              push!(atoms[atom],position)
+            end
+            line = readline(f)
+          end
+          push!(data_blocks, WannierDataBlock(block_name,option,atoms))
+          @goto start_label
+
+        elseif block_name == :kpoints
+          line = readline(f)
+          k_points = Array{Array{T,1},1}()
+          while !contains(lowercase(line),"end")
+            if line==""
+              line = readline(f)
+              continue
+            end
+            push!(k_points,parse_line(T,line))
+            line = readline(f)
+          end
+          push!(data_blocks, WannierDataBlock(:kpoints,:none,k_points))
+          @goto start_label
+        end
+
+      else
+        if contains(line,"mp_grid")
+          flags[:mp_grid] = parse_string_array(Int,split(split(line,'=')[2]))
+        else
+          split_line = strip_split(line,'=')
+          flag = Symbol(split_line[1])
+          value = split_line[2]
+          if  lowercase(value)=="t" || lowercase(value) == "true"
+            flags[flag] = true
+          elseif lowercase(value) == "f" || lowercase(value) == "false"
+            flags[flag] = false
+          elseif !isnull(tryparse(Int,value))
+            flags[flag] = get(tryparse(Int,value))
+          elseif !isnull(tryparse(T,value))
+            flags[flag] = get(tryparse(T,value))
+          else
+            flags[flag] = value
+          end
+        end
+      end
+      line = readline(f)
+    end
+  end
+  return WannierInput(splitdir(filename)[2],flags,data_blocks,run_command,run)
+end
+
+"""
+    write_wannier_input(filename::String,input::DFInput)
+
+Writes the input of a wannier90 input file.
+"""
+function write_wannier_input(input::WannierInput,filename::String=input.filename)
+  open(filename,"w") do f
+    for (flag,value) in input.flags
+      write_flag_line(f,flag,value)
+    end
+    write(f,"\n")
+    for block in input.data_blocks
+      write(f,"begin $(block.name)\n")
+      if block.name == :kpoint_path
+        for i = 1:2:length(block.data)
+          letter1, k_points1 = block.data[i]
+          letter2, k_points2 = block.data[i+1]
+          write(f,"$letter1 $(k_points1[1]) $(k_points1[2]) $(k_points1[3]) $letter2 $(k_points2[1]) $(k_points2[2]) $(k_points2[3])\n")
+        end
+        # write(f,"\n")
+
+      elseif block.name == :projections
+        for (atom,symbols) in block.data
+          write(f,"$atom: $(symbols[1]) ")
+          for sym in symbols[2:end]
+            write(f,";$sym")
+          end
+        end
+        write(f,"\n")
+
+      elseif block.name == :unit_cell_cart
+        matrix = block.data
+        write(f,"$(block.option)\n")
+        write(f,"$(matrix[1,1]) $(matrix[1,2]) $(matrix[1,3])\n")
+        write(f,"$(matrix[2,1]) $(matrix[2,2]) $(matrix[2,3])\n")
+        write(f,"$(matrix[3,1]) $(matrix[3,2]) $(matrix[3,3])\n")
+
+      elseif block.name == :atoms_frac || block.name == :atoms_cart
+        for (atom,points) in block.data
+          for point in points
+            write(f,"$atom $(point.x) $(point.y) $(point.z)\n")
+          end
+        end
+
+      elseif block.name == :kpoints
+        for k in block.data
+          write(f,"$(k[1]) $(k[2]) $(k[3])\n")
+        end
+      end
+      write(f,"end $(block.name)\n\n")
+    end
+  end
+end

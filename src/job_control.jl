@@ -1,63 +1,40 @@
-#TODO this can easily be generalized!!!
-#Incomplete this only reads .tt files!!
-"""
-    load_qe_job(job_name::String,df_job_dir::String,T=Float32;inputs=nothing,new_homedir=nothing,server="",server_dir="")
-
-Loads a Quantum Espresso job from a directory. If no specific input filenames are supplied it will try to find them from a file with name "job".
-"""
-function load_qe_job(job_name::String, df_job_dir::String, T=Float32; inputs=nothing, new_homedir=nothing, server="", server_dir="")
-  df_job_dir = form_directory(df_job_dir)
-  if inputs==nothing
-    inputs = read_qe_inputs_from_job_file(df_job_dir*search_dir(df_job_dir,".tt")[1])
-  end
-
-  t_calcs = Array{Tuple{String,DFInput},1}()
-  flow = Array{Tuple{String,String},1}()
-  for (run_command,file) in inputs
-    filename = split(file,"_")[end][1:end-3]
-    push!(t_calcs,(filename,read_qe_input(df_job_dir*file,T)))
-    push!(flow,(run_command,filename))
-  end
-  if new_homedir!=nothing
-    return DFJob(job_name,t_calcs,flow,new_homedir,server,server_dir)
-  else
-    return DFJob(job_name,t_calcs,flow,df_job_dir,server,server_dir)
-  end
-end
-
-"""
-    load_qe_server_job(job_name::String,server::String,server_dir::String,local_dir::String,args...;inputs=nothing)
-
-Pulls and loads a Quantum Espresso job.
-"""
-function load_qe_server_job(job_name::String, server::String, server_dir::String, local_dir::String, args...; inputs=nothing)
-  pull_job(server,server_dir,local_dir,inputs=inputs)
-  return load_qe_job(job_name,local_dir,args...;inputs=inputs,server=server,server_dir=server_dir)
-end
-
-#---------------------------------END QUANTUM ESPRESSO SECTION ------------------#
 
 #---------------------------------BEGINNING GENERAL SECTION ---------------------#
 
 function pull_file(server::String,server_dir::String,local_dir::String,filename::String)
   run(`scp $(server*":"*server_dir*filename) $local_dir`)
 end
+"""
+    load_job(job_name::String, job_dir::String, T=Float32; job_fuzzy = "job", new_homedir=nothing, server="",server_dir="")
+
+Loads and returns a DFJob. If home_dir is not specified the job directory will ge registered as the local one.
+"""
 #should we call this load local job?
-function load_job(job_name::String, job_dir::String, T=Float32; inputs=nothing, job_ext = ".tt", new_homedir=nothing, server="",server_dir="")
+function load_job(job_name::String, job_dir::String, T=Float32; job_fuzzy = "job", new_homedir=nothing, server="",server_dir="")
   job_dir = form_directory(job_dir)
-  if inputs == nothing
-    inputs = read_inputs_from_job_file(job_dir*search_dir(job_dir,job_ext)[1])
+
+  t_filenames,t_run_commands,t_should_run = read_job_file(job_dir*search_dir(job_dir,job_fuzzy)[1])
+  filenames    = String[]
+  run_commands = String[]
+  should_run   = Bool[]
+
+  for (i,file) in enumerate(t_filenames)
+    if length(search_dir(job_dir,file))==0 && t_should_run[i]
+      error("Error: there are calculations that should run but have no input file ($file).")
+    elseif length(search_dir(job_dir,file))!=0
+      push!(filenames,file)
+      push!(run_commands,t_run_commands[i])
+      push!(should_run,t_should_run[i])
+    end
   end
 
-  t_calcs = Array{Tuple{String,DFInput},1}()
-  # flow    = Array{Tuple{String,String},1}()
-  #we whould probably make an automatic filereader or something
-  for (run_command,file) in inputs
-    filename = split(split(file,"_")[end],".")[1]
+  t_calcs = Array{DFInput,1}()
+  for (filename,run_command,run) in zip(filenames,run_commands,should_run)
+    filename = job_dir*filename
     if contains(run_command,"wan") && !contains(run_command,"pw2wannier90")
-      push!(t_calcs,(run_command,read_wannier_input(job_dir*file,T)))
+      push!(t_calcs,read_wannier_input(filename*".win",T,run_command=run_command,run=run))
     else
-      push!(t_calcs,(run_command,read_qe_input(job_dir*file,T)))
+      push!(t_calcs,read_qe_input(filename,T,run_command=run_command,run=run))
     end
   end
   if new_homedir != nothing
@@ -87,9 +64,13 @@ function pull_job(server::String, server_dir::String, local_dir::String; job_fuz
   pull_server_file(job_fuzzy)
   job_file = search_dir(local_dir,strip(job_fuzzy,'*'))[1]
   if job_file != nothing
-    inputs = read_inputs_from_job_file(local_dir*job_file)
-    for (calculation,file) in inputs
-      pull_server_file(file)
+    inputs, run_commands , _ = read_job_file(local_dir*job_file)
+    for (file,run_command) in zip(inputs,run_commands)
+      if !contains(file,".") && contains(run_command,"wannier90.x")
+        pull_server_file(file*".win")
+      else
+        pull_server_file(file)
+      end
     end
   end
 end
@@ -110,13 +91,15 @@ end
 Saves a DFJob, it's job file and all it's input files.
 """
 function save_job(df_job::DFJob)
-  if df_job.home_dir == ""
+  home_dir = df_job.home_dir
+  if home_dir == ""
     error("Please specify a valid home_dir!")
   end
-  df_job.home_dir = form_directory(df_job.home_dir)
-  if !ispath(df_job.home_dir)
-    mkpath(df_job.home_dir)
+  home_dir = form_directory(df_job.home_dir)
+  if !ispath(home_dir)
+    mkpath(home_dir)
   end
+  df_job.home_dir = home_dir
   write_job_files(df_job)
 end
 
@@ -130,9 +113,8 @@ function push_job(df_job::DFJob)
   if !ispath(df_job.home_dir)
     error("Please save the job locally first using save_job(job)!")
   else
-    calculations = read_inputs_from_job_file(df_job.home_dir*"job.tt")
-    for (calc,file) in calculations
-      run(`scp $(df_job.home_dir*file) $(df_job.server*":"*df_job.server_dir)`)
+    for calc in df_job.calculations
+      run(`scp $(df_job.home_dir*calc.filename) $(df_job.server*":"*df_job.server_dir)`)
     end
     run(`scp $(df_job.home_dir*"job.tt") $(df_job.server*":"*df_job.server_dir)`)
   end
@@ -278,4 +260,15 @@ function set_job_data!(df_job,calculations::Array,block_symbol,data)
     set_job_data!(df_job,calculation,block_symbol,data)
   end
 end
+
+function remove_job_data!(df_job,calculation,field_symbol,data)
+  t_calc = df_job.calculations[calculation][2]
+  if field_symbol == :control_blocks
+    for d in data
+      pop!(t_calc.control_blocks[d])
+    end
+  else
+  end
+end
+
 #---------------------------------END GENERAL SECTION ------------------#

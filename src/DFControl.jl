@@ -5,7 +5,13 @@ module DFControl
   export Point3D
   export Band
   export DFBand
+  export ControlBlock
+  export QEControlBlock
+  export DataBlock
+  export QEDataBlock
   export DFInput
+  export QEInput
+  export WannierInput
   export DFJob
   export ELEMENTS
 
