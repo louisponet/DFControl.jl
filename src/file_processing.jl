@@ -5,6 +5,18 @@ function parse_k_line(line,T)
   k3   = parse(T,splt[7][1:1:end-2])
   return [k1,k2,k3]
 end
+function write_flag_line(f,flag,data)
+  write(f,"$flag = ")
+  if typeof(data) <: Array
+    write(f,"$(data[1])")
+    for x in data[2:end]
+      write(f," $x")
+    end
+    write(f,"\n")
+  else #this should work for anything singular valued data such as bools, ''s and other types
+    write(f,"$data\n")
+  end
+end
 """
     read_qe_bands_file(filename::String, T=Float32)
 
@@ -147,146 +159,6 @@ function read_qe_kpdos(filename::String,column=1;fermi=0)
   return  zmat',(ytickvals,yticks)
 end
 
-#---------------------------END QUANTUM ESPRESSO SECTION----------------#
-#---------------------------START WANNIER SECTION ----------------------#
-
-#We also use DFInput to store wannier input, the non-named block in wannier is stored in the :control
-#dictionary.
-
-#---------------------------END WANNIER SECTION ------------------------#
-#---------------------------BEGINNING GENERAL SECTION-------------------#
-"""
-    write_df_input(filename::String,df_input::DFInput)
-
-Writes the input file for a DFInput.
-Backend of DFInput decides what writing function is called.
-"""
-function write_df_input(df_input::DFInput,filename::String=df_input.filename)
-  if typeof(df_input) == QEInput
-    write_qe_input(df_input,filename)
-  elseif typeof(df_input) == WannierInput
-    write_wannier_input(df_input,filename)
-  end
-end
-
-#@TODO after we added defaults and extra job settings to the DFJob type add those instead of hardcoded values
-#Possible issue with .in and .win .. maybe we should use the name that is presented when making the job
-#Incomplete writes only one wannier thing
-"""
-    write_job_files(df_job::DFJob)
-
-Writes all the input files and job file that are linked to a DFJob.
-"""
-function write_job_files(df_job::DFJob)
-  files_to_remove = search_dir(df_job.home_dir,".in")
-  new_filenames   = String[]
-
-  open(df_job.home_dir*"job.tt","w") do f
-    write(f,"#!/bin/bash\n","#SBATCH -N 1\n","#SBATCH --ntasks-per-node=24 \n","#SBATCH --time=24:00:00 \n","#SBATCH -J $(df_job.job_name) \n",
-          "#SBATCH -p defpart\n\n","module load open-mpi/gcc/1.10.2\n","module load mkl/2016.1.056\n","\n")
-
-    for i=1:length(df_job.calculations)
-      calculation = df_job.calculations[i]
-      run_command = calculation.run_command
-      filename = calculation.filename
-      write_df_input(calculation,df_job.home_dir*filename)
-      should_run  = calculation.run
-      if contains(run_command,"wannier90.x") && !contains(run_command,"pw")
-        pw2wan = df_job.calculations[i+1]
-        pw2wan_filename =pw2wan.filename
-        push!(new_filenames,pw2wan_filename)
-        pw2wan.control_blocks[1].flags[:seedname] = "'$(filename[1:end-4])'"
-        if !should_run
-          write(f,"#$run_command $(filename[1:end-4])\n")
-          write(f,"#$(df_job.calculations[i+1].run_command) <$pw2wan_filename> $(split(pw2wan_filename,".")[1]).out \n")
-          write_df_input(pw2wan,home_dir*pw2wan_filename)
-          write(f,"#$(df_job.calculations[i+2].run_command) $(filename[1:end-4])\n")
-        else
-          write(f,"$run_command $(filename[1:end-4])\n")
-          write(f,"$(df_job.calculations[i+1].run_command) <$pw2wan_filename> $(split(pw2wan_filename,".")[1]).out \n")
-          write_df_input(pw2wan,df_job.home_dir*pw2wan_filename)
-          write(f,"$(df_job.calculations[i+2].run_command) $(filename[1:end-4])\n")
-        end
-        break
-      else
-        if !should_run
-          write(f,"#$run_command <$filename> $(split(filename,".")[1]).out \n")
-        else
-          write(f,"$run_command <$filename> $(split(filename,".")[1]).out \n")
-        end
-      end
-      push!(new_filenames,filename)
-    end
-  end
-
-  for file in files_to_remove
-    if !in(file,new_filenames)
-      rm(df_job.home_dir*file)
-    end
-  end
-end
-
-"""
-    read_job_file(job_file::String)
-
-Reads and returns the input files, run_commands and whether or not they need to be commented out.
-All files that are read contain "in".
-This reads QE and wannier90 inputs for now.
-"""
-function read_job_file(job_file::String)
-  input_files  = Array{String,1}()
-  run_commands = Array{String,1}()
-  should_run = Array{Bool,1}()
-  open(job_file,"r") do f
-    while !eof(f)
-      line = readline(f)
-      if line == ""
-        continue
-      end
-      if contains(line,".x ")
-        if contains(line,"#")
-          push!(should_run,false)
-          line = line[2:end]
-        else
-          push!(should_run,true)
-        end
-
-        s_line = split(line)
-        i = 0
-        for (j,s) in enumerate(s_line)
-          if contains(s,".x")
-            i = j
-            break
-          end
-        end
-        run_command = prod([s*" " for s in s_line[1:i]])
-        if contains(s_line[i+1],"-")
-          run_command *= s_line[i+1]
-          i+=1
-        end
-        push!(run_commands,run_command)
-
-        push!(input_files,strip(strip(s_line[i+1],'>'),'<'))
-
-      end
-    end
-  end
-  return input_files,run_commands,should_run
-end
-
-#---------------------------END GENERAL SECTION-------------------#
-function write_flag_line(f,flag,data)
-  write(f,"$flag = ")
-  if typeof(data) <: Array
-    write(f,"$(data[1])")
-    for x in data[2:end]
-      write(f," $x")
-    end
-    write(f,"\n")
-  else #this should work for anything singular valued data such as bools, ''s and other types
-    write(f,"$data\n")
-  end
-end
 
 
 """
@@ -402,7 +274,7 @@ end
 
 #can I use @generated here?
 function write_block_data(f,data)
-  if typeof(data)<:Array{Array{<:Any,1},1} #k_points
+  if typeof(data)<:Array{Vector{Float32},1} #k_points
     for x in data
       for y in x
         write(f," $y")
@@ -468,6 +340,8 @@ function write_qe_input(input::QEInput,filename::String=input.filename)
     end
   end
 end
+#---------------------------END QUANTUM ESPRESSO SECTION----------------#
+#---------------------------START WANNIER SECTION ----------------------#
 
 """
    read_wannier_input(filename::String, T=Float32)
@@ -654,3 +528,122 @@ function write_wannier_input(input::WannierInput,filename::String=input.filename
     end
   end
 end
+#---------------------------END WANNIER SECTION ------------------------#
+#---------------------------BEGINNING GENERAL SECTION-------------------#
+"""
+    write_df_input(filename::String,df_input::DFInput)
+
+Writes the input file for a DFInput.
+Backend of DFInput decides what writing function is called.
+"""
+function write_df_input(df_input::DFInput,filename::String=df_input.filename)
+  if typeof(df_input) == QEInput
+    write_qe_input(df_input,filename)
+  elseif typeof(df_input) == WannierInput
+    write_wannier_input(df_input,filename)
+  end
+end
+
+"""
+    write_job_files(df_job::DFJob)
+
+Writes all the input files and job file that are linked to a DFJob.
+"""
+function write_job_files(df_job::DFJob)
+  files_to_remove = search_dir(df_job.home_dir,".in")
+  new_filenames   = String[]
+
+  open(df_job.home_dir*"job.tt","w") do f
+    write(f,"#!/bin/bash\n","#SBATCH -N 1\n","#SBATCH --ntasks-per-node=24 \n","#SBATCH --time=24:00:00 \n","#SBATCH -J $(df_job.job_name) \n",
+          "#SBATCH -p defpart\n\n","module load open-mpi/gcc/1.10.2\n","module load mkl/2016.1.056\n","\n")
+
+    for i=1:length(df_job.calculations)
+      calculation = df_job.calculations[i]
+      run_command = calculation.run_command
+      filename = calculation.filename
+      write_df_input(calculation,df_job.home_dir*filename)
+      should_run  = calculation.run
+      if contains(run_command,"wannier90.x") && !contains(run_command,"pw")
+        pw2wan = df_job.calculations[i+1]
+        pw2wan_filename =pw2wan.filename
+        push!(new_filenames,pw2wan_filename)
+        pw2wan.control_blocks[1].flags[:seedname] = "'$(filename[1:end-4])'"
+        if !should_run
+          write(f,"#$run_command $(filename[1:end-4])\n")
+          write(f,"#$(df_job.calculations[i+1].run_command) <$pw2wan_filename> $(split(pw2wan_filename,".")[1]).out \n")
+          write_df_input(pw2wan,home_dir*pw2wan_filename)
+          write(f,"#$(df_job.calculations[i+2].run_command) $(filename[1:end-4])\n")
+        else
+          write(f,"$run_command $(filename[1:end-4])\n")
+          write(f,"$(df_job.calculations[i+1].run_command) <$pw2wan_filename> $(split(pw2wan_filename,".")[1]).out \n")
+          write_df_input(pw2wan,df_job.home_dir*pw2wan_filename)
+          write(f,"$(df_job.calculations[i+2].run_command) $(filename[1:end-4])\n")
+        end
+        break
+      else
+        if !should_run
+          write(f,"#$run_command <$filename> $(split(filename,".")[1]).out \n")
+        else
+          write(f,"$run_command <$filename> $(split(filename,".")[1]).out \n")
+        end
+      end
+      push!(new_filenames,filename)
+    end
+  end
+
+  for file in files_to_remove
+    if !in(file,new_filenames)
+      rm(df_job.home_dir*file)
+    end
+  end
+end
+
+"""
+    read_job_file(job_file::String)
+
+Reads and returns the input files, run_commands and whether or not they need to be commented out.
+All files that are read contain "in".
+This reads QE and wannier90 inputs for now.
+"""
+function read_job_file(job_file::String)
+  input_files  = Array{String,1}()
+  run_commands = Array{String,1}()
+  should_run = Array{Bool,1}()
+  open(job_file,"r") do f
+    while !eof(f)
+      line = readline(f)
+      if line == ""
+        continue
+      end
+      if contains(line,".x ")
+        if contains(line,"#")
+          push!(should_run,false)
+          line = line[2:end]
+        else
+          push!(should_run,true)
+        end
+
+        s_line = split(line)
+        i = 0
+        for (j,s) in enumerate(s_line)
+          if contains(s,".x")
+            i = j
+            break
+          end
+        end
+        run_command = prod([s*" " for s in s_line[1:i]])
+        if contains(s_line[i+1],"-")
+          run_command *= s_line[i+1]
+          i+=1
+        end
+        push!(run_commands,run_command)
+
+        push!(input_files,strip(strip(s_line[i+1],'>'),'<'))
+
+      end
+    end
+  end
+  return input_files,run_commands,should_run
+end
+
+#---------------------------END GENERAL SECTION-------------------#
