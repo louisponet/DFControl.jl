@@ -6,7 +6,7 @@ function parse_k_line(line,T)
   return [k1,k2,k3]
 end
 function write_flag_line(f,flag,data)
-  write(f,"$flag = ")
+  write(f,"   $flag = ")
   if typeof(data) <: Array
     write(f,"$(data[1])")
     for x in data[2:end]
@@ -325,9 +325,9 @@ function write_qe_input(input::QEInput,filename::String=input.filename)
 
     for block in input.data_blocks
       if block.option != :none
-        write(f,"$(block.name) ($(block.option))\n")
+        write(f,"$(uppercase(String(block.name))) ($(block.option))\n")
       else
-        write(f,"$(block.name)\n")
+        write(f,"$(uppercase(String(block.name)))\n")
       end
       if block.name == :k_points && block.option != :automatic
         write(f,"$(length(block.data))\n")
@@ -498,10 +498,11 @@ function write_wannier_input(input::WannierInput,filename::String=input.filename
 
       elseif block.name == :projections
         for (atom,symbols) in block.data
-          write(f,"$atom: $(symbols[1]) ")
+          write(f,"$atom: $(symbols[1])")
           for sym in symbols[2:end]
             write(f,";$sym")
           end
+          write(f,"\n")
         end
         write(f,"\n")
 
@@ -601,14 +602,15 @@ end
 """
     read_job_file(job_file::String)
 
-Reads and returns the input files, run_commands and whether or not they need to be commented out.
+Reads and returns the job_name, input files, run_commands and whether or not they need to be commented out.
 All files that are read contain "in".
 This reads QE and wannier90 inputs for now.
 """
 function read_job_file(job_file::String)
   input_files  = Array{String,1}()
   run_commands = Array{String,1}()
-  should_run = Array{Bool,1}()
+  should_run   = Array{Bool,1}()
+  job_name     = ""
   open(job_file,"r") do f
     while !eof(f)
       line = readline(f)
@@ -639,11 +641,12 @@ function read_job_file(job_file::String)
         push!(run_commands,run_command)
 
         push!(input_files,strip(strip(s_line[i+1],'>'),'<'))
-
+      elseif contains(line,"#SBATCH") && contains(line,"-J")
+        job_name = split(line)[end]
       end
     end
   end
-  return input_files,run_commands,should_run
+  return job_name,input_files,run_commands,should_run
 end
 
 #---------------------------END GENERAL SECTION-------------------#

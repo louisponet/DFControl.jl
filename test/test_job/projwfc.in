@@ -1,0 +1,10 @@
+&projwfc
+   prefix = 'pwo'
+   kresolveddos = true
+   Emin = -5
+   Emax = 18
+   ngauss = -1
+   DeltaE = 0.01
+   degauss = 0.01
+/
+

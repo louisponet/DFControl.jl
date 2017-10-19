@@ -1,6 +1,6 @@
 module DFControl
   using Reexport
-  @reexport using Plots
+  using RecipesBase
   include("types.jl")
   export Point3D
   export Band
@@ -38,16 +38,22 @@ module DFControl
   export load_qe_job
   export load_qe_server_job
   export pull_job
-  export load_sever_job
+  export load_server_job
   export save_job
   export push_job
   export submit_job
-  export check_job_data
-  export change_job_data!
-  export set_job_data!
+  export change_job_control_flags!
+  export change_input_control_flags!
+  export set_input_control_flags!
+  export set_job_control_flags!
+  export remove_input_control_flag!
+  export remove_job_control_flag!
+  export remove_job_control_flags!
+  export set_should_run!
 
   include("plotting.jl")
   export plot_qe_bands
   export plot_qe_kpdos
 
+  include("server_comm.jl")
 end

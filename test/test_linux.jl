@@ -1,12 +1,7 @@
 using Revise
 using DFControl
-
-# change_job_data!(test_job,Dict(:restart => false))
-# submit_job(test_job)
-test_job = load_job("test_job","assets/inputs/test_job")
-
-test_job.home_dir = "test/test_job"
-
-new_job = load_server_job("test_job","ponet@10.255.9.115","GeTe_2/nonrel/test","test/test_job")
-save_job(new_job)
+new_job = load_job("test/test_job",server = "ponet@10.255.9.115", server_dir = "GeTe_2/nonrel/test")
+remove_job_control_flag!(new_job,[6,8], :restart)
+set_should_run!(new_job,[false,false,false,false,false,true,true,true])
 submit_job(new_job)
+#TODO make change and set job data work again
