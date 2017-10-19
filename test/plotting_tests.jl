@@ -1,8 +1,7 @@
 using DFControl, Base.Test
-
-@test plot_qe_bands(joinpath(@__DIR__,"../assets/outputs/bands.out")) != nothing
-@test plot_qe_kpdos(joinpath(@__DIR__,"../assets/outputs/kpdos.out")) != nothing
-
+using Plots
+# @test plot_qe_bands(joinpath(@__DIR__,"../assets/outputs/bands.out")) != nothing
+# @test plot_qe_kpdos(joinpath(@__DIR__,"../assets/outputs/kpdos.out")) != nothing
 test_bands = read_qe_bands_file(joinpath(@__DIR__,"../assets/outputs/bands.out"))
 @test plot(test_bands[1],fermi=3)         != nothing
 @test plot(test_bands[3],:relative_cart)  != nothing
@@ -18,6 +17,3 @@ apply_fermi_level!(test_bands,3.2)
 t_eigval = test_bands[1].eigvals[1]
 apply_fermi_level!(test_bands,joinpath(@__DIR__,"../assets/outputs/scf.out"))
 @test test_bands[1].eigvals[1] == t_eigval - t_fermi
-
-
-

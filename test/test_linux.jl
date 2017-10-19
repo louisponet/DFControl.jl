@@ -5,3 +5,5 @@ remove_job_control_flag!(new_job,[6,8], :restart)
 set_should_run!(new_job,[false,false,false,false,false,true,true,true])
 submit_job(new_job)
 #TODO make change and set job data work again
+
+test_bands  = read_qe_bands_file("assets/outputs/bands.out")

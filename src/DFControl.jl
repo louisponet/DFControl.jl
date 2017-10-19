@@ -1,5 +1,5 @@
 module DFControl
-  using Reexport
+  # using Reexport
   using RecipesBase
   include("types.jl")
   export Point3D
