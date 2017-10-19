@@ -44,6 +44,8 @@ module DFControl
   export submit_job
   export change_job_control_flags!
   export change_input_control_flags!
+  export change_input_data!
+  export change_job_data!
   export set_input_control_flags!
   export set_job_control_flags!
   export remove_input_control_flag!
@@ -56,4 +58,6 @@ module DFControl
   export plot_qe_kpdos
 
   include("server_comm.jl")
+  export read_errors
+  export pull_job_outputs
 end

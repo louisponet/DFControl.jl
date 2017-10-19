@@ -4,3 +4,9 @@ TODO:
 
 TODO:
     -> maybe for every dfinput we should have an options category, not sure
+
+TODO:
+    -> list all the input flags that are possible would clear up some checks and code!
+
+TODO:
+    -> autogenerate wannier input

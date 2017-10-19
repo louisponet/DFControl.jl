@@ -113,16 +113,18 @@ Reads the Fermi level from a Quantum Espresso scf calculation output file
 (if there is one).
 """
 function read_fermi_from_qe_file(filename::String,T=Float32)
-  out = zero(T)
+  out = nothing
   open(filename) do f
     while !eof(f)
       line = split(readline(f))
       if "Fermi" in line
         out= parse(T,line[5])
+      elseif "lowest" in line &&  "unoccupied" in line
+        out = Dict(:lowest_occupied => parse(T,line[end]),:highest_unoccupied => parse(T,line[end-1]))
       end
     end
   end
-  if out==zero(T)
+  if out==nothing
     error("Couldn't find the Fermi level in file $filename. Is this an scf output file?")
   else
     return out
@@ -371,11 +373,13 @@ function read_wannier_input(filename::String,T=Float32;run_command="",run=true)
           else
             proj_dict = Dict{Symbol,Array{Symbol,1}}()
             while !contains(lowercase(line),"end")
-              if contains(line,"!")
+              if contains(line,"!") || line == ""
                 line = readline(f)
                 continue
               end
+              println(line)
               split_line = strip_split(line,':')
+              println(split_line)
               atom = Symbol(split_line[1])
               projections = [Symbol(proj) for proj in strip_split(split_line[2],';')]
               proj_dict[atom] = projections
@@ -573,12 +577,12 @@ function write_job_files(df_job::DFJob)
           write(f,"#$run_command $(filename[1:end-4])\n")
           write(f,"#$(df_job.calculations[i+1].run_command) <$pw2wan_filename> $(split(pw2wan_filename,".")[1]).out \n")
           write_df_input(pw2wan,home_dir*pw2wan_filename)
-          write(f,"#$(df_job.calculations[i+2].run_command) $(filename[1:end-4])\n")
+          write(f,"#$(split(df_job.calculations[i].run_command)[1]) $(filename[1:end-4])\n")
         else
           write(f,"$run_command $(filename[1:end-4])\n")
           write(f,"$(df_job.calculations[i+1].run_command) <$pw2wan_filename> $(split(pw2wan_filename,".")[1]).out \n")
           write_df_input(pw2wan,df_job.home_dir*pw2wan_filename)
-          write(f,"$(df_job.calculations[i+2].run_command) $(filename[1:end-4])\n")
+          write(f,"$(split(df_job.calculations[i].run_command)[1]) $(filename[1:end-4])\n")
         end
         break
       else
@@ -608,6 +612,7 @@ This reads QE and wannier90 inputs for now.
 """
 function read_job_file(job_file::String)
   input_files  = Array{String,1}()
+  output_files = Array{String,1}()
   run_commands = Array{String,1}()
   should_run   = Array{Bool,1}()
   job_name     = ""
@@ -639,14 +644,17 @@ function read_job_file(job_file::String)
           i+=1
         end
         push!(run_commands,run_command)
-
+        #I can foresee a possible issue if there are no spaces between input and output files.
         push!(input_files,strip(strip(s_line[i+1],'>'),'<'))
+        if length(s_line) > i+1
+          push!(output_files,strip(s_line[i+2],'>'))
+        end
       elseif contains(line,"#SBATCH") && contains(line,"-J")
         job_name = split(line)[end]
       end
     end
   end
-  return job_name,input_files,run_commands,should_run
+  return job_name,input_files,output_files,run_commands,should_run
 end
 
 #---------------------------END GENERAL SECTION-------------------#

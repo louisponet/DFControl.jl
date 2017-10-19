@@ -1,9 +1,16 @@
 using Revise
 using DFControl
-new_job = load_job("test/test_job",server = "ponet@10.255.9.115", server_dir = "GeTe_2/nonrel/test")
-remove_job_control_flag!(new_job,[6,8], :restart)
-set_should_run!(new_job,[false,false,false,false,false,true,true,true])
-submit_job(new_job)
-#TODO make change and set job data work again
+using Plots
+#TODO visualize the structure
+server = "ponet@10.255.9.115"
+job = load_server_job(server,"BiTeI/NSOC/","/home/ponet/Documents/PhD/BiTeI/NSOC")
 
-test_bands  = read_qe_bands_file("assets/outputs/bands.out")
+job.calculations[5].data_blocks[end].data = [k[1:3] for k in job.calculations[4].data_blocks[end].data]
+job.calculations[4].run = true
+set_should_run!(job,[false,true,false,true,true,true,true])
+remove_job_control_flags!(job,[:occupations])
+submit_job(job)
+
+
+
+i
