@@ -130,19 +130,36 @@ function remove_flags!(input::WannierInput,flags)
   end
 end
 
+function get_blocks(input::DFInput) 
+  out = Block[]
+  for block in  getfield.(input,filter(x->contains(String(x),"block"),fieldnames(input)))
+    push!(out,block...)
+  end
+  return out 
+end
+
+
 function print_block(input::DFInput, block_name::Symbol)
-  input_blocks = getfield.(input,filter(x->contains(String(x),"block"),fieldnames(input)))
+  input_blocks = get_blocks(input)
   found = false
-  for blocks in input_blocks
-    for block in blocks
-      if block.name == block_name
-        println("Input file: $(input.filename)")
-        display(block) 
-        found = true
-      end
+  for block in input_blocks
+    if block.name == block_name
+      print_filename(input)
+      display(block) 
+      found = true
     end
   end
   return found
+end
+
+function print_blocks(input::DFInput)
+  print_filename(input)
+  get_blocks(input) |> display
+  println("")
+end
+
+function print_filename(input::DFInput)
+  println("Input file: $(input.filename)")
 end
 
 function print_info(input::DFInput)
@@ -195,5 +212,38 @@ function print_flag(input::DFInput,flag)
       println("  $flag => $(input.flags[flag])")
       println("")
     end
+  end
+end
+
+#finish this macro
+# macro change_data_switch(switches::Array{Tuple{Type,Symbol},1})
+#   return quote 
+#     if typeof(esc(input)) == switches[1][1]
+#       change_data!(esc(input),switches[1][2],)
+#in all of these functions, we use default names, can again be shorter...
+#we only implement fractional atoms stuff does anyone even use anything else?
+#Add more calculations here!
+function change_atoms!(input::DFInput,atoms::Dict{Symbol,<:Array{<:Point3D,1}})
+  if typeof(input) == WannierInput
+    change_data!(input,:atoms_frac,atoms)
+  elseif typeof(input) == QEInput
+    change_data!(input,:atomic_positions,atoms)
+  end
+end
+    
+function change_cell_parameters!(input::DFInput,cell_param::Array{AbstractFloat,2})
+  assert(size(cell_param)==(3,3))
+  if typeof(input) == WannierInput
+    change_data!(input,:unit_cell_cart,cell_param)
+  elseif typeof(input) == QEInput
+    change_data!(input,:cell_parameters,cell_param)
+  end
+end
+
+function change_k_points!(input::DFInput,k_points)
+  if typeof(input) == WannierInput
+    change_data!(input,:kpoints,k_points)
+  elseif typeof(input) == QEInput
+    change_data!(input,:k_points,k_points)
   end
 end

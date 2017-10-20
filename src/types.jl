@@ -30,7 +30,8 @@ Fieldnames: backend::Symbol -> the DFT package that reads this input.
             k_points::Dict{Symbol,Any} -> maps option of k_points to k_points.
 """
 #these are all the control blocks, they hold the flags that guide the calculation
-abstract type ControlBlock end
+abstract type Block end
+abstract type ControlBlock<:Block end
 
 mutable struct QEControlBlock<:ControlBlock
   name::Symbol
@@ -44,7 +45,7 @@ function Base.display(block::ControlBlock)
 end
 
 #these are all the data blocks, they hold the specific data for the calculation
-abstract type DataBlock end
+abstract type DataBlock<:Block end
 
 mutable struct QEDataBlock <: DataBlock
   name::Symbol
@@ -58,13 +59,17 @@ mutable struct WannierDataBlock <: DataBlock
   data::Any
 end
 
-function Base.display(block::DataBlock)
+function Base.display(block::Block)
   println("Block name: $(block.name)")
   println("Block option: $(block.option)")
   println("Block data:")
   display(block.data)
+  println("")
 end
 
+function Base.display(blocks::Array{<:Block})
+  map(display,blocks)
+end
 #here all the different input structures for the different calculations go
 abstract type DFInput end
 

@@ -146,7 +146,9 @@ function submit_job(df_job::DFJob; server=nothing, server_dir=nothing)
   run(`ssh -t $(df_job.server) cd $(df_job.server_dir) '&&' qsub job.tt`)
 end
 
-function add_calculation!(df_job::DFJob,input::DFInput,run_index::Int=length(df_job.calculations)+1)
+function add_calculation!(df_job::DFJob,input::DFInput,run_index::Int=length(df_job.calculations)+1;run_command=input.run_command,filename=input.filename)
+  input.filename = filename
+  input.run_command = run_command
   insert!(df_job.calculations,run_index,input)
 end
 
@@ -175,25 +177,12 @@ function change_flags!(df_job::DFJob, new_flag_data::Dict{Symbol,<:Any})
   end
 end
 
-function change_flags!(df_job::DFJob,filenames, new_flag_data::Dict{Symbol,<:Any})
+function change_flags!(df_job::DFJob,calc_filenames, new_flag_data::Dict{Symbol,<:Any})
   found_keys = Symbol[]
-  for calculation in df_job.calculations
-    if typeof(filenames)<:Array
-      for filename in filenames
-        if contains(calculation.filename,filename)
-          t_found_keys = change_flags!(calculation,new_flag_data)
-          for key in t_found_keys
-            if !(key in found_keys) push!(found_keys,key) end
-          end
-        end
-      end
-    else
-      if contains(calculation.filename,filenames)
-        t_found_keys = change_flags!(calculation,new_flag_data)
-        for key in t_found_keys
-          if !(key in found_keys) push!(found_keys,key) end
-        end
-      end
+  for calc in get_inputs(df_job,calc_filenames)
+    t_found_keys = change_flags!(calculation,new_flag_data)
+    for key in t_found_keys
+      if !(key in found_keys) push!(found_keys,key) end
     end
   end
   for key in found_keys
@@ -206,48 +195,33 @@ function change_flags!(df_job::DFJob,filenames, new_flag_data::Dict{Symbol,<:Any
   end
 end
 
-function get_flag(df_job::DFJob,calc_file_name,flag::Symbol)
-  for calc in df_job.calculations
-    if contains(calc.filename,calc_file_name)
-      return get_flag(calc,flag)
-    end
+function get_flag(df_job::DFJob,calc_filenames,flag::Symbol)
+  for calc in get_inputs(df_job,calc_filenames)
+    return get_flag(calc,flag)
   end
 end
 
 function get_flag(df_job::DFJob,flag::Symbol)
   for calc in df_job.calculations
-    tflag = get_flag(calc,flag)
-    if tflag != nothing
-      return tflag 
-    end
+    return get_flag(calc,flag)
+    # tflag = get_flag(calc,flag)
+    # if tflag != nothing
+    #   return tflag 
+    # end
   end
 end
 
 #TODO Change so calculations also have a name.
 #TODO change after implementing k_point change so you don't need to specify all this crap
-function get_data(df_job::DFJob,calc_file_name,block_symbol::Symbol)
-  for calc in df_job.calculations
-    if contains(calc.filename,calc_file_name)
-      return get_data(calc,block_symbol)
-    end
+function get_data(df_job::DFJob,calc_filenames,block_symbol::Symbol)
+  for calc in get_inputs(df_job,calc_filenames)
+    return get_data(calc,block_symbol)
   end
 end
 
 function change_data!(df_job::DFJob,calc_filenames, data_block_name::Symbol, new_block_data)
-  if typeof(calc_filenames)<:Array
-    for calc_filename in calc_filenames
-      for calc in df_job.calculations
-        if contains(calc.filename,calc_filename)
-          change_data!(calc,data_block_name,new_block_data)
-        end
-      end
-    end
-  else
-    for calc in df_job.calculations
-      if contains(calc.filename,calc_filenames)
-        change_data!(calc,data_block_name,new_block_data)
-      end
-    end
+  for calc in get_inputs(df_job,calc_filenames)
+    change_data!(calc,data_block_name,new_block_data)
   end
 end
 
@@ -265,6 +239,7 @@ end
 #        data::Dict{Symbol,Any} -> flags and values to be set.
 
 #I'm not sure if this is a good idea. Maybe require explicitely also the input filename
+#TODO after making defaults this can be done better
 function set_flags!(df_job::DFJob,control_block_name::Symbol,data)
   for calc in df_job.calculations
     if :control_blocks in fieldnames(calc)
@@ -283,20 +258,8 @@ function set_flags!(df_job::DFJob,data)
 end
 
 function remove_flags!(df_job::DFJob,calc_filenames,flags)
-  if typeof(calc_filenames) <: Array
-    for name in calc_filenames
-      for calc in df_job.calculations
-        if contains(calc.filename,name)
-          remove_flags!(calc,flags)
-        end
-      end
-    end
-  else
-    for calc in df_job.calculations
-      if contains(calc.filename,calc_filenames)
-        remove_flags!(calc,flags)
-      end
-    end
+  for calc in get_inputs(df_job,calc_filenames)
+    remove_flags!(calc,flags)
   end
 end
 
@@ -321,11 +284,9 @@ function change_flow!(df_job::DFJob,should_runs::Union{Dict,Array{Tuple{Int,Bool
   print_flow(df_job)
 end
 
-function change_flow!(df_job::DFJob,name,should_run)
-  for calc in df_job.calculations
-    if contains(calc.filename,name)
-      calc.run = should_run
-    end
+function change_flow!(df_job::DFJob,filenames,should_run)
+  for calc in get_inputs(df_job,filenames)
+    calc.run = should_run
   end
 end
 
@@ -336,39 +297,23 @@ function change_flow!(df_job::DFJob,should_runs::Union{Dict{String,Bool},Array{T
   print_flow(df_job)
 end
 
-function change_run_command!(df_job::DFJob,filename,run_command)
-  for calc in df_job.calculations
-    if contains(calc.filename,filename)
-      calc.run_command = run_command
-      println("Run command of file '$(calc.filename)' is now: '$(calc.run_command)'")
-    end
+function change_run_command!(df_job::DFJob,filenames,run_command)
+  for calc in get_inputs(df_job,filenames)
+    calc.run_command = run_command
+    println("Run command of file '$(calc.filename)' is now: '$(calc.run_command)'")
   end
 end
 
 function get_run_command(df_job::DFJob,filename)
-  for calc in df_job.calculations
-    if contains(calc.filename,filename)
-      return calc.run_command
-    end
+  for calc in get_inputs(df_job,filename)
+    return calc.run_command
   end
 end
 
 function print_run_command(df_job::DFJob,filenames)
-  if typeof(filenames) <:Array
-    for filename in filenames
-      for calc in df_job.calculations
-        if contains(calc.filename,filename)
-          println("Run command of file '$(calc.filename)' is: '$(calc.run_command)'.")
-          println("")
-        end
-      end
-    end
-  else
-    for calc in df_job.calculations
-      if contains(calc.filename,filename)
-        println("Run command of file '$(calc.filename)' is: '$(calc.run_command)'.")
-      end
-    end
+  for calc in get_inputs(df_job,filenames)
+    println("Run command of file '$(calc.filename)' is: '$(calc.run_command)'.")
+    println("")
   end
 end
 
@@ -380,10 +325,26 @@ end
 
 function print_block(job::DFJob, block_name::Symbol)
   for calc in job.calculations
-    found = print_block(calc,block_name)
-    if found println("") end
+    if print_block(calc,block_name) println("") end
   end
 end
+
+function print_blocks(job::DFJob,calc_filenames)
+  for calc in get_inputs(job,calc_filenames)
+    print_blocks(calc)
+  end
+end
+
+function print_blocks(job::DFJob)
+  for calc in job.calculations
+    print_blocks(calc)
+    println("#------------------------------------#")
+  end
+end
+
+print_data(job::DFJob) = print_blocks(job)
+print_data(job::DFJob, calc_filenames) = print_blocks(job, calc_filenames)
+print_data(job::DFJob, block_name::Symbol) = print_block(job, block_name)
 
 function print_info(job::DFJob)
   for calc in job.calculations
@@ -400,11 +361,9 @@ function print_flags(job::DFJob)
 end
 
 function print_flags(job::DFJob,calc_filename::String)
-  for calc in job.calculations
-    if contains(calc.filename,calc_filename)
-      print_flags(calc)
-      println("")
-    end
+  for calc in get_inputs(job,filename)
+    print_flags(calc)
+    println("")
   end
 end
 
@@ -425,4 +384,49 @@ function print_flag(job::DFJob,flag::Symbol)
     print_flag(calc,flag)
   end
 end
+
+#all get_inputs return arrays, get_input returns the first element if multiple are found
+
+function get_inputs(job::DFJob,filenames::Array)
+  out = DFInput[]
+  for name in filenames
+    push!(out,filter(x->contains(x.filename,name),job.calculations)...)
+  end
+  return out
+end
+
+function get_inputs(job::DFJob,filename::String)
+  return filter(x->contains(x.filename,filename),job.calculations)
+end
+
+function get_input(job::DFJob,filename::String)
+  return filter(x->contains(x.filename,filename),job.calculations)[1]
+end
+
+function get_input(job::DFJob,filenames::Array{String,1})
+  return get_inputs(job,filenames)
+end
 #---------------------------------END GENERAL SECTION ------------------#
+
+#TODO after adding defaults can automatically get correct pseudos as well
+function change_atoms!(job::DFJob,atoms::Dict{Symbol,<:Array{<:Point3D,1}})
+  for calc in job.calculations
+    change_atoms!(calc,atoms)
+  end
+end
+
+#automatically sets the cell parameters for the entire job, implement others
+function change_cell_parameters!(job::DFJob,cell_param::Array{AbstractFloat,2})
+  for calc in job.calculations
+    if typeof(calc) == WannierInput
+      alat = get_flag(job,:A)
+      change_cell_parameters!(calc,alat*cell_param)
+    else
+      change_cell_parameters!(calc,cell_param)
+    end
+  end
+end
+
+function change_k_points!(job::DFJob,calc_filename,k_points)
+  change_k_points!(get_input(job,calc_filename),k_points)
+end

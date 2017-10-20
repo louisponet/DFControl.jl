@@ -18,6 +18,7 @@ module DFControl
   include("utils.jl")
   export apply_fermi_level
   export apply_fermi_level!
+  export gen_k_grid
 
   #@Cleanup this should all be just one thing without qe
   #@Cleanup what do we actually want to have as frontend?
@@ -52,13 +53,21 @@ module DFControl
   export add_calculation!
   export get_run_command
   export change_run_command!
+  export get_inputs
+  export get_input
   export print_run_command
   export print_flow
   export print_block
+  export print_blocks
+  export print_data
+  export print_filename
   export print_info 
   export print_flags
   export print_flag
-
+  export change_atoms!
+  export change_cell_parameters!
+  export change_k_points!
+  
   include("plotting.jl")
   export plot_qe_bands
   export plot_qe_kpdos

@@ -53,7 +53,7 @@ function pull_outputs(df_job::DFJob, server = "", server_dir = "", local_dir =""
 
   for fuzzy in extras
     pull_server_file(fuzzy)
-    push!(pulled_outputs,search_dir(df_job.local_dir,fuzzy)[1])
+    push!(pulled_outputs,search_dir(df_job.local_dir,strip(fuzzy,'*'))[1])
   end
   return pulled_outputs
 end
