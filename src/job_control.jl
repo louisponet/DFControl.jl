@@ -254,7 +254,6 @@ function set_flags!(df_job::DFJob,data)
       set_flags!(calc,data)
     end
   end
-  return df_job
 end
 
 function remove_flags!(df_job::DFJob,calc_filenames,flags)
@@ -361,7 +360,7 @@ function print_flags(job::DFJob)
 end
 
 function print_flags(job::DFJob,calc_filename::String)
-  for calc in get_inputs(job,filename)
+  for calc in get_inputs(job,calc_filename)
     print_flags(calc)
     println("")
   end
