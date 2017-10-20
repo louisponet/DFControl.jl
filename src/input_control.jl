@@ -192,7 +192,7 @@ function print_flag(input::DFInput,flag)
   if (:flags in fieldnames(input))
     if haskey(input.flags,flag)
       println("Filename: $(input.filename)")
-      println("  $flag => $(block.flags[flag])")
+      println("  $flag => $(input.flags[flag])")
       println("")
     end
   end
