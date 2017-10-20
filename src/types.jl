@@ -37,6 +37,11 @@ mutable struct QEControlBlock<:ControlBlock
   flags::Dict{Symbol,Any}
 end
 
+function Base.display(block::ControlBlock)
+  println("Block name: $(block.name)")
+  println("Block flags:")
+  display(block.flags)
+end
 
 #these are all the data blocks, they hold the specific data for the calculation
 abstract type DataBlock end
@@ -51,6 +56,13 @@ mutable struct WannierDataBlock <: DataBlock
   name::Symbol
   option::Symbol
   data::Any
+end
+
+function Base.display(block::DataBlock)
+  println("Block name: $(block.name)")
+  println("Block option: $(block.option)")
+  println("Block data:")
+  display(block.data)
 end
 
 #here all the different input structures for the different calculations go
@@ -88,7 +100,7 @@ Represents a full DFT job with multiple input files and calculations.
 Fieldnames: job_name::String
             calculations::Dict{String,DFInput} -> calculation type to DFInput
             flow::Array{Tuple{String,String},1} -> flow chart of calculations. The tuple is (calculation type, input file).
-            home_dir::String -> directory on local machine.
+            local_dir::String -> directory on local machine.
             server::String -> server in full host@server t.
             server_dir::String -> directory on server.
 """
@@ -96,19 +108,19 @@ mutable struct DFJob
   job_name::String
   calculations::Array{DFInput,1}
   # flow::Array{Tuple{String,String},1}
-  home_dir::String
+  local_dir::String
   server::String
   server_dir::String
-  function DFJob(job_name,calculations,home_dir,server,server_dir)
-  # function DFJob(job_name,calculations,flow,home_dir,server,server_dir)
-    if home_dir != ""
-      home_dir = form_directory(home_dir)
+  function DFJob(job_name,calculations,local_dir,server,server_dir)
+  # function DFJob(job_name,calculations,flow,local_dir,server,server_dir)
+    if local_dir != ""
+      local_dir = form_directory(local_dir)
     end
     if server_dir != ""
       server_dir = form_directory(server_dir)
     end
-    new(job_name,calculations,home_dir,server,server_dir)
-    # new(job_name,calculations,flow,home_dir,server,server_dir)
+    new(job_name,calculations,local_dir,server,server_dir)
+    # new(job_name,calculations,flow,local_dir,server,server_dir)
   end
 end
 

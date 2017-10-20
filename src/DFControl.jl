@@ -33,25 +33,27 @@ module DFControl
   export write_df_input
   export write_job_files
 
+  include("input_control.jl")
   include("job_control.jl")
   export load_job
-  export load_qe_job
-  export load_qe_server_job
   export pull_job
   export load_server_job
   export save_job
   export push_job
   export submit_job
-  export change_job_control_flags!
-  export change_input_control_flags!
-  export change_input_data!
-  export change_job_data!
-  export set_input_control_flags!
-  export set_job_control_flags!
-  export remove_input_control_flag!
-  export remove_job_control_flag!
-  export remove_job_control_flags!
-  export set_should_run!
+
+  export change_flags!
+  export get_flag
+  export change_data!
+  export get_data
+  export set_flags!
+  export remove_flags!
+  export change_flow!
+  export print_flow
+  export print_block
+  export print_info 
+  export print_flags
+  export print_flag
 
   include("plotting.jl")
   export plot_qe_bands
@@ -59,5 +61,7 @@ module DFControl
 
   include("server_comm.jl")
   export read_errors
-  export pull_job_outputs
+  export pull_outputs
+  export qstat
+  export watch_qstat
 end

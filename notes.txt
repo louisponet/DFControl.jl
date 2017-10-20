@@ -1,5 +1,5 @@
 TODO:
-    ->fix atom issue in file processing!
+    -> Implement error checking!
     ->redo all the Documentation!
 
 TODO:

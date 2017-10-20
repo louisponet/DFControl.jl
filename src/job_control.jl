@@ -5,19 +5,19 @@ function pull_file(server::String,server_dir::String,local_dir::String,filename:
   run(`scp $(server*":"*server_dir*filename) $local_dir`)
 end
 """
-    load_job(job_dir::String, T=Float32; job_fuzzy = "job", new_job_name=nothing, new_homedir=nothing, server="",server_dir="")
+load_job(job_dir::String, T=Float32; job_fuzzy = "job", new_job_name=nothing, new_homedir=nothing, server="",server_dir="")
 
-Loads and returns a DFJob. If home_dir is not specified the job directory will ge registered as the local one.
+Loads and returns a DFJob. If local_dir is not specified the job directory will ge registered as the local one.
 """
 #should we call this load local job?
-function load_job(job_dir::String, T=Float32; job_fuzzy = "job", new_job_name=nothing, new_homedir=nothing, server="",server_dir="")
+function load_job(job_dir::String, T=Float32; job_fuzzy = "job", new_job_name=nothing, new_local_dir=nothing, server="",server_dir="")
   job_dir = form_directory(job_dir)
-
+  
   job_name,t_inputs,t_outputs,t_run_commands,t_should_run = read_job_file(job_dir*search_dir(job_dir,job_fuzzy)[1])
   filenames    = String[]
   run_commands = String[]
   should_run   = Bool[]
-
+  
   if new_job_name != nothing
     job_name = new_job_name
   end
@@ -30,7 +30,7 @@ function load_job(job_dir::String, T=Float32; job_fuzzy = "job", new_job_name=no
       push!(should_run,t_should_run[i])
     end
   end
-
+  
   t_calcs = Array{DFInput,1}()
   for (filename,run_command,run) in zip(filenames,run_commands,should_run)
     filename = job_dir*filename
@@ -40,8 +40,8 @@ function load_job(job_dir::String, T=Float32; job_fuzzy = "job", new_job_name=no
       push!(t_calcs,read_qe_input(filename,T,run_command=run_command,run=run))
     end
   end
-  if new_homedir != nothing
-    return DFJob(job_name,t_calcs,new_homedir,server,server_dir)
+  if new_local_dir != nothing
+    return DFJob(job_name,t_calcs,new_local_dir,server,server_dir)
   else
     return DFJob(job_name,t_calcs,job_dir,server,server_dir)
   end
@@ -50,7 +50,7 @@ end
 #TODO should we also create a config file for each job with stuff like server etc? and other config things,
 #      which if not supplied could contain the default stuff?
 """
-    pull_job(server::String, server_dir::String, local_dir::String; job_fuzzy="*job*")
+pull_job(server::String, server_dir::String, local_dir::String; job_fuzzy="*job*")
 Pulls job from server. If no specific inputs are supplied it pulls all .in and .tt files.
 """
 # Input:  server::String, -> in host@servername format!
@@ -79,7 +79,7 @@ function pull_job(server::String, server_dir::String, local_dir::String; job_fuz
 end
 
 """
-    load_server_job(server::String, server_dir::String, local_dir::String; job_fuzzy="*job*", job_name=nothing)
+load_server_job(server::String, server_dir::String, local_dir::String; job_fuzzy="*job*", job_name=nothing)
 
 Pulls a server job to local directory and then loads it. A fuzzy search for the job file will be performed and the found input files will be pulled.
 """
@@ -89,51 +89,57 @@ function load_server_job(server::String, server_dir::String, local_dir::String; 
 end
 
 """
-    save_job(df_job::DFJob)
+save_job(df_job::DFJob)
 
 Saves a DFJob, it's job file and all it's input files.
 """
 function save_job(df_job::DFJob)
-  home_dir = df_job.home_dir
-  if home_dir == ""
-    error("Please specify a valid home_dir!")
+  local_dir = df_job.local_dir
+  if local_dir == ""
+    error("Please specify a valid local_dir!")
   end
-  home_dir = form_directory(df_job.home_dir)
-  if !ispath(home_dir)
-    mkpath(home_dir)
+  local_dir = form_directory(df_job.local_dir)
+  if !ispath(local_dir)
+    mkpath(local_dir)
   end
-  df_job.home_dir = home_dir
+  df_job.local_dir = local_dir
   write_job_files(df_job)
 end
 
 #Incomplete everything is hardcoded for now still!!!! make it configurable
 """
-    push_job(df_job::DFJob)
+push_job(df_job::DFJob)
 
 Pushes a DFJob from it's local directory to its server side directory.
 """
 function push_job(df_job::DFJob)
-  if !ispath(df_job.home_dir)
+  if !ispath(df_job.local_dir)
     error("Please save the job locally first using save_job(job)!")
   else
     for calc in df_job.calculations
-      run(`scp $(df_job.home_dir*calc.filename) $(df_job.server*":"*df_job.server_dir)`)
+      run(`scp $(df_job.local_dir*calc.filename) $(df_job.server*":"*df_job.server_dir)`)
     end
-    run(`scp $(df_job.home_dir*"job.tt") $(df_job.server*":"*df_job.server_dir)`)
+    run(`scp $(df_job.local_dir*"job.tt") $(df_job.server*":"*df_job.server_dir)`)
   end
 end
 
 #TODO only uses qsub for now. how to make it more general?
 """
-    submit_job(df_job::DFJob)
+submit_job(df_job::DFJob)
 
 Submit a DFJob. First saves it locally, pushes it to the server then runs the job file on the server.
 """
-function submit_job(df_job::DFJob)
-  if df_job.server == ""
-    error("Please specify a valid server address first!")
-  elseif df_job.server_dir == ""
-    error("Please specify a valid server directory first!")
+function submit_job(df_job::DFJob; server=nothing, server_dir=nothing)
+  if df_job.server == "" && server == nothing
+    error("Please specify a valid server address!")
+  elseif df_job.server_dir == "" && server_dir == nothing
+    error("Please specify a valid server directory!")
+  end
+  if server != nothing
+    df_job.server = server
+  end
+  if server_dir != nothing
+    df_job.server_dir = server_dir
   end
   save_job(df_job)
   push_job(df_job)
@@ -144,66 +150,17 @@ function add_calculation!(df_job::DFJob,input::DFInput,run_index::Int=length(df_
   insert!(df_job.calculations,run_index,input)
 end
 
-# All the methods to change the inpût control flags, if you want to implement another kind of calculation add a similar one here!
 
-function change_input_control_flags!(input::QEInput, new_flag_data::Dict{Symbol,<:Any})
-  found_keys = Symbol[]
-  for block in input.control_blocks
-    for (flag,value) in new_flag_data
-      if haskey(block.flags,flag)
-        old_data = block.flags[flag]
-        if !(flag in found_keys) push!(found_keys,flag) end
-        if typeof(block.flags[flag]) == typeof(new_flag_data[flag])
-          block.flags[flag] = new_flag_data[flag]
-          println("$(input.filename):\n -> $(block.name):\n  -> $flag:\n      $old_data changed to: $(new_flag_data[flag])")
-        else
-          println("$(input.filename):\n -> $(block.name):\n  -> $flag:\n     type mismatch old:$old_data ($(typeof(old_data))), new: $(new_flag_data[flag]) ($(typeof(new_flag_data[flag])))\n    Change not applied.")
-        end
-      end
-    end
-  end
-  return found_keys
-end
-
-function change_input_control_flags!(input::WannierInput, new_flag_data::Dict{Symbol,<:Any})
-  found_keys = Symbol[]
-  for (flag,value) in new_flag_data
-    if haskey(input.flags,flag)
-      old_data = input.flags[flag]
-      if !(flag in found_keys) push!(found_keys,flag) end
-      if typeof(input.flags[flag]) == typeof(new_flag_data[flag])
-        input.flags[flag] = new_flag_data[flag]
-        println("$(input.filename):\n -> $flag:\n      $old_data changed to: $(new_flag_data[flag])")
-      else
-        println("$(input.filename):\n -> $flag:\n     type mismatch old:$old_data ($(typeof(old_data))), new: $(new_flag_data[flag]) ($(typeof(new_flag_data[flag])))\n    Change not applied.")
-      end
-    end
-  end
-  return found_keys
-end
-
-function change_input_data!(input::DFInput, block_name::Symbol, new_block_data)
-  for data_block in input.data_blocks
-    if data_block.name == block_name
-      if typeof(data_block.data) == typeof(new_block_data)
-        old_data = data_block.data
-        data_block.data = new_block_data
-        println("Block data '$(data_block.name)' in input  '$(input.filename)' is now:\n")
-        display(data_block.data)
-      end
-    end
-  end
-end
 # """
 #     change_job_data!(df_job::DFJob,new_data::Dict{Symbol,<:Any})
 #
 # Mutatatively change data that is tied to a DFJob. This means that it will run through all the DFInputs and their fieldnames and their Dicts.
 # If it finds a Symbol in one of those that matches a symbol in the new data, it will replace the value of the first symbol with the new value.
 # """
-function change_job_control_flags!(df_job::DFJob, new_flag_data::Dict{Symbol,<:Any})
+function change_flags!(df_job::DFJob, new_flag_data::Dict{Symbol,<:Any})
   found_keys = Symbol[]
   for calculation in df_job.calculations
-    t_found_keys = change_input_control_flags!(calculation,new_flag_data)
+    t_found_keys = change_flags!(calculation,new_flag_data)
     for key in t_found_keys
       if !(key in found_keys) push!(found_keys,key) end
     end
@@ -216,34 +173,46 @@ function change_job_control_flags!(df_job::DFJob, new_flag_data::Dict{Symbol,<:A
   elseif length(keys(new_flag_data)) == 1
     println("flag '$(String(collect(keys(new_flag_data))[1]))' was not found in any input file, please set it first!")
   end
-  return df_job
 end
 
-function change_job_data!(df_job::DFJob,calculations::Array{Int,1} data_block_name::Symbol, new_block_data)
-  for calc in calculations
-    change_input_data!(df_job.calculations[calc],data_block_name,new_block_data)
-  end
-  return df_job
-end
-
-#here comes the code for all the setting of flags of different inputs
-function set_input_control_flags!(input::QEInput,control_block_name::Symbol,data)
-  for block in input.control_blocks
-    if block.name == control_block_name
-      block.flags = merge((x,y) -> typeof(x) == typeof(y) ? y : x,block.flags,data)
-      println("New input of block '$(block.name)' of calculation '$(input.filename)' is now:")
-      display(block.flags)
-      println("\n")
+function get_flag(df_job::DFJob,calc_file_name,flag::Symbol)
+  for calc in df_job.calculations
+    if contains(calc.filename,calc_file_name)
+      return get_flag(calc,flag)
     end
   end
 end
 
-function set_input_control_flags!(input::WannierInput,data)
-  input.flags = merge((x,y) -> typeof(x) == typeof(y) ? y : x,block.flags,data)
-  println("New input of calculation '$(input.filename)' is now:")
-  display(input.flags)
-  println("\n")
+function get_flag(df_job::DFJob,flag::Symbol)
+  for calc in df_job.calculations
+    tflag = get_flag(calc,flag)
+    if tflag != nothing
+      return tflag 
+    end
+  end
 end
+
+#TODO Change so calculations also have a name.
+#TODO change after implementing k_point change so you don't need to specify all this crap
+function get_data(df_job::DFJob,calc_file_name,block_symbol::Symbol)
+  for calc in df_job.calculations
+    if contains(calc.filename,calc_file_name)
+      return get_data(calc,block_symbol)
+    end
+  end
+end
+
+function change_data!(df_job::DFJob,calc_filenames, data_block_name::Symbol, new_block_data)
+  for calc_filename in calc_filenames
+    for calc in df_job.calculations
+      if contains(calc.filename,calc_filename)
+        change_data!(calc,data_block_name,new_block_data)
+      end
+    end
+  end
+end
+
+
 #Incomplete this now assumes that there is only one calculation, would be better to interface with the flow of the DFJob
 # """
 #     set_job_data!(df_job::DFJob,calculation::Int,block_symbol::Symbol,data)
@@ -255,88 +224,106 @@ end
 #        calculation::String, -> calculation in the DFJob.
 #        block_symbol::Symbol, -> Symbol of the datablock inside the calculation's input file.
 #        data::Dict{Symbol,Any} -> flags and values to be set.
-#Incomplete possibly change calculation to a string rather than an integer but for now it's fine
-function set_job_control_flags!(df_job::DFJob,control_block_name::Symbol,data)
+
+#I'm not sure if this is a good idea. Maybe require explicitely also the input filename
+function set_flags!(df_job::DFJob,control_block_name::Symbol,data)
   for calc in df_job.calculations
-    if :control_blocks in fieldnames(calc) && control_block_name != nothing
-      set_input_control_flags!(calc,control_block_name,data)
+    if :control_blocks in fieldnames(calc)
+      set_flags!(calc,control_block_name,data)
     end
   end
-  return df_job
 end
 
-function set_job_control_flags!(df_job::DFJob,data)
+function set_flags!(df_job::DFJob,data)
   for calc in df_job.calculations
     if :flags in fieldnames(calc)
-      set_input_control_flags!(calc,data)
+      set_flags!(calc,data)
     end
   end
   return df_job
 end
 
-#removes an input control flag, if you want to implement another input add a similar function here!
-function remove_input_control_flag!(input::QEInput,flag)
-  for block in input.control_blocks
-    if haskey(block.flags,flag)
-      pop!(block.flags,flag)
-      println("Removed flag '$flag' from block '$(block.name)' in input '$(input.filename)'")
+function remove_flags!(df_job::DFJob,calc_filenames,flags)
+  for name in calc_filenames
+    for calc in df_job.calculations
+      if contains(calc.filename,name)
+        remove_flags!(calc,flags)
+      end
     end
   end
 end
 
-function remove_input_control_flag!(input::WannierInput,flag)
-  if haskey(input.flags,flag)
-    pop!(input.flags,flag,false)
-    println("Removed flag '$flag' from input '$(input.filename)'")
+function remove_flags!(df_job::DFJob,flags)
+  for calc in df_job.calculations
+    remove_flag!(calc,flags)
   end
 end
-
-function remove_job_control_flag!(df_job::DFJob,calculation,flag)
-  remove_input_control_flag!(df_job.calculations[calculation],flag)
-  return df_job
-end
-
-function remove_job_control_flag!(df_job::DFJob,calculations::Array,flag)
-  for calc in calculations
-    remove_job_control_flag!(df_job,calc,flag)
-  end
-  return df_job
-end
-
-function remove_job_control_flags!(df_job::DFJob, calculation::Int, flags::Array{Symbol,1})
-  remove_job_control_flag!.(df_job,calculation,flags)
-  return df_job
-end
-
-function remove_job_control_flags!(df_job::DFJob, calculations::Array{Int,1}, flags::Array{Symbol,1})
-  for calculation in calculations
-    remove_job_control_flag!.(df_job,calculation,flags)
-  end
-  return df_job
-end
-
-function remove_job_control_flag!(df_job::DFJob,flag)
-  for calculation in df_job.calculation
-    remove_input_control_flag!(calc,flag)
-  end
-  return df_job
-end
-
-function remove_job_control_flags!(df_job::DFJob,flags::Array{Symbol,1})
-  for flag in flags
-    for calculation in df_job.calculations
-      remove_input_control_flag!(calculation,flag)
-    end
-  end
-  return df_job
-end
-
 
 function set_should_run!(df_job::DFJob,should_runs::Array{Bool,1})
   assert(length(should_runs)==length(df_job.calculations))
   for (calc,should_run) in zip(df_job.calculations,should_runs)
     calc.run = should_run
   end
-  return df_job
+  print_flow(df_job)
+end
+
+function change_flow!(df_job::DFJob,should_runs::Union{Dict,Array{Tuple{Int,Bool}}})
+  for (index,run) in should_runs
+    df_job.calculations[index].run = run
+  end
+  print_flow(df_job)
+end
+
+function print_flow(df_job::DFJob)
+  for (i,calc) in enumerate(df_job.calculations)
+    println("$i: $(calc.filename) => runs: $(calc.run)")
+  end
+end
+
+function print_block(job::DFJob, block_name::Symbol)
+  for calc in job.calculations
+    found = print_block(calc,block_name)
+    if found println("") end
+  end
+end
+
+function print_info(job::DFJob)
+  for calc in job.calculations
+    print_info(calc)
+    println("")
+  end
+end
+
+function print_flags(job::DFJob)
+  for calc in job.calculations
+    print_flags(calc)
+    println("")
+  end
+end
+
+function print_flags(job::DFJob,calc_filename)
+  for calc in job.calculations
+    if contains(calc.filename,calc_filename)
+      print_flags(calc)
+      println("")
+    end
+  end
+end
+
+function print_flags(job::DFJob,calc_filenames::Array{String,1})
+  for file in calc_filenames
+    for calc in job.calculations
+      if contains(calc.filename,file)
+        print_flags(calc)
+        println("")
+      end
+    end
+  end
+end
+
+function print_flag(job::DFJob,flag::Symbol)
+  for calc in job.calculations
+    print_flag(calc,flag)
+  end
 end
 #---------------------------------END GENERAL SECTION ------------------#

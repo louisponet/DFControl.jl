@@ -377,9 +377,7 @@ function read_wannier_input(filename::String,T=Float32;run_command="",run=true)
                 line = readline(f)
                 continue
               end
-              println(line)
               split_line = strip_split(line,':')
-              println(split_line)
               atom = Symbol(split_line[1])
               projections = [Symbol(proj) for proj in strip_split(split_line[2],';')]
               proj_dict[atom] = projections
@@ -555,10 +553,10 @@ end
 Writes all the input files and job file that are linked to a DFJob.
 """
 function write_job_files(df_job::DFJob)
-  files_to_remove = search_dir(df_job.home_dir,".in")
+  files_to_remove = search_dir(df_job.local_dir,".in")
   new_filenames   = String[]
 
-  open(df_job.home_dir*"job.tt","w") do f
+  open(df_job.local_dir*"job.tt","w") do f
     write(f,"#!/bin/bash\n","#SBATCH -N 1\n","#SBATCH --ntasks-per-node=24 \n","#SBATCH --time=24:00:00 \n","#SBATCH -J $(df_job.job_name) \n",
           "#SBATCH -p defpart\n\n","module load open-mpi/gcc/1.10.2\n","module load mkl/2016.1.056\n","\n")
 
@@ -566,7 +564,7 @@ function write_job_files(df_job::DFJob)
       calculation = df_job.calculations[i]
       run_command = calculation.run_command
       filename = calculation.filename
-      write_df_input(calculation,df_job.home_dir*filename)
+      write_df_input(calculation,df_job.local_dir*filename)
       should_run  = calculation.run
       if contains(run_command,"wannier90.x") && !contains(run_command,"pw")
         pw2wan = df_job.calculations[i+1]
@@ -576,12 +574,12 @@ function write_job_files(df_job::DFJob)
         if !should_run
           write(f,"#$run_command $(filename[1:end-4])\n")
           write(f,"#$(df_job.calculations[i+1].run_command) <$pw2wan_filename> $(split(pw2wan_filename,".")[1]).out \n")
-          write_df_input(pw2wan,home_dir*pw2wan_filename)
+          write_df_input(pw2wan,df_job.local_dir*pw2wan_filename)
           write(f,"#$(split(df_job.calculations[i].run_command)[1]) $(filename[1:end-4])\n")
         else
           write(f,"$run_command $(filename[1:end-4])\n")
           write(f,"$(df_job.calculations[i+1].run_command) <$pw2wan_filename> $(split(pw2wan_filename,".")[1]).out \n")
-          write_df_input(pw2wan,df_job.home_dir*pw2wan_filename)
+          write_df_input(pw2wan,df_job.local_dir*pw2wan_filename)
           write(f,"$(split(df_job.calculations[i].run_command)[1]) $(filename[1:end-4])\n")
         end
         break
@@ -598,7 +596,7 @@ function write_job_files(df_job::DFJob)
 
   for file in files_to_remove
     if !in(file,new_filenames)
-      rm(df_job.home_dir*file)
+      rm(df_job.local_dir*file)
     end
   end
 end
