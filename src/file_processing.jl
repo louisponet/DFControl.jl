@@ -120,7 +120,7 @@ function read_fermi_from_qe_file(filename::String,T=Float32)
       if "Fermi" in line
         out= parse(T,line[5])
       elseif "lowest" in line &&  "unoccupied" in line
-        out = Dict(:lowest_occupied => parse(T,line[end]),:highest_unoccupied => parse(T,line[end-1]))
+        out = Dict(:lowest_unoccupied => parse(T,line[end]),:highest_occupied => parse(T,line[end-1]))
       end
     end
   end
@@ -351,7 +351,6 @@ end
 Reads a DFInput from a wannier90 input file.
 """
 function read_wannier_input(filename::String,T=Float32;run_command="",run=true)
-  strip_split(line,args...) = strip.(split(line,args...))
   flags = Dict{Symbol,Any}()
   data_blocks = Array{WannierDataBlock,1}()
   open(filename,"r") do f
@@ -642,11 +641,14 @@ function read_job_file(job_file::String)
           i+=1
         end
         push!(run_commands,run_command)
-        #I can foresee a possible issue if there are no spaces between input and output files.
-        push!(input_files,strip(strip(s_line[i+1],'>'),'<'))
-        if length(s_line) > i+1
-          push!(output_files,strip(s_line[i+2],'>'))
-        end
+        #handles QE and Wannier.
+        in_out = strip_split(prod(s_line[i+1:end]),">")
+        if length(in_out) == 2
+          push!(input_files,strip(in_out[1],'<'))
+          push!(output_files,in_out[2])
+        else
+          push!(input_files,strip(in_out[1],'<'))
+        end 
       elseif contains(line,"#SBATCH") && contains(line,"-J")
         job_name = split(line)[end]
       end

@@ -42,13 +42,14 @@ end
 function change_data!(input::DFInput, block_name::Symbol, new_block_data)
   for data_block in input.data_blocks
     if data_block.name == block_name
-      if typeof(data_block.data) == typeof(new_block_data)
-        old_data = data_block.data
-        data_block.data = new_block_data
-        println("Block data '$(data_block.name)' in input  '$(input.filename)' is now:")
-        display(data_block.data)
-        println("")
+      if typeof(data_block.data) != typeof(new_block_data) 
+        warn("Overwritten data of type '$(typeof(data_block.data))' with type '$(typeof(new_block_data))'.")
       end
+      old_data = data_block.data
+      data_block.data = new_block_data
+      println("Block data '$(data_block.name)' in input  '$(input.filename)' is now:")
+      display(data_block.data)
+      println("")
     end
   end
 end
@@ -97,7 +98,14 @@ end
 #removes an input control flag, if you want to implement another input add a similar function here!
 function remove_flags!(input::QEInput,flags)
   for block in input.control_blocks
-    for flag in flags
+    if typeof(flags)<:Array{Symbol,1}
+      for flag in flags
+        if haskey(block.flags,flag)
+          pop!(block.flags,flag)
+          println("Removed flag '$flag' from block '$(block.name)' in input '$(input.filename)'")
+        end
+      end
+    else
       if haskey(block.flags,flag)
         pop!(block.flags,flag)
         println("Removed flag '$flag' from block '$(block.name)' in input '$(input.filename)'")
@@ -107,7 +115,14 @@ function remove_flags!(input::QEInput,flags)
 end
 
 function remove_flags!(input::WannierInput,flags)
-  for flag in flags
+  if typeof(flags) <: Array{Symbol,1}
+    for flag in flags
+      if haskey(input.flags,flag)
+        pop!(input.flags,flag,false)
+        println("Removed flag '$flag' from input '$(input.filename)'")
+      end
+    end
+  else
     if haskey(input.flags,flag)
       pop!(input.flags,flag,false)
       println("Removed flag '$flag' from input '$(input.filename)'")

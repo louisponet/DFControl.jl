@@ -84,3 +84,6 @@ function form_directory(directory::String)
     return directory
   end
 end
+
+
+strip_split(line,args...) = strip.(split(line,args...))

@@ -20,7 +20,7 @@ function read_errors(server::String,server_dir::String; error_fuzzies=["CRASH","
   return crash_readlines
 end
 
-function pull_outputs(df_job::DFJob, server = "", server_dir = "", local_dir =""; job_fuzzy="*job*",output_fuzzy=nothing)
+function pull_outputs(df_job::DFJob, server = "", server_dir = "", local_dir =""; job_fuzzy="*job*",extras=String[])
   if df_job.server == "" && server == ""
     error("Error: No job server specified. Please specify it first.")
   elseif server != ""
@@ -43,15 +43,19 @@ function pull_outputs(df_job::DFJob, server = "", server_dir = "", local_dir =""
 
   job_file = search_dir(df_job.local_dir,strip(job_fuzzy,'*'))[1]
   job_name,inputs,outputs,run_command,should_runs = read_job_file(df_job.local_dir*job_file)
-
+  pulled_outputs = String[]
   for (run,output) in zip(should_runs,outputs)
-    if run pull_server_file(output) end
+    if run 
+      pull_server_file(output)
+      push!(pulled_outputs,output)
+    end
   end
 
-  for fuzzy in output_fuzzy
+  for fuzzy in output_fuzzies
     pull_server_file(fuzzy)
+    push!(pulled_outputs,search_dir(local_dir,fuzzy)[1])
   end
-  return outputs
+  return pulled_outputs
 end
 
 function qstat(server)

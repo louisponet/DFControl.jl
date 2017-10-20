@@ -175,6 +175,37 @@ function change_flags!(df_job::DFJob, new_flag_data::Dict{Symbol,<:Any})
   end
 end
 
+function change_flags!(df_job::DFJob,filenames, new_flag_data::Dict{Symbol,<:Any})
+  found_keys = Symbol[]
+  for calculation in df_job.calculations
+    if typeof(filenames)<:Array
+      for filename in filenames
+        if contains(calculation.filename,filename)
+          t_found_keys = change_flags!(calculation,new_flag_data)
+          for key in t_found_keys
+            if !(key in found_keys) push!(found_keys,key) end
+          end
+        end
+      end
+    else
+      if contains(calculation.filename,filenames)
+        t_found_keys = change_flags!(calculation,new_flag_data)
+        for key in t_found_keys
+          if !(key in found_keys) push!(found_keys,key) end
+        end
+      end
+    end
+  end
+  for key in found_keys
+    pop!(new_flag_data,key)
+  end
+  if 1 < length(keys(new_flag_data))
+    println("flags $(String.(collect(keys(new_flag_data)))) were not found in any input file, please set them first!")
+  elseif length(keys(new_flag_data)) == 1
+    println("flag '$(String(collect(keys(new_flag_data))[1]))' was not found in any input file, please set it first!")
+  end
+end
+
 function get_flag(df_job::DFJob,calc_file_name,flag::Symbol)
   for calc in df_job.calculations
     if contains(calc.filename,calc_file_name)
@@ -203,9 +234,17 @@ function get_data(df_job::DFJob,calc_file_name,block_symbol::Symbol)
 end
 
 function change_data!(df_job::DFJob,calc_filenames, data_block_name::Symbol, new_block_data)
-  for calc_filename in calc_filenames
+  if typeof(calc_filenames)<:Array
+    for calc_filename in calc_filenames
+      for calc in df_job.calculations
+        if contains(calc.filename,calc_filename)
+          change_data!(calc,data_block_name,new_block_data)
+        end
+      end
+    end
+  else
     for calc in df_job.calculations
-      if contains(calc.filename,calc_filename)
+      if contains(calc.filename,calc_filenames)
         change_data!(calc,data_block_name,new_block_data)
       end
     end
@@ -244,9 +283,17 @@ function set_flags!(df_job::DFJob,data)
 end
 
 function remove_flags!(df_job::DFJob,calc_filenames,flags)
-  for name in calc_filenames
+  if typeof(calc_filenames) <: Array
+    for name in calc_filenames
+      for calc in df_job.calculations
+        if contains(calc.filename,name)
+          remove_flags!(calc,flags)
+        end
+      end
+    end
+  else
     for calc in df_job.calculations
-      if contains(calc.filename,name)
+      if contains(calc.filename,calc_filenames)
         remove_flags!(calc,flags)
       end
     end
@@ -255,11 +302,11 @@ end
 
 function remove_flags!(df_job::DFJob,flags)
   for calc in df_job.calculations
-    remove_flag!(calc,flags)
+    remove_flags!(calc,flags)
   end
 end
 
-function set_should_run!(df_job::DFJob,should_runs::Array{Bool,1})
+function set_flow!(df_job::DFJob,should_runs::Array{Bool,1})
   assert(length(should_runs)==length(df_job.calculations))
   for (calc,should_run) in zip(df_job.calculations,should_runs)
     calc.run = should_run
@@ -272,6 +319,57 @@ function change_flow!(df_job::DFJob,should_runs::Union{Dict,Array{Tuple{Int,Bool
     df_job.calculations[index].run = run
   end
   print_flow(df_job)
+end
+
+function change_flow!(df_job::DFJob,name,should_run)
+  for calc in df_job.calculations
+    if contains(calc.filename,name)
+      calc.run = should_run
+    end
+  end
+end
+
+function change_flow!(df_job::DFJob,should_runs::Union{Dict{String,Bool},Array{Tuple{String,Bool}}})
+  for (name,should_run) in should_runs
+    change_flow!(df_job,name,should_run)
+  end
+  print_flow(df_job)
+end
+
+function change_run_command!(df_job::DFJob,filename,run_command)
+  for calc in df_job.calculations
+    if contains(calc.filename,filename)
+      calc.run_command = run_command
+      println("Run command of file '$(calc.filename)' is now: '$(calc.run_command)'")
+    end
+  end
+end
+
+function get_run_command(df_job::DFJob,filename)
+  for calc in df_job.calculations
+    if contains(calc.filename,filename)
+      return calc.run_command
+    end
+  end
+end
+
+function print_run_command(df_job::DFJob,filenames)
+  if typeof(filenames) <:Array
+    for filename in filenames
+      for calc in df_job.calculations
+        if contains(calc.filename,filename)
+          println("Run command of file '$(calc.filename)' is: '$(calc.run_command)'.") calc.run_command
+          println("")
+        end
+      end
+    end
+  else
+    for calc in df_job.calculations
+      if contains(calc.filename,filename)
+        println("Run command of file '$(calc.filename)' is: '$(calc.run_command)'.") calc.run_command
+      end
+    end
+  end
 end
 
 function print_flow(df_job::DFJob)
@@ -301,7 +399,7 @@ function print_flags(job::DFJob)
   end
 end
 
-function print_flags(job::DFJob,calc_filename)
+function print_flags(job::DFJob,calc_filename::String)
   for calc in job.calculations
     if contains(calc.filename,calc_filename)
       print_flags(calc)
@@ -312,12 +410,13 @@ end
 
 function print_flags(job::DFJob,calc_filenames::Array{String,1})
   for file in calc_filenames
-    for calc in job.calculations
-      if contains(calc.filename,file)
-        print_flags(calc)
-        println("")
-      end
-    end
+    print_flags(job,file)
+  end
+end
+
+function print_flags(job::DFJob,flags)
+  for flag in flags
+    print_flags(job,flag)
   end
 end
 
