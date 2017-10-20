@@ -358,7 +358,7 @@ function print_run_command(df_job::DFJob,filenames)
     for filename in filenames
       for calc in df_job.calculations
         if contains(calc.filename,filename)
-          println("Run command of file '$(calc.filename)' is: '$(calc.run_command)'.") calc.run_command
+          println("Run command of file '$(calc.filename)' is: '$(calc.run_command)'.")
           println("")
         end
       end
@@ -366,7 +366,7 @@ function print_run_command(df_job::DFJob,filenames)
   else
     for calc in df_job.calculations
       if contains(calc.filename,filename)
-        println("Run command of file '$(calc.filename)' is: '$(calc.run_command)'.") calc.run_command
+        println("Run command of file '$(calc.filename)' is: '$(calc.run_command)'.")
       end
     end
   end
