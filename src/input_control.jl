@@ -235,6 +235,9 @@ function change_atoms!(input::DFInput,atoms::Dict{Symbol,<:Array{<:Point3D,1}},p
       end
       change_data!(input,:atomic_species,atomic_species_dict)
     end
+    if isdefined(:default_pseudo_dirs)
+      change_flags!(input,Dict(:pseudo_dir => "'$(default_pseudo_dirs[pseudo_set_name])'"))
+    end
   end
 end
 
