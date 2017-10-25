@@ -350,7 +350,7 @@ end
 
 Reads a DFInput from a wannier90 input file.
 """
-function read_wannier_input(filename::String,T=Float32;run_command="",run=true)
+function read_wannier_input(filename::String, T=Float32; run_command="", run=true, preprocess=true)
   flags = Dict{Symbol,Any}()
   data_blocks = Array{WannierDataBlock,1}()
   open(filename,"r") do f
@@ -473,7 +473,7 @@ function read_wannier_input(filename::String,T=Float32;run_command="",run=true)
       line = readline(f)
     end
   end
-  return WannierInput(splitdir(filename)[2],flags,data_blocks,run_command,run)
+  return WannierInput(splitdir(filename)[2],flags,data_blocks,run_command,run,preprocess)
 end
 
 """
@@ -565,23 +565,15 @@ function write_job_files(df_job::DFJob)
       filename = calculation.filename
       write_df_input(calculation,df_job.local_dir*filename)
       should_run  = calculation.run
-      if contains(run_command,"wannier90.x") && !contains(run_command,"pw")
-        pw2wan = df_job.calculations[i+1]
-        pw2wan_filename =pw2wan.filename
-        push!(new_filenames,pw2wan_filename)
-        pw2wan.control_blocks[1].flags[:seedname] = "'$(filename[1:end-4])'"
+      if typeof(calculation) == WannierInput
+        if calculation.preprocess
+          run_command *= " -pp"
+        end
         if !should_run
           write(f,"#$run_command $(filename[1:end-4])\n")
-          write(f,"#$(df_job.calculations[i+1].run_command) <$pw2wan_filename> $(split(pw2wan_filename,".")[1]).out \n")
-          write_df_input(pw2wan,df_job.local_dir*pw2wan_filename)
-          write(f,"#$(split(df_job.calculations[i].run_command)[1]) $(filename[1:end-4])\n")
         else
           write(f,"$run_command $(filename[1:end-4])\n")
-          write(f,"$(df_job.calculations[i+1].run_command) <$pw2wan_filename> $(split(pw2wan_filename,".")[1]).out \n")
-          write_df_input(pw2wan,df_job.local_dir*pw2wan_filename)
-          write(f,"$(split(df_job.calculations[i].run_command)[1]) $(filename[1:end-4])\n")
         end
-        break
       else
         if !should_run
           write(f,"#$run_command <$filename> $(split(filename,".")[1]).out \n")
@@ -589,6 +581,34 @@ function write_job_files(df_job::DFJob)
           write(f,"$run_command <$filename> $(split(filename,".")[1]).out \n")
         end
       end
+
+      # if contains(run_command,"wannier90.x") && !contains(run_command,"pw")
+      #   if !should_run
+      #     if calculation.preprocess
+      #       pw2wan = df_job.calculations[i+1]
+      #       pw2wan_filename =pw2wan.filename
+      #       push!(new_filenames,pw2wan_filename)
+      #       pw2wan.control_blocks[1].flags[:seedname] = "'$(filename[1:end-4])'"
+      #       
+      #       write(f,"#$(df_job.calculations[i+1].run_command) <$pw2wan_filename> $(split(pw2wan_filename,".")[1]).out \n")
+      #       write_df_input(pw2wan,df_job.local_dir*pw2wan_filename)
+      #     end
+      #     write(f,"#$(join(split(df_job.calculations[i].run_command)[1:end-1])) $(filename[1:end-4])\n")
+      #   else
+      #     if calculation.preprocess
+      #       pw2wan = df_job.calculations[i+1]
+      #       pw2wan_filename =pw2wan.filename
+      #       push!(new_filenames,pw2wan_filename)
+      #       pw2wan.control_blocks[1].flags[:seedname] = "'$(filename[1:end-4])'"
+      #       write(f,"$run_command $(filename[1:end-4])\n")
+      #       write(f,"$(df_job.calculations[i+1].run_command) <$pw2wan_filename> $(split(pw2wan_filename,".")[1]).out \n")
+      #       write_df_input(pw2wan,df_job.local_dir*pw2wan_filename)
+      #     end
+      #     write(f,"$(join(split(df_job.calculations[i].run_command)[1:end-1])) $(filename[1:end-4])\n")
+      #   end
+      #   break
+      # else
+      # end
       push!(new_filenames,filename)
     end
   end
@@ -658,3 +678,82 @@ function read_job_file(job_file::String)
 end
 
 #---------------------------END GENERAL SECTION-------------------#
+function expr2file(filename::String, expression::Expr)
+  eq        = Symbol("=")
+  lines     = readlines(filename)
+  new_lines = String[]
+  found     = false
+
+  if expression.head != eq
+    error("For now only writing of assignment expressions is possible.")
+  end
+
+  lhs = expression.args[1]
+  rhs = expression.args[2]
+
+  for line in lines
+    if line == ""
+      continue
+    end
+    
+    expr = parse(line)
+    if expr.head != eq
+      continue
+    end
+    
+    lhs_t = expr.args[1]
+    rhs_t = expr.args[2]
+    if lhs == :(default_pseudos[:Ge])
+    end
+
+    if lhs_t == lhs
+      found = true
+      push!(new_lines,"$(:($lhs = $rhs))")
+    else
+      push!(new_lines,"$expr")
+    end
+  end
+
+  open(filename,"w") do f
+    for line in new_lines
+      write(f,line*"\n")
+    end
+    if !found
+      write(f,"$expression\n")
+    end
+  end
+end
+
+function init_defaults(filename::String)
+  raw_input =""
+  names_to_export = Symbol[] 
+  open(filename,"r") do f
+    while !eof(f)
+      line = readline(f)
+      lhs = parse(line).args[1]
+      if typeof(lhs) == Symbol
+        push!(names_to_export,lhs)
+      end
+      raw_input *= line*"; "
+    end
+  end
+  for name in names_to_export
+    eval(:(export $name))
+  end
+  eval(parse(raw_input))
+end
+
+function load_defaults(filename::String)
+  raw_input =""
+  names_to_export = Symbol[] 
+  open(filename,"r") do f
+    while !eof(f)
+      raw_input *= readline(f)*"; "
+    end
+  end
+  raw_input *= "nothing ;"
+  eval(parse(raw_input))
+end
+
+
+

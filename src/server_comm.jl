@@ -62,6 +62,10 @@ function qstat(server)
   run(`ssh -t $server qstat`)
 end
 
+qstat() = qstat(default_server())
+
 function watch_qstat(server)
   run(`ssh -t $server watch qstat`)
 end
+
+watch_qstat() = watch_qstat(default_server())

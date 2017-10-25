@@ -87,6 +87,7 @@ mutable struct WannierInput<:DFInput
   data_blocks::Array{WannierDataBlock,1}
   run_command::String
   run::Bool
+  preprocess::Bool
 end
 
 # mutable struct DFInput

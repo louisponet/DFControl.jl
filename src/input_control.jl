@@ -106,9 +106,9 @@ function remove_flags!(input::QEInput,flags)
         end
       end
     else
-      if haskey(block.flags,flag)
-        pop!(block.flags,flag)
-        println("Removed flag '$flag' from block '$(block.name)' in input '$(input.filename)'")
+      if haskey(block.flags,flags)
+        pop!(block.flags,flags)
+        println("Removed flag '$flags' from block '$(block.name)' in input '$(input.filename)'")
       end
     end
   end
@@ -123,9 +123,9 @@ function remove_flags!(input::WannierInput,flags)
       end
     end
   else
-    if haskey(input.flags,flag)
-      pop!(input.flags,flag,false)
-      println("Removed flag '$flag' from input '$(input.filename)'")
+    if haskey(input.flags,flags)
+      pop!(input.flags,flags,false)
+      println("Removed flag '$flags' from input '$(input.filename)'")
     end
   end
 end
@@ -223,14 +223,21 @@ end
 #in all of these functions, we use default names, can again be shorter...
 #we only implement fractional atoms stuff does anyone even use anything else?
 #Add more calculations here!
-function change_atoms!(input::DFInput,atoms::Dict{Symbol,<:Array{<:Point3D,1}})
+function change_atoms!(input::DFInput,atoms::Dict{Symbol,<:Array{<:Point3D,1}},pseudo_set_name=:default; pseudo_fuzzy = nothing)
   if typeof(input) == WannierInput
     change_data!(input,:atoms_frac,atoms)
   elseif typeof(input) == QEInput
     change_data!(input,:atomic_positions,atoms)
+    if isdefined(:default_pseudos)
+      atomic_species_dict = Dict{Symbol,String}()
+      for atom in keys(atoms)
+        atomic_species_dict[atom] = get_default_pseudo(atom,pseudo_set_name,pseudo_fuzzy=pseudo_fuzzy)
+      end
+      change_data!(input,:atomic_species,atomic_species_dict)
+    end
   end
 end
-    
+
 function change_cell_parameters!(input::DFInput,cell_param::Array{AbstractFloat,2})
   assert(size(cell_param)==(3,3))
   if typeof(input) == WannierInput

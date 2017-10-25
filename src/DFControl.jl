@@ -77,4 +77,11 @@ module DFControl
   export pull_outputs
   export qstat
   export watch_qstat
+
+  include("defaults.jl")
+  export add_default_pseudo_dir!
+  export set_default_server!
+  export remove_default_pseudo_dir!
+  
+  init_defaults(default_file)
 end

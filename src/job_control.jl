@@ -4,13 +4,22 @@
 function pull_file(server::String,server_dir::String,local_dir::String,filename::String)
   run(`scp $(server*":"*server_dir*filename) $local_dir`)
 end
+
+function pull_file(server_dir::String,local_dir::String,filename::String;server=g_default_server())
+  if server != ""
+    run(`scp $(server*":"*server_dir*filename) $local_dir`)
+  else
+    error("Define a default server first using 'set_default_server!(...)'.\n
+    Or use function 'pull_file(server::String, server_dir::String, local_dir::String, filename::String)'.")
+  end
+end
 """
 load_job(job_dir::String, T=Float32; job_fuzzy = "job", new_job_name=nothing, new_homedir=nothing, server="",server_dir="")
 
 Loads and returns a DFJob. If local_dir is not specified the job directory will ge registered as the local one.
 """
 #should we call this load local job?
-function load_job(job_dir::String, T=Float32; job_fuzzy = "job", new_job_name=nothing, new_local_dir=nothing, server="",server_dir="")
+function load_job(job_dir::String, T=Float32; job_fuzzy = "job", new_job_name=nothing, new_local_dir=nothing, server="",server_dir=g_default_server())
   job_dir = form_directory(job_dir)
   
   job_name,t_inputs,t_outputs,t_run_commands,t_should_run = read_job_file(job_dir*search_dir(job_dir,job_fuzzy)[1])
@@ -35,7 +44,13 @@ function load_job(job_dir::String, T=Float32; job_fuzzy = "job", new_job_name=no
   for (filename,run_command,run) in zip(filenames,run_commands,should_run)
     filename = job_dir*filename
     if contains(run_command,"wan") && !contains(run_command,"pw2wannier90")
-      push!(t_calcs,read_wannier_input(filename*".win",T,run_command=run_command,run=run))
+      s_run_command = split(run_command)
+      if "-pp" in s_run_command
+        run_command = join(s_run_command[1:end-1])
+        push!(t_calcs,read_wannier_input(filename*".win",T,run_command=run_command,run=run,preprocess=true))
+      else
+        push!(t_calcs,read_wannier_input(filename*".win",T,run_command=run_command,run=run,preprocess=false))
+      end
     else
       push!(t_calcs,read_qe_input(filename,T,run_command=run_command,run=run))
     end
@@ -78,6 +93,9 @@ function pull_job(server::String, server_dir::String, local_dir::String; job_fuz
   end
 end
 
+pull_job(args...;kwargs...) = pull_job(g_default_server(),args...,kwargs...)
+
+
 """
 load_server_job(server::String, server_dir::String, local_dir::String; job_fuzzy="*job*", job_name=nothing)
 
@@ -87,6 +105,8 @@ function load_server_job(server::String, server_dir::String, local_dir::String; 
   pull_job(server,server_dir,local_dir)
   return load_job(local_dir,server=server,server_dir=server_dir,new_job_name = new_job_name)
 end
+
+load_server_job(args...;kwargs...) = load_server_job(g_default_server(),args...,kwargs...)
 
 """
 save_job(df_job::DFJob)
@@ -408,10 +428,15 @@ end
 #---------------------------------END GENERAL SECTION ------------------#
 
 #TODO after adding defaults can automatically get correct pseudos as well
-function change_atoms!(job::DFJob,atoms::Dict{Symbol,<:Array{<:Point3D,1}})
+function change_atoms!(job::DFJob,atoms::Dict{Symbol,<:Array{<:Point3D,1}},pseudo_set_name=:default,pseudo_fuzzy=nothing)
   for calc in job.calculations
-    change_atoms!(calc,atoms)
+    change_atoms!(calc,atoms,pseudo_set_name,pseudo_fuzzy=pseudo_fuzzy)
   end
+  nat = 0
+  for pos in values(atoms)
+    nat+=length(pos)
+  end
+  change_flags!(job,Dict(:nat=>nat))
 end
 
 #automatically sets the cell parameters for the entire job, implement others
