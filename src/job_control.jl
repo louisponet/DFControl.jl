@@ -19,7 +19,7 @@ load_job(job_dir::String, T=Float32; job_fuzzy = "job", new_job_name=nothing, ne
 Loads and returns a DFJob. If local_dir is not specified the job directory will ge registered as the local one.
 """
 #should we call this load local job?
-function load_job(job_dir::String, T=Float32; job_fuzzy = "job", new_job_name=nothing, new_local_dir=nothing, server="",server_dir=g_default_server())
+function load_job(job_dir::String, T=Float32; job_fuzzy = "job", new_job_name=nothing, new_local_dir=nothing, server=g_default_server(),server_dir="")
   job_dir = form_directory(job_dir)
   
   job_name,t_inputs,t_outputs,t_run_commands,t_should_run = read_job_file(job_dir*search_dir(job_dir,job_fuzzy)[1])
@@ -68,10 +68,6 @@ end
 pull_job(server::String, server_dir::String, local_dir::String; job_fuzzy="*job*")
 Pulls job from server. If no specific inputs are supplied it pulls all .in and .tt files.
 """
-# Input:  server::String, -> in host@servername format!
-#         server_dir::String,
-#         local_dir::String, -> will create the dir if necessary.
-# Kwargs: inputs=nothing -> specific input filenames.
 function pull_job(server::String, server_dir::String, local_dir::String; job_fuzzy="*job*")
   server_dir = form_directory(server_dir)
   local_dir  = form_directory(local_dir)
@@ -366,6 +362,14 @@ print_data(job::DFJob, calc_filenames) = print_blocks(job, calc_filenames)
 print_data(job::DFJob, block_name::Symbol) = print_block(job, block_name)
 
 function print_info(job::DFJob)
+  println("--------------------")
+  println("DFJob:      $(job.name)")
+  println("Local_dir:  $(job.local_dir)")
+  println("Server:     $(job.server)")
+  println("Server_dir: $(job.server_dir)")
+  println("--------------------")
+  println("$(length(job.calculations)) calculations:")
+  println("")
   for calc in job.calculations
     print_info(calc)
     println("")

@@ -90,6 +90,9 @@ mutable struct WannierInput<:DFInput
   preprocess::Bool
 end
 
+function Base.display(input::DFInput)
+  print_info(input)
+end
 # mutable struct DFInput
 #   backend::Symbol
 #   control_blocks::Dict{Symbol,Any}
@@ -103,7 +106,7 @@ end
 """
 Represents a full DFT job with multiple input files and calculations.
 
-Fieldnames: job_name::String
+Fieldnames: name::String
             calculations::Dict{String,DFInput} -> calculation type to DFInput
             flow::Array{Tuple{String,String},1} -> flow chart of calculations. The tuple is (calculation type, input file).
             local_dir::String -> directory on local machine.
@@ -111,23 +114,27 @@ Fieldnames: job_name::String
             server_dir::String -> directory on server.
 """
 mutable struct DFJob
-  job_name::String
+  name::String
   calculations::Array{DFInput,1}
   # flow::Array{Tuple{String,String},1}
   local_dir::String
   server::String
   server_dir::String
-  function DFJob(job_name,calculations,local_dir,server,server_dir)
-  # function DFJob(job_name,calculations,flow,local_dir,server,server_dir)
+  function DFJob(name,calculations,local_dir,server,server_dir)
+  # function DFJob(name,calculations,flow,local_dir,server,server_dir)
     if local_dir != ""
       local_dir = form_directory(local_dir)
     end
     if server_dir != ""
       server_dir = form_directory(server_dir)
     end
-    new(job_name,calculations,local_dir,server,server_dir)
-    # new(job_name,calculations,flow,local_dir,server,server_dir)
+    new(name,calculations,local_dir,server,server_dir)
+    # new(name,calculations,flow,local_dir,server,server_dir)
   end
+end
+
+function Base.display(job::DFJob)
+  print_info(job)
 end
 
 """

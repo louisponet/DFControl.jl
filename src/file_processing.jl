@@ -556,7 +556,7 @@ function write_job_files(df_job::DFJob)
   new_filenames   = String[]
 
   open(df_job.local_dir*"job.tt","w") do f
-    write(f,"#!/bin/bash\n","#SBATCH -N 1\n","#SBATCH --ntasks-per-node=24 \n","#SBATCH --time=24:00:00 \n","#SBATCH -J $(df_job.job_name) \n",
+    write(f,"#!/bin/bash\n","#SBATCH -N 1\n","#SBATCH --ntasks-per-node=24 \n","#SBATCH --time=24:00:00 \n","#SBATCH -J $(df_job.name) \n",
           "#SBATCH -p defpart\n\n","module load open-mpi/gcc/1.10.2\n","module load mkl/2016.1.056\n","\n")
 
     for i=1:length(df_job.calculations)
@@ -623,7 +623,7 @@ end
 """
     read_job_file(job_file::String)
 
-Reads and returns the job_name, input files, run_commands and whether or not they need to be commented out.
+Reads and returns the name, input files, run_commands and whether or not they need to be commented out.
 All files that are read contain "in".
 This reads QE and wannier90 inputs for now.
 """
@@ -632,7 +632,7 @@ function read_job_file(job_file::String)
   output_files = Array{String,1}()
   run_commands = Array{String,1}()
   should_run   = Array{Bool,1}()
-  job_name     = ""
+  name     = ""
   open(job_file,"r") do f
     while !eof(f)
       line = readline(f)
@@ -670,11 +670,11 @@ function read_job_file(job_file::String)
           push!(input_files,strip(in_out[1],'<'))
         end 
       elseif contains(line,"#SBATCH") && contains(line,"-J")
-        job_name = split(line)[end]
+        name = split(line)[end]
       end
     end
   end
-  return job_name,input_files,output_files,run_commands,should_run
+  return name,input_files,output_files,run_commands,should_run
 end
 
 #---------------------------END GENERAL SECTION-------------------#
