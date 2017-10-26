@@ -45,7 +45,7 @@ module DFControl
   export get_flag
   export change_data!
   export get_data
-  export set_flags!
+  export add_flags!
   export remove_flags!
   export change_flow!
   export add_calculation!

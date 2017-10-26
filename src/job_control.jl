@@ -207,63 +207,76 @@ function change_flags!(df_job::DFJob, calc_filenames, new_flag_data::Dict{Symbol
   end
 end
 
-function get_flag(df_job::DFJob,calc_filenames,flag::Symbol)
+"""
+    get_flag(df_job::DFJob, calc_filenames, flag::Symbol)
+
+Looks through the calculation filenames and returns the value of the specified flag.
+"""
+function get_flag(df_job::DFJob, calc_filenames, flag::Symbol)
   for calc in get_inputs(df_job,calc_filenames)
     return get_flag(calc,flag)
   end
 end
 
-function get_flag(df_job::DFJob,flag::Symbol)
+"""
+    get_flag(df_job::DFJob, flag::Symbol)
+
+Looks through all the calculations and returns the value of the specified flag.
+"""
+function get_flag(df_job::DFJob, flag::Symbol)
   for calc in df_job.calculations
     return get_flag(calc,flag)
-    # tflag = get_flag(calc,flag)
-    # if tflag != nothing
-    #   return tflag 
-    # end
   end
 end
 
 #TODO Change so calculations also have a name.
 #TODO change after implementing k_point change so you don't need to specify all this crap
-function get_data(df_job::DFJob,calc_filenames,block_symbol::Symbol)
+"""
+    get_data(df_job::DFJob, calc_filenames, block_symbol::Symbol)
+
+Looks through the calculation filenames and returns the datablock with the specified symbol.
+"""
+function get_data(df_job::DFJob, calc_filenames, block_symbol::Symbol)
   for calc in get_inputs(df_job,calc_filenames)
     return get_data(calc,block_symbol)
   end
 end
 
-function change_data!(df_job::DFJob,calc_filenames, data_block_name::Symbol, new_block_data)
+"""
+    change_data!(df_job::DFJob, calc_filenames, data_block_name::Symbol, new_block_data)
+
+Looks through the calculation filenames and changes the data of the datablock with `data_block_name` to `new_block_data`
+"""
+function change_data!(df_job::DFJob, calc_filenames, data_block_name::Symbol, new_block_data)
   for calc in get_inputs(df_job,calc_filenames)
     change_data!(calc,data_block_name,new_block_data)
   end
 end
 
-
-#Incomplete this now assumes that there is only one calculation, would be better to interface with the flow of the DFJob
-# """
-#     set_job_data!(df_job::DFJob,calculation::Int,block_symbol::Symbol,data)
-#
-# Sets mutatatively the job data in a calculation block of a DFJob. It will merge the supplied data with the previously present one in the block,
-# changing all previous values to the new ones and adding non-existent ones.
-# """
-# Input: df_job::DFJob,
-#        calculation::String, -> calculation in the DFJob.
-#        block_symbol::Symbol, -> Symbol of the datablock inside the calculation's input file.
-#        data::Dict{Symbol,Any} -> flags and values to be set.
-
 #I'm not sure if this is a good idea. Maybe require explicitely also the input filename
 #TODO after making defaults this can be done better
-function set_flags!(df_job::DFJob,control_block_name::Symbol,data)
+"""
+   add_flags!(df_job::DFJob, control_block_name::Symbol, flags)
+
+Adds the flags to the controlblocks. This assumes that there are `ControlBlocks` in the calculations e.g. in `QEInput`.
+"""
+function add_flags!(df_job::DFJob, control_block_name::Symbol, flags)
   for calc in df_job.calculations
     if :control_blocks in fieldnames(calc)
-      set_flags!(calc,control_block_name,data)
+      add_flags!(calc,control_block_name,flags)
     end
   end
 end
 
-function set_flags!(df_job::DFJob,data)
+"""
+    add_flags!(df_job::DFJob, flags)
+
+Adds the flags to an input file. This assumes that the input has a field `flags`. Works for e.g. `WannierInput`.
+"""
+function add_flags!(df_job::DFJob, flags)
   for calc in df_job.calculations
     if :flags in fieldnames(calc)
-      set_flags!(calc,data)
+      add_flags!(calc,flags)
     end
   end
 end

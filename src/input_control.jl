@@ -77,7 +77,7 @@ function get_data(input::DFInput,block_symbol::Symbol)
 end
 
 #here comes the code for all the setting of flags of different inputs
-function set_flags!(input::QEInput, control_block_name::Symbol, flag_dict)
+function add_flags!(input::QEInput, control_block_name::Symbol, flag_dict)
   for block in input.control_blocks
     if block.name == control_block_name
       block.flags = merge((x,y) -> typeof(x) == typeof(y) ? y : x,block.flags,flag_dict)
@@ -88,7 +88,7 @@ function set_flags!(input::QEInput, control_block_name::Symbol, flag_dict)
   end
 end
 
-function set_flags!(input::WannierInput, flag_dict)
+function add_flags!(input::WannierInput, flag_dict)
   input.flags = merge((x,y) -> typeof(x) == typeof(y) ? y : x,input.flags,flag_dict)
   println("New input of calculation '$(input.filename)' is now:")
   display(input.flags)
