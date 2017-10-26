@@ -533,12 +533,12 @@ end
 #---------------------------END WANNIER SECTION ------------------------#
 #---------------------------BEGINNING GENERAL SECTION-------------------#
 """
-    write_df_input(filename::String,df_input::DFInput)
+    write_input(filename::String,df_input::DFInput)
 
 Writes the input file for a DFInput.
 Backend of DFInput decides what writing function is called.
 """
-function write_df_input(df_input::DFInput,filename::String=df_input.filename)
+function write_input(df_input::DFInput,filename::String=df_input.filename)
   if typeof(df_input) == QEInput
     write_qe_input(df_input,filename)
   elseif typeof(df_input) == WannierInput
@@ -563,7 +563,7 @@ function write_job_files(df_job::DFJob)
       calculation = df_job.calculations[i]
       run_command = calculation.run_command
       filename = calculation.filename
-      write_df_input(calculation,df_job.local_dir*filename)
+      write_input(calculation,df_job.local_dir*filename)
       should_run  = calculation.run
       if typeof(calculation) == WannierInput
         if calculation.preprocess
@@ -581,34 +581,6 @@ function write_job_files(df_job::DFJob)
           write(f,"$run_command <$filename> $(split(filename,".")[1]).out \n")
         end
       end
-
-      # if contains(run_command,"wannier90.x") && !contains(run_command,"pw")
-      #   if !should_run
-      #     if calculation.preprocess
-      #       pw2wan = df_job.calculations[i+1]
-      #       pw2wan_filename =pw2wan.filename
-      #       push!(new_filenames,pw2wan_filename)
-      #       pw2wan.control_blocks[1].flags[:seedname] = "'$(filename[1:end-4])'"
-      #       
-      #       write(f,"#$(df_job.calculations[i+1].run_command) <$pw2wan_filename> $(split(pw2wan_filename,".")[1]).out \n")
-      #       write_df_input(pw2wan,df_job.local_dir*pw2wan_filename)
-      #     end
-      #     write(f,"#$(join(split(df_job.calculations[i].run_command)[1:end-1])) $(filename[1:end-4])\n")
-      #   else
-      #     if calculation.preprocess
-      #       pw2wan = df_job.calculations[i+1]
-      #       pw2wan_filename =pw2wan.filename
-      #       push!(new_filenames,pw2wan_filename)
-      #       pw2wan.control_blocks[1].flags[:seedname] = "'$(filename[1:end-4])'"
-      #       write(f,"$run_command $(filename[1:end-4])\n")
-      #       write(f,"$(df_job.calculations[i+1].run_command) <$pw2wan_filename> $(split(pw2wan_filename,".")[1]).out \n")
-      #       write_df_input(pw2wan,df_job.local_dir*pw2wan_filename)
-      #     end
-      #     write(f,"$(join(split(df_job.calculations[i].run_command)[1:end-1])) $(filename[1:end-4])\n")
-      #   end
-      #   break
-      # else
-      # end
       push!(new_filenames,filename)
     end
   end
@@ -678,6 +650,8 @@ function read_job_file(job_file::String)
 end
 
 #---------------------------END GENERAL SECTION-------------------#
+
+#Incomplete: we should probably handle writing an array of expressions as well!
 function expr2file(filename::String, expression::Expr)
   eq        = Symbol("=")
   lines     = readlines(filename)

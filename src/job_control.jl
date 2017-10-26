@@ -1,18 +1,6 @@
 
 #---------------------------------BEGINNING GENERAL SECTION ---------------------#
 
-function pull_file(server::String,server_dir::String,local_dir::String,filename::String)
-  run(`scp $(server*":"*server_dir*filename) $local_dir`)
-end
-
-function pull_file(server_dir::String,local_dir::String,filename::String;server=g_default_server())
-  if server != ""
-    run(`scp $(server*":"*server_dir*filename) $local_dir`)
-  else
-    error("Define a default server first using 'set_default_server!(...)'.\n
-    Or use function 'pull_file(server::String, server_dir::String, local_dir::String, filename::String)'.")
-  end
-end
 """
 load_job(job_dir::String, T=Float32; job_fuzzy = "job", new_job_name=nothing, new_homedir=nothing, server="",server_dir="")
 
@@ -65,7 +53,7 @@ end
 #TODO should we also create a config file for each job with stuff like server etc? and other config things,
 #      which if not supplied could contain the default stuff?
 """
-pull_job(server::String, server_dir::String, local_dir::String; job_fuzzy="*job*")
+    pull_job(server::String, server_dir::String, local_dir::String; job_fuzzy="*job*")
 Pulls job from server. If no specific inputs are supplied it pulls all .in and .tt files.
 """
 function pull_job(server::String, server_dir::String, local_dir::String; job_fuzzy="*job*")
@@ -93,7 +81,7 @@ pull_job(args...;kwargs...) = pull_job(g_default_server(),args...,kwargs...)
 
 
 """
-load_server_job(server::String, server_dir::String, local_dir::String; job_fuzzy="*job*", job_name=nothing)
+    load_server_job(server::String, server_dir::String, local_dir::String; job_fuzzy="*job*", job_name=nothing)
 
 Pulls a server job to local directory and then loads it. A fuzzy search for the job file will be performed and the found input files will be pulled.
 """
@@ -105,7 +93,7 @@ end
 load_server_job(args...;kwargs...) = load_server_job(g_default_server(),args...,kwargs...)
 
 """
-save_job(df_job::DFJob)
+    save_job(df_job::DFJob)
 
 Saves a DFJob, it's job file and all it's input files.
 """
@@ -124,7 +112,7 @@ end
 
 #Incomplete everything is hardcoded for now still!!!! make it configurable
 """
-push_job(df_job::DFJob)
+    push_job(df_job::DFJob)
 
 Pushes a DFJob from it's local directory to its server side directory.
 """
@@ -141,7 +129,7 @@ end
 
 #TODO only uses qsub for now. how to make it more general?
 """
-submit_job(df_job::DFJob)
+    submit_job(df_job::DFJob)
 
 Submit a DFJob. First saves it locally, pushes it to the server then runs the job file on the server.
 """
@@ -162,19 +150,22 @@ function submit_job(df_job::DFJob; server=nothing, server_dir=nothing)
   run(`ssh -t $(df_job.server) cd $(df_job.server_dir) '&&' qsub job.tt`)
 end
 
-function add_calculation!(df_job::DFJob,input::DFInput,run_index::Int=length(df_job.calculations)+1;run_command=input.run_command,filename=input.filename)
+"""
+    add_calculation!(df_job::DFJob, input::DFInput, run_index::Int=length(df_job.calculations)+1; run_command=input.run_command, filename=input.filename)
+
+Adds a calculation to the job, at the specified run_index.
+"""
+function add_calculation!(df_job::DFJob, input::DFInput, run_index::Int=length(df_job.calculations)+1; run_command=input.run_command, filename=input.filename)
   input.filename = filename
   input.run_command = run_command
   insert!(df_job.calculations,run_index,input)
 end
 
+"""
+    change_flags!(df_job::DFJob, new_flag_data::Dict{Symbol,<:Any})
 
-# """
-#     change_job_data!(df_job::DFJob,new_data::Dict{Symbol,<:Any})
-#
-# Mutatatively change data that is tied to a DFJob. This means that it will run through all the DFInputs and their fieldnames and their Dicts.
-# If it finds a Symbol in one of those that matches a symbol in the new data, it will replace the value of the first symbol with the new value.
-# """
+Looks through all the calculations for the specified flags. If any that match and have the same types are found, they will get replaced by the new ones.
+"""
 function change_flags!(df_job::DFJob, new_flag_data::Dict{Symbol,<:Any})
   found_keys = Symbol[]
   for calculation in df_job.calculations
@@ -193,7 +184,12 @@ function change_flags!(df_job::DFJob, new_flag_data::Dict{Symbol,<:Any})
   end
 end
 
-function change_flags!(df_job::DFJob,calc_filenames, new_flag_data::Dict{Symbol,<:Any})
+"""
+    change_flags!(df_job::DFJob, calc_filenames, new_flag_data::Dict{Symbol,<:Any})
+
+Looks through the given calculations for the specified flags. If any that match and have the same types are found, they will get replaced by the new ones.
+"""
+function change_flags!(df_job::DFJob, calc_filenames, new_flag_data::Dict{Symbol,<:Any})
   found_keys = Symbol[]
   for calc in get_inputs(df_job,calc_filenames)
     t_found_keys = change_flags!(calculation,new_flag_data)

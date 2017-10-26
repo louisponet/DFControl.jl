@@ -19,16 +19,6 @@ mutable struct DFBand{T<:AbstractFloat} <: Band{T}
   eigvals::Array{T,1}
 end
 
-"""
-Represents an input for DFT calculation.
-
-Fieldnames: backend::Symbol -> the DFT package that reads this input.
-            control_blocks::Dict{Symbol,Dict{Symbol,Any}} -> maps different control blocks to their dict of flags and values.
-            pseudos::Dict{Symbol,String} -> maps atom symbol to pseudo input file.
-            cell_param::Dict{Symbol,Any} -> maps the option of cell_parameters to the cell parameters.
-            atoms::Dict{Symbol,Any} -> maps atom symbol to position.
-            k_points::Dict{Symbol,Any} -> maps option of k_points to k_points.
-"""
 #these are all the control blocks, they hold the flags that guide the calculation
 abstract type Block end
 abstract type ControlBlock<:Block end
@@ -71,6 +61,16 @@ function Base.display(blocks::Array{<:Block})
   map(display,blocks)
 end
 #here all the different input structures for the different calculations go
+"""
+Represents an input for DFT calculation.
+
+Fieldnames: backend::Symbol -> the DFT package that reads this input.
+            control_blocks::Dict{Symbol,Dict{Symbol,Any}} -> maps different control blocks to their dict of flags and values.
+            pseudos::Dict{Symbol,String} -> maps atom symbol to pseudo input file.
+            cell_param::Dict{Symbol,Any} -> maps the option of cell_parameters to the cell parameters.
+            atoms::Dict{Symbol,Any} -> maps atom symbol to position.
+            k_points::Dict{Symbol,Any} -> maps option of k_points to k_points.
+"""
 abstract type DFInput end
 
 mutable struct QEInput<:DFInput
@@ -93,16 +93,7 @@ end
 function Base.display(input::DFInput)
   print_info(input)
 end
-# mutable struct DFInput
-#   backend::Symbol
-#   control_blocks::Dict{Symbol,Any}
-#   pseudos::Dict{Symbol,String}
-#   cell_param::Dict{Symbol,Any}
-#   atoms::Dict{Symbol,Union{Symbol,Array{<:Point3D,1}}}
-#   k_points::Dict{Symbol,Any}
-# end
 
-#having both the flow and array tuple might be overkill
 """
 Represents a full DFT job with multiple input files and calculations.
 
@@ -116,12 +107,10 @@ Fieldnames: name::String
 mutable struct DFJob
   name::String
   calculations::Array{DFInput,1}
-  # flow::Array{Tuple{String,String},1}
   local_dir::String
   server::String
   server_dir::String
   function DFJob(name,calculations,local_dir,server,server_dir)
-  # function DFJob(name,calculations,flow,local_dir,server,server_dir)
     if local_dir != ""
       local_dir = form_directory(local_dir)
     end
@@ -129,7 +118,6 @@ mutable struct DFJob
       server_dir = form_directory(server_dir)
     end
     new(name,calculations,local_dir,server,server_dir)
-    # new(name,calculations,flow,local_dir,server,server_dir)
   end
 end
 

@@ -28,10 +28,8 @@ module DFControl
   export read_fermi_from_qe_file
   export read_qe_kpdos
   export read_qe_input
-  export write_qe_input
   export read_wannier_input
-  export write_wannier_input
-  export write_df_input
+  export write_input
   export write_job_files
 
   include("input_control.jl")
@@ -75,6 +73,7 @@ module DFControl
   include("server_comm.jl")
   export read_errors
   export pull_outputs
+  export pull_file
   export qstat
   export watch_qstat
 
