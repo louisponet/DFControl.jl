@@ -8,11 +8,11 @@ function pull_file(server::String, server_dir::String, local_dir::String, filena
 end
 
 """
-    pull_file(server_dir::String, local_dir::String, filename::String; server=g_default_server())
+    pull_file(server_dir::String, local_dir::String, filename::String; server=get_default_server())
 
 Pulls a file from the default server if the default server is specified.
 """
-function pull_file(server_dir::String, local_dir::String, filename::String; server=g_default_server())
+function pull_file(server_dir::String, local_dir::String, filename::String; server=get_default_server())
   if server != ""
     run(`scp $(server*":"*server_dir*filename) $local_dir`)
   else

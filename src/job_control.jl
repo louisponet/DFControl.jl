@@ -7,7 +7,7 @@ load_job(job_dir::String, T=Float32; job_fuzzy = "job", new_job_name=nothing, ne
 Loads and returns a DFJob. If local_dir is not specified the job directory will ge registered as the local one.
 """
 #should we call this load local job?
-function load_job(job_dir::String, T=Float32; job_fuzzy = "job", new_job_name=nothing, new_local_dir=nothing, server=g_default_server(),server_dir="")
+function load_job(job_dir::String, T=Float32; job_fuzzy = "job", new_job_name=nothing, new_local_dir=nothing, server=get_default_server(),server_dir="")
   job_dir = form_directory(job_dir)
   
   job_name,t_inputs,t_outputs,t_run_commands,t_should_run = read_job_file(job_dir*search_dir(job_dir,job_fuzzy)[1])
@@ -77,7 +77,7 @@ function pull_job(server::String, server_dir::String, local_dir::String; job_fuz
   end
 end
 
-pull_job(args...;kwargs...) = pull_job(g_default_server(),args...,kwargs...)
+pull_job(args...;kwargs...) = pull_job(get_default_server(),args...,kwargs...)
 
 
 """
@@ -90,7 +90,7 @@ function load_server_job(server::String, server_dir::String, local_dir::String; 
   return load_job(local_dir,server=server,server_dir=server_dir,new_job_name = new_job_name)
 end
 
-load_server_job(args...;kwargs...) = load_server_job(g_default_server(),args...,kwargs...)
+load_server_job(args...;kwargs...) = load_server_job(get_default_server(),args...,kwargs...)
 
 """
     save_job(df_job::DFJob)
