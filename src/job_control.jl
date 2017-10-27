@@ -281,19 +281,34 @@ function add_flags!(df_job::DFJob, flags)
   end
 end
 
-function remove_flags!(df_job::DFJob,calc_filenames,flags)
+"""
+    remove_flags!(df_job::DFJob, calc_filenames, flags)
+
+Looks through the calculation filenames and removes the specified flags.
+"""
+function remove_flags!(df_job::DFJob, calc_filenames, flags)
   for calc in get_inputs(df_job,calc_filenames)
     remove_flags!(calc,flags)
   end
 end
 
-function remove_flags!(df_job::DFJob,flags)
+"""
+    remove_flags!(df_job::DFJob, flags)
+
+Looks through all the calculations and removes the flags.
+"""
+function remove_flags!(df_job::DFJob, flags)
   for calc in df_job.calculations
     remove_flags!(calc,flags)
   end
 end
 
-function set_flow!(df_job::DFJob,should_runs::Array{Bool,1})
+"""
+    set_flow!(df_job::DFJob, should_runs::Array{Bool,1})
+
+Sets whether calculations should be ran or not. should_runs should have the same length as the amount of calculations in the job.
+"""
+function set_flow!(df_job::DFJob, should_runs::Array{Bool,1})
   assert(length(should_runs)==length(df_job.calculations))
   for (calc,should_run) in zip(df_job.calculations,should_runs)
     calc.run = should_run
@@ -301,64 +316,114 @@ function set_flow!(df_job::DFJob,should_runs::Array{Bool,1})
   print_flow(df_job)
 end
 
-function change_flow!(df_job::DFJob,should_runs::Union{Dict,Array{Tuple{Int,Bool}}})
+"""
+    change_flow!(df_job::DFJob, should_runs::Union{Dict,Array{Tuple{Int,Bool}}})
+
+Sets whether or not calculations should be run. Calculations are specified using their indices.
+"""
+function change_flow!(df_job::DFJob, should_runs::Union{Dict,Array{Tuple{Int,Bool}}})
   for (index,run) in should_runs
     df_job.calculations[index].run = run
   end
   print_flow(df_job)
 end
 
-function change_flow!(df_job::DFJob,filenames,should_run)
+"""
+    change_flow!(df_job::DFJob, filenames, should_run)
+
+Goes throug the calculation filenames and sets whether it should run or not.
+"""
+function change_flow!(df_job::DFJob, filenames, should_run)
   for calc in get_inputs(df_job,filenames)
     calc.run = should_run
   end
 end
 
-function change_flow!(df_job::DFJob,should_runs::Union{Dict{String,Bool},Array{Tuple{String,Bool}}})
+"""
+    change_flow!(df_job::DFJob, should_runs::Union{Dict{String,Bool},Array{Tuple{String,Bool}}})
+
+Runs through the calculation filenames and sets whether it should run or not.
+"""
+function change_flow!(df_job::DFJob, should_runs::Union{Dict{String,Bool},Array{Tuple{String,Bool}}})
   for (name,should_run) in should_runs
     change_flow!(df_job,name,should_run)
   end
   print_flow(df_job)
 end
 
-function change_run_command!(df_job::DFJob,filenames,run_command)
+"""
+    change_run_command!(df_job::DFJob, filenames, run_command)
+
+Goes through the calculation filenames and sets the run command of the calculation.
+"""
+function change_run_command!(df_job::DFJob, filenames, run_command)
   for calc in get_inputs(df_job,filenames)
     calc.run_command = run_command
     println("Run command of file '$(calc.filename)' is now: '$(calc.run_command)'")
   end
 end
 
-function get_run_command(df_job::DFJob,filename)
+"""
+    get_run_command(df_job::DFJob, filename)
+
+Returns the run command for the specified calculation.
+"""
+function get_run_command(df_job::DFJob, filename)
   for calc in get_inputs(df_job,filename)
     return calc.run_command
   end
 end
 
-function print_run_command(df_job::DFJob,filenames)
+"""
+    print_run_command(df_job::DFJob, filenames)
+
+Prints the run command of the specified calculations.
+"""
+function print_run_command(df_job::DFJob, filenames)
   for calc in get_inputs(df_job,filenames)
     println("Run command of file '$(calc.filename)' is: '$(calc.run_command)'.")
     println("")
   end
 end
 
+"""
+    print_flow(df_job::DFJob)
+
+Prints the calculation sequence of the job.
+"""
 function print_flow(df_job::DFJob)
   for (i,calc) in enumerate(df_job.calculations)
     println("$i: $(calc.filename) => runs: $(calc.run)")
   end
 end
 
+"""
+    print_block(job::DFJob, block_name::Symbol)
+
+Prints information of the specified block name of all the calculations in the job.
+"""
 function print_block(job::DFJob, block_name::Symbol)
   for calc in job.calculations
     if print_block(calc,block_name) println("") end
   end
 end
 
-function print_blocks(job::DFJob,calc_filenames)
+"""
+    print_blocks(job::DFJob, calc_filenames)
+
+Prints information on all the blocks in the specified calculations.
+"""
+function print_blocks(job::DFJob, calc_filenames)
   for calc in get_inputs(job,calc_filenames)
     print_blocks(calc)
   end
 end
 
+"""
+    print_blocks(job::DFJob)
+
+Prints information of all the blocks of all the calculations in the job.
+"""
 function print_blocks(job::DFJob)
   for calc in job.calculations
     print_blocks(calc)
@@ -370,6 +435,11 @@ print_data(job::DFJob) = print_blocks(job)
 print_data(job::DFJob, calc_filenames) = print_blocks(job, calc_filenames)
 print_data(job::DFJob, block_name::Symbol) = print_block(job, block_name)
 
+"""
+    print_info(job::DFJob)
+
+Prints general info of the job.
+"""
 function print_info(job::DFJob)
   println("--------------------")
   println("DFJob:      $(job.name)")
@@ -385,6 +455,11 @@ function print_info(job::DFJob)
   end
 end
 
+"""
+    print_flags(job::DFJob)
+
+Prints flags of all the calculations in the job.
+"""
 function print_flags(job::DFJob)
   for calc in job.calculations
     print_flags(calc)
@@ -392,34 +467,58 @@ function print_flags(job::DFJob)
   end
 end
 
-function print_flags(job::DFJob,calc_filename::String)
+"""
+    print_flags(job::DFJob, calc_filename::String)
+
+Prints flags of the specified calculation.
+"""
+function print_flags(job::DFJob, calc_filename::String)
   for calc in get_inputs(job,calc_filename)
     print_flags(calc)
     println("")
   end
 end
 
-function print_flags(job::DFJob,calc_filenames::Array{String,1})
+"""
+    print_flags(job::DFJob, calc_filenames::Array{String,1})
+
+Prints the flags of the specified calculations.
+"""
+function print_flags(job::DFJob, calc_filenames::Array{String,1})
   for file in calc_filenames
     print_flags(job,file)
   end
 end
 
-function print_flags(job::DFJob,flags)
+"""
+    print_flags(job::DFJob, flags)
+
+Prints the specified flags running through all the claculations in the job.
+"""
+function print_flags(job::DFJob, flags)
   for flag in flags
     print_flags(job,flag)
   end
 end
 
-function print_flag(job::DFJob,flag::Symbol)
+"""
+    print_flag(job::DFJob, flag::Symbol)
+
+Prints the specified flag running through all the calculations in the job.
+"""
+function print_flag(job::DFJob, flag::Symbol)
   for calc in job.calculations
     print_flag(calc,flag)
   end
 end
 
 #all get_inputs return arrays, get_input returns the first element if multiple are found
+"""
+    get_inputs(job::DFJob, filenames::Array)
 
-function get_inputs(job::DFJob,filenames::Array)
+Returns an array of the inputs that match one of the filenames.
+"""
+function get_inputs(job::DFJob, filenames::Array)
   out = DFInput[]
   for name in filenames
     push!(out,filter(x->contains(x.filename,name),job.calculations)...)
@@ -427,21 +526,43 @@ function get_inputs(job::DFJob,filenames::Array)
   return out
 end
 
-function get_inputs(job::DFJob,filename::String)
+"""
+    get_inputs(job::DFJob, filename::String)
+
+Returns an array of the input that matches the filename.
+"""
+function get_inputs(job::DFJob, filename::String)
   return filter(x->contains(x.filename,filename),job.calculations)
 end
 
-function get_input(job::DFJob,filename::String)
+"""
+    get_input(job::DFJob, filename::String)
+
+Returns the input that matches the filename.
+"""
+function get_input(job::DFJob, filename::String)
   return filter(x->contains(x.filename,filename),job.calculations)[1]
 end
 
-function get_input(job::DFJob,filenames::Array{String,1})
+"""
+    get_input(job::DFJob, filenames::Array)
+
+Returns an array of the inputs that match one of the filenames.
+"""
+function get_input(job::DFJob, filenames::Array{String,1})
   return get_inputs(job,filenames)
 end
 #---------------------------------END GENERAL SECTION ------------------#
 
-#TODO after adding defaults can automatically get correct pseudos as well
-function change_atoms!(job::DFJob,atoms::Dict{Symbol,<:Array{<:Point3D,1}},pseudo_set_name=:default,pseudo_fuzzy=nothing)
+"""
+    change_atoms!(job::DFJob, atoms::Dict{Symbol,<:Array{<:Point3D,1}}, pseudo_set_name=:default, pseudo_fuzzy=nothing)
+
+Sets the data blocks with atomic positions to the new one. This is done for all calculations in the job that have that data. 
+If default pseudopotentials are defined, a set can be specified, together with a fuzzy that distinguishes between the possible multiple pseudo strings in the pseudo set. 
+These pseudospotentials are then set in all the calculations that need it.
+All flags which specify the number of atoms inside the calculation also gets set to the correct value.
+"""
+function change_atoms!(job::DFJob, atoms::Dict{Symbol,<:Array{<:Point3D,1}}, pseudo_set_name=:default, pseudo_fuzzy=nothing)
   for calc in job.calculations
     change_atoms!(calc,atoms,pseudo_set_name,pseudo_fuzzy=pseudo_fuzzy)
   end
@@ -453,7 +574,12 @@ function change_atoms!(job::DFJob,atoms::Dict{Symbol,<:Array{<:Point3D,1}},pseud
 end
 
 #automatically sets the cell parameters for the entire job, implement others
-function change_cell_parameters!(job::DFJob,cell_param::Array{AbstractFloat,2})
+"""
+    change_cell_parameters!(job::DFJob, cell_param::Array{AbstractFloat,2})
+
+Changes the cell parameters in all the input files that have that `DataBlock`.
+"""
+function change_cell_parameters!(job::DFJob, cell_param::Array{AbstractFloat,2})
   for calc in job.calculations
     if typeof(calc) == WannierInput
       alat = get_flag(job,:A)
@@ -464,6 +590,11 @@ function change_cell_parameters!(job::DFJob,cell_param::Array{AbstractFloat,2})
   end
 end
 
+"""
+    change_k_points!(job::DFJob,calc_filename,k_points)
+
+Changes the data in the k point `DataBlock` inside the specified calculation.
+"""
 function change_k_points!(job::DFJob,calc_filename,k_points)
   change_k_points!(get_input(job,calc_filename),k_points)
 end
