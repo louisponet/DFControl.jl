@@ -1,6 +1,11 @@
 "File with all the user defaults inside it"
 const default_file = joinpath(@__DIR__,"../user_defaults/user_defaults.jl")
 
+"Macro which allows you to define any default variable that will get loaded every time you use this package."
+macro set_default(expr)
+  expr2file(default_file,expr)
+  load_defaults()
+end
 
 function define_def(default, expr1, expr2)
   if !isdefined(default)
@@ -16,7 +21,7 @@ end
 
 Adds an entry inside the `default_pseudo_dirs` dictionary with flag `pseudo_symbol`.
 """
-function add_default_pseudo_dir!(pseudo_symbol::Symbol, dir::String)
+function add_default_pseudo_dir(pseudo_symbol::Symbol, dir::String)
   expr_ndef = :(default_pseudo_dirs = Dict{Symbol,String}($(Expr(:quote,pseudo_symbol)) => $dir)) 
   expr_def  = :(default_pseudo_dirs[$(QuoteNode(pseudo_symbol))] = $dir)
   define_def(:default_pseudo_dirs,expr_ndef,expr_def)
@@ -27,7 +32,7 @@ end
 
 Removes entry with flag `pseudo_symbol` from the `default_pseudo_dirs` dictionary. 
 """
-function remove_default_pseudo_dir!(pseudo_symbol::Symbol)
+function remove_default_pseudo_dir(pseudo_symbol::Symbol)
   if isdefined(:default_pseudo_dirs) && haskey(default_pseudo_dirs,pseudo_symbol)
     pop!(default_pseudo_dirs,pseudo_symbol)
   end
@@ -38,7 +43,7 @@ end
 
 Sets the default server.
 """
-function set_default_server!(server::String)
+function set_default_server(server::String)
   expr_ndef = :(default_server = $server)
   expr_def  = expr_ndef
   define_def(:default_server,expr_ndef,expr_def)
@@ -75,7 +80,7 @@ end
 
 Reads the specified `default_pseudo_dirs` on the `default_server` and sets up the `default_pseudo` dictionary.
 """
-function configure_default_pseudos!(server = get_default_server(), pseudo_dirs = get_default_pseudo_dirs())
+function configure_default_pseudos(server = get_default_server(), pseudo_dirs = get_default_pseudo_dirs())
   if server == ""
     error("Either supply a valid server string or setup a default server through 'set_default_server!()'.")
   end
@@ -129,4 +134,9 @@ function get_default_pseudo(atom::Symbol, pseudo_set_name=:default; pseudo_fuzzy
       return default_pseudos[atom][pseudo_set_name][1]
     end
   end
+end
+
+function set_default_job_header(lines)
+  expr = :(default_header = $lines)
+  expr2file(default_file,expr)
 end

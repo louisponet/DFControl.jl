@@ -8,15 +8,27 @@ end
 Point3D(::Type{T},x) where T<:AbstractFloat = Point3D(T(x),T(x),T(x))
 Point3D(x::Array{<:AbstractFloat,1}) = Point3D(x[1],x[2],x[3])
 
-abstract type Band{T<:AbstractFloat} end
+abstract type Band end
 
 """
 Energy band from DFT calculation.
 """
-mutable struct DFBand{T<:AbstractFloat} <: Band{T}
+mutable struct DFBand{T<:AbstractFloat} <: Band
   k_points_cart::Array{Array{T,1},1}
   k_points_cryst::Array{Array{T,1},1}
   eigvals::Array{T,1}
+end
+
+function Base.display(band::DFBand{T}) where T <: AbstractFloat
+  println("DFBand{$T}:")
+  println("  k_points of length $(length(band.k_points_cart)):")
+  println("    cart:  $(band.k_points_cart[1]) -> $(band.k_points_cart[end])")
+  println("    cryst: $(band.k_points_cryst[1]) -> $(band.k_points_cryst[end])")
+  println("  eigvals: $(band.eigvals[1]) -> $(band.eigvals[end])")
+end
+
+function Base.display(bands::Array{<:DFBand})
+  map(display,bands)
 end
 
 #these are all the control blocks, they hold the flags that guide the calculation

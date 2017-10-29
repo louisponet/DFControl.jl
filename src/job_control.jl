@@ -598,3 +598,9 @@ Changes the data in the k point `DataBlock` inside the specified calculation.
 function change_k_points!(job::DFJob,calc_filename,k_points)
   change_k_points!(get_input(job,calc_filename),k_points)
 end
+
+# function process_outputs(job::DFJob; job_fuzzy = "job")
+#   job_name,t_inputs,t_outputs,t_run_commands,t_should_run = read_job_file(job.local_dir*search_dir(job_dir,job_fuzzy)[1])
+#   for output in t_outputs
+#     out_file = job.local_dir*search_dir(job.local_dir,output)[1]
+#     output = read_output(out_file)

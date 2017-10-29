@@ -365,26 +365,27 @@ function read_wannier_input(filename::String, T=Float32; run_command="", run=tru
         block_name = Symbol(split(lowercase(line))[end])
 
         if block_name == :projections
+          proj_dict = Dict{Symbol,Array{Symbol,1}}()
           line = readline(f)
-          if line == "random"
-            push!(data_blocks,WannierDataBlock(:projections,:random,nothing))
-            @goto start_label
-          else
-            proj_dict = Dict{Symbol,Array{Symbol,1}}()
-            while !contains(lowercase(line),"end")
-              if contains(line,"!") || line == ""
-                line = readline(f)
-                continue
-              end
+          while !contains(lowercase(line),"end")
+            if contains(line,"!")
+              line = readline(f)
+              continue
+            end
+            if contains(line, "random")
+              push!(data_blocks,WannierDataBlock(:projections,:random,nothing))
+              line = readline(f)
+              break
+            else
               split_line = strip_split(line,':')
               atom = Symbol(split_line[1])
               projections = [Symbol(proj) for proj in strip_split(split_line[2],';')]
               proj_dict[atom] = projections
               line = readline(f)
             end
-            push!(data_blocks,WannierDataBlock(:projections,:none,proj_dict))
-            @goto start_label
           end
+          push!(data_blocks,WannierDataBlock(:projections,:none,proj_dict))
+          @goto start_label
 
         elseif block_name == :kpoint_path
           line = readline(f)
@@ -546,6 +547,25 @@ function write_input(df_input::DFInput,filename::String=df_input.filename)
   end
 end
 
+#Incomplete: only works with SBATCH right now
+function write_job_name(job::DFJob,f)
+  write(f,"#SBATCH -J $(df_job.name) \n")
+end
+
+function write_job_header(f)
+  if isdefined(:default_job_header)
+    for line in default_job_header
+      if line[end-2:end] == "\n"
+        write(f,line)
+      else
+        write(f,line*"\n")
+      end
+    end
+  else
+    write(f,"\n")
+  end
+end
+
 """
     write_job_files(df_job::DFJob)
 
@@ -556,9 +576,8 @@ function write_job_files(df_job::DFJob)
   new_filenames   = String[]
 
   open(df_job.local_dir*"job.tt","w") do f
-    write(f,"#!/bin/bash\n","#SBATCH -N 1\n","#SBATCH --ntasks-per-node=24 \n","#SBATCH --time=24:00:00 \n","#SBATCH -J $(df_job.name) \n",
-          "#SBATCH -p defpart\n\n","module load open-mpi/gcc/1.10.2\n","module load mkl/2016.1.056\n","\n")
-
+    write_job_header(f)
+    write_job_name(df_job,f)
     for i=1:length(df_job.calculations)
       calculation = df_job.calculations[i]
       run_command = calculation.run_command
@@ -623,8 +642,8 @@ function read_job_file(job_file::String)
         i = 0
         for (j,s) in enumerate(s_line)
           if contains(s,".x")
-            i = j
-            break
+              i = j
+              break
           end
         end
         run_command = prod([s*" " for s in s_line[1:i]])
@@ -648,6 +667,19 @@ function read_job_file(job_file::String)
   end
   return name,input_files,output_files,run_commands,should_run
 end
+
+#Incomplete: because QE is stupid we have to find a way to distinguish nscf and bands outputs hardcoded.
+# function read_output(filename::string, args...)
+#   open(filename,"r") do f
+#     while !eof(f)
+#       line = readline(f)
+
+#       if contains(line,"self-consistent calculation")
+#         return
+#       elseif contains(line,"band structure calculation") && !contains(filename,"nscf")
+#         return read_qe_bands_file(filename,args...)
+#       elseif contains(line, "
+
 
 #---------------------------END GENERAL SECTION-------------------#
 
@@ -717,7 +749,7 @@ function init_defaults(filename::String)
   eval(parse(raw_input))
 end
 
-function load_defaults(filename::String)
+function load_defaults(filename::String=default_file)
   raw_input =""
   names_to_export = Symbol[] 
   open(filename,"r") do f

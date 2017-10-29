@@ -31,6 +31,7 @@ module DFControl
   export read_wannier_input
   export write_input
   export write_job_files
+  export expr2file
 
   include("input_control.jl")
   include("job_control.jl")
@@ -78,9 +79,13 @@ module DFControl
   export watch_qstat
 
   include("defaults.jl")
-  export add_default_pseudo_dir!
-  export set_default_server!
-  export remove_default_pseudo_dir!
+  export add_default_pseudo_dir
+  export set_default_server
+  export configure_default_pseudos
+  export remove_default_pseudo_dir
+  export set_default_job_header
+  export @set_default
+  export load_defaults
   
   init_defaults(default_file)
 end
