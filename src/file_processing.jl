@@ -738,7 +738,7 @@ function init_defaults(filename::String)
   open(filename,"r") do f
     while !eof(f)
       line = readline(f)
-      if line == ""
+      if line == "" || line[1] == "#"
         continue
       end
       lhs = parse(line).args[1]
