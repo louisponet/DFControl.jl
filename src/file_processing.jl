@@ -738,6 +738,9 @@ function init_defaults(filename::String)
   open(filename,"r") do f
     while !eof(f)
       line = readline(f)
+      if line == ""
+        continue
+      end
       lhs = parse(line).args[1]
       if typeof(lhs) == Symbol
         push!(names_to_export,lhs)
