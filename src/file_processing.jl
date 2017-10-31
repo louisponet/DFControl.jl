@@ -1,3 +1,5 @@
+using DataFmt: readdlm
+
 function parse_k_line(line,T)
   splt = split(line)
   k1   = parse(T,splt[5])
@@ -146,7 +148,6 @@ Return:         Array{Float64,2}(length(k_points),length(energies)) ,
                 (ytickvals,yticks)
 """
 function read_qe_kpdos(filename::String,column=1;fermi=0)
-  using DataFmt: readdlm
   read_tmp = readdlm(filename)
   zmat = zeros(typeof(read_tmp[1]),Int64(read_tmp[end,1]),size(read_tmp)[1]/Int64(read_tmp[end,1]))
   for i1=1:size(zmat)[1]
