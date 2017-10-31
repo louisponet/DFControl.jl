@@ -342,6 +342,49 @@ function write_qe_input(input::QEInput,filename::String=input.filename)
     end
   end
 end
+
+#Incomplete. certain variables are not read well 
+function read_qe_pw_flags(filename)
+  control_blocks = QEControlBlock[]
+  open(filename,"r") do f
+    while !eof(f)
+      line = readline(f)
+      if contains(line,"NAMELIST")
+        name = Symbol(lowercase(strip_split(line,"&")[2]))
+        flags = Dict{Symbol,Any}()
+        line = readline(f)
+        while !contains(line,"END OF NAMELIST")
+          if contains(line,"Variable")
+            flag = Symbol(strip_split(line)[2])
+            readline(f)
+            value = qe2julia(strip_split(readline(f))[2])
+            flags[flag] = value
+          elseif contains(line,"///")
+            while !contains(line,"\u005C\u005C\u005C")
+              line = readline(f)
+            end
+          end
+          line = readline(f)
+        end
+        push!(control_blocks, QEControlBlock(name,flags))
+      end
+    end
+  end
+  return control_blocks
+end
+           
+function qe2julia(qe_type)
+  qe_type = lowercase(qe_type)
+  if qe_type == "real"
+    return AbstractFloat
+  elseif qe_type == "character"
+    return String
+  elseif qe_type == "integer"
+    return Int
+  elseif qe_type == "logical"
+    return Bool
+  end
+end 
 #---------------------------END QUANTUM ESPRESSO SECTION----------------#
 #---------------------------START WANNIER SECTION ----------------------#
 

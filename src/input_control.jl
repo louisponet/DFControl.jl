@@ -387,3 +387,29 @@ function change_k_points!(input::DFInput,k_points)
     change_data!(input,:k_points,k_points)
   end
 end
+
+#Incomplete for now only QE flags are returned
+"""
+    print_pw_flags(namelist_symbol::Symbol)
+
+Prints the possible input flags and their type for a given input namelist.
+"""
+function print_pw_flags(namelist_symbol::Symbol)
+  for block in QEControlFlags
+    if block.name == namelist_symbol
+      display(block)
+    end
+  end
+end
+
+"""
+    print_pw_namelists()
+
+Prints all the possible pw input namelists.
+"""
+function print_pw_namelists()
+  for block in QEControlFlags
+    println(block.name)
+  end
+end
+

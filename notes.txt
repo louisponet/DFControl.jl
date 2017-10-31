@@ -1,14 +1,12 @@
 TODO:
-    -> implement get_input
     -> implement change_option!
     -> Implement error checking!
-    ->redo all the Documentation!
 
 TODO:
-    -> maybe for every dfinput we should have an options category, not sure
 
 TODO:
-    -> list all the input flags that are possible would clear up some checks and code!
+    -> Fix flags.
+    -> Clear up flag checks in the code now that we have all the input flags!
 
 TODO:
     -> autogenerate wannier input

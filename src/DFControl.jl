@@ -89,4 +89,9 @@ module DFControl
   export load_defaults
   
   init_defaults(default_file)
+
+  const QEControlFlags = read_qe_pw_flags(joinpath(@__DIR__,"../assets/inputs/qe/INPUT_PW.txt"))
+  export QEControlFlags
+  export print_pw_flags
+  export print_pw_namelists
 end
