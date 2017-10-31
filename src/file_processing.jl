@@ -1,4 +1,3 @@
-using Base.DataFmt: readdlm
 
 function parse_k_line(line,T)
   splt = split(line)
