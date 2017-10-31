@@ -8,6 +8,15 @@ end
 Point3D(::Type{T},x) where T<:AbstractFloat = Point3D(T(x),T(x),T(x))
 Point3D(x::Array{<:AbstractFloat,1}) = Point3D(x[1],x[2],x[3])
 
+import Base:+,-,*
++(x::Point3D,y::Point3D) = Point3D(x.x+y.x,x.y+y.y,x.z+y.z)
++(x::Point3D,y::Number) = Point3D(x.x+y,x.y+y,x.z+y)
+-(x::Point3D,y::Point3D) = Point3D(x.x-y.x,x.y-y.y,x.z-y.z)
+-(x::Point3D,y::Number) = Point3D(x.x-y,x.y-y,x.z-y)
+*(x::Point3D,y::Point3D) = Point3D(x.x*y.x,x.y*y.y,x.z*y.z)
+*(x::Point3D,y::Number) = Point3D(x.x*y,x.y*y,x.z*y)
+
+
 abstract type Band end
 
 """

@@ -46,6 +46,7 @@ module DFControl
   export get_flag
   export change_data!
   export get_data
+  export get_block
   export add_flags!
   export remove_flags!
   export change_flow!

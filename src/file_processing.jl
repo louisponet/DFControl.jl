@@ -161,15 +161,13 @@ function read_qe_kpdos(filename::String,column=1;fermi=0)
   return  zmat',(ytickvals,yticks)
 end
 
-
-
 """
     read_qe_input(filename,T=Float32)
 
 Reads a Quantum Espresso input file.
 Returns a DFInput.
 """
-function read_qe_input(filename,T=Float32;run_command ="",run=true)
+function read_qe_input(filename,T=Float32::Type;run_command ="",run=true)
   function get_card_option(line,length)
     if contains(line,"{")
       return Symbol(strip(split(line,"{")[end],'}'))
@@ -368,7 +366,7 @@ function read_wannier_input(filename::String, T=Float32; run_command="", run=tru
           proj_dict = Dict{Symbol,Array{Symbol,1}}()
           line = readline(f)
           while !contains(lowercase(line),"end")
-            if contains(line,"!")
+            if contains(line,"!")|| line==""
               line = readline(f)
               continue
             end
@@ -391,7 +389,7 @@ function read_wannier_input(filename::String, T=Float32; run_command="", run=tru
           line = readline(f)
           k_path_array = Array{Tuple{Symbol,Array{T,1}},1}()
           while !contains(lowercase(line),"end")
-            if contains(line,"!")
+            if contains(line,"!")|| line==""
               line = readline(f)
               continue
             end
@@ -423,6 +421,10 @@ function read_wannier_input(filename::String, T=Float32; run_command="", run=tru
           atoms = Dict{Symbol,Array{Point3D{T},1}}()
           option = Symbol(split(String(block_name),"_")[end])
           while !contains(lowercase(line),"end")
+            if contains(line,"!")|| line==""
+              line = readline(f)
+              continue
+            end
             split_line = strip_split(line)
             atom = Symbol(split_line[1])
             position = Point3D(parse_string_array(T,split_line[2:4]))
@@ -549,7 +551,7 @@ end
 
 #Incomplete: only works with SBATCH right now
 function write_job_name(job::DFJob,f)
-  write(f,"#SBATCH -J $(df_job.name) \n")
+  write(f,"#SBATCH -J $(job.name) \n")
 end
 
 function write_job_header(f)
@@ -760,6 +762,3 @@ function load_defaults(filename::String=default_file)
   raw_input *= "nothing ;"
   eval(parse(raw_input))
 end
-
-
-

@@ -234,11 +234,22 @@ end
 """
     get_data(df_job::DFJob, calc_filenames, block_symbol::Symbol)
 
-Looks through the calculation filenames and returns the datablock with the specified symbol.
+Looks through the calculation filenames and returns the data with the specified symbol.
 """
 function get_data(df_job::DFJob, calc_filenames, block_symbol::Symbol)
   for calc in get_inputs(df_job,calc_filenames)
     return get_data(calc,block_symbol)
+  end
+end
+
+"""
+    get_block(df_job::DFJob, calc_filenames, block_symbol::Symbol)
+
+Looks through the calculation filenames and returns the block with the specified symbol.
+"""
+function get_block(df_job::DFJob, calc_filenames, block_symbol::Symbol)
+  for calc in get_inputs(df_job,calc_filenames)
+    return get_block(calc,block_symbol)
   end
 end
 

@@ -100,11 +100,40 @@ end
 Returns the specified 'DataBlock'.
 """
 function get_data(input::DFInput, block_symbol::Symbol)
-  for block in input.data_blocks
+  block = get_block(input,block_symbol)
+  if block != nothing && typeof(block) <: DataBlock
+    return block.data
+  else 
+    error("No `DataBlock` with name '$block_symbol' found. ")
+  end
+end
+
+"""
+    get_block(input::QEInput, block_symbol::Symbol)
+
+Returns the block with name `block_symbol`.
+"""
+function get_block(input::QEInput, block_symbol::Symbol)
+  for block in [input.control_blocks; input.data_blocks]
     if block.name == block_symbol
-      return block.data
+      return block
     end
   end
+  return nothing
+end
+
+"""
+    get_block(input::WannierInput, block_symbol::Symbol)
+
+Returns the block with name `block_symbol`.
+"""
+function get_block(input::WannierInput, block_symbol::Symbol)
+  for block in input.data_blocks
+    if block.name == block_symbol
+      return block
+    end
+  end
+  return nothing
 end
 
 #here comes the code for all the setting of flags of different inputs
