@@ -343,19 +343,19 @@ end
 Changes the data inside the 'DataBlock' that holds the data of the atom positions.
 If 'default_pseudos' is defined it will look for the pseudo set and also write the correct values inside the 'DataBlock' that defines which pseudopotentials to use.
 """
-function change_atoms!(input::DFInput, atoms::Dict{Symbol,<:Array{<:Point3D,1}}, pseudo_set_name=:default; pseudo_fuzzy = nothing)
+function change_atoms!(input::DFInput, atoms::Dict{Symbol,<:Array{<:Point3D,1}}, pseudo_set_name=nothing,pseudo_fuzzy = nothing)
   if typeof(input) == WannierInput
     change_data!(input,:atoms_frac,atoms)
   elseif typeof(input) == QEInput
     change_data!(input,:atomic_positions,atoms)
-    if isdefined(:default_pseudos)
+    if isdefined(:default_pseudos) && pseudo_set_name != nothing
       atomic_species_dict = Dict{Symbol,String}()
       for atom in keys(atoms)
         atomic_species_dict[atom] = get_default_pseudo(atom,pseudo_set_name,pseudo_fuzzy=pseudo_fuzzy)
       end
       change_data!(input,:atomic_species,atomic_species_dict)
     end
-    if isdefined(:default_pseudo_dirs)
+    if isdefined(:default_pseudo_dirs) && pseudo_set_name != nothing
       change_flags!(input,Dict(:pseudo_dir => "'$(default_pseudo_dirs[pseudo_set_name])'"))
     end
   end
@@ -366,7 +366,7 @@ end
 
 Changes the cell parameters `DataBlock`.
 """
-function change_cell_parameters!(input::DFInput, cell_param::Array{AbstractFloat,2})
+function change_cell_parameters!(input::DFInput, cell_param::Array{<:AbstractFloat,2})
   assert(size(cell_param)==(3,3))
   if typeof(input) == WannierInput
     change_data!(input,:unit_cell_cart,cell_param)
@@ -387,29 +387,3 @@ function change_k_points!(input::DFInput,k_points)
     change_data!(input,:k_points,k_points)
   end
 end
-
-#Incomplete for now only QE flags are returned
-"""
-    print_pw_flags(namelist_symbol::Symbol)
-
-Prints the possible input flags and their type for a given input namelist.
-"""
-function print_pw_flags(namelist_symbol::Symbol)
-  for block in QEControlFlags
-    if block.name == namelist_symbol
-      display(block)
-    end
-  end
-end
-
-"""
-    print_pw_namelists()
-
-Prints all the possible pw input namelists.
-"""
-function print_pw_namelists()
-  for block in QEControlFlags
-    println(block.name)
-  end
-end
-

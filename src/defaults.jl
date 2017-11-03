@@ -10,10 +10,11 @@ end
 function define_def(default, expr1, expr2)
   if !isdefined(default)
     expr2file(default_file,expr1)
+    init_defaults(default_file)
   else
     expr2file(default_file,expr2)
+    load_defaults(default_file)
   end
-  load_defaults(default_file)
 end
 
 """
@@ -36,6 +37,7 @@ function remove_default_pseudo_dir(pseudo_symbol::Symbol)
   if isdefined(:default_pseudo_dirs) && haskey(default_pseudo_dirs,pseudo_symbol)
     pop!(default_pseudo_dirs,pseudo_symbol)
   end
+  load_defaults(default_file)
 end
 
 """
@@ -95,8 +97,11 @@ function configure_default_pseudos(server = get_default_server(), pseudo_dirs = 
       outputs[name] = readstring(`ssh -t $server ls $directory`)
     end
   end
-  
-  expr2file(default_file,:(default_pseudos = Dict{Symbol,Dict{Symbol,Array{String,1}}}()))
+ 
+  if !isdefined(:default_pseudos)
+    expr2file(default_file,:(default_pseudos = Dict{Symbol,Dict{Symbol,Array{String,1}}}()))
+    init_defaults(default_file)
+  end
   
   # atoms = Dict{Symbol,Dict{Symbol,Array{String,1}}}()
   for el in keys(ELEMENTS)
@@ -136,7 +141,40 @@ function get_default_pseudo(atom::Symbol, pseudo_set_name=:default; pseudo_fuzzy
   end
 end
 
+"""
+     set_default_job_header(lines)
+    
+Sets the header that will get added to each job.tt file. 
+"""
 function set_default_job_header(lines)
-  expr = :(default_header = $lines)
+  expr = :(default_job_header = $lines)
   expr2file(default_file,expr)
+  if !isdefined(:default_job_header)
+    init_defaults(default_file)
+  else
+    load_defaults(default_file)
+  end
 end
+"""
+     add_default_input(input::DFInput, calculation::Symbol)
+
+Adds the input to the default inputs, writes it to a file in user_defaults folder to be read every time on load.
+"""
+function set_default_input(input::DFInput, calculation::Symbol)
+  if !isdefined(:default_inputs)
+    expr = :(default_inputs = Dict{Symbol,DFInput}())
+    expr2file(default_file,expr)
+    init_defaults(default_file)
+  end
+  filename = dirname(default_file)*"/"*String(calculation)
+  if typeof(input) == WannierInput
+    write_input(input,filename * ".win")
+    expr2file(default_file,:(default_inputs[$(QuoteNode(calculation))] = read_wannier_input($filename * ".win",run_command=$(input.run_command))))
+  elseif typeof(input) == QEInput
+    write_input(input,filename * ".in")
+    expr2file(default_file,:(default_inputs[$(QuoteNode(calculation))] = read_qe_input($filename * ".in",run_command = $(input.run_command))))
+  end
+  load_defaults(default_file)
+end
+
+

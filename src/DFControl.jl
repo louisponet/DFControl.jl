@@ -14,12 +14,14 @@ module DFControl
   export WannierInput
   export DFJob
   export ELEMENTS
-
+  
   include("utils.jl")
+  export print_qe_flags
+  export print_qe_namelists
   export apply_fermi_level
   export apply_fermi_level!
   export gen_k_grid
-
+  
   #@Cleanup this should all be just one thing without qe
   #@Cleanup what do we actually want to have as frontend?
   include("file_processing.jl")
@@ -32,7 +34,7 @@ module DFControl
   export write_input
   export write_job_files
   export expr2file
-
+  
   include("input_control.jl")
   include("job_control.jl")
   export load_job
@@ -41,7 +43,7 @@ module DFControl
   export save_job
   export push_job
   export submit_job
-
+  
   export change_flags!
   export get_flag
   export change_data!
@@ -71,14 +73,14 @@ module DFControl
   include("plotting.jl")
   export plot_qe_bands
   export plot_qe_kpdos
-
+  
   include("server_comm.jl")
   export read_errors
   export pull_outputs
   export pull_file
   export qstat
   export watch_qstat
-
+  
   include("defaults.jl")
   export add_default_pseudo_dir
   export set_default_server
@@ -87,11 +89,10 @@ module DFControl
   export set_default_job_header
   export @set_default
   export load_defaults
+  export set_default_input
   
   init_defaults(default_file)
-
-  const QEControlFlags = read_qe_pw_flags(joinpath(@__DIR__,"../assets/inputs/qe/INPUT_PW.txt"))
+  qe_input_files = search_dir(joinpath(@__DIR__,"../assets/inputs/qe/"),"INPUT")
+  const QEControlFlags = vcat([read_qe_flags(joinpath(@__DIR__,"../assets/inputs/qe/") * file) for file in qe_input_files]...)
   export QEControlFlags
-  export print_pw_flags
-  export print_pw_namelists
 end

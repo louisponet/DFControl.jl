@@ -344,7 +344,7 @@ function write_qe_input(input::QEInput,filename::String=input.filename)
 end
 
 #Incomplete. certain variables are not read well 
-function read_qe_pw_flags(filename)
+function read_qe_flags(filename)
   control_blocks = QEControlBlock[]
   open(filename,"r") do f
     while !eof(f)
@@ -355,7 +355,12 @@ function read_qe_pw_flags(filename)
         line = readline(f)
         while !contains(line,"END OF NAMELIST")
           if contains(line,"Variable")
-            flag = Symbol(strip_split(line)[2])
+            t_line = strip_split(line)[2]
+            if contains(t_line,"(") && contains(t_line,")")
+              flag = Symbol(strip_split(t_line,",")[1])
+            else
+              flag = Symbol(t_line)
+            end
             readline(f)
             value = qe2julia(strip_split(readline(f))[2])
             flags[flag] = value
@@ -602,7 +607,7 @@ end
 function write_job_header(f)
   if isdefined(:default_job_header)
     for line in default_job_header
-      if line[end-2:end] == "\n"
+      if contains(line,"\n")
         write(f,line)
       else
         write(f,line*"\n")
@@ -623,8 +628,9 @@ function write_job_files(df_job::DFJob)
   new_filenames   = String[]
 
   open(df_job.local_dir*"job.tt","w") do f
-    write_job_header(f)
+    write(f,"#!/bin/bash\n")
     write_job_name(df_job,f)
+    write_job_header(f)
     for i=1:length(df_job.calculations)
       calculation = df_job.calculations[i]
       run_command = calculation.run_command
@@ -756,8 +762,6 @@ function expr2file(filename::String, expression::Expr)
     
     lhs_t = expr.args[1]
     rhs_t = expr.args[2]
-    if lhs == :(default_pseudos[:Ge])
-    end
 
     if lhs_t == lhs
       found = true

@@ -159,6 +159,8 @@ function add_calculation!(df_job::DFJob, input::DFInput, run_index::Int=length(d
   input.filename = filename
   input.run_command = run_command
   insert!(df_job.calculations,run_index,input)
+  print_info(calculation)
+  print_flow(df_job)
 end
 
 """
@@ -420,6 +422,17 @@ function print_block(job::DFJob, block_name::Symbol)
 end
 
 """
+    print_block(job::DFJob, filenames, block_symbol::Symbol)
+
+Prints the information of the block in a selected file of the job.
+"""
+function print_block(job::DFJob, filenames, block_symbol::Symbol)
+  for calc in get_inputs(job,filenames)
+    print_block(calc,block_name)
+  end
+end
+
+"""
     print_blocks(job::DFJob, calc_filenames)
 
 Prints information on all the blocks in the specified calculations.
@@ -573,9 +586,9 @@ If default pseudopotentials are defined, a set can be specified, together with a
 These pseudospotentials are then set in all the calculations that need it.
 All flags which specify the number of atoms inside the calculation also gets set to the correct value.
 """
-function change_atoms!(job::DFJob, atoms::Dict{Symbol,<:Array{<:Point3D,1}}, pseudo_set_name=:default, pseudo_fuzzy=nothing)
+function change_atoms!(job::DFJob, atoms::Dict{Symbol,<:Array{<:Point3D,1}},args...)
   for calc in job.calculations
-    change_atoms!(calc,atoms,pseudo_set_name,pseudo_fuzzy=pseudo_fuzzy)
+    change_atoms!(calc,atoms,args...)
   end
   nat = 0
   for pos in values(atoms)
@@ -590,7 +603,7 @@ end
 
 Changes the cell parameters in all the input files that have that `DataBlock`.
 """
-function change_cell_parameters!(job::DFJob, cell_param::Array{AbstractFloat,2})
+function change_cell_parameters!(job::DFJob, cell_param::Array{<:AbstractFloat,2})
   for calc in job.calculations
     if typeof(calc) == WannierInput
       alat = get_flag(job,:A)

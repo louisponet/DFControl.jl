@@ -4,7 +4,7 @@ Searches a directory for all files containing the key.
 Input: path::String,
        key::String
 """
-search_dir(path::String,key::String) = filter(x->contains(x,key), readdir(path))
+search_dir(path::String,key) = filter(x->contains(x,key), readdir(path))
 
 """
 Parse an array of strings into an array of a type.
@@ -85,7 +85,12 @@ function form_directory(directory::String)
   end
 end
 
-function gen_k_grid(na,nb,nc,input,T=Float32)
+"""
+    gen_k_grid(na, nb, nc, input, T=Float32)
+
+Returns an array of k-grid points that are equally spaced, input can be either `:wan` or `:nscf`, the returned grids are appropriate as inputs for wannier90 or an nscf calculation respectively.
+"""
+function gen_k_grid(na, nb, nc, input, T=Float32)
   if input == :wan || typeof(input) == WannierInput
     return [T[a,b,c] for a in collect(linspace(0,1,na+1))[1:end-1],b in collect(linspace(0,1,nb+1))[1:end-1],c in collect(linspace(0,1,nc+1))[1:end-1]]
   elseif input == :nscf || typeof(input) == QEInput
@@ -94,3 +99,28 @@ function gen_k_grid(na,nb,nc,input,T=Float32)
 end
 
 strip_split(line,args...) = strip.(split(line,args...))
+
+#Incomplete for now only QE flags are returned
+"""
+    print_qe_flags(namelist_symbol::Symbol)
+
+Prints the possible Quantum Espresso input flags and their type for a given input namelist.
+"""
+function print_qe_flags(namelist_symbol::Symbol)
+  for block in QEControlFlags
+    if block.name == namelist_symbol
+      display(block)
+    end
+  end
+end
+
+"""
+    print_qe_namelists()
+
+Prints all the possible Quantum Espresso input namelists.
+"""
+function print_qe_namelists()
+  for block in QEControlFlags
+    println(block.name)
+  end
+end
