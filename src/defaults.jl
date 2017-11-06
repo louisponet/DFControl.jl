@@ -1,6 +1,40 @@
 "File with all the user defaults inside it"
 const default_file = joinpath(@__DIR__,"../user_defaults/user_defaults.jl")
 
+function init_defaults(filename::String)
+  raw_input =""
+  names_to_export = Symbol[] 
+  open(filename,"r") do f
+    while !eof(f)
+      line = readline(f)
+      if line == "" || line[1] == '#'
+        continue
+      end
+      lhs = parse(line).args[1]
+      if typeof(lhs) == Symbol
+        push!(names_to_export,lhs)
+      end
+      raw_input *= line*"; "
+    end
+  end
+  for name in names_to_export
+    eval(:(export $name))
+  end
+  eval(parse(raw_input))
+end
+
+function load_defaults(filename::String=default_file)
+  raw_input =""
+  names_to_export = Symbol[] 
+  open(filename,"r") do f
+    while !eof(f)
+      raw_input *= readline(f)*"; "
+    end
+  end
+  raw_input *= "nothing ;"
+  eval(parse(raw_input))
+end
+
 "Macro which allows you to define any default variable that will get loaded every time you use this package."
 macro set_default(expr)
   expr2file(default_file,expr)
