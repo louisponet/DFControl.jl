@@ -755,6 +755,9 @@ function expr2file(filename::String, expression::Expr)
     end
     
     expr = parse(line)
+    if typeof(expr) == Void
+      continue
+    end
     if expr.head != eq
       continue
     end
