@@ -91,7 +91,8 @@ module DFControl
   export @set_default
   export load_defaults
   export set_default_input
-  
+  export remove_default_input
+
   init_defaults(default_file)
   qe_input_files = search_dir(joinpath(@__DIR__,"../assets/inputs/qe/"),"INPUT")
   const QEControlFlags = vcat([read_qe_flags(joinpath(@__DIR__,"../assets/inputs/qe/") * file) for file in qe_input_files]...)

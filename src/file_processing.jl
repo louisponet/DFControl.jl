@@ -781,3 +781,24 @@ function expr2file(filename::String, expression::Expr)
   end
 end
 
+function rm_expr_lhs(filename, lhs)
+  lines       = readlines(filename)
+  write_lines = String[]
+  ind_2_rm    = 0
+
+  for line in lines
+    lhs_t = parse(line).args[1]
+    if lhs_t == lhs
+      continue
+    else
+      push!(write_lines,line)
+    end
+  end
+  
+  open(filename,"w") do f
+    for line in write_lines
+      write(f,line*"\n")
+    end
+  end
+end
+

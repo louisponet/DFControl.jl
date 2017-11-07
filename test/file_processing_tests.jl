@@ -56,3 +56,34 @@ rm(test_filename)
 print_qe_flags(:electrons)
 print_qe_namelists()
 @test size(gen_k_grid(10,10,10,:wan))[1] == size(gen_k_grid(10,10,10,:nscf))[1]
+
+
+add_default_pseudo_dir(:default,"/test/test/test")
+@test isdefined(:default_pseudo_dirs)
+@test DFWannier.get_default_pseudo_dirs()[:default] == "/test/test/test"
+remove_default_pseudo_dir(:default)
+@test length(keys(default_pseudo_dirs))==0
+
+pr_s = DFWannier.get_default_server()
+
+set_default_server("test/default")
+@test DFWannier.get_default_server() == "test/default"
+if pr_s != ""
+  set_default_server(pr_s)
+end
+if isdefined(:default_job_header)
+pr_h = default_job_header
+end
+set_default_job_header(["asdf","asdf"])
+set_default_job_header(["asdf","asdf"])
+@test default_job_header ==["asdf","asdf"] 
+if pr_h != nothing
+  set_default_job_header(pr_h)
+end
+
+set_default_input(scf_input,:scf)
+set_default_input(scf_input,:scf)
+set_default_input(bands_input,:bands)
+@test default_inputs[:scf].run_command == scf_input.run_command 
+remove_default_input(:scf)
+remove_default_input(:bands)

@@ -7,5 +7,3 @@ BiAlO3 = load_server_job("BiAlO3/NSOC","/home/ponet/Documents/PhD/BiAlO3/NSOC")
 pull_outputs(BiAlO3, extras = ["*.xsf"])
 Pkg.test("DFControl")
 
-
-qstat

@@ -52,7 +52,7 @@ function define_def(default, expr1, expr2)
 end
 
 """
-    add_default_pseudo_dir!(pseudo_symbol::Symbol, dir::String)
+    add_default_pseudo_dir(pseudo_symbol::Symbol, dir::String)
 
 Adds an entry inside the `default_pseudo_dirs` dictionary with flag `pseudo_symbol`.
 """
@@ -63,19 +63,24 @@ function add_default_pseudo_dir(pseudo_symbol::Symbol, dir::String)
 end
 
 """
-    remove_default_pseudo_dir!(pseudo_symbol::Symbol)
+    remove_default_pseudo_dir(pseudo_symbol::Symbol)
 
 Removes entry with flag `pseudo_symbol` from the `default_pseudo_dirs` dictionary. 
 """
 function remove_default_pseudo_dir(pseudo_symbol::Symbol)
   if isdefined(:default_pseudo_dirs) && haskey(default_pseudo_dirs,pseudo_symbol)
     pop!(default_pseudo_dirs,pseudo_symbol)
+    if isempty(default_pseudo_dirs)
+      rm_expr_lhs(default_file,:default_pseudo_dirs)
+    else
+      rm_expr_lhs(default_file,:(default_pseudo_dirs[$(QuoteNode(pseudo_symbol))]))
+    end
   end
   load_defaults(default_file)
 end
 
 """
-    set_default_server!(server::String)
+    set_default_server(server::String)
 
 Sets the default server.
 """
@@ -189,8 +194,9 @@ function set_default_job_header(lines)
     load_defaults(default_file)
   end
 end
+
 """
-     add_default_input(input::DFInput, calculation::Symbol)
+     set_default_input(input::DFInput, calculation::Symbol)
 
 Adds the input to the default inputs, writes it to a file in user_defaults folder to be read every time on load.
 """
@@ -211,4 +217,24 @@ function set_default_input(input::DFInput, calculation::Symbol)
   load_defaults(default_file)
 end
 
+"""
+    remove_default_input(input::Symbol)
+    
+Remove the default input specified by the Symbol. Also removes the stored input file.
+"""
+function remove_default_input(input::Symbol)
+  if haskey(default_inputs,input)
+    input = pop!(default_inputs,input)
+    if isempty(default_inputs)
+      rm_expr_lhs(default_file,:default_inputs)
+      default_inputs = nothing
+    else
+      rm_expr_lhs(default_file,:(default_inputs[$(QuoteNode(input))]))
+    end
+    rm(joinpath(@__DIR__,"../user_defaults/$(input.filename)"))
+  else
+    error("Default_calculations does not have an input with symbol $symbol.\n  Possible symbols are: $(keys(default_inputs))")
+  end
+end
+  
 
