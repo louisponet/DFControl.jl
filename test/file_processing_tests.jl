@@ -81,7 +81,7 @@ end
 set_default_job_header(["asdf","asdf"])
 set_default_job_header(["asdf","asdf"])
 @test default_job_header ==["asdf","asdf"] 
-if pr_h != nothing
+if isdefined(pr_h)
   set_default_job_header(pr_h)
 end
 
