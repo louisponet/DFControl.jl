@@ -58,9 +58,10 @@ add_flags!(df_job,:control,Dict(:test => "test"))
 
 add_flags!(df_job,Dict(:test=>"test"))
 @test get_flag(df_job,"wan.win",:test)=="test"
-remove_flags!(df_job,"wan.win",:test)
+remove_flags!(df_job,"wan.win",[:test,:dis_win_max])
 remove_flags!(df_job,:test)
 @test get_flag(df_job,:test)==nothing
+@test get_flag(df_job,:dis_win_max)==nothing
 
 set_flow!(df_job,[false for i=1:length(df_job.calculations)])
 @test df_job.calculations[1].run == false

@@ -47,4 +47,7 @@ write_input(wan_test,test_filename)
 @test wan_test.flags == read_wannier_input(test_filename).flags
 wan_test2 = read_wannier_input(test_filename)
 @test wan_test.data_blocks[1].data == wan_test2.data_blocks[1].data
+@test print_flag(scf_input,:pseudo_dir) == print_flag(bands_input,:pseudo_dir)
+remove_flags!(wan_test2,[:dis_win_max,:dis_win_min])
+@test get_flag(wan_test2,:dis_win_max)==get_flag(wan_test2,:dis_win_min)
 rm(test_filename)
