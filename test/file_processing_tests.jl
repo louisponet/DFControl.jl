@@ -19,7 +19,7 @@ display(projwfc_input)
 @test get_flag(projwfc_input,:kresolveddos) == true
 
 test_bands = read_qe_bands_file(joinpath(@__DIR__,"../assets/outputs/bands.out"))
-@test display(test_bands[1]) == display([test_bands[1]])
+@test display(test_bands[1]) == display([test_bands[1]])[1]
 kpdos_test,(ticks,tickvals)  = read_qe_kpdos(joinpath(@__DIR__,"../assets/outputs/kpdos.out"))
 @test length(test_bands) == 48
 @test length(test_bands[1].k_points_cart) == 201
@@ -53,6 +53,6 @@ remove_flags!(wan_test2,[:dis_win_max,:dis_win_min])
 @test get_flag(wan_test2,:dis_win_max)==get_flag(wan_test2,:dis_win_min)
 rm(test_filename)
 
-@test print_qe_flags(:electrons) != print_qe_flags(:control)
+print_qe_flags(:electrons)
 print_qe_namelists()
-@test gen_k_grid(10,10,10,:wan)[1] == gen_k_grid(10,10,10,:nscf)[1]
+@test size(gen_k_grid(10,10,10,:wan))[1] == size(gen_k_grid(10,10,10,:nscf))[1]
