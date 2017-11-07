@@ -2,6 +2,7 @@ using DFControl, Base.Test
 
 test_job_path = joinpath(@__DIR__,"../assets/inputs/test_job")
 df_job = load_job(test_job_path)
+display(df_job)
 df_job2 = load_job(joinpath(@__DIR__,test_job_path),new_local_dir="blabla")
 @test df_job2.local_dir    == "blabla/"
 @test length(df_job.calculations) == 7

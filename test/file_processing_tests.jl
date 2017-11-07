@@ -4,7 +4,7 @@ using DFControl, Base.Test
 scf_input     = read_qe_input(joinpath(@__DIR__,"../assets/inputs/qe/scf.in"),Float64)
 bands_input   = read_qe_input(joinpath(@__DIR__,"../assets/inputs/qe/bands.in"),Float64)
 projwfc_input = read_qe_input(joinpath(@__DIR__,"../assets/inputs/qe/projwfc.in"),Float64)
-
+display(projwfc_input)
 @test get_flag(scf_input,:calculation) == "'scf'"
 @test get_data(scf_input,:atomic_species)[:Te] == "Te.rel-pbesol-dn-kjpaw_psl.0.2.2.UPF"
 @test get_block(scf_input,:k_points).option == :automatic
@@ -19,6 +19,7 @@ projwfc_input = read_qe_input(joinpath(@__DIR__,"../assets/inputs/qe/projwfc.in"
 @test get_flag(projwfc_input,:kresolveddos) == true
 
 test_bands = read_qe_bands_file(joinpath(@__DIR__,"../assets/outputs/bands.out"))
+@test display(test_bands[1]) == display([test_bands[1]])
 kpdos_test,(ticks,tickvals)  = read_qe_kpdos(joinpath(@__DIR__,"../assets/outputs/kpdos.out"))
 @test length(test_bands) == 48
 @test length(test_bands[1].k_points_cart) == 201
@@ -51,3 +52,7 @@ wan_test2 = read_wannier_input(test_filename)
 remove_flags!(wan_test2,[:dis_win_max,:dis_win_min])
 @test get_flag(wan_test2,:dis_win_max)==get_flag(wan_test2,:dis_win_min)
 rm(test_filename)
+
+@test print_qe_flags(:electrons) != print_qe_flags(:control)
+print_qe_namelists()
+@test gen_k_grid(10,10,10,:wan)[1] == gen_k_grid(10,10,10,:nscf)[1]
