@@ -276,7 +276,7 @@ end
 
 #can I use @generated here?
 function write_block_data(f,data)
-  if typeof(data)<:Array{Vector{Float32},1} #k_points
+  if typeof(data)<:Array{Vector{Float32},1} || typeof(data)<:Array{Vector{Float64},1} #k_points
     for x in data
       for y in x
         write(f," $y")
@@ -320,7 +320,6 @@ function write_qe_input(input::QEInput,filename::String=input.filename)
     write_block(data)      = write_block_data(f,data)
     for block in input.control_blocks
       write(f,"&$(block.name)\n")
-      # block.flags |> write_flag
       map(write_flag,[(flag,data) for (flag,data) in block.flags])
       write(f,"/\n\n")
     end

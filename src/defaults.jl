@@ -68,12 +68,12 @@ end
 Removes entry with flag `pseudo_symbol` from the `default_pseudo_dirs` dictionary. 
 """
 function remove_default_pseudo_dir(pseudo_symbol::Symbol)
-  if isdefined(:default_pseudo_dirs) && haskey(default_pseudo_dirs,pseudo_symbol)
-    pop!(default_pseudo_dirs,pseudo_symbol)
-    if isempty(default_pseudo_dirs)
+  if isdefined(:default_pseudo_dirs) && haskey(DFControl.default_pseudo_dirs,pseudo_symbol)
+    pop!(DFControl.default_pseudo_dirs,pseudo_symbol)
+    rm_expr_lhs(default_file,:(default_pseudo_dirs[$(QuoteNode(pseudo_symbol))]))
+    if isempty(DFControl.default_pseudo_dirs)
       rm_expr_lhs(default_file,:default_pseudo_dirs)
-    else
-      rm_expr_lhs(default_file,:(default_pseudo_dirs[$(QuoteNode(pseudo_symbol))]))
+      DFControl.default_pseudo_dirs = nothing
     end
   end
   load_defaults(default_file)
@@ -223,15 +223,14 @@ end
 Remove the default input specified by the Symbol. Also removes the stored input file.
 """
 function remove_default_input(input::Symbol)
-  if haskey(default_inputs,input)
-    input = pop!(default_inputs,input)
-    if isempty(default_inputs)
+  if haskey(DFControl.default_inputs,input)
+    input_t = pop!(DFControl.default_inputs,input)
+    rm_expr_lhs(default_file,:(default_inputs[$(QuoteNode(input))]))
+    if isempty(DFControl.default_inputs)
       rm_expr_lhs(default_file,:default_inputs)
-      default_inputs = nothing
-    else
-      rm_expr_lhs(default_file,:(default_inputs[$(QuoteNode(input))]))
+      DFControl.default_inputs = nothing
     end
-    rm(joinpath(@__DIR__,"../user_defaults/$(input.filename)"))
+    rm(joinpath(@__DIR__,"../user_defaults/$(input_t.filename)"))
   else
     error("Default_calculations does not have an input with symbol $symbol.\n  Possible symbols are: $(keys(default_inputs))")
   end
