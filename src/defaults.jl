@@ -73,7 +73,7 @@ function remove_default_pseudo_dir(pseudo_symbol::Symbol)
     rm_expr_lhs(default_file,:(default_pseudo_dirs[$(QuoteNode(pseudo_symbol))]))
     if isempty(DFControl.default_pseudo_dirs)
       rm_expr_lhs(default_file,:default_pseudo_dirs)
-      default_pseudo_dirs = nothing
+      Main.default_pseudo_dirs = nothing
     end
   end
   load_defaults(default_file)
@@ -228,7 +228,7 @@ function remove_default_input(input::Symbol)
     rm_expr_lhs(default_file,:(default_inputs[$(QuoteNode(input))]))
     if isempty(DFControl.default_inputs)
       rm_expr_lhs(default_file,:default_inputs)
-      DFControl.default_inputs = nothing
+      Main.default_inputs = nothing
     end
     rm(joinpath(@__DIR__,"../user_defaults/$(input_t.filename)"))
   else
