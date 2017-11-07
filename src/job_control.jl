@@ -159,7 +159,7 @@ function add_calculation!(df_job::DFJob, input::DFInput, run_index::Int=length(d
   input.filename = filename
   input.run_command = run_command
   insert!(df_job.calculations,run_index,input)
-  print_info(calculation)
+  print_info(input)
   print_flow(df_job)
 end
 
@@ -194,7 +194,7 @@ Looks through the given calculations for the specified flags. If any that match 
 function change_flags!(df_job::DFJob, calc_filenames, new_flag_data::Dict{Symbol,<:Any})
   found_keys = Symbol[]
   for calc in get_inputs(df_job,calc_filenames)
-    t_found_keys = change_flags!(calculation,new_flag_data)
+    t_found_keys = change_flags!(calc,new_flag_data)
     for key in t_found_keys
       if !(key in found_keys) push!(found_keys,key) end
     end
@@ -428,7 +428,7 @@ Prints the information of the block in a selected file of the job.
 """
 function print_block(job::DFJob, filenames, block_symbol::Symbol)
   for calc in get_inputs(job,filenames)
-    print_block(calc,block_name)
+    print_block(calc,block_symbol)
   end
 end
 
@@ -519,9 +519,9 @@ end
 
 Prints the specified flags running through all the claculations in the job.
 """
-function print_flags(job::DFJob, flags)
+function print_flags(job::DFJob, flags::Array{Symbol,1})
   for flag in flags
-    print_flags(job,flag)
+    print_flag(job,flag)
   end
 end
 

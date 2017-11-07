@@ -43,6 +43,54 @@ data = get_data(df_job,"nscf",:atomic_positions)
 data[:Te] = data[:Te].+Point3D(0.01f0)
 change_data!(df_job,"nscf",:atomic_positions,data)
 @test get_block(df_job,"nscf",:atomic_positions).data == data
+
+scf_input     = read_qe_input(joinpath(@__DIR__,"../assets/inputs/qe/scf.in"),Float64)
+t_l = length(df_job.calculations)
+add_calculation!(df_job, scf_input)
+@test length(df_job.calculations)==t_l+1
+change_flags!(df_job,Dict(:dis_win_min => 9.2f0))
+@test get_flag(df_job,"wan.win",:dis_win_min)==9.2f0
+change_flags!(df_job,["nscf"],Dict(:calculation => "'scf'"))
+@test get_flag(df_job,"nscf",:calculation)== "'scf'"
+
+add_flags!(df_job,:control,Dict(:test => "test"))
+@test get_flag(df_job,"nscf",:test) == "test"
+
+add_flags!(df_job,Dict(:test=>"test"))
+@test get_flag(df_job,"wan.win",:test)=="test"
+remove_flags!(df_job,"wan.win",:test)
+remove_flags!(df_job,:test)
+@test get_flag(df_job,:test)==nothing
+
+set_flow!(df_job,[false for i=1:length(df_job.calculations)])
+@test df_job.calculations[1].run == false
+change_flow!(df_job,[(1,true)])
+@test df_job.calculations[1].run
+change_flow!(df_job,["nscf","bands"],true)
+@test df_job.calculations[2].run
+change_flow!(df_job,[("pw2wan",true)])
+@test df_job.calculations[end-2].run
+
+change_run_command!(df_job,"nscf","test")
+@test get_run_command(df_job,"nscf") == "test"
+
+print_run_command(df_job,"nscf")
+print_flow(df_job)
+@test print_block(df_job,:atomic_positions) == print_block(df_job,"nscf",:atomic_positions)
+@test print_blocks(df_job) == print_data(df_job)
+@test print_blocks(df_job,"bands") == print_data(df_job,"bands")
+print_info(df_job)
+print_flags(df_job)
+@test print_flags(df_job,"nscf") == print_flags(df_job,["nscf"])
+@test print_flags(df_job,[:dis_win_min]) == print_flag(df_job,:dis_win_min) 
+@test get_inputs(df_job,["nscf"]) == get_inputs(df_job,"nscf")
+
+
+
+
+
+
+
 # @test check_job_data(df_job,check_keys) == Dict(:sk1=>3,:prefix=>"'test'",:noncolin => false, :ecutwfc=> 35)
 
 # set_data1 = Dict(:Ze => [Point3D(1.2,3.2,1.2)])

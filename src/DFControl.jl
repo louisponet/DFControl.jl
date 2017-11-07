@@ -52,6 +52,7 @@ module DFControl
   export add_flags!
   export remove_flags!
   export change_flow!
+  export set_flow!
   export add_calculation!
   export get_run_command
   export change_run_command!

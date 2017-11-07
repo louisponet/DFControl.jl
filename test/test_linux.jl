@@ -8,3 +8,4 @@ pull_outputs(BiAlO3, extras = ["*.xsf"])
 Pkg.test("DFControl")
 
 
+qstat
