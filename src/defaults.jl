@@ -73,7 +73,7 @@ function remove_default_pseudo_dir(pseudo_symbol::Symbol)
     rm_expr_lhs(default_file,:(default_pseudo_dirs[$(QuoteNode(pseudo_symbol))]))
     if isempty(DFControl.default_pseudo_dirs)
       rm_expr_lhs(default_file,:default_pseudo_dirs)
-      DFControl.default_pseudo_dirs = nothing
+      default_pseudo_dirs = nothing
     end
   end
   load_defaults(default_file)
