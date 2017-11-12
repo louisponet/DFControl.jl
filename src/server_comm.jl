@@ -95,7 +95,7 @@ function qstat(server)
   run(`ssh -t $server qstat`)
 end
 
-qstat() = qstat(default_server())
+qstat() = qstat(get_default_server())
 
 """
     watch_qstat(server)
@@ -106,4 +106,4 @@ function watch_qstat(server)
 end
 
 "Runs `watch_qstat(default_server)`."
-watch_qstat() = watch_qstat(default_server())
+watch_qstat() = watch_qstat(get_default_server())
