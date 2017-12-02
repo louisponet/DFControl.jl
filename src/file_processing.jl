@@ -175,6 +175,8 @@ function read_qe_input(filename,T=Float32::Type;run_command ="",run=true)
       return Symbol(strip(split(line,"{")[end],'}'))
     elseif contains(line,"(")
       return Symbol(strip(split(line,"(")[end],')'))
+    else
+      return Symbol(split(line)[end])
     end
   end
   control_blocks = Array{QEControlBlock,1}()
