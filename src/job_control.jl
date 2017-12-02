@@ -302,7 +302,7 @@ end
 
 Looks through the calculation filenames and removes the specified flags.
 """
-function remove_flags!(df_job::DFJob, calc_filenames, flags...)
+function remove_flags!(df_job::DFJob, calc_filenames::Array{<:String,1}, flags...)
   for calc in get_inputs(df_job,calc_filenames)
     remove_flags!(calc,flags...)
   end
@@ -597,7 +597,7 @@ function change_atoms!(job::DFJob, atoms::Dict{Symbol,<:Array{<:Point3D,1}};kwar
   for pos in values(atoms)
     nat+=length(pos)
   end
-  change_flags!(job,Dict(:nat=>nat))
+  change_flags!(job,:nat=>nat)
 end
 
 #automatically sets the cell parameters for the entire job, implement others

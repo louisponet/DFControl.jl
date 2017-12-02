@@ -152,7 +152,8 @@ function configure_default_pseudos(server = get_default_server(), pseudo_dirs = 
     i = 1 
     while i <= length(pseudos)
       pseudo = pseudos[i]
-      element = Symbol(split(pseudo,".")[1])
+      
+      element = Symbol(titlecase(String(split(split(pseudo,".")[1],"_")[1])))
       t_expr = :(String[$pseudo])
       j=1
       while j+i<=length(pseudos) && Symbol(split(pseudos[i+j],".")[1]) == element

@@ -181,17 +181,10 @@ Remove the specified flags.
 """
 function remove_flags!(input::QEInput, flags...)
   for block in input.control_blocks
-    if typeof(flags)<:Array{Symbol,1}
-      for flag in flags
-        if haskey(block.flags,flag)
-          pop!(block.flags,flag)
-          println("Removed flag '$flag' from block '$(block.name)' in input '$(input.filename)'")
-        end
-      end
-    else
-      if haskey(block.flags,flags)
-        pop!(block.flags,flags)
-        println("Removed flag '$flags' from block '$(block.name)' in input '$(input.filename)'")
+    for flag in flags
+      if haskey(block.flags,flag)
+        pop!(block.flags,flag)
+        println("Removed flag '$flag' from block '$(block.name)' in input '$(input.filename)'")
       end
     end
   end
@@ -203,17 +196,10 @@ end
 Remove the specified flags.
 """
 function remove_flags!(input::WannierInput, flags...)
-  if typeof(flags) <: Array{Symbol,1}
-    for flag in flags
-      if haskey(input.flags,flag)
-        pop!(input.flags,flag,false)
-        println("Removed flag '$flag' from input '$(input.filename)'")
-      end
-    end
-  else
-    if haskey(input.flags,flags)
-      pop!(input.flags,flags,false)
-      println("Removed flag '$flags' from input '$(input.filename)'")
+  for flag in flags
+    if haskey(input.flags,flag)
+      pop!(input.flags,flag,false)
+      println("Removed flag '$flag' from input '$(input.filename)'")
     end
   end
 end
@@ -364,7 +350,7 @@ function change_atoms!(input::DFInput, atoms::Dict{Symbol,<:Array{<:Point3D,1}};
       change_data!(input,:atomic_species,atomic_species_dict)
     end
     if isdefined(:default_pseudo_dirs) && pseudo_set != nothing
-      change_flags!(input,Dict(:pseudo_dir => "'$(default_pseudo_dirs[pseudo_set])'"))
+      change_flags!(input,:pseudo_dir => "'$(default_pseudo_dirs[pseudo_set])'")
     end
   end
 end
