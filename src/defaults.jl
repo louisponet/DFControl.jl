@@ -144,7 +144,6 @@ function configure_default_pseudos(server = get_default_server(), pseudo_dirs = 
   end
   
   # atoms = Dict{Symbol,Dict{Symbol,Array{String,1}}}()
-  for name in keys()
   for el in keys(ELEMENTS)
     expr2file(default_file,:(default_pseudos[$(QuoteNode(el))] = Dict{Symbol,Array{String,1}}()))
   end
@@ -198,11 +197,11 @@ function set_default_job_header(lines)
 end
 
 """
-     set_default_input(input::DFInput, calculation::Symbol)
+     set_default_input(calculation::Symbol, input::DFInput)
 
 Adds the input to the default inputs, writes it to a file in user_defaults folder to be read every time on load.
 """
-function set_default_input(input::DFInput, calculation::Symbol)
+function set_default_input(calculation::Symbol, input::DFInput)
   if !isdefined(:default_inputs)
     expr = :(default_inputs = Dict{Symbol,DFInput}())
     expr2file(default_file,expr)

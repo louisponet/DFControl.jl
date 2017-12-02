@@ -124,3 +124,5 @@ function print_qe_namelists()
     println(block.name)
   end
 end
+
+const assets_dir = joinpath(@__DIR__,"../assets/")

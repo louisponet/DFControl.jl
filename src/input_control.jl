@@ -1,23 +1,23 @@
 # All the methods to change the inpût control flags, if you want to implement another kind of calculation add a similar one here!
 
 """
-    change_flags!(input::QEInput, new_flag_data::Dict{Symbol,<:Any})
+    change_flags!(input::QEInput, new_flag_data...)
 
 Changes the flags inside the input to the new ones if they are already defined and if the new ones have the same type.
 """
-function change_flags!(input::QEInput, new_flag_data::Dict{Symbol,<:Any})
+function change_flags!(input::QEInput, new_flag_data...)
   found_keys = Symbol[]
   for block in input.control_blocks
     for (flag,value) in new_flag_data
       if haskey(block.flags,flag)
         old_data = block.flags[flag]
         if !(flag in found_keys) push!(found_keys,flag) end
-        if typeof(block.flags[flag]) == typeof(new_flag_data[flag])
-          block.flags[flag] = new_flag_data[flag]
-          println("$(input.filename):\n -> $(block.name):\n  -> $flag:\n      $old_data changed to: $(new_flag_data[flag])")
+        if typeof(block.flags[flag]) == typeof(value)
+          block.flags[flag] = value
+          println("$(input.filename):\n -> $(block.name):\n  -> $flag:\n      $old_data changed to: $value")
           println("")
         else
-          println("$(input.filename):\n -> $(block.name):\n  -> $flag:\n     type mismatch old:$old_data ($(typeof(old_data))), new: $(new_flag_data[flag]) ($(typeof(new_flag_data[flag])))\n    Change not applied.")
+          println("$(input.filename):\n -> $(block.name):\n  -> $flag:\n     type mismatch old:$old_data ($(typeof(old_data))), new: $value) ($(typeof(value)))\n    Change not applied.")
           println("")
         end
       end
@@ -27,22 +27,22 @@ function change_flags!(input::QEInput, new_flag_data::Dict{Symbol,<:Any})
 end
 
 """
-    change_flags!(input::WannierInput, new_flag_data::Dict{Symbol,<:Any})
+    change_flags!(input::WannierInput, new_flag_data...)
 
 Changes the flags inside the input to the new ones if they are already defined and if the new ones have the same type.
 """
-function change_flags!(input::WannierInput, new_flag_data::Dict{Symbol,<:Any})
+function change_flags!(input::WannierInput, new_flag_data...)
   found_keys = Symbol[]
   for (flag,value) in new_flag_data
     if haskey(input.flags,flag)
       old_data = input.flags[flag]
       if !(flag in found_keys) push!(found_keys,flag) end
-      if typeof(input.flags[flag]) == typeof(new_flag_data[flag])
-        input.flags[flag] = new_flag_data[flag]
-        println("$(input.filename):\n -> $flag:\n      $old_data changed to: $(new_flag_data[flag])")
+      if typeof(input.flags[flag]) == typeof(value)
+        input.flags[flag] = value
+        println("$(input.filename):\n -> $flag:\n      $old_data changed to: $value")
         println("")
       else
-        println("$(input.filename):\n -> $flag:\n     type mismatch old:$old_data ($(typeof(old_data))), new: $(new_flag_data[flag]) ($(typeof(new_flag_data[flag])))\n    Change not applied.")
+        println("$(input.filename):\n -> $flag:\n     type mismatch old:$old_data ($(typeof(old_data))), new: $value ($(typeof(value)))\n    Change not applied.")
         println("")
       end
     end
@@ -138,11 +138,15 @@ end
 
 #here comes the code for all the setting of flags of different inputs
 """
-    add_flags!(input::QEInput, control_block_name::Symbol, flag_dict)
+    add_flags!(input::QEInput, control_block_name::Symbol, flags...)
 
 Adds the flags inside the dictionary to the 'ControlBlock'.
 """
-function add_flags!(input::QEInput, control_block_name::Symbol, flag_dict)
+function add_flags!(input::QEInput, control_block_name::Symbol, flags...)
+  flag_dict = Dict()
+  for (flag,value) in flags
+    flag_dict[flag] = value
+  end
   for block in input.control_blocks
     if block.name == control_block_name
       block.flags = merge((x,y) -> typeof(x) == typeof(y) ? y : x,block.flags,flag_dict)
@@ -154,11 +158,15 @@ function add_flags!(input::QEInput, control_block_name::Symbol, flag_dict)
 end
 
 """
-    add_flags!(input::WannierInput, flag_dict)
+    add_flags!(input::WannierInput, flags...)
 
 Adds the flags inside the dictionary to the 'ControlBlock'.
 """
-function add_flags!(input::WannierInput, flag_dict)
+function add_flags!(input::WannierInput, flags...)
+  flag_dict = Dict()
+  for (flag,value) in flags
+    flag_dict[flag] = value
+  end
   input.flags = merge((x,y) -> typeof(x) == typeof(y) ? y : x,input.flags,flag_dict)
   println("New input of calculation '$(input.filename)' is now:")
   display(input.flags)
@@ -167,11 +175,11 @@ end
 
 #removes an input control flag, if you want to implement another input add a similar function here!
 """
-    remove_flags!(input::QEInput, flags)
+    remove_flags!(input::QEInput, flags...)
 
 Remove the specified flags.
 """
-function remove_flags!(input::QEInput, flags)
+function remove_flags!(input::QEInput, flags...)
   for block in input.control_blocks
     if typeof(flags)<:Array{Symbol,1}
       for flag in flags
@@ -190,11 +198,11 @@ function remove_flags!(input::QEInput, flags)
 end
 
 """
-    remove_flags!(input::WannierInput, flags)
+    remove_flags!(input::WannierInput, flags...)
 
 Remove the specified flags.
 """
-function remove_flags!(input::WannierInput, flags)
+function remove_flags!(input::WannierInput, flags...)
   if typeof(flags) <: Array{Symbol,1}
     for flag in flags
       if haskey(input.flags,flag)
@@ -385,5 +393,26 @@ function change_k_points!(input::DFInput,k_points)
     change_data!(input,:kpoints,k_points)
   elseif typeof(input) == QEInput
     change_data!(input,:k_points,k_points)
+  end
+end
+
+
+"""
+    change_data_option!(job::DFJob, block_symbol::Symbol,option::Symbol)
+
+Changes the option of specified data block.
+"""
+function change_data_option!(input::DFInput, block_symbol::Symbol,option::Symbol)
+  for fieldname in fieldnames(input)
+    field = getfield(input,fieldname)
+    if typeof(field) <: Array{<:DataBlock,1}
+      for block in field
+        if block.name == block_symbol
+          old_option   = block.option
+          block.option = option
+          println("Option of DataBlock '$(block.name)' in input '$(input.filename)' changed from '$old_option' to '$option'")
+        end
+      end
+    end
   end
 end

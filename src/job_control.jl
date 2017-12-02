@@ -2,13 +2,17 @@
 #---------------------------------BEGINNING GENERAL SECTION ---------------------#
 
 """
-create_job(job_name, local_dir, server=get_default_server(),server_dir="")
+create_job(job_name, local_dir, args...; server=get_default_server(),server_dir="")
 
 Creates a new DFJob. 
 """
-function create_job(job_name, local_dir; server=get_default_server(),server_dir="")
+function create_job(job_name, local_dir, args...; server=get_default_server(),server_dir="")
   local_dir = form_directory(local_dir)
-  return DFJob(job_name,DFInput[],local_dir,server,server_dir)
+  inputs    = DFInput[]
+  for arg in args
+    push!(inputs,arg)
+  end
+  return DFJob(job_name,inputs,local_dir,server,server_dir)
 end
 
 """
@@ -130,6 +134,7 @@ function push_job(df_job::DFJob)
   if !ispath(df_job.local_dir)
     error("Please save the job locally first using save_job(job)!")
   else
+    
     for calc in df_job.calculations
       run(`scp $(df_job.local_dir*calc.filename) $(df_job.server*":"*df_job.server_dir)`)
     end
@@ -178,22 +183,9 @@ end
 
 Looks through all the calculations for the specified flags. If any that match and have the same types are found, they will get replaced by the new ones.
 """
-function change_flags!(df_job::DFJob, new_flag_data::Dict{Symbol,<:Any})
-  found_keys = Symbol[]
-  for calculation in df_job.calculations
-    t_found_keys = change_flags!(calculation,new_flag_data)
-    for key in t_found_keys
-      if !(key in found_keys) push!(found_keys,key) end
-    end
-  end
-  for key in found_keys
-    pop!(new_flag_data,key)
-  end
-  if 1 < length(keys(new_flag_data))
-    println("flags $(String.(collect(keys(new_flag_data)))) were not found in any input file, please set them first!")
-  elseif length(keys(new_flag_data)) == 1
-    println("flag '$(String(collect(keys(new_flag_data))[1]))' was not found in any input file, please set it first!")
-  end
+function change_flags!(df_job::DFJob, new_flag_data...)
+  calc_filenames = [calc.filename for calc in df_job.calculations]
+  change_flags!(df_job,calc_filenames,new_flag_data...)
 end
 
 """
@@ -201,21 +193,22 @@ end
 
 Looks through the given calculations for the specified flags. If any that match and have the same types are found, they will get replaced by the new ones.
 """
-function change_flags!(df_job::DFJob, calc_filenames, new_flag_data::Dict{Symbol,<:Any})
+function change_flags!(df_job::DFJob, calc_filenames::Array{String,1}, new_flag_data...)
   found_keys = Symbol[]
   for calc in get_inputs(df_job,calc_filenames)
-    t_found_keys = change_flags!(calc,new_flag_data)
+    t_found_keys = change_flags!(calc,new_flag_data...)
     for key in t_found_keys
       if !(key in found_keys) push!(found_keys,key) end
     end
   end
-  for key in found_keys
-    pop!(new_flag_data,key)
+  n_found_keys = Symbol[]
+  for (k,v) in new_flag_data
+    if !(k in found_keys) push!(n_found_keys,k) end
   end
-  if 1 < length(keys(new_flag_data))
-    println("flags $(String.(collect(keys(new_flag_data)))) were not found in any input file, please set them first!")
-  elseif length(keys(new_flag_data)) == 1
-    println("flag '$(String(collect(keys(new_flag_data))[1]))' was not found in any input file, please set it first!")
+  if 1 < length(n_found_keys)
+    println("flags '$(join(":" .* String.(n_found_keys),", "))' were not found in any input file, please set them first!")
+  elseif length(n_found_keys) == 1
+    println("flag '$(":"*String(n_found_keys[1]))' was not found in any input file, please set it first!")
   end
 end
 
@@ -283,46 +276,46 @@ end
 
 Adds the flags to the controlblocks. This assumes that there are `ControlBlocks` in the calculations e.g. in `QEInput`.
 """
-function add_flags!(df_job::DFJob, control_block_name::Symbol, flags)
+function add_flags!(df_job::DFJob, control_block_name::Symbol, flags...)
   for calc in df_job.calculations
     if :control_blocks in fieldnames(calc)
-      add_flags!(calc,control_block_name,flags)
+      add_flags!(calc,control_block_name,flags...)
     end
   end
 end
 
 """
-    add_flags!(df_job::DFJob, flags)
+    add_flags!(df_job::DFJob, flags...)
 
 Adds the flags to an input file. This assumes that the input has a field `flags`. Works for e.g. `WannierInput`.
 """
-function add_flags!(df_job::DFJob, flags)
+function add_flags!(df_job::DFJob, flags...)
   for calc in df_job.calculations
     if :flags in fieldnames(calc)
-      add_flags!(calc,flags)
+      add_flags!(calc,flags...)
     end
   end
 end
 
 """
-    remove_flags!(df_job::DFJob, calc_filenames, flags)
+    remove_flags!(df_job::DFJob, calc_filenames, flags...)
 
 Looks through the calculation filenames and removes the specified flags.
 """
-function remove_flags!(df_job::DFJob, calc_filenames, flags)
+function remove_flags!(df_job::DFJob, calc_filenames, flags...)
   for calc in get_inputs(df_job,calc_filenames)
-    remove_flags!(calc,flags)
+    remove_flags!(calc,flags...)
   end
 end
 
 """
-    remove_flags!(df_job::DFJob, flags)
+    remove_flags!(df_job::DFJob, flags...)
 
 Looks through all the calculations and removes the flags.
 """
-function remove_flags!(df_job::DFJob, flags)
+function remove_flags!(df_job::DFJob, flags...)
   for calc in df_job.calculations
-    remove_flags!(calc,flags)
+    remove_flags!(calc,flags...)
   end
 end
 
@@ -633,6 +626,16 @@ function change_k_points!(job::DFJob,calc_filename,k_points)
   change_k_points!(get_input(job,calc_filename),k_points)
 end
 
+"""
+    change_data_option!(job::DFJob, block_symbol::Symbol,option::Symbol)
+
+Changes the option of specified data block.
+"""
+function change_data_option!(job::DFJob, block_symbol::Symbol,option::Symbol)
+  for calc in job.calculations
+    change_data_option!(calc,block_symbol,option)
+  end
+end
 # function process_outputs(job::DFJob; job_fuzzy = "job")
 #   job_name,t_inputs,t_outputs,t_run_commands,t_should_run = read_job_file(job.local_dir*search_dir(job_dir,job_fuzzy)[1])
 #   for output in t_outputs
