@@ -37,6 +37,7 @@ module DFControl
   
   include("input_control.jl")
   include("job_control.jl")
+  export create_job
   export load_job
   export pull_job
   export load_server_job
@@ -83,12 +84,12 @@ module DFControl
   export watch_qstat
   
   include("defaults.jl")
-  export add_default_pseudo_dir
+  export set_default_pseudo_dir
   export set_default_server
   export configure_default_pseudos
   export remove_default_pseudo_dir
   export set_default_job_header
-  export @set_default
+  export @add_default
   export load_defaults
   export set_default_input
   export remove_default_input

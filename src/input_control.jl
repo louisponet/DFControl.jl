@@ -343,20 +343,20 @@ end
 Changes the data inside the 'DataBlock' that holds the data of the atom positions.
 If 'default_pseudos' is defined it will look for the pseudo set and also write the correct values inside the 'DataBlock' that defines which pseudopotentials to use.
 """
-function change_atoms!(input::DFInput, atoms::Dict{Symbol,<:Array{<:Point3D,1}}, pseudo_set_name=nothing,pseudo_fuzzy = nothing)
+function change_atoms!(input::DFInput, atoms::Dict{Symbol,<:Array{<:Point3D,1}}; pseudo_set=nothing,pseudo_fuzzy = nothing)
   if typeof(input) == WannierInput
     change_data!(input,:atoms_frac,atoms)
   elseif typeof(input) == QEInput
     change_data!(input,:atomic_positions,atoms)
-    if isdefined(:default_pseudos) && pseudo_set_name != nothing
+    if isdefined(:default_pseudos) && pseudo_set != nothing
       atomic_species_dict = Dict{Symbol,String}()
       for atom in keys(atoms)
-        atomic_species_dict[atom] = get_default_pseudo(atom,pseudo_set_name,pseudo_fuzzy=pseudo_fuzzy)
+        atomic_species_dict[atom] = get_default_pseudo(atom,pseudo_set,pseudo_fuzzy=pseudo_fuzzy)
       end
       change_data!(input,:atomic_species,atomic_species_dict)
     end
-    if isdefined(:default_pseudo_dirs) && pseudo_set_name != nothing
-      change_flags!(input,Dict(:pseudo_dir => "'$(default_pseudo_dirs[pseudo_set_name])'"))
+    if isdefined(:default_pseudo_dirs) && pseudo_set != nothing
+      change_flags!(input,Dict(:pseudo_dir => "'$(default_pseudo_dirs[pseudo_set])'"))
     end
   end
 end

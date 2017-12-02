@@ -36,8 +36,9 @@ function load_defaults(filename::String=default_file)
 end
 
 "Macro which allows you to define any default variable that will get loaded every time you use this package."
-macro set_default(expr)
+macro add_default(expr)
   expr2file(default_file,expr)
+  @eval expr
   load_defaults()
 end
 
@@ -52,11 +53,11 @@ function define_def(default, expr1, expr2)
 end
 
 """
-    add_default_pseudo_dir(pseudo_symbol::Symbol, dir::String)
+    set_default_pseudo_dir(pseudo_symbol::Symbol, dir::String)
 
 Adds an entry inside the `default_pseudo_dirs` dictionary with flag `pseudo_symbol`.
 """
-function add_default_pseudo_dir(pseudo_symbol::Symbol, dir::String)
+function set_default_pseudo_dir(pseudo_symbol::Symbol, dir::String)
   expr_ndef = :(default_pseudo_dirs = Dict{Symbol,String}($(Expr(:quote,pseudo_symbol)) => $dir)) 
   expr_def  = :(default_pseudo_dirs[$(QuoteNode(pseudo_symbol))] = $dir)
   define_def(:default_pseudo_dirs,expr_ndef,expr_def)
@@ -143,6 +144,7 @@ function configure_default_pseudos(server = get_default_server(), pseudo_dirs = 
   end
   
   # atoms = Dict{Symbol,Dict{Symbol,Array{String,1}}}()
+  for name in keys()
   for el in keys(ELEMENTS)
     expr2file(default_file,:(default_pseudos[$(QuoteNode(el))] = Dict{Symbol,Array{String,1}}()))
   end

@@ -2,7 +2,17 @@
 #---------------------------------BEGINNING GENERAL SECTION ---------------------#
 
 """
-load_job(job_dir::String, T=Float32; job_fuzzy = "job", new_job_name=nothing, new_homedir=nothing, server="",server_dir="")
+create_job(job_name, local_dir, server=get_default_server(),server_dir="")
+
+Creates a new DFJob. 
+"""
+function create_job(job_name, local_dir; server=get_default_server(),server_dir="")
+  local_dir = form_directory(local_dir)
+  return DFJob(job_name,DFInput[],local_dir,server,server_dir)
+end
+
+"""
+load_job(job_dir::String, T=Float32; job_fuzzy = "job", new_job_name=nothing, new_homedir=nothing, server=get_default_server(),server_dir="")
 
 Loads and returns a DFJob. If local_dir is not specified the job directory will ge registered as the local one.
 """
@@ -586,9 +596,9 @@ If default pseudopotentials are defined, a set can be specified, together with a
 These pseudospotentials are then set in all the calculations that need it.
 All flags which specify the number of atoms inside the calculation also gets set to the correct value.
 """
-function change_atoms!(job::DFJob, atoms::Dict{Symbol,<:Array{<:Point3D,1}},args...)
+function change_atoms!(job::DFJob, atoms::Dict{Symbol,<:Array{<:Point3D,1}};kwargs...)
   for calc in job.calculations
-    change_atoms!(calc,atoms,args...)
+    change_atoms!(calc,atoms;kwargs...)
   end
   nat = 0
   for pos in values(atoms)

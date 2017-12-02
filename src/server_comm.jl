@@ -21,6 +21,25 @@ function pull_file(server_dir::String, local_dir::String, filename::String; serv
   end
 end
 
+"""
+    pull_file(filepath::String, local_dir::String; server=get_default_server(), local_filename = nothing)
+
+Pulls a file from the default server if the default server is specified.
+"""
+function pull_file(filepath::String, local_dir::String; server=get_default_server(), local_filename = nothing)
+  local_dir = form_directory(local_dir)
+  if server != ""
+    if local_filename != nothing
+      run(`scp $(server*":"*filepath) $(local_dir*local_filename)`)
+    else
+      run(`scp $(server*":"*filepath) $(local_dir)`)
+    end
+  else
+    error("Define a default server first using 'set_default_server!(...)'.\n
+    Or use function 'pull_file(server::String, server_dir::String, local_dir::String, filename::String)'.")
+  end
+end
+
 function read_errors(server::String,server_dir::String; error_fuzzies=["CRASH","*.werr"])
   server_dir = form_directory(server_dir)
   tmp_dir = joinpath(@__DIR__,"tmp")
