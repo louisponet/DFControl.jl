@@ -24,7 +24,7 @@ Loads and returns a DFJob. If local_dir is not specified the job directory will 
 function load_job(job_dir::String, T=Float32; job_fuzzy = "job", new_job_name=nothing, new_local_dir=nothing, server=get_default_server(),server_dir="")
   job_dir = form_directory(job_dir)
   
-  job_name,t_inputs,t_outputs,t_run_commands,t_should_run = read_job_file(job_dir*search_dir(job_dir,job_fuzzy)[1])
+  job_name,t_inputs,t_outputs,t_run_commands,t_should_run,header = read_job_file(job_dir*search_dir(job_dir,job_fuzzy)[1])
   filenames    = String[]
   run_commands = String[]
   should_run   = Bool[]
@@ -58,9 +58,9 @@ function load_job(job_dir::String, T=Float32; job_fuzzy = "job", new_job_name=no
     end
   end
   if new_local_dir != nothing
-    return DFJob(job_name,t_calcs,new_local_dir,server,server_dir)
+    return DFJob(job_name,t_calcs,new_local_dir,server,server_dir,header)
   else
-    return DFJob(job_name,t_calcs,job_dir,server,server_dir)
+    return DFJob(job_name,t_calcs,job_dir,server,server_dir,header)
   end
 end
 
@@ -74,7 +74,7 @@ function pull_job(server::String, server_dir::String, local_dir::String; job_fuz
   server_dir = form_directory(server_dir)
   local_dir  = form_directory(local_dir)
   if !ispath(local_dir)
-    mkdir(local_dir)
+    mkpath(local_dir)
   end
   pull_server_file(filename) = pull_file(server,server_dir,local_dir,filename)
   pull_server_file(job_fuzzy)

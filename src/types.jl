@@ -145,14 +145,15 @@ mutable struct DFJob
   local_dir::String
   server::String
   server_dir::String
-  function DFJob(name,calculations,local_dir,server,server_dir)
+  header::Array{String,1}
+  function DFJob(name,calculations,local_dir,server,server_dir,header=get_default_job_header())
     if local_dir != ""
       local_dir = form_directory(local_dir)
     end
     if server_dir != ""
       server_dir = form_directory(server_dir)
     end
-    new(name,calculations,local_dir,server,server_dir)
+    new(name,calculations,local_dir,server,server_dir,header)
   end
 end
 

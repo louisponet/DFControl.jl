@@ -238,4 +238,11 @@ function remove_default_input(input::Symbol)
   end
 end
   
-
+function get_default_job_header()
+  if isdefined(:default_job_header)
+    return default_job_header
+  else
+    return ""
+  end
+end
+  

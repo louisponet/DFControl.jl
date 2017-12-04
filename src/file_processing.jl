@@ -605,17 +605,14 @@ function write_job_name(job::DFJob,f)
   write(f,"#SBATCH -J $(job.name) \n")
 end
 
-function write_job_header(f)
-  if isdefined(:default_job_header)
-    for line in default_job_header
-      if contains(line,"\n")
-        write(f,line)
-      else
-        write(f,line*"\n")
-      end
+function write_job_header(job::DFJob,f)
+  job_header = job.header == "" ? get_default_job_header() : job.header
+  for line in job_header
+    if contains(line,"\n")
+      write(f,line)
+    else
+      write(f,line*"\n")
     end
-  else
-    write(f,"\n")
   end
 end
 
@@ -631,7 +628,7 @@ function write_job_files(df_job::DFJob)
   open(df_job.local_dir*"job.tt","w") do f
     write(f,"#!/bin/bash\n")
     write_job_name(df_job,f)
-    write_job_header(f)
+    write_job_header(df_job,f)
     for i=1:length(df_job.calculations)
       calculation = df_job.calculations[i]
       run_command = calculation.run_command
@@ -678,6 +675,7 @@ function read_job_file(job_file::String)
   run_commands = Array{String,1}()
   should_run   = Array{Bool,1}()
   name     = ""
+  header   = String[]
   open(job_file,"r") do f
     while !eof(f)
       line = readline(f)
@@ -714,12 +712,18 @@ function read_job_file(job_file::String)
         else
           push!(input_files,strip(in_out[1],'<'))
         end 
-      elseif contains(line,"#SBATCH") && contains(line,"-J")
-        name = split(line)[end]
+      elseif contains(line,"#SBATCH")
+        if contains(line,"-J")
+          name = split(line)[end]
+        else
+          push!(header,line)
+        end
+      else 
+        push!(header,line)
       end
     end
   end
-  return name,input_files,output_files,run_commands,should_run
+  return name,input_files,output_files,run_commands,should_run,header
 end
 
 #Incomplete: because QE is stupid we have to find a way to distinguish nscf and bands outputs hardcoded.
