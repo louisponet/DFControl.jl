@@ -593,11 +593,11 @@ function change_atoms!(job::DFJob, atoms::Dict{Symbol,<:Array{<:Point3D,1}};kwar
   for calc in job.calculations
     change_atoms!(calc,atoms;kwargs...)
   end
-  nat = 0
+  nat  = 0
   for pos in values(atoms)
     nat+=length(pos)
   end
-  change_flags!(job,:nat=>nat)
+  change_flags!(job,:nat=>nat,:ntyp=>length(keys(atoms)))
 end
 
 #automatically sets the cell parameters for the entire job, implement others

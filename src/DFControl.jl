@@ -71,6 +71,7 @@ module DFControl
   export change_atoms!
   export change_cell_parameters!
   export change_k_points!
+  export change_data_option!
   
   include("plotting.jl")
   export plot_qe_bands
