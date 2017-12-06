@@ -211,7 +211,7 @@ function change_flags!(df_job::DFJob, calc_filenames::Array{String,1}, new_flag_
     println("flag '$(":"*String(n_found_keys[1]))' was not found in any input file, please set it first!")
   end
 end
-
+change_flags!(df_job::DFJob, filename::String, args...) = change_flags!(df_job,[filename],args...)
 """
     get_flag(df_job::DFJob, calc_filenames, flag::Symbol)
 
@@ -272,31 +272,46 @@ end
 #I'm not sure if this is a good idea. Maybe require explicitely also the input filename
 #TODO after making defaults this can be done better
 """
-   add_flags!(df_job::DFJob, control_block_name::Symbol, flags)
+   add_flags!(df_job::DFJob, calc_filenames::Array{String,1}, control_block_name::Symbol, flags)
 
-Adds the flags to the controlblocks. This assumes that there are `ControlBlocks` in the calculations e.g. in `QEInput`.
+Adds the flags to the controlblocks of the specified inputs with the control block. This assumes that there are `ControlBlocks` in the calculations e.g. in `QEInput`.
 """
-function add_flags!(df_job::DFJob, control_block_name::Symbol, flags...)
-  for calc in df_job.calculations
+function add_flags!(job::DFJob, calc_filenames::Array{String,1}, control_block_name::Symbol, flags...)
+  for calc in get_inputs(job,calc_filenames)
     if :control_blocks in fieldnames(calc)
       add_flags!(calc,control_block_name,flags...)
     end
   end
 end
+"""
+   add_flags!(df_job::DFJob, control_block_name::Symbol, flags)
+
+Adds the flags to the controlblocks of all inputs with the control block. This assumes that there are `ControlBlocks` in the calculations e.g. in `QEInput`.
+"""
+add_flags!(df_job::DFJob, control_block_name::Symbol, flags...) = add_flags!(df_job,[i.filename for i in df_job.calculations], control_block_name,flags...)
+
+add_flags!(job::DFJob,filename::String,control_block_name::Symbol,flags...)=add_flags!(job,[filename],control_block_name,flags...)
 
 """
-    add_flags!(df_job::DFJob, flags...)
+    add_flags!(df_job::DFJob,filenames::Array{String,1}, flags...)
 
-Adds the flags to an input file. This assumes that the input has a field `flags`. Works for e.g. `WannierInput`.
+Adds the flags to specified input files. This assumes that the input has a field `flags`. Works for e.g. `WannierInput`.
 """
-function add_flags!(df_job::DFJob, flags...)
-  for calc in df_job.calculations
+
+function add_flags!(df_job::DFJob,filenames::Array{String,1}, flags...)
+  for calc in get_inputs(df_job,filenames)
     if :flags in fieldnames(calc)
       add_flags!(calc,flags...)
     end
   end
 end
+"""
+    add_flags!(job::DFJob,flags...)
 
+Adds the flags to all inputs that have fieldname 'flags'. Works for e.g. 'WannierInput'.
+"""
+add_flags!(job::DFJob,flags...) = add_flags!(job,[i.filename for i in job.calculations],flags...)
+add_flags!(df_job::DFJob, filename::String,flags...) = add_flags!(df_job,[filename],flags...)
 """
     remove_flags!(df_job::DFJob, calc_filenames, flags...)
 
@@ -333,13 +348,13 @@ function set_flow!(df_job::DFJob, should_runs::Array{Bool,1})
 end
 
 """
-    change_flow!(df_job::DFJob, should_runs::Union{Dict,Array{Tuple{Int,Bool}}})
+    change_flow!(df_job::DFJob, should_runs...)
 
 Sets whether or not calculations should be run. Calculations are specified using their indices.
 """
-function change_flow!(df_job::DFJob, should_runs::Union{Dict,Array{Tuple{Int,Bool}}})
-  for (index,run) in should_runs
-    df_job.calculations[index].run = run
+function change_flow!(df_job::DFJob, should_runs...)
+  for (filename,run) in should_runs
+    get_input(df_job,filename).run = run
   end
   print_flow(df_job)
 end
@@ -627,17 +642,37 @@ function change_k_points!(job::DFJob,calc_filename,k_points)
 end
 
 """
-    change_data_option!(job::DFJob, block_symbol::Symbol,option::Symbol)
+    change_data_option!(job::DFJob,filenames::Array{String,1}, block_symbol::Symbol,option::Symbol)
 
-Changes the option of specified data block.
+Changes the option of specified data block in the specified calculations.
 """
-function change_data_option!(job::DFJob, block_symbol::Symbol,option::Symbol)
-  for calc in job.calculations
+function change_data_option!(job::DFJob,filenames::Array{String,1}, block_symbol::Symbol,option::Symbol)
+  for calc in get_inputs(job,filenames)
     change_data_option!(calc,block_symbol,option)
   end
 end
-# function process_outputs(job::DFJob; job_fuzzy = "job")
-#   job_name,t_inputs,t_outputs,t_run_commands,t_should_run = read_job_file(job.local_dir*search_dir(job_dir,job_fuzzy)[1])
-#   for output in t_outputs
-#     out_file = job.local_dir*search_dir(job.local_dir,output)[1]
-#     output = read_output(out_file)
+change_data_option!(job::DFJob,filename::String, block_symbol::Symbol,option::Symbol) = change_data_option!(job,[filename],block_symbol,option)
+"""
+    change_data_option!(job::DFJob, block_symbol::Symbol,option::Symbol)
+
+Changes the option of specified data block in all calculations that have the block.
+"""
+change_data_option!(job::DFJob, block_symbol::Symbol,option::Symbol) = change_data_option!(job,[i.filename for i in job.calculations],block_symbol,option)
+
+"""
+    replace_header_word!(job::DFJob,word::String,new_word::String)
+
+
+Replaces the specified word in the header with the new word.
+"""
+function replace_header_word!(job::DFJob,word::String,new_word::String)
+  for (i,line) in enumerate(job.header)
+    if contains(line,word)
+      println("Old line:")
+      println("   $line")
+      job.header[i] = replace(line,word,new_word)
+      println("New line:")
+      println("   $(job.header[i])")
+    end
+  end
+end

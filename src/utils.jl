@@ -92,9 +92,9 @@ Returns an array of k-grid points that are equally spaced, input can be either `
 """
 function gen_k_grid(na, nb, nc, input, T=Float32)
   if input == :wan || typeof(input) == WannierInput
-    return [T[a,b,c] for a in collect(linspace(0,1,na+1))[1:end-1],b in collect(linspace(0,1,nb+1))[1:end-1],c in collect(linspace(0,1,nc+1))[1:end-1]]
+    return reshape([T[a,b,c] for a in collect(linspace(0,1,na+1))[1:end-1],b in collect(linspace(0,1,nb+1))[1:end-1],c in collect(linspace(0,1,nc+1))[1:end-1]],(na*nb*nc,1))
   elseif input == :nscf || typeof(input) == QEInput
-    return [T[a,b,c,1/(na*nb*nc)] for a in collect(linspace(0,1,na+1))[1:end-1],b in collect(linspace(0,1,nb+1))[1:end-1],c in collect(linspace(0,1,nc+1))[1:end-1]] 
+    return reshape([T[a,b,c,1/(na*nb*nc)] for a in collect(linspace(0,1,na+1))[1:end-1],b in collect(linspace(0,1,nb+1))[1:end-1],c in collect(linspace(0,1,nc+1))[1:end-1]],(na*nb*nc,1))
   end
 end
 

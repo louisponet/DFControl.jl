@@ -72,6 +72,7 @@ module DFControl
   export change_cell_parameters!
   export change_k_points!
   export change_data_option!
+  export change_header_word!
   
   include("plotting.jl")
   export plot_qe_bands
