@@ -323,6 +323,7 @@ function remove_flags!(df_job::DFJob, calc_filenames::Array{<:String,1}, flags..
   end
 end
 
+remove_flags!(job::DFJob,filename::String,flags...)=remove_flags!(job,[filename],flags...)
 """
     remove_flags!(df_job::DFJob, flags...)
 
