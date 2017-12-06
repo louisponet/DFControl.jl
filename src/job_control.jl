@@ -263,9 +263,9 @@ end
 
 Looks through the calculation filenames and changes the data of the datablock with `data_block_name` to `new_block_data`
 """
-function change_data!(df_job::DFJob, calc_filenames, data_block_name::Symbol, new_block_data)
+function change_data!(df_job::DFJob, calc_filenames, data_block_name::Symbol, new_block_data;option = nothing)
   for calc in get_inputs(df_job,calc_filenames)
-    change_data!(calc,data_block_name,new_block_data)
+    change_data!(calc,data_block_name,new_block_data,option=option)
   end
 end
 
@@ -479,24 +479,27 @@ print_data(job::DFJob, calc_filenames) = print_blocks(job, calc_filenames)
 print_data(job::DFJob, block_name::Symbol) = print_block(job, block_name)
 
 """
-    print_info(job::DFJob)
+    print_info(job::DFJob,filenames::Array{String,1})
 
-Prints general info of the job.
+Prints general info of the job, and the specified filenames.
 """
-function print_info(job::DFJob)
+function print_info(job::DFJob,filenames::Array{String,1})
   println("--------------------")
   println("DFJob:      $(job.name)")
   println("Local_dir:  $(job.local_dir)")
   println("Server:     $(job.server)")
   println("Server_dir: $(job.server_dir)")
+  println("$(length(job.calculations)) calculations")
   println("--------------------")
-  println("$(length(job.calculations)) calculations:")
   println("")
-  for calc in job.calculations
+  for calc in get_inputs(job, filenames)
     print_info(calc)
     println("")
   end
 end
+
+print_info(job::DFJob, filename::String) = print_info(job,[filename])
+print_info(job::DFJob) = print_info(job::DFJob,[calc.filename for calc in job.calculations])
 
 """
     print_flags(job::DFJob)
@@ -666,7 +669,7 @@ change_data_option!(job::DFJob, block_symbol::Symbol,option::Symbol) = change_da
 
 Replaces the specified word in the header with the new word.
 """
-function replace_header_word!(job::DFJob,word::String,new_word::String)
+function change_header_word!(job::DFJob,word::String,new_word::String)
   for (i,line) in enumerate(job.header)
     if contains(line,word)
       println("Old line:")

@@ -51,11 +51,11 @@ function change_flags!(input::WannierInput, new_flag_data...)
 end
 
 """
-    change_data!(input::DFInput, block_name::Symbol, new_block_data)
+    change_data!(input::DFInput, block_name::Symbol, new_block_data;option = nothing)
 
-Changes the data of the specified 'DataBlock' to the new data if it has the correct type.
+Changes the data of the specified 'DataBlock' to the new data. Optionally also changes the 'DataBlock' option.
 """
-function change_data!(input::DFInput, block_name::Symbol, new_block_data)
+function change_data!(input::DFInput, block_name::Symbol, new_block_data;option=nothing)
   for data_block in input.data_blocks
     if data_block.name == block_name
       if typeof(data_block.data) != typeof(new_block_data) 
@@ -66,6 +66,8 @@ function change_data!(input::DFInput, block_name::Symbol, new_block_data)
       println("Block data '$(data_block.name)' in input  '$(input.filename)' is now:")
       display(data_block.data)
       println("")
+      data_block.option = option==nothing ? data_block.option : option
+      println("option: $(data_block.option)")
     end
   end
 end
