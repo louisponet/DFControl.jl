@@ -4,11 +4,13 @@ struct Point3D{T<:AbstractFloat}
   y::T
   z::T
 end
-(Point3D(x::T) where T<:AbstractFloat) = Point3D(T(x),T(x),T(x))
-Point3D(::Type{T},x) where T<:AbstractFloat = Point3D(T(x),T(x),T(x))
+Point3D(x::T) where T<:AbstractFloat = Point3D{T}(x,x,x)
+Point3D(::Type{T},x) where T<:AbstractFloat = Point3D{T}(x,x,x)
 Point3D(x::Array{<:AbstractFloat,1}) = Point3D(x[1],x[2],x[3])
+Point3D{T}() where T<:AbstractFloat = Point3D{T}(0)
+Point3D() = Point3D(0.0)
 
-import Base: +, -, *, /, convert, promote_rule, show, zero, norm
+import Base: +, -, *, /, convert, promote_rule, show, zero, nor
 +(x::Point3D,y::Point3D) = Point3D(x.x+y.x,x.y+y.y,x.z+y.z)
 -(x::Point3D,y::Point3D) = Point3D(x.x-y.x,x.y-y.y,x.z-y.z)
 *(x::Point3D,y::Point3D) = Point3D(x.x*y.x,x.y*y.y,x.z*y.z)

@@ -6,6 +6,7 @@ function parse_k_line(line,T)
   k3   = parse(T,splt[7][1:1:end-2])
   return [k1,k2,k3]
 end
+
 function write_flag_line(f,flag,data)
   write(f,"   $flag = ")
   if typeof(data) <: Array
@@ -161,6 +162,30 @@ function read_qe_kpdos(filename::String,column=1;fermi=0)
     push!(ytickvals,findnext(x->norm(tick+fermi-x)<=0.1,read_tmp[:,2],ytickvals[i]))
   end
   return  zmat',(ytickvals,yticks)
+end
+
+"""
+    read_qe_polarization(filename::String,T=Float32)
+
+Returns the polarization and modulus. 
+"""
+function read_qe_polarization(filename::String,T=Float32)
+  pol = Point3D{T}()
+  mod = zero(T)
+  open(filename,"r") do f
+    while !eof(f)
+      line = readline(f)
+      if contains(line,"C/m^2")
+        s_line = split(line)
+        P      = parse(T,s_line[3])
+        mod    = parse(T,s_line[5][1:end-1])
+        readline(f)
+        s_line = parse.(T,split(readline(f))[6:2:10])
+        pol = Point3D{T}(P*s_line[1],P*s_line[2],P*s_line[3])
+      end
+    end
+  end
+  return pol, mod
 end
 
 """

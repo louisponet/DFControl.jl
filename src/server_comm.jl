@@ -83,7 +83,9 @@ function pull_outputs(df_job::DFJob, server = "", server_dir = "", local_dir =""
   elseif server != ""
     df_job.local_dir = local_dir
   end
-
+  if !ispath(df_job.local_dir)
+    mkpath(df_job.local_dir)
+  end
   pull_server_file(filename) = pull_file(df_job.server,df_job.server_dir,df_job.local_dir,filename)
 
   pull_server_file(job_fuzzy)
