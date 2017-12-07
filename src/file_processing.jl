@@ -188,6 +188,80 @@ function read_qe_polarization(filename::String,T=Float32)
   return pol, mod
 end
 
+function read_qe_output(filename::String, T=Float32)
+  out = Dict{Symbol,Any}()
+  open(filename,"r") do f
+    prefac_k  = nothing
+    k_eigvals = Array{Array{T,1},1}()
+    while !eof(f)
+      line = readline(f)
+      #polarization
+      if contains(line,"C/m^2")
+        s_line = split(line)
+        P      = parse(T,s_line[3])
+        mod    = parse(T,s_line[5][1:end-1])
+        readline(f)
+        s_line = parse.(T,split(readline(f))[6:2:10])
+        out[:polarization] = Point3D{T}(P*s_line[1],P*s_line[2],P*s_line[3])
+        out[:pol_mod]      = mod
+      #fermi energy
+      elseif contains(line,"Fermi")
+        out[:fermi]        = parse(T,split(line)[5])
+      elseif contains(line,"lowest unoccupied") || contains(line,"highest occupied")
+        out[:fermi]        = parse(T,split(line)[5])
+      #setup for k_points
+      elseif contains(line,"celldm(1)")
+        alat_bohr = parse(T,split(line)[2])
+        prefac_k  = T(2pi/alat_bohr * 1.889725)
+      #k_cryst
+      elseif contains(line,"cryst.") && length(split(line))==2
+        out[:k_cryst] = Array{Array{T,1},1}()
+        line = readline(f)
+        while line != "" && !contains(line,"--------")
+          push!(out[:k_cryst],parse_k_line(line,T))
+          line = readline(f)
+        end
+      #k_cart
+      elseif contains(line,"cart.") && length(split(line))==5
+        out[:k_cart]  = Array{Array{T,1},1}()
+        line = readline(f)
+        while line != "" && !contains(line,"--------")
+          push!(out[:k_cart],prefac_k*parse_k_line(line,T))
+          line = readline(f)
+        end
+      #bands
+      elseif contains(line, "k") && contains(line,"PWs)")
+        tmp = T[]
+        readline(f)
+        line = readline(f)
+        while line != "" && !contains(line,"--------")
+          append!(tmp,parse_line(T,line))
+          line = readline(f)
+        end
+        push!(k_eigvals,tmp)
+      #errors
+      elseif contains(line, "mpirun noticed")
+
+        warn("File ended unexpectedly, returning what info has been gathered so far.")
+        return out
+        break
+      end
+    end
+
+    #process bands
+    if !isempty(k_eigvals)
+      out[:bands] = Array{DFBand{T},1}()
+      for i1=1:length(k_eigvals[1])
+        eig_band = T[]
+        for i=1:length(out[:k_cart])
+          push!(eig_band,k_eigvals[i][i1])
+        end
+        push!(out[:bands],DFBand(out[:k_cart],out[:k_cryst],eig_band))
+      end
+    end
+    return out
+  end
+end
 """
     read_qe_input(filename,T=Float32)
 
