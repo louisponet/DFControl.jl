@@ -1,32 +1,42 @@
 # using GLVisualize, GLWindow, GLAbstraction,Colors,GeometryTypes
 using  GtkReactive, Gtk.ShortNames, Colors,Gtk
 # const dash_window = glscreen("DFDashboard",resolution=(1600,1200))
-const dash_window = Window("DFDashboard",1800,1200)
+const dash_window = Window("DFDashboard",400,800)
 grid = Grid()
 bx = Box(:v)
 scwindow1 = ScrolledWindow()
-scwindow2 = ScrolledWindow()
-setproperty!(scwindow1,:height_request,1200)
-setproperty!(scwindow2,:height_request,1200)
+adj = getproperty(scwindow1,:vadjustment, GtkAdjustment)
+
+
+# scwindow2 = ScrolledWindow()
+setproperty!(scwindow1,:height_request,800)
+setproperty!(scwindow1,:width_request,400)
+setproperty!(scwindow1,:vexpand,true)
+# setproperty!(scwindow2,:height_request,800)
 text_a = Box(:h)
-text_b = Box(:h)
+# text_b = Box(:h)
 push!(scwindow1,text_a)
-push!(scwindow2,text_b)
+# push!(scwindow2,text_b)
 grid[1,1] = scwindow1
-grid[2,1] = scwindow2
+# grid[2,1] = scwindow2
 setproperty!(grid,:column_homogeneous,true)
 setproperty!(grid,:column_spacing,15)
 push!(dash_window,grid)
 # push!(dash_window,scwindow2)
 acc(x,y) = x*"\n"*y
 tb = textarea(signal=foldp(acc,"",print_s))
-tb2 = textarea(signal=foldp(acc,"",print_s))
+function scroll_cb(widgetptr::Ptr, rectptr::Ptr, user_data)
+  setproperty!(adj,:value, getproperty(adj,:upper,AbstractFloat) - getproperty(adj,:page_size,AbstractFloat))
+  nothing
+end
+signal_connect(scroll_cb, tb.widget, "size-allocate", Void, (Ptr{Gtk.GdkRectangle},), false, ())
+# tb2 = textarea(signal=foldp(acc,"",print_s))
 setproperty!(tb,:editable,false)
-setproperty!(tb2,:editable,false)
+# setproperty!(tb2,:editable,false)
 setproperty!(tb,:can_focus,false)
-setproperty!(tb2,:can_focus,false)
-push!(text_b,tb)
-push!(text_a,tb2)
+# setproperty!(tb2,:can_focus,false)
+push!(text_a,tb)
+# push!(text_a,tb2)
 showall(dash_window)
 
 const colors = Dict{Symbol,RGBA}()
