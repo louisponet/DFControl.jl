@@ -2,6 +2,10 @@
 using  GtkReactive, Gtk.ShortNames, Colors,Gtk
 # const dash_window = glscreen("DFDashboard",resolution=(1600,1200))
 const dash_window = Window("DFDashboard",400,800)
+fontCss =  "button, entry, window, sourceview, textview {
+    font-family: Monaco, Consolas, Courier, monospace;
+    font-size: 15pt;
+}"
 grid = Grid()
 bx = Box(:v)
 scwindow1 = ScrolledWindow()
@@ -36,6 +40,7 @@ setproperty!(tb,:editable,false)
 setproperty!(tb,:hexpand,true)
 # setproperty!(tb2,:editable,false)
 setproperty!(tb,:can_focus,false)
+GtkExtensions.style_css(tb,fontCss)
 # setproperty!(tb2,:can_focus,false)
 push!(text_a,tb)
 # push!(text_a,tb2)
