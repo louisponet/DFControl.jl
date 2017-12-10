@@ -1,5 +1,5 @@
 # using GLVisualize, GLWindow, GLAbstraction,Colors,GeometryTypes
-using  GtkReactive, Gtk.ShortNames, Colors,Gtk
+using  GtkReactive, Gtk.ShortNames, Colors,GtkExtensions, Gtk
 # const dash_window = glscreen("DFDashboard",resolution=(1600,1200))
 const dash_window = Window("DFDashboard",400,800)
 fontCss =  "button, entry, window, sourceview, textview {
