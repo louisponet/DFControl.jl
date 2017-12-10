@@ -14,11 +14,9 @@ function change_flags!(input::QEInput, new_flag_data...)
         if !(flag in found_keys) push!(found_keys,flag) end
         if typeof(block.flags[flag]) == typeof(value)
           block.flags[flag] = value
-          println("$(input.filename):\n -> $(block.name):\n  -> $flag:\n      $old_data changed to: $value")
-          println("")
+          dfprintln("$(input.filename):\n -> $(block.name):\n  -> $flag:\n      $old_data changed to: $value\n")
         else
-          println("$(input.filename):\n -> $(block.name):\n  -> $flag:\n     type mismatch old:$old_data ($(typeof(old_data))), new: $value) ($(typeof(value)))\n    Change not applied.")
-          println("")
+          dfprintln("$(input.filename):\n -> $(block.name):\n  -> $flag:\n     type mismatch old:$old_data ($(typeof(old_data))), new: $value) ($(typeof(value)))\n    Change not applied.\n")
         end
       end
     end
@@ -39,11 +37,9 @@ function change_flags!(input::WannierInput, new_flag_data...)
       if !(flag in found_keys) push!(found_keys,flag) end
       if typeof(input.flags[flag]) == typeof(value)
         input.flags[flag] = value
-        println("$(input.filename):\n -> $flag:\n      $old_data changed to: $value")
-        println("")
+        dfprintln("$(input.filename):\n -> $flag:\n      $old_data changed to: $value\n")
       else
-        println("$(input.filename):\n -> $flag:\n     type mismatch old:$old_data ($(typeof(old_data))), new: $value ($(typeof(value)))\n    Change not applied.")
-        println("")
+        dfprintln("$(input.filename):\n -> $flag:\n     type mismatch old:$old_data ($(typeof(old_data))), new: $value ($(typeof(value)))\n    Change not applied.\n")
       end
     end
   end
@@ -63,11 +59,11 @@ function change_data!(input::DFInput, block_name::Symbol, new_block_data;option=
       end
       old_data = data_block.data
       data_block.data = new_block_data
-      println("Block data '$(data_block.name)' in input  '$(input.filename)' is now:")
-      display(data_block.data)
-      println("")
+      dfprintln("Block data '$(data_block.name)' in input  '$(input.filename)' is now:")
+      dfprintln(string(data_block.data))
+      dfprintln("")
       data_block.option = option==nothing ? data_block.option : option
-      println("option: $(data_block.option)")
+      dfprintln("option: $(data_block.option)")
     end
   end
 end
@@ -152,9 +148,9 @@ function add_flags!(input::QEInput, control_block_name::Symbol, flags...)
   for block in input.control_blocks
     if block.name == control_block_name
       block.flags = merge((x,y) -> typeof(x) == typeof(y) ? y : x,block.flags,flag_dict)
-      println("New input of block '$(block.name)' of calculation '$(input.filename)' is now:")
-      display(block.flags)
-      println("\n")
+      dfprintln("New input of block '$(block.name)' of calculation '$(input.filename)' is now:")
+      dfprintln(string(block.flags))
+      dfprintln("\n")
     end
   end
 end
@@ -170,9 +166,9 @@ function add_flags!(input::WannierInput, flags...)
     flag_dict[flag] = value
   end
   input.flags = merge((x,y) -> typeof(x) == typeof(y) ? y : x,input.flags,flag_dict)
-  println("New input of calculation '$(input.filename)' is now:")
-  display(input.flags)
-  println("\n")
+  dfprintln("New input of calculation '$(input.filename)' is now:")
+  dfprintln(string(input.flags))
+  dfprintln("\n")
 end
 
 #removes an input control flag, if you want to implement another input add a similar function here!
@@ -186,7 +182,7 @@ function remove_flags!(input::QEInput, flags...)
     for flag in flags
       if haskey(block.flags,flag)
         pop!(block.flags,flag)
-        println("Removed flag '$flag' from block '$(block.name)' in input '$(input.filename)'")
+        dfprintln("Removed flag '$flag' from block '$(block.name)' in input '$(input.filename)'")
       end
     end
   end
@@ -201,7 +197,7 @@ function remove_flags!(input::WannierInput, flags...)
   for flag in flags
     if haskey(input.flags,flag)
       pop!(input.flags,flag,false)
-      println("Removed flag '$flag' from input '$(input.filename)'")
+      dfprintln("Removed flag '$flag' from input '$(input.filename)'")
     end
   end
 end
@@ -245,7 +241,7 @@ Print the information on all Blocks inside the input.
 function print_blocks(input::DFInput)
   print_filename(input)
   get_blocks(input) |> display
-  println("")
+  dfprintln("")
 end
 
 """
@@ -254,7 +250,7 @@ end
 Prints the filename associated with the input.
 """
 function print_filename(input::DFInput)
-  println("Input file: $(input.filename)")
+  dfprintln("Input file: $(input.filename)")
 end
 
 """
@@ -263,19 +259,19 @@ end
 Prints general info of the input.
 """
 function print_info(input::DFInput)
-  println("Filename: $(input.filename)")
+  dfprintln("Filename: $(input.filename)")
   if (:control_blocks in fieldnames(input))
-    println("  Control Blocks:")
+    dfprintln("  Control Blocks:")
     for (i,block) in enumerate(input.control_blocks)
-      println("    $i: $(block.name)")
+      dfprintln("    $i: $(block.name)")
     end
   end
-  println("  Data Blocks:")
+  dfprintln("  Data Blocks:")
   for (i,block) in enumerate(input.data_blocks)
-    println("    $i: $(block.name)")
+    dfprintln("    $i: $(block.name)")
   end
-  println("  Run command: $(input.run_command)")
-  println("  Runs: $(input.run)")
+  dfprintln("  Run command: $(input.run_command)")
+  dfprintln("  Runs: $(input.run)")
 end
 
 """
@@ -284,20 +280,22 @@ end
 Prints all the flags of the input.
 """
 function print_flags(input::DFInput)
-  println("Filename: $(input.filename)")
+  dfprintln("#----------------#")
+  dfprintln("Filename: $(input.filename)")
   if (:control_blocks in fieldnames(input))
     for block in input.control_blocks
-      println("  $(block.name):")
+      dfprintln("  $(block.name):")
       for (flag,value) in block.flags
-        println("    $flag => $value")
+        dfprintln("    $flag => $value")
       end
     end
   end
   if (:flags in fieldnames(input))
     for (flag,value) in input.flags
-      println("  $flag => $value")
+      dfprintln("  $flag => $value")
     end
   end
+  dfprintln("#----------------#\n")
 end
 
 """
@@ -309,18 +307,22 @@ function print_flag(input::DFInput, flag)
   if (:control_blocks in fieldnames(input))
     for block in input.control_blocks
       if haskey(block.flags,flag)
-        println("Filename: $(input.filename)")
-        println("  Block Name: $(block.name)")
-        println("    $flag => $(block.flags[flag])")
-        println("")
+        s = """ 
+        Filename: $(input.filename)  
+        Block Name: $(block.name)
+            $flag => $(block.flags[flag])\n
+        """
+        dfprintln(s)
       end
     end
   end
   if (:flags in fieldnames(input))
     if haskey(input.flags,flag)
-      println("Filename: $(input.filename)")
-      println("  $flag => $(input.flags[flag])")
-      println("")
+      s = """
+      Filename: $(input.filename)
+        $flag => $(input.flags[flag])\n
+      """
+      dfprintln(s)
     end
   end
 end
@@ -398,7 +400,7 @@ function change_data_option!(input::DFInput, block_symbol::Symbol,option::Symbol
         if block.name == block_symbol
           old_option   = block.option
           block.option = option
-          println("Option of DataBlock '$(block.name)' in input '$(input.filename)' changed from '$old_option' to '$option'")
+          dfprintln("Option of DataBlock '$(block.name)' in input '$(input.filename)' changed from '$old_option' to '$option'")
         end
       end
     end

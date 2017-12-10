@@ -103,4 +103,4 @@ print_flags(df_job)
 # @test df_job.calculations[1][2].control_blocks[:control][:pseudo_dir] == "'./'"
 # @test df_job.calculations[1][2].atoms[:Ze] == [Point3D(1.2,3.2,1.2)]
 
-# println("")
+# dfprintln("")

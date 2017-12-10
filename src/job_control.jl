@@ -166,14 +166,14 @@ function submit_job(df_job::DFJob; server=nothing, server_dir=nothing)
 end
 
 """
-    add_calculation!(df_job::DFJob, input::DFInput, run_index::Int=length(df_job.calculations)+1; run_command=input.run_command, filename=input.filename)
+    add_calculation!(df_job::DFJob, input::DFInput, index::Int=length(df_job.calculations)+1; run_command=input.run_command, filename=input.filename)
 
-Adds a calculation to the job, at the specified run_index.
+Adds a calculation to the job, at the specified index.
 """
-function add_calculation!(df_job::DFJob, input::DFInput, run_index::Int=length(df_job.calculations)+1; run_command=input.run_command, filename=input.filename)
+function add_calculation!(df_job::DFJob, input::DFInput, index::Int=length(df_job.calculations)+1; run_command=input.run_command, filename=input.filename)
   input.filename = filename
   input.run_command = run_command
-  insert!(df_job.calculations,run_index,input)
+  insert!(df_job.calculations,index,input)
   print_info(input)
   print_flow(df_job)
 end
@@ -206,9 +206,9 @@ function change_flags!(df_job::DFJob, calc_filenames::Array{String,1}, new_flag_
     if !(k in found_keys) push!(n_found_keys,k) end
   end
   if 1 < length(n_found_keys)
-    println("flags '$(join(":" .* String.(n_found_keys),", "))' were not found in any input file, please set them first!")
+    dfprintln("flags '$(join(":" .* String.(n_found_keys),", "))' were not found in any input file, please set them first!")
   elseif length(n_found_keys) == 1
-    println("flag '$(":"*String(n_found_keys[1]))' was not found in any input file, please set it first!")
+    dfprintln("flag '$(":"*String(n_found_keys[1]))' was not found in any input file, please set it first!")
   end
 end
 change_flags!(df_job::DFJob, filename::String, args...) = change_flags!(df_job,[filename],args...)
@@ -355,7 +355,9 @@ Sets whether or not calculations should be run. Calculations are specified using
 """
 function change_flow!(df_job::DFJob, should_runs...)
   for (filename,run) in should_runs
-    get_input(df_job,filename).run = run
+    for input in get_inputs(df_job,filename)
+      input.run = run
+    end
   end
   print_flow(df_job)
 end
@@ -391,7 +393,7 @@ Goes through the calculation filenames and sets the run command of the calculati
 function change_run_command!(df_job::DFJob, filenames, run_command)
   for calc in get_inputs(df_job,filenames)
     calc.run_command = run_command
-    println("Run command of file '$(calc.filename)' is now: '$(calc.run_command)'")
+    dfprintln("Run command of file '$(calc.filename)' is now: '$(calc.run_command)'")
   end
 end
 
@@ -413,8 +415,8 @@ Prints the run command of the specified calculations.
 """
 function print_run_command(df_job::DFJob, filenames)
   for calc in get_inputs(df_job,filenames)
-    println("Run command of file '$(calc.filename)' is: '$(calc.run_command)'.")
-    println("")
+    dfprintln("Run command of file '$(calc.filename)' is: '$(calc.run_command)'.")
+    dfprintln("")
   end
 end
 
@@ -425,7 +427,7 @@ Prints the calculation sequence of the job.
 """
 function print_flow(df_job::DFJob)
   for (i,calc) in enumerate(df_job.calculations)
-    println("$i: $(calc.filename) => runs: $(calc.run)")
+    dfprintln("$i: $(calc.filename) => runs: $(calc.run)")
   end
 end
 
@@ -436,7 +438,7 @@ Prints information of the specified block name of all the calculations in the jo
 """
 function print_block(job::DFJob, block_name::Symbol)
   for calc in job.calculations
-    if print_block(calc,block_name) println("") end
+    if print_block(calc,block_name) dfprintln("") end
   end
 end
 
@@ -470,7 +472,7 @@ Prints information of all the blocks of all the calculations in the job.
 function print_blocks(job::DFJob)
   for calc in job.calculations
     print_blocks(calc)
-    println("#------------------------------------#")
+    dfprintln("#------------------------------------#")
   end
 end
 
@@ -484,17 +486,17 @@ print_data(job::DFJob, block_name::Symbol) = print_block(job, block_name)
 Prints general info of the job, and the specified filenames.
 """
 function print_info(job::DFJob,filenames::Array{String,1})
-  println("--------------------")
-  println("DFJob:      $(job.name)")
-  println("Local_dir:  $(job.local_dir)")
-  println("Server:     $(job.server)")
-  println("Server_dir: $(job.server_dir)")
-  println("$(length(job.calculations)) calculations")
-  println("--------------------")
-  println("")
+  s = """--------------------
+  DFJob:      $(job.name)
+  Local_dir:  $(job.local_dir)
+  Server:     $(job.server)
+  Server_dir: $(job.server_dir)
+  $(length(job.calculations)) calculations
+  --------------------
+  """
+  dfprintln(s)
   for calc in get_inputs(job, filenames)
     print_info(calc)
-    println("")
   end
 end
 
@@ -509,7 +511,6 @@ Prints flags of all the calculations in the job.
 function print_flags(job::DFJob)
   for calc in job.calculations
     print_flags(calc)
-    println("")
   end
 end
 
@@ -521,7 +522,6 @@ Prints flags of the specified calculation.
 function print_flags(job::DFJob, calc_filename::String)
   for calc in get_inputs(job,calc_filename)
     print_flags(calc)
-    println("")
   end
 end
 
@@ -672,11 +672,36 @@ Replaces the specified word in the header with the new word.
 function change_header_word!(job::DFJob,word::String,new_word::String)
   for (i,line) in enumerate(job.header)
     if contains(line,word)
-      println("Old line:")
-      println("   $line")
+      s = """Old line:
+        $line
+      New line:
+        $(job.header[i])
+      """
+      dfprintln(s)
       job.header[i] = replace(line,word,new_word)
-      println("New line:")
-      println("   $(job.header[i])")
     end
   end
 end
+
+"""
+    get_errors(job::DFJob)
+
+Prints the possible error messages in outputs of the `DFJob`.
+"""
+function get_errors(job::DFJob)
+  outputs = pull_outputs(job)
+  errors  = Dict{String,Array{String,1}}()
+  for out in outputs
+    errors[out] = read_errors(out)
+  end
+  for (filename,errs) in errors
+    dfprintln("Error in output '$filename':")
+    for err in errs
+      dfprintln("$err") 
+    end
+  end
+  if isempty(errors)
+    dfprintln("No errors found for job '$(job.name)'.")
+  end
+end
+

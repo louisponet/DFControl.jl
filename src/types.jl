@@ -45,11 +45,13 @@ mutable struct DFBand{T<:AbstractFloat} <: Band
 end
 
 function Base.display(band::DFBand{T}) where T <: AbstractFloat
-  println("DFBand{$T}:")
-  println("  k_points of length $(length(band.k_points_cart)):")
-  println("    cart:  $(band.k_points_cart[1]) -> $(band.k_points_cart[end])")
-  println("    cryst: $(band.k_points_cryst[1]) -> $(band.k_points_cryst[end])")
-  println("  eigvals: $(band.eigvals[1]) -> $(band.eigvals[end])")
+  string = """DFBand{$T}:
+  k_points of length $(length(band.k_points_cart)):
+  cart:    $(band.k_points_cart[1]) -> $(band.k_points_cart[end])
+  cryst:   $(band.k_points_cryst[1]) -> $(band.k_points_cryst[end])
+  eigvals: $(band.eigvals[1]) -> $(band.eigvals[end])
+  """
+  dfprintln(string)
 end
 
 function Base.display(bands::Array{<:DFBand})
@@ -66,9 +68,11 @@ mutable struct QEControlBlock<:ControlBlock
 end
 
 function Base.display(block::ControlBlock)
-  println("Block name: $(block.name)")
-  println("Block flags:")
-  display(block.flags)
+  dfprintln("Block name: $(block.name)\n  flags:")
+  for (flag,value) in block.flags
+    dfprintln("    $flag => $value")
+  end
+  dfprintln("")
 end
 
 #these are all the data blocks, they hold the specific data for the calculation
@@ -86,13 +90,15 @@ mutable struct WannierDataBlock <: DataBlock
   data::Any
 end
 
-function Base.display(block::Block)
-  println("Block name: $(block.name)")
-  println("Block option: $(block.option)")
-  println("Block data:")
-  display(block.data)
-  println("")
+function Base.display(block::DataBlock)
+  s = """Block name: $(block.name)
+  Block option: $(block.option)
+  Block data:
+  """
+  dfprintln(s)
+  dfprintln(string(block.data)*"\n\n")
 end
+
 
 function Base.display(blocks::Array{<:Block})
   map(display,blocks)
@@ -100,85 +106,86 @@ end
 #here all the different input structures for the different calculations go
 """
 Represents an input for DFT calculation.
-
-Fieldnames: backend::Symbol -> the DFT package that reads this input.
-            control_blocks::Dict{Symbol,Dict{Symbol,Any}} -> maps different control blocks to their dict of flags and values.
-            pseudos::Dict{Symbol,String} -> maps atom symbol to pseudo input file.
-            cell_param::Dict{Symbol,Any} -> maps the option of cell_parameters to the cell parameters.
-            atoms::Dict{Symbol,Any} -> maps atom symbol to position.
-            k_points::Dict{Symbol,Any} -> maps option of k_points to k_points.
-"""
-abstract type DFInput end
-
-mutable struct QEInput<:DFInput
-  filename::String
-  control_blocks::Array{QEControlBlock,1}
-  data_blocks::Array{QEDataBlock,1}
-  run_command::String  #everything before < in the job file
-  run::Bool
-end
-
-mutable struct WannierInput<:DFInput
-  filename::String
-  flags::Dict{Symbol,Any}
-  data_blocks::Array{WannierDataBlock,1}
-  run_command::String
-  run::Bool
-  preprocess::Bool
-end
-
-function Base.display(input::DFInput)
-  print_info(input)
-end
-
-"""
-Represents a full DFT job with multiple input files and calculations.
-
-Fieldnames: name::String
-            calculations::Dict{String,DFInput} -> calculation type to DFInput
-            flow::Array{Tuple{String,String},1} -> flow chart of calculations. The tuple is (calculation type, input file).
-            local_dir::String -> directory on local machine.
-            server::String -> server in full host@server t.
-            server_dir::String -> directory on server.
-"""
-mutable struct DFJob
-  name::String
-  calculations::Array{DFInput,1}
-  local_dir::String
-  server::String
-  server_dir::String
-  header::Array{String,1}
-  function DFJob(name,calculations,local_dir,server,server_dir,header=get_default_job_header())
-    if local_dir != ""
-      local_dir = form_directory(local_dir)
-    end
-    if server_dir != ""
-      server_dir = form_directory(server_dir)
-    end
-    new(name,calculations,local_dir,server,server_dir,header)
+  
+  Fieldnames: backend::Symbol -> the DFT package that reads this input.
+  control_blocks::Dict{Symbol,Dict{Symbol,Any}} -> maps different control blocks to their dict of flags and values.
+  pseudos::Dict{Symbol,String} -> maps atom symbol to pseudo input file.
+  cell_param::Dict{Symbol,Any} -> maps the option of cell_parameters to the cell parameters.
+  atoms::Dict{Symbol,Any} -> maps atom symbol to position.
+  k_points::Dict{Symbol,Any} -> maps option of k_points to k_points.
+  """
+  abstract type DFInput end
+  
+  mutable struct QEInput<:DFInput
+    filename::String
+    control_blocks::Array{QEControlBlock,1}
+    data_blocks::Array{QEDataBlock,1}
+    run_command::String  #everything before < in the job file
+    run::Bool
   end
-end
-
-function Base.display(job::DFJob)
-  print_info(job)
-end
-
-"""
-Represents an element.
-"""
-struct Element
-  Z::Int64
-  Name::String
-  atomic_weight::Float64
-end
-
-"""
-Reads all the elements from the file.
-"""
-const ELEMENTS = Dict()
-open(joinpath(@__DIR__,"../assets/elements.txt"),"r") do f
-  while !eof(f)
-    line = split(readline(f))
-    ELEMENTS[Symbol(line[4])] = Element(parse(Int64,line[1]),line[9],parse(Float64,line[10]))
+  
+  mutable struct WannierInput<:DFInput
+    filename::String
+    flags::Dict{Symbol,Any}
+    data_blocks::Array{WannierDataBlock,1}
+    run_command::String
+    run::Bool
+    preprocess::Bool
   end
-end
+  
+  function Base.display(input::DFInput)
+    print_info(input)
+  end
+  
+  """
+  Represents a full DFT job with multiple input files and calculations.
+  
+  Fieldnames: name::String
+  calculations::Dict{String,DFInput} -> calculation type to DFInput
+  flow::Array{Tuple{String,String},1} -> flow chart of calculations. The tuple is (calculation type, input file).
+  local_dir::String -> directory on local machine.
+  server::String -> server in full host@server t.
+  server_dir::String -> directory on server.
+  """
+  mutable struct DFJob
+    name::String
+    calculations::Array{DFInput,1}
+    local_dir::String
+    server::String
+    server_dir::String
+    header::Array{String,1}
+    function DFJob(name,calculations,local_dir,server,server_dir,header=get_default_job_header())
+      if local_dir != ""
+        local_dir = form_directory(local_dir)
+      end
+      if server_dir != ""
+        server_dir = form_directory(server_dir)
+      end
+      new(name,calculations,local_dir,server,server_dir,header)
+    end
+  end
+  
+  function Base.display(job::DFJob)
+    print_info(job)
+  end
+  
+  """
+  Represents an element.
+  """
+  struct Element
+    Z::Int64
+    Name::String
+    atomic_weight::Float64
+  end
+  
+  """
+  Reads all the elements from the file.
+  """
+  const ELEMENTS = Dict()
+  open(joinpath(@__DIR__,"../assets/elements.txt"),"r") do f
+    while !eof(f)
+      line = split(readline(f))
+      ELEMENTS[Symbol(line[4])] = Element(parse(Int64,line[1]),line[9],parse(Float64,line[10]))
+    end
+  end
+  

@@ -1,6 +1,20 @@
 module DFControl
   # using Reexport
   using RecipesBase
+  using Reactive
+
+  const print_s = Signal("hello")
+  if Pkg.installed("GtkReactive") != nothing
+    # using GLVisualize, GLWindow, GLAbstraction
+    include("dashboard.jl")
+    # preserve(map(println,print_s))
+  else
+    preserve(map(println,print_s))
+  end
+  dfprintln(s::String) = push!(print_s,s)
+  Base.display(x) = dfprintln("$(print(x))")
+  export dfprintln 
+
   include("types.jl")
   export Point3D
   export Band
@@ -31,6 +45,7 @@ module DFControl
   export read_qe_kpdos
   export read_qe_polarization
   export read_qe_input
+  export read_qe_output
   export read_wannier_input
   export write_input
   export write_job_files

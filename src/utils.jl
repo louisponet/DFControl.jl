@@ -121,7 +121,7 @@ Prints all the possible Quantum Espresso input namelists.
 """
 function print_qe_namelists()
   for block in QEControlFlags
-    println(block.name)
+    dfprintln(block.name)
   end
 end
 
