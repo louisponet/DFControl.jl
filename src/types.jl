@@ -10,7 +10,7 @@ Point3D(x::Array{<:AbstractFloat,1}) = Point3D(x[1],x[2],x[3])
 Point3D{T}() where T<:AbstractFloat = Point3D{T}(0)
 Point3D() = Point3D(0.0)
 
-import Base: +, -, *, /, convert, promote_rule, show, zero, nor
+import Base: +, -, *, /, convert, promote_rule, show, zero
 +(x::Point3D,y::Point3D) = Point3D(x.x+y.x,x.y+y.y,x.z+y.z)
 -(x::Point3D,y::Point3D) = Point3D(x.x-y.x,x.y-y.y,x.z-y.z)
 *(x::Point3D,y::Point3D) = Point3D(x.x*y.x,x.y*y.y,x.z*y.z)

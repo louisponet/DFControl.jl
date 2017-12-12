@@ -367,7 +367,7 @@ end
 
 Goes throug the calculation filenames and sets whether it should run or not.
 """
-function change_flow!(df_job::DFJob, filenames, should_run)
+function change_flow!(df_job::DFJob, filenames::Array{String,1}, should_run)
   for calc in get_inputs(df_job,filenames)
     calc.run = should_run
   end

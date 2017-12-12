@@ -5,14 +5,13 @@ module DFControl
 
   const print_s = Signal("hello")
   if Pkg.installed("GtkReactive") != nothing
-    # using GLVisualize, GLWindow, GLAbstraction
+    using Gtk,GtkReactive,Gtk.ShortNames,Colors
     include("dashboard.jl")
     # preserve(map(println,print_s))
   else
     preserve(map(println,print_s))
   end
   dfprintln(s::String) = push!(print_s,s)
-  Base.display(x) = dfprintln("$(print(x))")
   export dfprintln 
 
   include("types.jl")

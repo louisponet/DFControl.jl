@@ -171,6 +171,7 @@ function add_flags!(input::WannierInput, flags...)
   dfprintln("\n")
 end
 
+
 #removes an input control flag, if you want to implement another input add a similar function here!
 """
     remove_flags!(input::QEInput, flags...)
