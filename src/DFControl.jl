@@ -2,7 +2,8 @@ module DFControl
   # using Reexport
   using RecipesBase
   using Reactive
-
+  using PyCall
+  
   const print_s = Signal("hello")
   if Pkg.installed("GtkReactive") != nothing
     using Gtk,GtkReactive,Gtk.ShortNames,Colors
@@ -46,6 +47,7 @@ module DFControl
   export read_qe_input
   export read_qe_output
   export read_wannier_input
+  export read_abi_input
   export write_input
   export write_job_files
   export expr2file

@@ -20,6 +20,17 @@ function write_flag_line(f,flag,data)
   end
 end
 
+function parse_flag_val(val,T=Float32)
+  val = strip(val,'.')
+  try
+    t = parse.(split(val))
+    length(t)==1 ? t[1] : typeof(t)<:Array{<:Real,1} ? convert.(T,t) : t  
+  catch
+    val
+  end
+end
+
+
 "Quantum espresso card option parser"
 function get_card_option(line)
   if contains(line,"{")
@@ -244,6 +255,7 @@ function read_qe_input(filename,T=Float32::Type;run_command ="",run=true)
   control_blocks = Array{QEControlBlock,1}()
   data_blocks    = Array{QEDataBlock,1}()
   
+  flags_to_discard = ["nat","ntyp"]
   open(filename) do f
     line = readline(f)
     while !eof(f)
@@ -260,18 +272,22 @@ function read_qe_input(filename,T=Float32::Type;run_command ="",run=true)
           split_line = filter(x->x!="",strip.(split(line,",")))
           for s in split_line
             key,val = String.(strip.(split(s,"=")))
-            #parse for ints
-            if !isnull(tryparse(Int,val))
-              flag_dict[Symbol(key)] = get(tryparse(Int,val))
-              #parse for T<:AbstractFloat
-            elseif !isnull(tryparse(T,val))
-              flag_dict[Symbol(key)] = get(tryparse(T,val))
-              #parse for Bools
-            elseif !isnull(tryparse(Bool,strip(val,'.')))
-              flag_dict[Symbol(key)] = get(tryparse(Bool,strip(val,'.')))
+            if key in flags_to_discard
+              continue
             else
-              flag_dict[Symbol(key)] = val
+              flag_dict[Symbol(key)] = parse_flag_val(val) 
             end
+            # if !isnull(tryparse(Int,val))
+            #   flag_dict[Symbol(key)] = get(tryparse(Int,val))
+            #   #parse for T<:AbstractFloat
+            # elseif !isnull(tryparse(T,val))
+            #   flag_dict[Symbol(key)] = get(tryparse(T,val))
+            #   #parse for Bools
+            # elseif !isnull(tryparse(Bool,strip(val,'.')))
+            #   flag_dict[Symbol(key)] = get(tryparse(Bool,strip(val,'.')))
+            # else
+            #   flag_dict[Symbol(key)] = val
+            # end
           end
           line = readline(f)
         end
@@ -382,8 +398,17 @@ function write_qe_input(input::QEInput,filename::String=input.filename)
   open(filename,"w") do f
     write_flag(flag_data) = write_flag_line(f,flag_data[1],flag_data[2])
     write_block(data)      = write_block_data(f,data)
+
     for block in input.control_blocks
       write(f,"&$(block.name)\n")
+      if block.name == :system
+        atoms = get_data(input,:atomic_positions)
+        nat = sum(length.([ps for ps in values(atoms)]))
+        ntyp = length(atoms)
+        write_flag((:nat,nat))
+        write_flag((:ntype,ntyp))
+      end
+
       map(write_flag,[(flag,data) for (flag,data) in block.flags])
       write(f,"/\n\n")
     end
@@ -650,15 +675,49 @@ end
 #---------------------------END WANNIER SECTION ------------------------#
 
 #---------------------------START ABINIT SECTION------------------------#
+@pyimport abipy.abio.abivars as abivars
+
+#also searches the structure but where not doing anything with it now
 """
     read_abi_input(filename::String, T=Float32)
 
 Returns an ABINIT input.
 """
+#todo handle eV etc!
 function read_abi_input(filename::String, T=Float32; run_command="", run = true)
-  flags       = Dict{Symbol,Any}()
-  data_blocks = Array{AbinitDataBlock,1}()
+  abi_input = PyObject(abivars.AbinitInputFile(filename))
+  datasets  = abi_input[:datasets]
+  structure = abi_input[:structure] #where not doing anything with this
+  cell      = T.(structure[:lattice_vectors]())
+  atoms     = Dict{Symbol,Array{Point3D{T},1}}()
+  for site in structure[:sites]
+    atsym   = Symbol(site[:specie][:symbol])
+    coord   = Point3D{T}(T.(site[:frac_coords]))
+    if !haskey(atoms,atsym)
+      atoms[atsym] = [coord]
+    else
+      push!(atoms[atsym],coord)
+    end
+  end
 
+  #acell should probably also be something special
+  flags_to_dicard = ["acell","rprim","natom","ntypat","typat","znucl","xred"]
+  inputs    = Array{AbinitInput,1}()
+  for (i,data) in enumerate(datasets)
+    file,ext= splitext(filename)
+    newfile = file*"$i"*ext
+    flags = Dict{Symbol,Any}()
+    for (flag,value) in data
+      if flag in flags_to_dicard
+        continue
+      else
+        flags[Symbol(flag)] = parse_flag_val(value,T)
+      end
+    end
+    flags[:acell] = T[1.0,1.0,1.0]
+    push!(inputs,AbinitInput(newfile,flags,[AbinitDataBlock(:cell_parameters,:angstrom,cell),AbinitDataBlock(:atomic_positions,:frac,atoms)],structure,run_command,run))
+  end
+  return inputs
 end
 
 #---------------------------END ABINIT SECTION--------------------------#

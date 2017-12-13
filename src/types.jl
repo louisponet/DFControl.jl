@@ -143,6 +143,7 @@ Represents an input for DFT calculation.
     filename::String
     flags::Dict{Symbol,Any}
     data_blocks::Array{AbinitDataBlock,1}
+    structure::PyObject
     run_command::String
     run::Bool
   end 
