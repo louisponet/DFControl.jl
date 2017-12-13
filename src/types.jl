@@ -90,6 +90,12 @@ mutable struct WannierDataBlock <: DataBlock
   data::Any
 end
 
+mutable struct AbinitDataBlock <: DataBlock
+  name::Symbol
+  option::Symbol
+  data::Any
+end
+
 function Base.display(block::DataBlock)
   s = """Block name: $(block.name)
   Block option: $(block.option)
@@ -133,6 +139,14 @@ Represents an input for DFT calculation.
     preprocess::Bool
   end
   
+  mutable struct AbinitInput<:DFInput
+    filename::String
+    flags::Dict{Symbol,Any}
+    data_blocks::Array{AbinitDataBlock,1}
+    run_command::String
+    run::Bool
+  end 
+
   function Base.display(input::DFInput)
     print_info(input)
   end
