@@ -14,7 +14,7 @@ module DFControl
   end
   dfprintln(s::String) = push!(print_s,s)
   export dfprintln 
-
+  include("constants.jl")
   include("types.jl")
   export Point3D
   export Band
@@ -117,4 +117,5 @@ module DFControl
   qe_input_files = search_dir(joinpath(@__DIR__,"../assets/inputs/qe/"),"INPUT")
   const QEControlFlags = vcat([read_qe_flags(joinpath(@__DIR__,"../assets/inputs/qe/") * file) for file in qe_input_files]...)
   export QEControlFlags
+
 end
