@@ -1,5 +1,44 @@
+#-------------------BEGINNING GENERAL SECTION-------------#
+#all get_inputs return arrays, get_input returns the first element if multiple are found
+"""
+    get_inputs(job::DFJob, filenames::Array)
 
-#---------------------------------BEGINNING GENERAL SECTION ---------------------#
+Returns an array of the inputs that match one of the filenames.
+"""
+function get_inputs(job::DFJob, filenames::Array)
+  out = DFInput[]
+  for name in filenames
+    push!(out,filter(x->contains(x.filename,name),job.calculations)[1])
+  end
+  return out
+end
+
+"""
+    get_inputs(job::DFJob, filename::String)
+
+Returns an array of the input that matches the filename.
+"""
+function get_inputs(job::DFJob, filename::String)
+  return filter(x->contains(x.filename,filename),job.calculations)
+end
+
+"""
+    get_input(job::DFJob, filename::String)
+
+Returns the input that matches the filename.
+"""
+function get_input(job::DFJob, filename::String)
+  return filter(x->contains(x.filename,filename),job.calculations)[1]
+end
+
+"""
+    get_input(job::DFJob, filenames::Array)
+
+Returns an array of the inputs that match one of the filenames.
+"""
+function get_input(job::DFJob, filenames::Array{String,1})
+  return get_inputs(job,filenames)
+end
 
 """
 create_job(job_name, local_dir, args...; server=get_default_server(),server_dir="")
@@ -16,15 +55,15 @@ function create_job(job_name, local_dir, args...; server=get_default_server(),se
 end
 
 """
-load_job(job_dir::String, T=Float32; job_fuzzy = "job", new_job_name=nothing, new_homedir=nothing, server=get_default_server(),server_dir="")
+load_job(job_dir::String, T=Float64; job_fuzzy = "job", new_job_name=nothing, new_homedir=nothing, server=get_default_server(),server_dir="")
 
 Loads and returns a DFJob. If local_dir is not specified the job directory will ge registered as the local one.
 """
 #should we call this load local job?
-function load_job(job_dir::String, T=Float32; job_fuzzy = "job", new_job_name=nothing, new_local_dir=nothing, server=get_default_server(),server_dir="")
+function load_job(job_dir::String, T=Float64; job_fuzzy = "job", new_job_name=nothing, new_local_dir=nothing, server=get_default_server(),server_dir="")
   job_dir = form_directory(job_dir)
   
-  job_name,t_inputs,t_outputs,t_run_commands,t_should_run,header = read_job_file(job_dir*search_dir(job_dir,job_fuzzy)[1])
+  job_data = read_job_file(job_dir*search_dir(job_dir,job_fuzzy)[1])
   filenames    = String[]
   run_commands = String[]
   should_run   = Bool[]
@@ -32,13 +71,13 @@ function load_job(job_dir::String, T=Float32; job_fuzzy = "job", new_job_name=no
   if new_job_name != nothing
     job_name = new_job_name
   end
-  for (i,file) in enumerate(t_inputs)
-    if length(search_dir(job_dir,file))==0 && t_should_run[i]
+  for (i,file) in enumerate(job_data[:input_files])
+    if length(search_dir(job_dir,file))==0 && job_data[:should_run][i]
       error("Error: there are calculations that should run but have no input file ($file).")
     elseif length(search_dir(job_dir,file))!=0
       push!(filenames,file)
-      push!(run_commands,t_run_commands[i])
-      push!(should_run,t_should_run[i])
+      push!(run_commands,job_data[:run_commands][i])
+      push!(should_run,job_data[:should_run][i])
     end
   end
   
@@ -53,14 +92,16 @@ function load_job(job_dir::String, T=Float32; job_fuzzy = "job", new_job_name=no
       else
         push!(t_calcs,read_wannier_input(filename*".win",T,run_command=run_command,run=run,preprocess=false))
       end
+    elseif contains(run_command,"abinit")
+      push!(t_calcs,read_abi_input(filename,T,run_command=run_command,run=run,pseudos=job_data[:abinit_pseudos])...)
     else
       push!(t_calcs,read_qe_input(filename,T,run_command=run_command,run=run))
     end
   end
   if new_local_dir != nothing
-    return DFJob(job_name,t_calcs,new_local_dir,server,server_dir,header)
+    return DFJob(job_data[:name],t_calcs,new_local_dir,server,server_dir,job_data[:header])
   else
-    return DFJob(job_name,t_calcs,job_dir,server,server_dir,header)
+    return DFJob(job_data[:name],t_calcs,job_dir,server,server_dir,job_data[:header])
   end
 end
 
@@ -80,8 +121,8 @@ function pull_job(server::String, server_dir::String, local_dir::String; job_fuz
   pull_server_file(job_fuzzy)
   job_file = search_dir(local_dir,strip(job_fuzzy,'*'))[1]
   if job_file != nothing
-    job_name,inputs,outputs, run_commands , _ = read_job_file(local_dir*job_file)
-    for (file,run_command) in zip(inputs,run_commands)
+    job_data = read_job_file(local_dir*job_file)
+    for (file,run_command) in zip(job_data[:input_files],job_data[:run_commands])
       if !contains(file,".") && contains(run_command,"wannier90.x")
         pull_server_file(file*".win")
       else
@@ -558,46 +599,29 @@ function print_flag(job::DFJob, flag::Symbol)
   end
 end
 
-#all get_inputs return arrays, get_input returns the first element if multiple are found
 """
-    get_inputs(job::DFJob, filenames::Array)
+    add_block!(job::DFJob, filenames, block::<:Block)
 
-Returns an array of the inputs that match one of the filenames.
+Adds a block to the specified filenames.
 """
-function get_inputs(job::DFJob, filenames::Array)
-  out = DFInput[]
-  for name in filenames
-    push!(out,filter(x->contains(x.filename,name),job.calculations)...)
+function add_block!(job::DFJob, filenames, block::Block)
+  for input in get_inputs(job,filenames)
+    add_block!(input,block)
   end
-  return out
 end
 
 """
-    get_inputs(job::DFJob, filename::String)
+    change_filename!(job::DFJob, old_filename::String, new_filename::String)
 
-Returns an array of the input that matches the filename.
+Changes the filename from the old to the new one.
 """
-function get_inputs(job::DFJob, filename::String)
-  return filter(x->contains(x.filename,filename),job.calculations)
+function change_filename!(job::DFJob, old_filename::String, new_filename::String)
+  input = get_input(job, old_filename)
+  input.filename = new_filename
+  dfprintln("Input filename in job $(job.name) has been changed from '$old_filename' to '$new_filename'.")
+
 end
 
-"""
-    get_input(job::DFJob, filename::String)
-
-Returns the input that matches the filename.
-"""
-function get_input(job::DFJob, filename::String)
-  return filter(x->contains(x.filename,filename),job.calculations)[1]
-end
-
-"""
-    get_input(job::DFJob, filenames::Array)
-
-Returns an array of the inputs that match one of the filenames.
-"""
-function get_input(job::DFJob, filenames::Array{String,1})
-  return get_inputs(job,filenames)
-end
 #---------------------------------END GENERAL SECTION ------------------#
 
 """
@@ -612,11 +636,7 @@ function change_atoms!(job::DFJob, atoms::Dict{Symbol,<:Array{<:Point3D,1}};kwar
   for calc in job.calculations
     change_atoms!(calc,atoms;kwargs...)
   end
-  # nat  = 0
-  # for pos in values(atoms)
-  #   nat+=length(pos)
-  # end
-  # change_flags!(job,:nat=>nat,:ntyp=>length(keys(atoms)))
+
 end
 
 #automatically sets the cell parameters for the entire job, implement others
@@ -705,3 +725,86 @@ function get_errors(job::DFJob)
   end
 end
 
+function add_wan_calc!(job::DFJob, k_grid; nscf_file = "nscf.in", wan_file="wan.win",pw2wan_file = "pw2wan.in", wan_run_command="~/bin/wannier90.x ",pw2wan_run_command="mpirun -np 24 ~/bin/pw2wannier90.x", wan_flags=nothing,pw2wan_flags=nothing)
+  nscf_calc   = nothing
+  scf_calc    = nothing
+  pw2wan_calc = nothing
+  for calc in job.calculations
+    if typeof(calc) == QEInput
+      calculation = get_flag(calc,:calculation)
+      if calculation == "'scf'"
+        scf_calc    = calc
+      elseif calculation == "'nscf'"
+        nscf_calc   = calc 
+      elseif calc.control_blocks[1].name == :inputpp
+        pw2wan_calc = calc 
+      end
+    end
+  end
+  if nscf_calc != nothing 
+    change_data!(nscf_calc,:k_points,gen_k_grid(k_grid[1],k_grid[2],k_grid[3],:nscf))
+  elseif scf_calc != nothing
+    nscf_calc = deepcopy(scf_calc)
+    nscf_calc.filename = nscf_file
+    change_flags!(nscf_calc,:calculation=>"'nscf'")
+    change_data!(nscf_calc,:k_points,gen_k_grid(k_grid[1],k_grid[2],k_grid[3],:nscf),option=:crystal)
+    push!(job.calculations,nscf_calc)
+  else
+    error("Job needs to have at least an scf calculation.")
+  end
+  nscf_calc.run = true
+
+  std_pw2wan_flags =Dict(:prefix => get_flag(scf_calc,:prefix),:write_unk=>true,:write_amn=>true,:outdir=> "'./'",:seedname=>"'$(splitext(wan_file)[1])'") 
+  if pw2wan_flags == nothing
+    pw2wan_flags = std_pw2wan_flags
+  else
+    pw2wan_flags = merge(std_pw2wan_flags,pw2wan_flags)
+  end
+
+  if pw2wan_calc != nothing
+    change_flags!(pw2wan_calc,pw2wan_flags)
+  elseif typeof(scf_calc) == QEInput
+    pw2wan_calc = QEInput(pw2wan_file,[QEControlBlock(:inputpp,pw2wan_flags)],QEDataBlock[],pw2wan_run_command,true)
+  end
+  
+  cell_block = get_block(scf_calc,:cell_parameters)
+  if cell_block.option == :alat
+    alat = isnull(get_flag(scf_calc,:A)) ? isnull(get_flag(scf_calc,Symbol(String("celldm(1)")))) ? error("Please set either flag :A or :celldm(1) when cell_parameters are in alat.") : conversions[:bohr2ang]*get_flag(scf_calc,Symbol(String("celldm(1)"))) :get_flag(scf_calc,:A) 
+    cell = cell_block.data .* alat
+  elseif cell_block.option == :bohr
+    cell = cell_block.data .* conversions[:bohr2ang]
+  else
+    cell = cell_block.data
+  end
+
+  atoms_block = get_block(scf_calc,:atomic_positions)
+  atoms = deepcopy(atoms_block.data)
+  if atoms_block.option == :alat
+    alat = isnull(get_flag(scf_calc,:A)) ? isnull(get_flag(scf_calc,Symbol(String("celldm(1)")))) ? error("Please set either flag :A or :celldm(1) when cell_parameters are in alat.") : conversions[:bohr2ang]*get_flag(scf_calc,Symbol(String("celldm(1)"))) :get_flag(scf_calc,:A) 
+    for (key,positions) in atoms_block.data
+      atoms[key] = positions .* alat
+    end
+  elseif atoms_block.option == :bohr
+    for (key,positions) in atoms_block.data
+      atoms[key] = positions .* conversions[:bohr2ang]
+    end
+  elseif atoms_block.option == :crystal
+    for (key,positions) in atoms_block.data
+      t_pos = Point3D[]
+      for p in positions
+        push!(t_pos,cell*p)
+      end
+      atoms[key] = t_pos
+    end
+  end
+  wan_flags[:mp_grid] = typeof(k_grid)<:Array ? k_grid : convert(Array,k_grid)
+  wan_calc1 = WannierInput(wan_file,wan_flags,[WannierDataBlock(:atoms_cart,:ang,atoms),WannierDataBlock(:unit_cell_cart,:ang,cell),WannierDataBlock(:kpoints,:none,gen_k_grid(k_grid[1],k_grid[2],k_grid[3],:wan))],wan_run_command,true,true)
+  wan_calc2 = WannierInput(wan_file,wan_flags,[WannierDataBlock(:atoms_cart,:ang,atoms),WannierDataBlock(:unit_cell_cart,:ang,cell),WannierDataBlock(:kpoints,:none,gen_k_grid(k_grid[1],k_grid[2],k_grid[3],:wan))],wan_run_command,true,false)
+  push!(job.calculations,wan_calc1)
+  push!(job.calculations,pw2wan_calc)
+  push!(job.calculations,wan_calc2)
+  print_info(job)
+end
+
+    
+  

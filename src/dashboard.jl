@@ -68,15 +68,15 @@ const t_signal = Signal("")
 const dash_signal = foldp((x,y)->x*"\n"*y,"",t_signal)
 # const dash_signal = foldp((x,y)->x*"\n"*y,"",t_signal)
 
-
-@async while true
-  text = value(print_s)
-  sleep(0.1)
-  text2 = value(print_s)
-  if text2!="reset" && text==text2
-    push!(t_signal,"$(value(blocks))\n"*value(accum_signal)*"\n===================================\n")
-    push!(blocks,value(blocks)+1) 
-    push!(print_s,"reset")
+foreach(print_s) do s  
+  @async begin
+    sleep(0.1)
+    text2 = value(print_s)
+    if text2!="reset" && s==text2
+      push!(t_signal,"$(value(blocks))\n"*value(accum_signal)*"\n===================================\n")
+      push!(blocks,value(blocks)+1) 
+      push!(print_s,"reset")
+    end
   end
 end
 
@@ -100,7 +100,6 @@ style_css(tb,fontCss)
 push!(text_a,tb)
 # push!(text_a,tb2)
 showall(dash_window)
-
 # const colors = Dict{Symbol,RGBA}()
 
 # colors[:text_background] = RGBA(24/255,32/255,38/255,1.f0)

@@ -1,3 +1,73 @@
+qe_input_files = search_dir(joinpath(@__DIR__,"../assets/inputs/qe/"),"INPUT")
+
+function qe2julia(qe_type)
+  qe_type = lowercase(qe_type)
+  if qe_type == "real"
+    return AbstractFloat
+  elseif qe_type == "character"
+    return String
+  elseif qe_type == "integer"
+    return Int
+  elseif qe_type == "logical"
+    return Bool
+  end
+end
+
+"Reads all possible quantum espresso flags"
+function read_qe_flags(filename)
+  control_blocks = QEControlBlock[]
+  open(filename,"r") do f
+    while !eof(f)
+      line = readline(f)
+      if contains(line,"NAMELIST")
+        name = Symbol(lowercase(strip_split(line,"&")[2]))
+        flags = Dict{Symbol,Any}()
+        line = readline(f)
+        while !contains(line,"END OF NAMELIST")
+          if contains(line,"Variable")
+            readline(f)
+            value = qe2julia(strip_split(readline(f))[2])
+            
+            t_line = strip_split(line)
+            if t_line[1] == "Variables:"
+              flgs = Symbol.(strip.(t_line[2:end],','))
+              for fl in flgs
+                flags[fl] = value
+              end
+            else
+              t_line = t_line[2]
+              if contains(t_line,"(") && contains(t_line,")")
+                flag = Symbol(split(strip_split(t_line,",")[1],"(")[1])
+              else
+                flag = Symbol(t_line)
+              end
+              flags[flag] = value
+            end
+          
+          end
+          line = readline(f)
+        end
+        push!(control_blocks, QEControlBlock(name,flags))
+      end
+    end
+  end
+  return control_blocks
+end
+const QEControlFlags = vcat([read_qe_flags(joinpath(@__DIR__,"../assets/inputs/qe/") * file) for file in qe_input_files]...)
+begin 
+  flags = filter(x->x.name==:inputpp,QEControlFlags)[1].flags
+  flags[:outdir]         = String
+  flags[:prefix]         = String
+  flags[:seedname]       = String
+  flags[:wan_mode]       = String
+  flags[:write_mmn]      = Bool
+  flags[:write_amn]      = Bool
+  flags[:write_unk]      = Bool
+  flags[:wvfn_formatted] = Bool
+  flags[:reduce_unk]     = Bool
+  flags[:spin_component] = String
+end
+get_qe_flags(block) = filter(x->x.name==block,QEControlFlags)[1].flags
 
 function parse_k_line(line,T)
   splt = split(line)
@@ -7,24 +77,41 @@ function parse_k_line(line,T)
   return [k1,k2,k3]
 end
 
-function write_flag_line(f,flag,data)
-  write(f,"   $flag = ")
+function write_flag_line(f,flag,data,abi=false)
+  if !abi
+    write(f,"   $flag = ")
+  else
+    write(f,"$flag ")
+  end
   if typeof(data) <: Array
-    write(f,"$(data[1])")
-    for x in data[2:end]
-      write(f," $x")
+    if length(data)<20
+      write(f,"$(data[1])")
+      for x in data[2:end]
+        write(f," $x")
+      end
+      write(f,"\n")
+    else
+      for i=1:3:length(data)
+        write(f," $(data[i]) $(data[i+1]) $(data[i+2])\n")
+      end
     end
-    write(f,"\n")
   else #this should work for anything singular valued data such as bools, ''s and other types
     write(f,"$data\n")
   end
 end
 
-function parse_flag_val(val,T=Float32)
-  val = strip(val,'.')
+function parse_flag_val(val,T=Float64)
+  if contains(val,"d-")
+    val = replace(val,"d","e")
+  end
+  val = strip(val,'.') 
   try
-    t = parse.(split(val))
-    length(t)==1 ? t[1] : typeof(t)<:Array{<:Real,1} ? convert.(T,t) : t  
+    t = parse.(split(lowercase(val)))
+    #deal with abinit constants -> all flags that are read which are not part of the abi[:structure] get cast into the correct atomic units!
+    if length(t)>1 && typeof(t[end]) == Symbol
+      t = t[1:end-1].*abi_const[t[end]]
+    end
+    length(t)==1 ? t[1] : typeof(t)<:Array{Real,1} ? convert.(T,t) : t  
   catch
     val
   end
@@ -43,21 +130,17 @@ function get_card_option(line)
 end
 
 """
-    read_qe_output(filename::String, T=Float32)
+    read_qe_output(filename::String, T=Float64)
 
 Reads a generic quantum espresso input, returning a dictionary with all found data in the file.
 """
-function read_qe_output(filename::String, T=Float32)
+function read_qe_output(filename::String, T=Float64)
   out = Dict{Symbol,Any}()
   open(filename,"r") do f
     prefac_k     = nothing
     k_eigvals    = Array{Array{T,1},1}()
-    #some hacky way of sorting the cell param and atomic positions linked to the lowest force
     lowest_force = T(1000000)
-    # atoms        = Dict{Symbol,Array{Point3D{T},1}}()
-    # t_cell       = Matrix{T}(3,3)
-    # t_alat       = T(0)
-    # t_pos_option = Symbol()
+    
     while !eof(f)
       line = readline(f)
       
@@ -166,31 +249,31 @@ function read_qe_output(filename::String, T=Float32)
 end
 
 """
-    read_qe_bands_file(filename::String, T=Float32)
+    read_qe_bands_file(filename::String, T=Float64)
 
 Reads the output file of a 'bands' calculation in Quantum Espresso.
 Returns an array of DFBands each with the same k_points and their respective energies.
 """
-read_qe_bands_file(filename::String, T=Float32) = read_qe_output(filename,T)[:bands]
+read_qe_bands_file(filename::String, T=Float64) = read_qe_output(filename,T)[:bands]
 
 """
-    read_ks_from_qe_bands_file(filename::String,T=Float32)
+    read_ks_from_qe_bands_file(filename::String,T=Float64)
 
 Read k-points from a Quantum Espresso bands output file in cartesian (2pi/alat in Angstrom^-1!) and crystalline coordinates.
 Returns (k_points_cart,k_points_cryst).
 """
-function read_ks_from_qe_bands_file(filename::String,T=Float32)
+function read_ks_from_qe_bands_file(filename::String,T=Float64)
   t = read_qe_output(filename,T)
   return t[:k_cart],t[:k_cryst]
 end
 
 """
-    read_fermi_from_qe_file(filename::String,T=Float32)
+    read_fermi_from_qe_file(filename::String,T=Float64)
 
 Reads the Fermi level from a Quantum Espresso scf calculation output file
 (if there is one).
 """
-read_fermi_from_qe_file(filename::String,T=Float32) = read_qe_output(filename,T)[:fermi]
+read_fermi_from_qe_file(filename::String,T=Float64) = read_qe_output(filename,T)[:fermi]
 
 """
     read_qe_kpdos(filename::String,column=1;fermi=0)
@@ -220,16 +303,16 @@ function read_qe_kpdos(filename::String,column=1;fermi=0)
 end
 
 """
-    read_qe_polarization(filename::String,T=Float32)
+    read_qe_polarization(filename::String,T=Float64)
 
 Returns the polarization and modulus. 
 """
-function read_qe_polarization(filename::String,T=Float32)
+function read_qe_polarization(filename::String,T=Float64)
   t = read_qe_output(filename,T)
   return t[:polarization], t[:pol_mod]
 end
 
-read_qe_vcrel(filename::String,T=Float32) = read_qe_output(filename,T) do x return x[:cell_parameters],x[:alat],x[:atomic_positions],x[:pos_option] end
+read_qe_vcrel(filename::String,T=Float64) = read_qe_output(filename,T) do x return x[:cell_parameters],x[:alat],x[:atomic_positions],x[:pos_option] end
 
 function read_errors(filename::String)
   out = String[]
@@ -244,14 +327,16 @@ function read_errors(filename::String)
   end
 end
 
+#Incomplete. certain variables are not read well 
+
+#I should use the extra info I got out of the QEControlFlags to parse the correct things!
 """
-    read_qe_input(filename,T=Float32)
+    read_qe_input(filename,T=Float64)
 
 Reads a Quantum Espresso input file.
 Returns a DFInput.
 """
-function read_qe_input(filename,T=Float32::Type;run_command ="",run=true)
-  
+function read_qe_input(filename,T=Float64::Type;run_command ="",run=true)
   control_blocks = Array{QEControlBlock,1}()
   data_blocks    = Array{QEDataBlock,1}()
   
@@ -263,6 +348,7 @@ function read_qe_input(filename,T=Float32::Type;run_command ="",run=true)
       if contains(line,"&")
         c_block_name = Symbol(lowercase(strip(strip(line),'&')))
         flag_dict = Dict{Symbol,Any}()
+        def_block_flags = get_qe_flags(c_block_name)
         line = readline(f)
         while strip(line)!="/"
           if contains(line,"!")
@@ -274,20 +360,19 @@ function read_qe_input(filename,T=Float32::Type;run_command ="",run=true)
             key,val = String.(strip.(split(s,"=")))
             if key in flags_to_discard
               continue
+            elseif haskey(def_block_flags,Symbol(split(key,"(")[1]))
+              # def_key = Symbol(split(key,"(")[1])
+              # parse_type = def_block_flags[def_key]
+              # if parse_type == String
+              #   flag_dict[Symbol(key)] = val
+              # elseif parse_type == AbstractFloat
+              #   parse_type = T
+                # flag_dict[Symbol(key)] = !isnull(tryparse(parse_type,val)) ? parse(parse_type,val) : error("Error reading flag '$key': value has wrong type.")
+                flag_dict[Symbol(key)] = parse_flag_val(val) 
+              # end
             else
-              flag_dict[Symbol(key)] = parse_flag_val(val) 
+              error("Error reading $filename: flag '$key' not found in QE flag dictionary for control block $c_block_name !")
             end
-            # if !isnull(tryparse(Int,val))
-            #   flag_dict[Symbol(key)] = get(tryparse(Int,val))
-            #   #parse for T<:AbstractFloat
-            # elseif !isnull(tryparse(T,val))
-            #   flag_dict[Symbol(key)] = get(tryparse(T,val))
-            #   #parse for Bools
-            # elseif !isnull(tryparse(Bool,strip(val,'.')))
-            #   flag_dict[Symbol(key)] = get(tryparse(Bool,strip(val,'.')))
-            # else
-            #   flag_dict[Symbol(key)] = val
-            # end
           end
           line = readline(f)
         end
@@ -356,7 +441,7 @@ end
 
 #can I use @generated here?
 function write_block_data(f,data)
-  if typeof(data)<:Array{Vector{Float32},1} || typeof(data)<:Array{Vector{Float64},1} #k_points
+  if typeof(data)<:Array{Vector{Float64},1} || typeof(data)<:Array{Vector{Float64},1} #k_points
     for x in data
       for y in x
         write(f," $y")
@@ -379,7 +464,11 @@ function write_block_data(f,data)
   elseif typeof(data)<:Dict{Symbol,<:Any}
     for (key,value) in data
       if typeof(value) == String
-        write(f,"$key $(Float32(ELEMENTS[key].atomic_weight))   $value\n")
+        if length(String(key)) > 2 
+          write(f,"$key $(Float64(ELEMENTS[Symbol(String(key)[1:end-1])].atomic_weight))   $value\n")
+        else
+          write(f,"$key $(Float64(ELEMENTS[key].atomic_weight))   $value\n")
+        end
       elseif typeof(value) <: Array{<:Point3D,1}
         for at in value
           write(f,"$key $(at.x) $(at.y) $(at.z)\n")
@@ -406,7 +495,7 @@ function write_qe_input(input::QEInput,filename::String=input.filename)
         nat = sum(length.([ps for ps in values(atoms)]))
         ntyp = length(atoms)
         write_flag((:nat,nat))
-        write_flag((:ntype,ntyp))
+        write_flag((:ntyp,ntyp))
       end
 
       map(write_flag,[(flag,data) for (flag,data) in block.flags])
@@ -426,68 +515,21 @@ function write_qe_input(input::QEInput,filename::String=input.filename)
         write_block(block.data)
       end
       write(f,"\n")
-      #write the other cards depending on whether or not they are there
+      #write the o_ther cards depending on whether or not they are there
     end
   end
 end
 
-#Incomplete. certain variables are not read well 
-"Reads all possible quantum espresso flags"
-function read_qe_flags(filename)
-  control_blocks = QEControlBlock[]
-  open(filename,"r") do f
-    while !eof(f)
-      line = readline(f)
-      if contains(line,"NAMELIST")
-        name = Symbol(lowercase(strip_split(line,"&")[2]))
-        flags = Dict{Symbol,Any}()
-        line = readline(f)
-        while !contains(line,"END OF NAMELIST")
-          if contains(line,"Variable")
-            t_line = strip_split(line)[2]
-            if contains(t_line,"(") && contains(t_line,")")
-              flag = Symbol(strip_split(t_line,",")[1])
-            else
-              flag = Symbol(t_line)
-            end
-            readline(f)
-            value = qe2julia(strip_split(readline(f))[2])
-            flags[flag] = value
-          elseif contains(line,"///")
-            while !contains(line,"\u005C\u005C\u005C")
-              line = readline(f)
-            end
-          end
-          line = readline(f)
-        end
-        push!(control_blocks, QEControlBlock(name,flags))
-      end
-    end
-  end
-  return control_blocks
-end
 
-function qe2julia(qe_type)
-  qe_type = lowercase(qe_type)
-  if qe_type == "real"
-    return AbstractFloat
-  elseif qe_type == "character"
-    return String
-  elseif qe_type == "integer"
-    return Int
-  elseif qe_type == "logical"
-    return Bool
-  end
-end 
 #---------------------------END QUANTUM ESPRESSO SECTION----------------#
 #---------------------------START WANNIER SECTION ----------------------#
 
 """
-    read_wannier_input(filename::String, T=Float32)
+    read_wannier_input(filename::String, T=Float64)
 
 Reads a DFInput from a wannier90 input file.
 """
-function read_wannier_input(filename::String, T=Float32; run_command="", run=true, preprocess=true)
+function read_wannier_input(filename::String, T=Float64; run_command="", run=true, preprocess=true)
   flags = Dict{Symbol,Any}()
   data_blocks = Array{WannierDataBlock,1}()
   open(filename,"r") do f
@@ -676,18 +718,17 @@ end
 
 #---------------------------START ABINIT SECTION------------------------#
 @pyimport abipy.abio.abivars as abivars
-
 #also searches the structure but where not doing anything with it now
 """
-    read_abi_input(filename::String, T=Float32)
+    read_abi_input(filename::String, T=Float64)
 
 Returns an ABINIT input.
 """
 #todo handle eV etc!
-function read_abi_input(filename::String, T=Float32; run_command="", run = true)
+function read_abi_input(filename::String, T=Float64; run_command="", run = true, pseudos=[""])
   abi_input = PyObject(abivars.AbinitInputFile(filename))
   datasets  = abi_input[:datasets]
-  structure = abi_input[:structure] #where not doing anything with this
+  structure = abi_input[:structure]
   cell      = T.(structure[:lattice_vectors]())
   atoms     = Dict{Symbol,Array{Point3D{T},1}}()
   for site in structure[:sites]
@@ -699,26 +740,39 @@ function read_abi_input(filename::String, T=Float32; run_command="", run = true)
       push!(atoms[atsym],coord)
     end
   end
-
-  #acell should probably also be something special
-  flags_to_dicard = ["acell","rprim","natom","ntypat","typat","znucl","xred"]
+  filename=splitdir(filename)[2]
+  flags_to_discard = ["acell","rprim","natom","ntypat","typat","znucl","xred","acell"]
   inputs    = Array{AbinitInput,1}()
   for (i,data) in enumerate(datasets)
     file,ext= splitext(filename)
-    newfile = file*"$i"*ext
+    if length(datasets)>1
+      newfile = file*"$i"*ext
+    else
+      newfile = file*ext
+    end
     flags = Dict{Symbol,Any}()
     for (flag,value) in data
-      if flag in flags_to_dicard
+      if flag in flags_to_discard
         continue
       else
         flags[Symbol(flag)] = parse_flag_val(value,T)
       end
     end
-    flags[:acell] = T[1.0,1.0,1.0]
-    push!(inputs,AbinitInput(newfile,flags,[AbinitDataBlock(:cell_parameters,:angstrom,cell),AbinitDataBlock(:atomic_positions,:frac,atoms)],structure,run_command,run))
+    push!(inputs,AbinitInput(newfile,flags,[AbinitDataBlock(:cell_parameters,:angstrom,cell),AbinitDataBlock(:atomic_positions,:frac,atoms),AbinitDataBlock(:pseudos,:pseudos,pseudos)],structure,run_command,run))
   end
   return inputs
 end
+
+function write_abi_input(input::AbinitInput,filename::String=input.filename)
+  flags = input.flags
+  open(filename,"w") do f
+    write_flag(flag_data) = write_flag_line(f,flag_data[1],flag_data[2],true)
+    write(f,input.structure[:abi_string])
+    write(f,"\n")
+    write_flag.(collect(flags))
+  end
+end
+
 
 #---------------------------END ABINIT SECTION--------------------------#
 
@@ -733,6 +787,8 @@ function write_input(df_input::DFInput,filename::String=df_input.filename)
     write_qe_input(df_input,filename)
   elseif typeof(df_input) == WannierInput
     write_wannier_input(df_input,filename)
+  elseif typeof(df_input) == AbinitInput
+    write_abi_input(df_input,filename)
   end
 end
 
@@ -780,6 +836,13 @@ function write_job_files(df_job::DFJob)
         else
           write(f,"$run_command $(filename[1:end-4])\n")
         end
+      elseif typeof(calculation) == AbinitInput
+        file,ext = splitext(filename)
+        write(f,"$run_command << !EOF\n$filename\n$(file*".out")\n$(file*"_Xi")\n$(file*"_Xo")\n$(file*"_Xx")\n")
+        for pp in get_data(calculation,:pseudos)
+          write(f,"$pp\n")
+        end
+        write(f,"!EOF\n")
       else
         if !should_run
           write(f,"#$run_command <$filename> $(split(filename,".")[1]).out \n")
@@ -798,6 +861,30 @@ function write_job_files(df_job::DFJob)
   end
 end
 
+
+function read_command_line(line)
+  if typeof(line)<:String
+    line = split(line)
+  end
+  i = 0
+  for (j,s) in enumerate(line)
+    if contains(s,".x")
+      i = j
+      break
+    elseif contains(s,"abinit")
+      i=j
+      break
+    end
+  end
+  run_command = prod([s*" " for s in line[1:i]])
+  if contains(line[i+1],"-")
+    run_command *= line[i+1]
+    i+=1
+  end
+  return i,run_command
+end
+
+
 """
     read_job_file(job_file::String)
 
@@ -806,12 +893,13 @@ All files that are read contain "in".
 This reads QE and wannier90 inputs for now.
 """
 function read_job_file(job_file::String)
-  input_files  = Array{String,1}()
-  output_files = Array{String,1}()
-  run_commands = Array{String,1}()
-  should_run   = Array{Bool,1}()
-  name     = ""
-  header   = String[]
+  data = Dict{Symbol,Any}()
+  data[:name]         = ""
+  data[:header]       = Array{String,1}()
+  data[:input_files]  = Array{String,1}() 
+  data[:output_files] = Array{String,1}() 
+  data[:run_commands] = Array{String,1}() 
+  data[:should_run]   = Array{Bool,1}()
   open(job_file,"r") do f
     while !eof(f)
       line = readline(f)
@@ -820,46 +908,54 @@ function read_job_file(job_file::String)
       end
       if contains(line,".x ")
         if contains(line,"#")
-          push!(should_run,false)
+          push!(data[:should_run],false)
           line = line[2:end]
         else
-          push!(should_run,true)
+          push!(data[:should_run],true)
         end
         
         s_line = split(line)
-        i = 0
-        for (j,s) in enumerate(s_line)
-          if contains(s,".x")
-            i = j
-            break
-          end
-        end
-        run_command = prod([s*" " for s in s_line[1:i]])
-        if contains(s_line[i+1],"-")
-          run_command *= s_line[i+1]
-          i+=1
-        end
-        push!(run_commands,run_command)
+        i,run_command = read_command_line(s_line)      
+        push!(data[:run_commands],run_command)
         #handles QE and Wannier.
         in_out = strip_split(prod(s_line[i+1:end]),">")
         if length(in_out) == 2
-          push!(input_files,strip(in_out[1],'<'))
-          push!(output_files,in_out[2])
+          push!(data[:input_files],strip(in_out[1],'<'))
+          push!(data[:output_files],in_out[2])
         else
-          push!(input_files,strip(in_out[1],'<'))
+          push!(data[:input_files],strip(in_out[1],'<'))
         end 
+      elseif contains(line,"abinit ")
+        data[:abinit_pseudos] = Array{String,1}()
+        s_line = split(line)
+        i,run_command = read_command_line(s_line)
+        push!(data[:run_commands],run_command)
+        if contains(line,"!EOF")
+          push!(data[:input_files],readline(f))
+          push!(data[:output_files],readline(f))
+          push!(data[:should_run],true)
+          line = readline(f)
+          while !contains(line,"EOF")
+            if contains(line,".xml")
+              push!(data[:abinit_pseudos],line)
+            end
+            line = readline(f)
+          end
+        end
+
+      #this is reading the sbatch lines
       elseif contains(line,"#SBATCH")
         if contains(line,"-J")
-          name = split(line)[end]
+          data[:name] = split(line)[end]
         else
-          push!(header,line)
+          push!(data[:header],line)
         end
       else 
-        push!(header,line)
+        push!(data[:header],line)
       end
     end
   end
-  return name,input_files,output_files,run_commands,should_run,header
+  return data
 end
 
 #Incomplete: because QE is stupid we have to find a way to distinguish nscf and bands outputs hardcoded.

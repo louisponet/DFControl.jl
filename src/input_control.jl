@@ -25,11 +25,11 @@ function change_flags!(input::QEInput, new_flag_data...)
 end
 
 """
-    change_flags!(input::WannierInput, new_flag_data...)
+    change_flags!(input::DFInput, new_flag_data...)
 
 Changes the flags inside the input to the new ones if they are already defined and if the new ones have the same type.
 """
-function change_flags!(input::WannierInput, new_flag_data...)
+function change_flags!(input::DFInput, new_flag_data...)
   found_keys = Symbol[]
   for (flag,value) in new_flag_data
     if haskey(input.flags,flag)
@@ -82,11 +82,11 @@ function get_flag(input::QEInput, flag::Symbol)
 end
 
 """
-    get_flag(input::WannierInput, flag::Symbol)
+    get_flag(input::DFInput, flag::Symbol)
 
 Returns the value of the flag.
 """
-function get_flag(input::WannierInput, flag::Symbol)
+function get_flag(input::DFInput, flag::Symbol)
   if haskey(input.flags,flag)
     return input.flags[flag]
   end
@@ -121,11 +121,11 @@ function get_block(input::QEInput, block_symbol::Symbol)
 end
 
 """
-    get_block(input::WannierInput, block_symbol::Symbol)
+    get_block(input::DFInput, block_symbol::Symbol)
 
 Returns the block with name `block_symbol`.
 """
-function get_block(input::WannierInput, block_symbol::Symbol)
+function get_block(input::DFInput, block_symbol::Symbol)
   for block in input.data_blocks
     if block.name == block_symbol
       return block
@@ -149,25 +149,25 @@ function add_flags!(input::QEInput, control_block_name::Symbol, flags...)
     if block.name == control_block_name
       block.flags = merge((x,y) -> typeof(x) == typeof(y) ? y : x,block.flags,flag_dict)
       dfprintln("New input of block '$(block.name)' of calculation '$(input.filename)' is now:")
-      dfprintln(string(block.flags))
+      print_flags(input,control_block_name)
       dfprintln("\n")
     end
   end
 end
 
 """
-    add_flags!(input::WannierInput, flags...)
+    add_flags!(input::DFInput, flags...)
 
 Adds the flags inside the dictionary to the 'ControlBlock'.
 """
-function add_flags!(input::WannierInput, flags...)
+function add_flags!(input::DFInput, flags...)
   flag_dict = Dict()
   for (flag,value) in flags
     flag_dict[flag] = value
   end
   input.flags = merge((x,y) -> typeof(x) == typeof(y) ? y : x,input.flags,flag_dict)
   dfprintln("New input of calculation '$(input.filename)' is now:")
-  dfprintln(string(input.flags))
+  print_flags(input)
   dfprintln("\n")
 end
 
@@ -190,11 +190,11 @@ function remove_flags!(input::QEInput, flags...)
 end
 
 """
-    remove_flags!(input::WannierInput, flags...)
+    remove_flags!(input::DFInput, flags...)
 
 Remove the specified flags.
 """
-function remove_flags!(input::WannierInput, flags...)
+function remove_flags!(input::DFInput, flags...)
   for flag in flags
     if haskey(input.flags,flag)
       pop!(input.flags,flag,false)
@@ -214,6 +214,21 @@ function get_blocks(input::DFInput)
     push!(out,block...)
   end
   return out 
+end
+
+"""
+    add_block(input::DFInput,block::<:Block)
+
+Adds the given block to the input. Should put it in the correct arrays.
+"""
+function add_block!(input::DFInput,block::Block)
+  if typeof(block) <: DataBlock
+    push!(input.data_blocks,block)
+  else
+    typeof(block) <: ControlBlock
+    push!(input.control_blocks,block)
+  end
+  print_blocks(input)
 end
 
 """
@@ -289,6 +304,7 @@ function print_flags(input::DFInput)
       for (flag,value) in block.flags
         dfprintln("    $flag => $value")
       end
+      dfprintln("")
     end
   end
   if (:flags in fieldnames(input))
@@ -297,6 +313,20 @@ function print_flags(input::DFInput)
     end
   end
   dfprintln("#----------------#\n")
+end
+
+"""
+    print_flags(input::QEInput, block_symbol::Symbol)
+
+Prints the flags of the specified block.
+"""
+function print_flags(input::QEInput, block_symbol::Symbol)
+  block = filter(x->x.name == block_symbol,input.control_blocks)[1]
+  dfprintln("  $(block.name):")
+  for (flag,value) in block.flags
+    dfprintln("    $flag => $value")
+  end
+  dfprintln("")
 end
 
 """
@@ -327,6 +357,8 @@ function print_flag(input::DFInput, flag)
     end
   end
 end
+
+print_flags(input::DFInput,flags::Array) = print_flag.(input,flags)
 
 #finish this macro
 # macro change_data_switch(switches::Array{Tuple{Type,Symbol},1})

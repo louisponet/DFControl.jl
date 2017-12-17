@@ -67,6 +67,7 @@ module DFControl
   export change_data!
   export get_data
   export get_block
+  export add_block!
   export add_flags!
   export remove_flags!
   export change_flow!
@@ -76,6 +77,7 @@ module DFControl
   export change_run_command!
   export get_inputs
   export get_input
+  export change_filename!
   export print_run_command
   export print_flow
   export print_block
@@ -114,8 +116,6 @@ module DFControl
   export remove_default_input
 
   init_defaults(default_file)
-  qe_input_files = search_dir(joinpath(@__DIR__,"../assets/inputs/qe/"),"INPUT")
-  const QEControlFlags = vcat([read_qe_flags(joinpath(@__DIR__,"../assets/inputs/qe/") * file) for file in qe_input_files]...)
   export QEControlFlags
 
 end

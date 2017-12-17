@@ -173,11 +173,16 @@ end
 Returns the pseudo potential string linked to the atom.
 """
 function get_default_pseudo(atom::Symbol, pseudo_set_name=:default; pseudo_fuzzy=nothing)
+  if !isnull(tryparse(Int,String(atom)[end:end]))
+    pp_atom = Symbol(String(atom)[1:end-1])
+  else
+    pp_atom = atom
+  end
   if isdefined(:default_pseudos)
     if pseudo_fuzzy != nothing
-      return filter(x->contains(x,pseudo_fuzzy),default_pseudos[atom][pseudo_set_name])[1]
+      return filter(x->contains(x,pseudo_fuzzy),default_pseudos[pp_atom][pseudo_set_name])[1]
     else
-      return default_pseudos[atom][pseudo_set_name][1]
+      return default_pseudos[pp_atom][pseudo_set_name][1]
     end
   end
 end
