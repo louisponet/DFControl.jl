@@ -253,6 +253,39 @@ function change_flags!(df_job::DFJob, calc_filenames::Array{String,1}, new_flag_
   end
 end
 change_flags!(df_job::DFJob, filename::String, args...) = change_flags!(df_job,[filename],args...)
+
+"""
+    set_flags!(job::DFJob, calculations::Array{String,1}, flags...)
+
+Sets the flags in the calculations to the flags specified. 
+This only happens if the specified flags are valid for the calculations.
+If necessary the correct control block will be added to the calculation (e.g. for QEInputs).
+
+The values that are supplied will be 
+"""
+function set_flags!(job::DFJob, calculations::Array{String,1}, flags...)
+  found_keys = Symbol[]
+  for calc in get_inputs(job,calculations)
+    t_found_keys = set_flags!(calc,flags...)
+    for key in t_found_keys
+      if !(key in found_keys) push!(found_keys,key) end
+    end
+  end
+  n_found_keys = Symbol[]
+  for (k,v) in flags
+    if !(k in found_keys) push!(n_found_keys,k) end
+  end
+  if 1 < length(n_found_keys)
+    dfprintln("flags '$(join(":" .* String.(n_found_keys),", "))' were not found in the allowed input variables of the specified calculations!")
+  elseif length(n_found_keys) == 1
+    dfprintln("flag '$(":"*String(n_found_keys[1]))' was not found in the allowed input variables of the specified calculations!")
+  end
+end
+
+set_flags!(job::DFJob, flags...) = set_flags!(job, [calc.filename for calc in job.calculations], flags...)
+set_flags!(job::DFJob,filename::String, flags...) = set_flags!(job, [filename], flags...)
+
+
 """
     get_flag(df_job::DFJob, calc_filenames, flag::Symbol)
 
@@ -754,7 +787,7 @@ function add_wan_calc!(job::DFJob, k_grid; nscf_file = "nscf.in", wan_file="wan.
   end
   nscf_calc.run = true
 
-  std_pw2wan_flags =Dict(:prefix => get_flag(scf_calc,:prefix),:write_unk=>true,:write_amn=>true,:outdir=> "'./'",:seedname=>"'$(splitext(wan_file)[1])'") 
+  std_pw2wan_flags =Dict(:prefix => get_flag(scf_calc,:prefix),:write_unk=>true,:write_amn=>true,:write_mmn=>true,:outdir=> "'./'",:seedname=>"'$(splitext(wan_file)[1])'") 
   if pw2wan_flags == nothing
     pw2wan_flags = std_pw2wan_flags
   else

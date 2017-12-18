@@ -1,73 +1,8 @@
-qe_input_files = search_dir(joinpath(@__DIR__,"../assets/inputs/qe/"),"INPUT")
 
-function qe2julia(qe_type)
-  qe_type = lowercase(qe_type)
-  if qe_type == "real"
-    return AbstractFloat
-  elseif qe_type == "character"
-    return String
-  elseif qe_type == "integer"
-    return Int
-  elseif qe_type == "logical"
-    return Bool
-  end
-end
 
-"Reads all possible quantum espresso flags"
-function read_qe_flags(filename)
-  control_blocks = QEControlBlock[]
-  open(filename,"r") do f
-    while !eof(f)
-      line = readline(f)
-      if contains(line,"NAMELIST")
-        name = Symbol(lowercase(strip_split(line,"&")[2]))
-        flags = Dict{Symbol,Any}()
-        line = readline(f)
-        while !contains(line,"END OF NAMELIST")
-          if contains(line,"Variable")
-            readline(f)
-            value = qe2julia(strip_split(readline(f))[2])
-            
-            t_line = strip_split(line)
-            if t_line[1] == "Variables:"
-              flgs = Symbol.(strip.(t_line[2:end],','))
-              for fl in flgs
-                flags[fl] = value
-              end
-            else
-              t_line = t_line[2]
-              if contains(t_line,"(") && contains(t_line,")")
-                flag = Symbol(split(strip_split(t_line,",")[1],"(")[1])
-              else
-                flag = Symbol(t_line)
-              end
-              flags[flag] = value
-            end
-          
-          end
-          line = readline(f)
-        end
-        push!(control_blocks, QEControlBlock(name,flags))
-      end
-    end
-  end
-  return control_blocks
-end
-const QEControlFlags = vcat([read_qe_flags(joinpath(@__DIR__,"../assets/inputs/qe/") * file) for file in qe_input_files]...)
-begin 
-  flags = filter(x->x.name==:inputpp,QEControlFlags)[1].flags
-  flags[:outdir]         = String
-  flags[:prefix]         = String
-  flags[:seedname]       = String
-  flags[:wan_mode]       = String
-  flags[:write_mmn]      = Bool
-  flags[:write_amn]      = Bool
-  flags[:write_unk]      = Bool
-  flags[:wvfn_formatted] = Bool
-  flags[:reduce_unk]     = Bool
-  flags[:spin_component] = String
-end
-get_qe_flags(block) = filter(x->x.name==block,QEControlFlags)[1].flags
+
+
+
 
 function parse_k_line(line,T)
   splt = split(line)
@@ -77,12 +12,8 @@ function parse_k_line(line,T)
   return [k1,k2,k3]
 end
 
-function write_flag_line(f,flag,data,abi=false)
-  if !abi
-    write(f,"   $flag = ")
-  else
-    write(f,"$flag ")
-  end
+function write_flag_line(f,flag,data,seperator="=")
+  write(f,"   $flag $seperator ")
   if typeof(data) <: Array
     if length(data)<20
       write(f,"$(data[1])")
@@ -766,7 +697,7 @@ end
 function write_abi_input(input::AbinitInput,filename::String=input.filename)
   flags = input.flags
   open(filename,"w") do f
-    write_flag(flag_data) = write_flag_line(f,flag_data[1],flag_data[2],true)
+    write_flag(flag_data) = write_flag_line(f,flag_data[1],flag_data[2],"")
     write(f,input.structure[:abi_string])
     write(f,"\n")
     write_flag.(collect(flags))
@@ -838,7 +769,7 @@ function write_job_files(df_job::DFJob)
         end
       elseif typeof(calculation) == AbinitInput
         file,ext = splitext(filename)
-        write(f,"$run_command << !EOF\n$filename\n$(file*".out")\n$(file*"_Xi")\n$(file*"_Xo")\n$(file*"_Xx")\n")
+        write(f,"$run_command << !EOF\n$filename\n$(file*".out")\n$(df_job.name*"_Xi")\n$(df_job.name*"_Xo")\n$(df_job.name*"_Xx")\n")
         for pp in get_data(calculation,:pseudos)
           write(f,"$pp\n")
         end
@@ -901,6 +832,7 @@ function read_job_file(job_file::String)
   data[:run_commands] = Array{String,1}() 
   data[:should_run]   = Array{Bool,1}()
   open(job_file,"r") do f
+    readline(f)
     while !eof(f)
       line = readline(f)
       if line == ""
@@ -950,7 +882,7 @@ function read_job_file(job_file::String)
         else
           push!(data[:header],line)
         end
-      else 
+      else  
         push!(data[:header],line)
       end
     end

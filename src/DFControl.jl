@@ -14,7 +14,6 @@ module DFControl
   end
   dfprintln(s::String) = push!(print_s,s)
   export dfprintln 
-  include("constants.jl")
   include("types.jl")
   export Point3D
   export Band
@@ -35,7 +34,11 @@ module DFControl
   export apply_fermi_level
   export apply_fermi_level!
   export gen_k_grid
-  
+
+  include("constants.jl")
+  export QEControlBlocks
+  export WannierControlFlags
+  export AbinitFlags
   #@Cleanup this should all be just one thing without qe
   #@Cleanup what do we actually want to have as frontend?
   include("file_processing.jl")
@@ -69,6 +72,7 @@ module DFControl
   export get_block
   export add_block!
   export add_flags!
+  export set_flags!
   export remove_flags!
   export change_flow!
   export set_flow!
@@ -116,6 +120,5 @@ module DFControl
   export remove_default_input
 
   init_defaults(default_file)
-  export QEControlFlags
 
 end
