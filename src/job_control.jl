@@ -571,6 +571,7 @@ function print_info(job::DFJob,filenames::Array{String,1})
   dfprintln(s)
   for calc in get_inputs(job, filenames)
     print_info(calc)
+    dfprintln(" ")
   end
 end
 

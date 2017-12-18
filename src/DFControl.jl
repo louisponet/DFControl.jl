@@ -39,6 +39,7 @@ module DFControl
   export QEControlBlocks
   export WannierControlFlags
   export AbinitFlags
+  export AbinitDatabase
   #@Cleanup this should all be just one thing without qe
   #@Cleanup what do we actually want to have as frontend?
   include("file_processing.jl")

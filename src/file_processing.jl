@@ -1,9 +1,4 @@
 
-
-
-
-
-
 function parse_k_line(line,T)
   splt = split(line)
   k1   = parse(T,splt[5])
@@ -747,7 +742,7 @@ Writes all the input files and job file that are linked to a DFJob.
 function write_job_files(df_job::DFJob)
   files_to_remove = search_dir(df_job.local_dir,".in")
   new_filenames   = String[]
-  
+  num_abi         = 0 
   open(df_job.local_dir*"job.tt","w") do f
     write(f,"#!/bin/bash\n")
     write_job_name(df_job,f)
@@ -769,11 +764,20 @@ function write_job_files(df_job::DFJob)
         end
       elseif typeof(calculation) == AbinitInput
         file,ext = splitext(filename)
-        write(f,"$run_command << !EOF\n$filename\n$(file*".out")\n$(df_job.name*"_Xi")\n$(df_job.name*"_Xo")\n$(df_job.name*"_Xx")\n")
-        for pp in get_data(calculation,:pseudos)
-          write(f,"$pp\n")
+        if calculation.run
+          write(f,"$run_command << !EOF\n$filename\n$(file*".out")\n$(df_job.name*"_Xo$num_abi")\n$(df_job.name*"_Xo$(num_abi+1)")\n$(df_job.name*"_Xx$(num_abi)")\n")
+          for pp in get_data(calculation,:pseudos)
+            write(f,"$pp\n")
+          end
+          write(f,"!EOF\n")
+        else
+          write(f,"#$run_command << !EOF\n#$filename\n#$(file*".out")\n#$(df_job.name*"_Xo$num_abi")\n#$(df_job.name*"_Xo$(num_abi+1)")\n#$(df_job.name*"_Xx$(num_abi)")\n")
+          for pp in get_data(calculation,:pseudos)
+            write(f,"#$pp\n")
+          end
+          write(f,"#!EOF\n")
         end
-        write(f,"!EOF\n")
+        num_abi += 1 
       else
         if !should_run
           write(f,"#$run_command <$filename> $(split(filename,".")[1]).out \n")
@@ -863,13 +867,17 @@ function read_job_file(job_file::String)
         i,run_command = read_command_line(s_line)
         push!(data[:run_commands],run_command)
         if contains(line,"!EOF")
-          push!(data[:input_files],readline(f))
-          push!(data[:output_files],readline(f))
-          push!(data[:should_run],true)
+          push!(data[:input_files],strip(readline(f),'#'))
+          push!(data[:output_files],strip(readline(f),'#'))
+          if contains(line,"#")
+            push!(data[:should_run],false)
+          else
+            push!(data[:should_run],true)
+          end
           line = readline(f)
           while !contains(line,"EOF")
             if contains(line,".xml")
-              push!(data[:abinit_pseudos],line)
+              push!(data[:abinit_pseudos],strip(line,'#'))
             end
             line = readline(f)
           end
