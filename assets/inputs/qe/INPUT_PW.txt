@@ -1190,6 +1190,7 @@ NAMELIST: &SYSTEM
    +--------------------------------------------------------------------
    Variable:       Hubbard_J(i,ityp)
    
+   Type:           REAL
    Default:        0.D0 for all species
    Description:    Hubbard_J(i,ityp): J parameters (eV) for species ityp,
                    used in DFT+U calculations (only for "lda_plus_u_kind"=1)

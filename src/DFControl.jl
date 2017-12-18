@@ -72,7 +72,6 @@ module DFControl
   export get_data
   export get_block
   export add_block!
-  export add_flags!
   export set_flags!
   export remove_flags!
   export change_flow!
@@ -120,6 +119,16 @@ module DFControl
   export set_default_input
   export remove_default_input
 
+  #no extra functionality, for faster scripting
+  include("shortnames.jl")
+  export setfls!
+  export chfls!
+  export rmfls!
+  export prtfls
+  export lsfls
+  export ldsj 
+  export ldj 
+  export sbmj 
   init_defaults(default_file)
 
 end

@@ -110,7 +110,7 @@ end
 
 const WannierControlFlags = read_wan_control_flags(joinpath(@__DIR__,"../assets/inputs/wannier/input_flags.txt"))
 
-get_wan_flag_type(flag) = haskey(WannierControlFlags,flag) ? WannierControlFlags[flag] : :error
+get_wan_flag_type(flag) = haskey(WannierControlFlags,flag) ? WannierControlFlags[flag] : Void
 
 @pyimport abipy.abio.abivars_db as abivars_db
 
@@ -126,5 +126,5 @@ end
 const AbinitFlags = construct_abi_flags()
 const AbinitDatabase = abivars_db.VariableDatabase(abivars_db.get_abinit_variables())
 
-get_abi_flag_type(flag) = haskey(AbinitFlags,flag) ? AbinitFlags[flag] : :error
+get_abi_flag_type(flag) = haskey(AbinitFlags,flag) ? AbinitFlags[flag] : Void
 

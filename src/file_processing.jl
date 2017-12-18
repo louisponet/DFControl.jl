@@ -27,20 +27,19 @@ function write_flag_line(f,flag,data,seperator="=")
 end
 
 function parse_flag_val(val,T=Float64)
-  if contains(val,"d-")
+  if T == String
+    return val
+  end
+  if contains(val,"d")
     val = replace(val,"d","e")
   end
   val = strip(val,'.') 
-  try
-    t = parse.(split(lowercase(val)))
-    #deal with abinit constants -> all flags that are read which are not part of the abi[:structure] get cast into the correct atomic units!
-    if length(t)>1 && typeof(t[end]) == Symbol
-      t = t[1:end-1].*abi_const[t[end]]
-    end
-    length(t)==1 ? t[1] : typeof(t)<:Array{Real,1} ? convert.(T,t) : t  
-  catch
-    val
+  t = parse.(T,split(lowercase(val)))
+  #deal with abinit constants -> all flags that are read which are not part of the abi[:structure] get cast into the correct atomic units!
+  if length(t)>1 && typeof(t[end]) == Symbol
+    t = t[1:end-1].*abi_const[t[end]]
   end
+  length(t)==1 ? t[1] : typeof(t)<:Array{Real,1} ? convert.(T,t) : t  
 end
 
 
@@ -262,7 +261,7 @@ end
 Reads a Quantum Espresso input file.
 Returns a DFInput.
 """
-function read_qe_input(filename,T=Float64::Type;run_command ="",run=true)
+function read_qe_input(filename, T=Float64::Type ;run_command ="", run=true)
   control_blocks = Array{QEControlBlock,1}()
   data_blocks    = Array{QEDataBlock,1}()
   
@@ -284,18 +283,12 @@ function read_qe_input(filename,T=Float64::Type;run_command ="",run=true)
           split_line = filter(x->x!="",strip.(split(line,",")))
           for s in split_line
             key,val = String.(strip.(split(s,"=")))
+            qe_flag = Symbol(split(key,"(")[1])
             if key in flags_to_discard
               continue
-            elseif haskey(def_block_flags,Symbol(split(key,"(")[1]))
-              # def_key = Symbol(split(key,"(")[1])
-              # parse_type = def_block_flags[def_key]
-              # if parse_type == String
-              #   flag_dict[Symbol(key)] = val
-              # elseif parse_type == AbstractFloat
-              #   parse_type = T
-                # flag_dict[Symbol(key)] = !isnull(tryparse(parse_type,val)) ? parse(parse_type,val) : error("Error reading flag '$key': value has wrong type.")
-                flag_dict[Symbol(key)] = parse_flag_val(val) 
-              # end
+            elseif haskey(def_block_flags,qe_flag)
+              t_val = parse_flag_val(val,def_block_flags[qe_flag])
+              flag_dict[Symbol(key)] = eltype(t_val) == def_block_flags[qe_flag] || def_block_flags[qe_flag] == String ? t_val : error("Couldn't parse the value of flag '$key' in file '$filename'!") 
             else
               error("Error reading $filename: flag '$key' not found in QE flag dictionary for control block $c_block_name !")
             end
@@ -412,7 +405,7 @@ Writes a Quantum Espresso input file.
 function write_qe_input(input::QEInput,filename::String=input.filename)
   open(filename,"w") do f
     write_flag(flag_data) = write_flag_line(f,flag_data[1],flag_data[2])
-    write_block(data)      = write_block_data(f,data)
+    write_block(data)     = write_block_data(f,data)
 
     for block in input.control_blocks
       write(f,"&$(block.name)\n")
@@ -681,7 +674,8 @@ function read_abi_input(filename::String, T=Float64; run_command="", run = true,
       if flag in flags_to_discard
         continue
       else
-        flags[Symbol(flag)] = parse_flag_val(value,T)
+        flag_type = get_abi_flag_type(Symbol(flag))
+        flags[Symbol(flag)] = flag_type != Void ? parse_flag_val(value,T) : error("Couldn't parse flag '$flag' with value '$value'!")
       end
     end
     push!(inputs,AbinitInput(newfile,flags,[AbinitDataBlock(:cell_parameters,:angstrom,cell),AbinitDataBlock(:atomic_positions,:frac,atoms),AbinitDataBlock(:pseudos,:pseudos,pseudos)],structure,run_command,run))

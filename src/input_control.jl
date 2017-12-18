@@ -46,11 +46,42 @@ function change_flags!(input::DFInput, new_flag_data...)
   return found_keys
 end
 
+"""
+    set_flags!(input::DFInput, flags...)
+
+Sets the specified flags in the input. A controlblock will be added if necessary.
+"""
+function set_flags!(input::DFInput, flags...)
+  found_keys = Symbol[]
+  for (flag,value) in flags
+    flag_type = typeof(input) == WannierInput ? get_wan_flag_type(flag) : get_abi_flag_type(flag)
+    if flag_type != Void
+      if !(flag in found_keys) push!(found_keys,flag) end
+      try
+        value = convert(flag_type,value)
+      catch
+        dfprintln("Filename '$(input.filename)':\n  Could not convert '$value' into '$flag_type'.\n    Flag not set.\n")
+        continue
+      end
+      
+      if haskey(input.flags,flag)
+        old_data = input.flags[flag]
+        input.flags[flag] = value
+        dfprintln("$(input.filename):\n  -> $flag:\n      $old_data changed to: $value\n")
+      else
+        input.flags[flag] = value
+        dfprintln("$(input.filename):\n  -> $flag:\n      set to: $value\n")
+      end
+    end
+  end
+  return found_keys
+end
+
 function set_flags!(input::QEInput, flags...)
   found_keys = Symbol[]
   for (flag,value) in flags
     flag_block, flag_type = get_qe_flag_block_type(flag)
-    if flag_block != :error
+    if flag_block != Void
       if !(flag in found_keys) push!(found_keys,flag) end
 
       try
@@ -78,35 +109,6 @@ function set_flags!(input::QEInput, flags...)
   end
   return found_keys
 end
-
-function set_flags!(input::DFInput,flags...)
-  found_keys = Symbol[]
-  for (flag,value) in flags
-
-    flag_type = typeof(input) == WannierInput ? get_wan_flag_type(flag) : get_abi_flag_type(flag)
-    if flag_type != :error
-      if !(flag in found_keys) push!(found_keys,flag) end
-      try
-        value = convert(flag_type,value)
-      catch
-        dfprintln("Filename '$(input.filename)':\n  Could not convert '$value' into '$flag_type'.\n    Flag not set.\n")
-        continue
-      end
-      
-      if haskey(input.flags,flag)
-        old_data = input.flags[flag]
-        input.flags[flag] = value
-        dfprintln("$(input.filename):\n  -> $flag:\n      $old_data changed to: $value\n")
-      else
-        input.flags[flag] = value
-        dfprintln("$(input.filename):\n  -> $flag:\n      set to: $value\n")
-      end
-    end
-  end
-  return found_keys
-end
-
-
 
 """
     change_data!(input::DFInput, block_name::Symbol, new_block_data;option = nothing)
@@ -194,43 +196,6 @@ function get_block(input::DFInput, block_symbol::Symbol)
     end
   end
   return nothing
-end
-
-#here comes the code for all the setting of flags of different inputs
-"""
-    add_flags!(input::QEInput, control_block_name::Symbol, flags...)
-
-Adds the flags inside the dictionary to the 'ControlBlock'.
-"""
-function add_flags!(input::QEInput, control_block_name::Symbol, flags...)
-  flag_dict = Dict()
-  for (flag,value) in flags
-    flag_dict[flag] = value
-  end
-  for block in input.control_blocks
-    if block.name == control_block_name
-      block.flags = merge((x,y) -> typeof(x) == typeof(y) ? y : x,block.flags,flag_dict)
-      dfprintln("New input of block '$(block.name)' of calculation '$(input.filename)' is now:")
-      print_flags(input,control_block_name)
-      dfprintln("\n")
-    end
-  end
-end
-
-"""
-    add_flags!(input::DFInput, flags...)
-
-Adds the flags inside the dictionary to the 'ControlBlock'.
-"""
-function add_flags!(input::DFInput, flags...)
-  flag_dict = Dict()
-  for (flag,value) in flags
-    flag_dict[flag] = value
-  end
-  input.flags = merge((x,y) -> typeof(x) == typeof(y) ? y : x,input.flags,flag_dict)
-  dfprintln("New input of calculation '$(input.filename)' is now:")
-  print_flags(input)
-  dfprintln("\n")
 end
 
 #removes an input control flag, if you want to implement another input add a similar function here!
