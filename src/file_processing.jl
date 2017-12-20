@@ -7,18 +7,19 @@ function parse_k_line(line,T)
   return [k1,k2,k3]
 end
 
-function write_flag_line(f,flag,data,seperator="=")
-  write(f,"   $flag $seperator ")
+function write_flag_line(f,flag,data,seperator="=",i = "")
+  write(f,"  $flag$i $seperator")
   if typeof(data) <: Array
-    if length(data)<20
-      write(f,"$(data[1])")
+    if length(data) < 20
+      write(f,"  $(data[1])")
       for x in data[2:end]
         write(f," $x")
       end
       write(f,"\n")
     else
+      write(f,"\n")
       for i=1:3:length(data)
-        write(f," $(data[i]) $(data[i+1]) $(data[i+2])\n")
+        write(f,"  $(data[i]) $(data[i+1]) $(data[i+2])\n")
       end
     end
   else #this should work for anything singular valued data such as bools, ''s and other types
@@ -34,7 +35,7 @@ function parse_flag_val(val,T=Float64)
     val = replace(val,"d","e")
   end
   val = strip(val,'.') 
-  t = parse.(T,split(lowercase(val)))
+  t = convert.(T,parse.(split(lowercase(val))))
   #deal with abinit constants -> all flags that are read which are not part of the abi[:structure] get cast into the correct atomic units!
   if length(t)>1 && typeof(t[end]) == Symbol
     t = t[1:end-1].*abi_const[t[end]]
@@ -637,13 +638,13 @@ end
 
 #---------------------------START ABINIT SECTION------------------------#
 @pyimport abipy.abio.abivars as abivars
+@pyimport abipy.abilab as abilab
 #also searches the structure but where not doing anything with it now
 """
     read_abi_input(filename::String, T=Float64)
 
 Returns an ABINIT input.
 """
-#todo handle eV etc!
 function read_abi_input(filename::String, T=Float64; run_command="", run = true, pseudos=[""])
   abi_input = PyObject(abivars.AbinitInputFile(filename))
   datasets  = abi_input[:datasets]
@@ -675,7 +676,7 @@ function read_abi_input(filename::String, T=Float64; run_command="", run = true,
         continue
       else
         flag_type = get_abi_flag_type(Symbol(flag))
-        flags[Symbol(flag)] = flag_type != Void ? parse_flag_val(value,T) : error("Couldn't parse flag '$flag' with value '$value'!")
+        flags[Symbol(flag)] = flag_type != Void ? parse_flag_val(value,flag_type) : error("Couldn't parse flag '$flag' with value '$value'!")
       end
     end
     push!(inputs,AbinitInput(newfile,flags,[AbinitDataBlock(:cell_parameters,:angstrom,cell),AbinitDataBlock(:atomic_positions,:frac,atoms),AbinitDataBlock(:pseudos,:pseudos,pseudos)],structure,run_command,run))
@@ -684,6 +685,7 @@ function read_abi_input(filename::String, T=Float64; run_command="", run = true,
 end
 
 function write_abi_input(input::AbinitInput,filename::String=input.filename)
+  
   flags = input.flags
   open(filename,"w") do f
     write_flag(flag_data) = write_flag_line(f,flag_data[1],flag_data[2],"")
@@ -691,6 +693,58 @@ function write_abi_input(input::AbinitInput,filename::String=input.filename)
     write(f,"\n")
     write_flag.(collect(flags))
   end
+end
+
+#question: Does it matter that we might be writing redundant data such as spinat etc?
+"""
+    write_abi_datasets(inputs::Array{AbinitInput,1})
+
+Takes all the inputs, sees which ones have the same structure and constructs input files for each seperate sturcture.
+The filename of the first input of a certain structure is used as file for all the datasets.
+"""
+function write_abi_datasets(inputs::Array{AbinitInput,1},directory)
+  
+  input_groups = Array{Array{AbinitInput,1},1}([[pop!(inputs)]])
+  while length(inputs) != 0
+    input = pop!(inputs)
+    for group in input_groups
+      if group[1].structure == input.structure
+        push!(group,input)
+        break
+      end
+    end
+  end
+  
+  for group in input_groups
+    run_indices = Int[]
+    for (i,_input) in enumerate(group)
+      if _input.run 
+        push!(run_indices,i)
+      end
+    end
+    if length(run_indices) == length(group)
+      jdtset = ""
+    else
+      jdtset = join(["$c" for c in run_indices]," ")
+    end
+    open(directory * group[1].filename,"w") do f
+      write(f,"ndtset $(length(group)) jdtset $jdtset\n")
+      write(f,group[1].structure[:abi_string])
+      write(f,"\n")
+      for t = 1:length(group)
+        write_flag(flag_data) = write_flag_line(f,flag_data[1],flag_data[2],"",t)
+        write(f,"#=============== BEGIN DATASET $t ===============#\n")
+        write_flag.(collect(group[t].flags))
+        write(f,"#================ END DATASET $t ================#\n")
+      end
+    end
+  end
+  return map(x->(x[1].filename,get_data(x[1],:pseudos),x[1].run_command),input_groups)
+end
+
+function read_abi_output(filename::String)
+  result = abilab.abiopen(filename)
+  return result
 end
 
 
@@ -729,25 +783,26 @@ function write_job_header(job::DFJob,f)
 end
 
 """
-    write_job_files(df_job::DFJob)
+    write_job_files(job::DFJob)
 
 Writes all the input files and job file that are linked to a DFJob.
 """
-function write_job_files(df_job::DFJob)
-  files_to_remove = search_dir(df_job.local_dir,".in")
+function write_job_files(job::DFJob)
+  files_to_remove = search_dir(job.local_dir,".in")
   new_filenames   = String[]
   num_abi         = 0 
-  open(df_job.local_dir*"job.tt","w") do f
+  open(job.local_dir*"job.tt","w") do f
     write(f,"#!/bin/bash\n")
-    write_job_name(df_job,f)
-    write_job_header(df_job,f)
-    for i=1:length(df_job.calculations)
-      calculation = df_job.calculations[i]
+    write_job_name(job,f)
+    write_job_header(job,f)
+    i = 1
+    while i < length(job.calculations)
+      calculation = job.calculations[i]
       run_command = calculation.run_command
       filename = calculation.filename
-      write_input(calculation,df_job.local_dir*filename)
       should_run  = calculation.run
       if typeof(calculation) == WannierInput
+        write_input(calculation,job.local_dir*filename)
         if calculation.preprocess
           run_command *= " -pp"
         end
@@ -756,28 +811,29 @@ function write_job_files(df_job::DFJob)
         else
           write(f,"$run_command $(filename[1:end-4])\n")
         end
+        i += 1
       elseif typeof(calculation) == AbinitInput
-        file,ext = splitext(filename)
-        if calculation.run
-          write(f,"$run_command << !EOF\n$filename\n$(file*".out")\n$(df_job.name*"_Xo$num_abi")\n$(df_job.name*"_Xo$(num_abi+1)")\n$(df_job.name*"_Xx$(num_abi)")\n")
-          for pp in get_data(calculation,:pseudos)
+        abinit_inputs     = Array{AbinitInput,1}(filter(x->typeof(x)==AbinitInput,job.calculations))
+        i += length(abinit_inputs)
+        abinit_jobfiles   = write_abi_datasets(abinit_inputs,job.local_dir)
+        for (filename,pseudos,run_command) in abinit_jobfiles
+          file,ext = splitext(filename)
+          write(f,"$run_command << !EOF\n$filename\n$(file*".out")\n$(job.name*"_Xi$num_abi")\n$(job.name*"_Xo$num_abi")\n$(job.name*"_Xx$num_abi")\n")
+          for pp in pseudos
             write(f,"$pp\n")
           end
           write(f,"!EOF\n")
-        else
-          write(f,"#$run_command << !EOF\n#$filename\n#$(file*".out")\n#$(df_job.name*"_Xo$num_abi")\n#$(df_job.name*"_Xo$(num_abi+1)")\n#$(df_job.name*"_Xx$(num_abi)")\n")
-          for pp in get_data(calculation,:pseudos)
-            write(f,"#$pp\n")
-          end
-          write(f,"#!EOF\n")
+          num_abi += 1 
         end
-        num_abi += 1 
-      else
+
+      elseif typeof(calculation) == QEInput
+        write_input(calculation,job.local_dir*filename)
         if !should_run
           write(f,"#$run_command <$filename> $(split(filename,".")[1]).out \n")
         else
           write(f,"$run_command <$filename> $(split(filename,".")[1]).out \n")
         end
+        i += 1 
       end
       push!(new_filenames,filename)
     end
@@ -785,7 +841,7 @@ function write_job_files(df_job::DFJob)
   
   for file in files_to_remove
     if !in(file,new_filenames)
-      rm(df_job.local_dir*file)
+      rm(job.local_dir*file)
     end
   end
 end
@@ -859,7 +915,7 @@ function read_job_file(job_file::String)
         data[:abinit_pseudos] = Array{String,1}()
         s_line = split(line)
         i,run_command = read_command_line(s_line)
-        push!(data[:run_commands],run_command)
+        push!(data[:run_commands],strip(run_command,'#'))
         if contains(line,"!EOF")
           push!(data[:input_files],strip(readline(f),'#'))
           push!(data[:output_files],strip(readline(f),'#'))

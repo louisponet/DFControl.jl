@@ -96,7 +96,9 @@ module DFControl
   export change_k_points!
   export change_data_option!
   export change_header_word!
-  
+  export undo!
+  export undo
+
   include("plotting.jl")
   export plot_qe_bands
   export plot_qe_kpdos
@@ -131,4 +133,6 @@ module DFControl
   export sbmj 
   init_defaults(default_file)
 
+  const UNDO_JOBS = DFJob[]
+  
 end

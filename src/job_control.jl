@@ -80,7 +80,6 @@ function load_job(job_dir::String, T=Float64; job_fuzzy = "job", new_job_name=no
       push!(should_run,job_data[:should_run][i])
     end
   end
-  
   t_calcs = Array{DFInput,1}()
   for (filename,run_command,run) in zip(filenames,run_commands,should_run)
     filename = job_dir*filename
@@ -148,95 +147,98 @@ end
 load_server_job(args...;kwargs...) = load_server_job(get_default_server(),args...,kwargs...)
 
 """
-    save_job(df_job::DFJob)
+    save_job(job::DFJob)
 
 Saves a DFJob, it's job file and all it's input files.
 """
-function save_job(df_job::DFJob)
-  local_dir = df_job.local_dir
+function save_job(job::DFJob)
+  local_dir = job.local_dir
   if local_dir == ""
     error("Please specify a valid local_dir!")
   end
-  local_dir = form_directory(df_job.local_dir)
+  local_dir = form_directory(job.local_dir)
   if !ispath(local_dir)
     mkpath(local_dir)
   end
-  df_job.local_dir = local_dir
-  write_job_files(df_job)
+  job.local_dir = local_dir
+  write_job_files(job)
 end
 
 #Incomplete everything is hardcoded for now still!!!! make it configurable
 """
-    push_job(df_job::DFJob)
+    push_job(job::DFJob)
 
 Pushes a DFJob from it's local directory to its server side directory.
 """
-function push_job(df_job::DFJob)
-  if !ispath(df_job.local_dir)
+function push_job(job::DFJob)
+  if !ispath(job.local_dir)
     error("Please save the job locally first using save_job(job)!")
   else
     
-    for calc in df_job.calculations
-      run(`scp $(df_job.local_dir*calc.filename) $(df_job.server*":"*df_job.server_dir)`)
+    for calc in job.calculations
+      run(`scp $(job.local_dir*calc.filename) $(job.server*":"*job.server_dir)`)
     end
-    run(`scp $(df_job.local_dir*"job.tt") $(df_job.server*":"*df_job.server_dir)`)
+    run(`scp $(job.local_dir*"job.tt") $(job.server*":"*job.server_dir)`)
   end
 end
 
 #TODO only uses qsub for now. how to make it more general?
 """
-    submit_job(df_job::DFJob)
+    submit_job(job::DFJob; server=nothing, server_dir=nothing)
 
 Submit a DFJob. First saves it locally, pushes it to the server then runs the job file on the server.
 """
-function submit_job(df_job::DFJob; server=nothing, server_dir=nothing)
-  if df_job.server == "" && server == nothing
+function submit_job(job::DFJob; server=nothing, server_dir=nothing)
+  if job.server == "" && server == nothing
     error("Please specify a valid server address!")
-  elseif df_job.server_dir == "" && server_dir == nothing
+  elseif job.server_dir == "" && server_dir == nothing
     error("Please specify a valid server directory!")
   end
   if server != nothing
-    df_job.server = server
+    job.server = server
   end
   if server_dir != nothing
-    df_job.server_dir = server_dir
+    job.server_dir = server_dir
   end
-  save_job(df_job)
-  push_job(df_job)
-  run(`ssh -t $(df_job.server) cd $(df_job.server_dir) '&&' qsub job.tt`)
+  save_job(job)
+  push_job(job)
+  run(`ssh -t $(job.server) cd $(job.server_dir) '&&' qsub job.tt`)
 end
 
 """
-    add_calculation!(df_job::DFJob, input::DFInput, index::Int=length(df_job.calculations)+1; run_command=input.run_command, filename=input.filename)
+    add_calculation!(job::DFJob, input::DFInput, index::Int=length(job.calculations)+1; run_command=input.run_command, filename=input.filename)
 
 Adds a calculation to the job, at the specified index.
 """
-function add_calculation!(df_job::DFJob, input::DFInput, index::Int=length(df_job.calculations)+1; run_command=input.run_command, filename=input.filename)
+function add_calculation!(job::DFJob, input::DFInput, index::Int=length(job.calculations)+1; run_command=input.run_command, filename=input.filename)
+  UNDO_JOBS[job.id] = deepcopy(job)
   input.filename = filename
   input.run_command = run_command
-  insert!(df_job.calculations,index,input)
+  insert!(job.calculations,index,input)
   print_info(input)
-  print_flow(df_job)
+  print_flow(job)
 end
 
 """
-    change_flags!(df_job::DFJob, new_flag_data::Dict{Symbol,<:Any})
+    change_flags!(job::DFJob, new_flag_data::Dict{Symbol,<:Any})
 
 Looks through all the calculations for the specified flags. If any that match and have the same types are found, they will get replaced by the new ones.
 """
-function change_flags!(df_job::DFJob, new_flag_data...)
-  calc_filenames = [calc.filename for calc in df_job.calculations]
-  change_flags!(df_job,calc_filenames,new_flag_data...)
+function change_flags!(job::DFJob, new_flag_data...)
+  UNDO_JOBS[job.id] = deepcopy(job)
+  calc_filenames = [calc.filename for calc in job.calculations]
+  change_flags!(job,calc_filenames,new_flag_data...)
 end
 
 """
-    change_flags!(df_job::DFJob, calc_filenames, new_flag_data::Dict{Symbol,<:Any})
+    change_flags!(job::DFJob, calc_filenames, new_flag_data::Dict{Symbol,<:Any})
 
 Looks through the given calculations for the specified flags. If any that match and have the same types are found, they will get replaced by the new ones.
 """
-function change_flags!(df_job::DFJob, calc_filenames::Array{String,1}, new_flag_data...)
+function change_flags!(job::DFJob, calc_filenames::Array{String,1}, new_flag_data...)
+  UNDO_JOBS[job.id] = deepcopy(job)
   found_keys = Symbol[]
-  for calc in get_inputs(df_job,calc_filenames)
+  for calc in get_inputs(job,calc_filenames)
     t_found_keys = change_flags!(calc,new_flag_data...)
     for key in t_found_keys
       if !(key in found_keys) push!(found_keys,key) end
@@ -252,7 +254,7 @@ function change_flags!(df_job::DFJob, calc_filenames::Array{String,1}, new_flag_
     dfprintln("flag '$(":"*String(n_found_keys[1]))' was not found in any input file, please set it first!")
   end
 end
-change_flags!(df_job::DFJob, filename::String, args...) = change_flags!(df_job,[filename],args...)
+change_flags!(job::DFJob, filename::String, args...) = change_flags!(job,[filename],args...)
 
 """
     set_flags!(job::DFJob, calculations::Array{String,1}, flags...)
@@ -264,6 +266,7 @@ If necessary the correct control block will be added to the calculation (e.g. fo
 The values that are supplied will be 
 """
 function set_flags!(job::DFJob, calculations::Array{String,1}, flags...)
+  UNDO_JOBS[job.id] = deepcopy(job)
   found_keys = Symbol[]
   for calc in get_inputs(job,calculations)
     t_found_keys = set_flags!(calc,flags...)
@@ -287,23 +290,23 @@ set_flags!(job::DFJob,filename::String, flags...) = set_flags!(job, [filename], 
 
 
 """
-    get_flag(df_job::DFJob, calc_filenames, flag::Symbol)
+    get_flag(job::DFJob, calc_filenames, flag::Symbol)
 
 Looks through the calculation filenames and returns the value of the specified flag.
 """
-function get_flag(df_job::DFJob, calc_filenames, flag::Symbol)
-  for calc in get_inputs(df_job,calc_filenames)
+function get_flag(job::DFJob, calc_filenames, flag::Symbol)
+  for calc in get_inputs(job,calc_filenames)
     return get_flag(calc,flag)
   end
 end
 
 """
-    get_flag(df_job::DFJob, flag::Symbol)
+    get_flag(job::DFJob, flag::Symbol)
 
 Looks through all the calculations and returns the value of the specified flag.
 """
-function get_flag(df_job::DFJob, flag::Symbol)
-  for calc in df_job.calculations
+function get_flag(job::DFJob, flag::Symbol)
+  for calc in job.calculations
     return get_flag(calc,flag)
   end
 end
@@ -311,34 +314,35 @@ end
 #TODO Change so calculations also have a name.
 #TODO change after implementing k_point change so you don't need to specify all this crap
 """
-    get_data(df_job::DFJob, calc_filenames, block_symbol::Symbol)
+    get_data(job::DFJob, calc_filenames, block_symbol::Symbol)
 
 Looks through the calculation filenames and returns the data with the specified symbol.
 """
-function get_data(df_job::DFJob, calc_filenames, block_symbol::Symbol)
-  for calc in get_inputs(df_job,calc_filenames)
+function get_data(job::DFJob, calc_filenames, block_symbol::Symbol)
+  for calc in get_inputs(job,calc_filenames)
     return get_data(calc,block_symbol)
   end
 end
 
 """
-    get_block(df_job::DFJob, calc_filenames, block_symbol::Symbol)
+    get_block(job::DFJob, calc_filenames, block_symbol::Symbol)
 
 Looks through the calculation filenames and returns the block with the specified symbol.
 """
-function get_block(df_job::DFJob, calc_filenames, block_symbol::Symbol)
-  for calc in get_inputs(df_job,calc_filenames)
+function get_block(job::DFJob, calc_filenames, block_symbol::Symbol)
+  for calc in get_inputs(job,calc_filenames)
     return get_block(calc,block_symbol)
   end
 end
 
 """
-    change_data!(df_job::DFJob, calc_filenames, data_block_name::Symbol, new_block_data)
+    change_data!(job::DFJob, calc_filenames, data_block_name::Symbol, new_block_data)
 
 Looks through the calculation filenames and changes the data of the datablock with `data_block_name` to `new_block_data`
 """
-function change_data!(df_job::DFJob, calc_filenames, data_block_name::Symbol, new_block_data;option = nothing)
-  for calc in get_inputs(df_job,calc_filenames)
+function change_data!(job::DFJob, calc_filenames, data_block_name::Symbol, new_block_data;option = nothing)
+  UNDO_JOBS[job.id] = deepcopy(job)
+  for calc in get_inputs(job,calc_filenames)
     change_data!(calc,data_block_name,new_block_data,option=option)
   end
 end
@@ -346,11 +350,12 @@ end
 #I'm not sure if this is a good idea. Maybe require explicitely also the input filename
 #TODO after making defaults this can be done better
 """
-   add_flags!(df_job::DFJob, calc_filenames::Array{String,1}, control_block_name::Symbol, flags)
+   add_flags!(job::DFJob, calc_filenames::Array{String,1}, control_block_name::Symbol, flags)
 
 Adds the flags to the controlblocks of the specified inputs with the control block. This assumes that there are `ControlBlocks` in the calculations e.g. in `QEInput`.
 """
 function add_flags!(job::DFJob, calc_filenames::Array{String,1}, control_block_name::Symbol, flags...)
+  UNDO_JOBS[job.id] = deepcopy(job)
   for calc in get_inputs(job,calc_filenames)
     if :control_blocks in fieldnames(calc)
       add_flags!(calc,control_block_name,flags...)
@@ -358,22 +363,22 @@ function add_flags!(job::DFJob, calc_filenames::Array{String,1}, control_block_n
   end
 end
 """
-   add_flags!(df_job::DFJob, control_block_name::Symbol, flags)
+   add_flags!(job::DFJob, control_block_name::Symbol, flags)
 
 Adds the flags to the controlblocks of all inputs with the control block. This assumes that there are `ControlBlocks` in the calculations e.g. in `QEInput`.
 """
-add_flags!(df_job::DFJob, control_block_name::Symbol, flags...) = add_flags!(df_job,[i.filename for i in df_job.calculations], control_block_name,flags...)
+add_flags!(job::DFJob, control_block_name::Symbol, flags...) = add_flags!(job,[i.filename for i in job.calculations], control_block_name,flags...)
 
 add_flags!(job::DFJob,filename::String,control_block_name::Symbol,flags...)=add_flags!(job,[filename],control_block_name,flags...)
 
 """
-    add_flags!(df_job::DFJob,filenames::Array{String,1}, flags...)
+    add_flags!(job::DFJob,filenames::Array{String,1}, flags...)
 
 Adds the flags to specified input files. This assumes that the input has a field `flags`. Works for e.g. `WannierInput`.
 """
-
-function add_flags!(df_job::DFJob,filenames::Array{String,1}, flags...)
-  for calc in get_inputs(df_job,filenames)
+function add_flags!(job::DFJob,filenames::Array{String,1}, flags...)
+  UNDO_JOBS[job.id] = deepcopy(job)
+  for calc in get_inputs(job,filenames)
     if :flags in fieldnames(calc)
       add_flags!(calc,flags...)
     end
@@ -385,122 +390,129 @@ end
 Adds the flags to all inputs that have fieldname 'flags'. Works for e.g. 'WannierInput'.
 """
 add_flags!(job::DFJob,flags...) = add_flags!(job,[i.filename for i in job.calculations],flags...)
-add_flags!(df_job::DFJob, filename::String,flags...) = add_flags!(df_job,[filename],flags...)
+add_flags!(job::DFJob, filename::String,flags...) = add_flags!(job,[filename],flags...)
 """
-    remove_flags!(df_job::DFJob, calc_filenames, flags...)
+    remove_flags!(job::DFJob, calc_filenames, flags...)
 
 Looks through the calculation filenames and removes the specified flags.
 """
-function remove_flags!(df_job::DFJob, calc_filenames::Array{<:String,1}, flags...)
-  for calc in get_inputs(df_job,calc_filenames)
+function remove_flags!(job::DFJob, calc_filenames::Array{<:String,1}, flags...)
+  UNDO_JOBS[job.id] = deepcopy(job)
+  for calc in get_inputs(job,calc_filenames)
     remove_flags!(calc,flags...)
   end
 end
 
 remove_flags!(job::DFJob,filename::String,flags...)=remove_flags!(job,[filename],flags...)
 """
-    remove_flags!(df_job::DFJob, flags...)
+    remove_flags!(job::DFJob, flags...)
 
 Looks through all the calculations and removes the flags.
 """
-function remove_flags!(df_job::DFJob, flags...)
-  for calc in df_job.calculations
+function remove_flags!(job::DFJob, flags...)
+  UNDO_JOBS[job.id] = deepcopy(job)
+  for calc in job.calculations
     remove_flags!(calc,flags...)
   end
 end
 
 """
-    set_flow!(df_job::DFJob, should_runs::Array{Bool,1})
+    set_flow!(job::DFJob, should_runs::Array{Bool,1})
 
 Sets whether calculations should be ran or not. should_runs should have the same length as the amount of calculations in the job.
 """
-function set_flow!(df_job::DFJob, should_runs::Array{Bool,1})
-  assert(length(should_runs)==length(df_job.calculations))
-  for (calc,should_run) in zip(df_job.calculations,should_runs)
+function set_flow!(job::DFJob, should_runs::Array{Bool,1})
+  UNDO_JOBS[job.id] = deepcopy(job)
+  assert(length(should_runs)==length(job.calculations))
+  for (calc,should_run) in zip(job.calculations,should_runs)
     calc.run = should_run
   end
-  print_flow(df_job)
+  print_flow(job)
 end
 
 """
-    change_flow!(df_job::DFJob, should_runs...)
+    change_flow!(job::DFJob, should_runs...)
 
 Sets whether or not calculations should be run. Calculations are specified using their indices.
 """
-function change_flow!(df_job::DFJob, should_runs...)
+function change_flow!(job::DFJob, should_runs...)
+  UNDO_JOBS[job.id] = deepcopy(job)
   for (filename,run) in should_runs
-    for input in get_inputs(df_job,filename)
+    for input in get_inputs(job,filename)
       input.run = run
     end
   end
-  print_flow(df_job)
+  print_flow(job)
 end
 
 """
-    change_flow!(df_job::DFJob, filenames, should_run)
+    change_flow!(job::DFJob, filenames, should_run)
 
 Goes throug the calculation filenames and sets whether it should run or not.
 """
-function change_flow!(df_job::DFJob, filenames::Array{String,1}, should_run)
-  for calc in get_inputs(df_job,filenames)
+function change_flow!(job::DFJob, filenames::Array{String,1}, should_run)
+  UNDO_JOBS[job.id] = deepcopy(job)
+  for calc in get_inputs(job,filenames)
     calc.run = should_run
   end
 end
 
 """
-    change_flow!(df_job::DFJob, should_runs::Union{Dict{String,Bool},Array{Tuple{String,Bool}}})
+    change_flow!(job::DFJob, should_runs::Union{Dict{String,Bool},Array{Tuple{String,Bool}}})
 
 Runs through the calculation filenames and sets whether it should run or not.
 """
-function change_flow!(df_job::DFJob, should_runs::Union{Dict{String,Bool},Array{Tuple{String,Bool}}})
+function change_flow!(job::DFJob, should_runs::Union{Dict{String,Bool},Array{Tuple{String,Bool}}})
+  UNDO_JOBS[job.id] = deepcopy(job)
   for (name,should_run) in should_runs
-    change_flow!(df_job,name,should_run)
+    change_flow!(job,name,should_run)
   end
-  print_flow(df_job)
+  print_flow(job)
 end
 
 """
-    change_run_command!(df_job::DFJob, filenames, run_command)
+    change_run_command!(job::DFJob, filenames, run_command)
 
 Goes through the calculation filenames and sets the run command of the calculation.
 """
-function change_run_command!(df_job::DFJob, filenames, run_command)
-  for calc in get_inputs(df_job,filenames)
+function change_run_command!(job::DFJob, filenames, run_command)
+  UNDO_JOBS[job.id] = deepcopy(job)
+  for calc in get_inputs(job,filenames)
     calc.run_command = run_command
     dfprintln("Run command of file '$(calc.filename)' is now: '$(calc.run_command)'")
   end
 end
 
 """
-    get_run_command(df_job::DFJob, filename)
+    get_run_command(job::DFJob, filename)
 
 Returns the run command for the specified calculation.
 """
-function get_run_command(df_job::DFJob, filename)
-  for calc in get_inputs(df_job,filename)
+function get_run_command(job::DFJob, filename)
+  for calc in get_inputs(job,filename)
     return calc.run_command
   end
 end
 
 """
-    print_run_command(df_job::DFJob, filenames)
+    print_run_command(job::DFJob, filenames)
 
 Prints the run command of the specified calculations.
 """
-function print_run_command(df_job::DFJob, filenames)
-  for calc in get_inputs(df_job,filenames)
+function print_run_command(job::DFJob, filenames)
+  for calc in get_inputs(job,filenames)
     dfprintln("Run command of file '$(calc.filename)' is: '$(calc.run_command)'.")
     dfprintln("")
   end
 end
 
 """
-    print_flow(df_job::DFJob)
+    print_flow(job::DFJob)
 
 Prints the calculation sequence of the job.
 """
-function print_flow(df_job::DFJob)
-  for (i,calc) in enumerate(df_job.calculations)
+function print_flow(job::DFJob)
+  for (i,calc) in enumerate(job.calculations)
     dfprintln("$i: $(calc.filename) => runs: $(calc.run)")
   end
 end
@@ -576,7 +588,7 @@ function print_info(job::DFJob,filenames::Array{String,1})
 end
 
 print_info(job::DFJob, filename::String) = print_info(job,[filename])
-print_info(job::DFJob) = print_info(job::DFJob,[calc.filename for calc in job.calculations])
+print_info(job::DFJob)                   = print_info(job::DFJob,[calc.filename for calc in job.calculations])
 
 """
     print_flags(job::DFJob)
@@ -639,6 +651,7 @@ end
 Adds a block to the specified filenames.
 """
 function add_block!(job::DFJob, filenames, block::Block)
+  UNDO_JOBS[job.id] = deepcopy(job)
   for input in get_inputs(job,filenames)
     add_block!(input,block)
   end
@@ -650,6 +663,7 @@ end
 Changes the filename from the old to the new one.
 """
 function change_filename!(job::DFJob, old_filename::String, new_filename::String)
+  UNDO_JOBS[job.id] = deepcopy(job)
   input = get_input(job, old_filename)
   input.filename = new_filename
   dfprintln("Input filename in job $(job.name) has been changed from '$old_filename' to '$new_filename'.")
@@ -667,6 +681,7 @@ These pseudospotentials are then set in all the calculations that need it.
 All flags which specify the number of atoms inside the calculation also gets set to the correct value.
 """
 function change_atoms!(job::DFJob, atoms::Dict{Symbol,<:Array{<:Point3D,1}};kwargs...)
+  UNDO_JOBS[job.id] = deepcopy(job)
   for calc in job.calculations
     change_atoms!(calc,atoms;kwargs...)
   end
@@ -680,6 +695,7 @@ end
 Changes the cell parameters in all the input files that have that `DataBlock`.
 """
 function change_cell_parameters!(job::DFJob, cell_param::Array{<:AbstractFloat,2})
+  UNDO_JOBS[job.id] = deepcopy(job)
   for calc in job.calculations
     if typeof(calc) == WannierInput
       alat = get_flag(job,:A)
@@ -696,6 +712,7 @@ end
 Changes the data in the k point `DataBlock` inside the specified calculation.
 """
 function change_k_points!(job::DFJob,calc_filename,k_points)
+  UNDO_JOBS[job.id] = deepcopy(job)
   change_k_points!(get_input(job,calc_filename),k_points)
 end
 
@@ -705,6 +722,7 @@ end
 Changes the option of specified data block in the specified calculations.
 """
 function change_data_option!(job::DFJob,filenames::Array{String,1}, block_symbol::Symbol,option::Symbol)
+  UNDO_JOBS[job.id] = deepcopy(job)
   for calc in get_inputs(job,filenames)
     change_data_option!(calc,block_symbol,option)
   end
@@ -724,6 +742,7 @@ change_data_option!(job::DFJob, block_symbol::Symbol,option::Symbol) = change_da
 Replaces the specified word in the header with the new word.
 """
 function change_header_word!(job::DFJob,word::String,new_word::String)
+  UNDO_JOBS[job.id] = deepcopy(job)
   for (i,line) in enumerate(job.header)
     if contains(line,word)
       s = """Old line:
@@ -760,6 +779,7 @@ function get_errors(job::DFJob)
 end
 
 function add_wan_calc!(job::DFJob, k_grid; nscf_file = "nscf.in", wan_file="wan.win",pw2wan_file = "pw2wan.in", wan_run_command="~/bin/wannier90.x ",pw2wan_run_command="mpirun -np 24 ~/bin/pw2wannier90.x", wan_flags=nothing,pw2wan_flags=nothing)
+  UNDO_JOBS[job.id] = deepcopy(job)
   nscf_calc   = nothing
   scf_calc    = nothing
   pw2wan_calc = nothing
@@ -840,5 +860,23 @@ function add_wan_calc!(job::DFJob, k_grid; nscf_file = "nscf.in", wan_file="wan.
   print_info(job)
 end
 
+"""
+    undo!(job::DFJob)
+
+Undos the last change to the calculations of the job.
+"""
+function undo!(job::DFJob)
+  job.calculations[:] = UNDO_JOBS[job.id].calculations[:]
+  dfprintln("Restored the calculations of job '$(job.name)' to their previous state.")
+end
+  
+"""
+    undo(job::DFJob)
+
+Undos the last change to the calculations of the job and returns as a new one.
+"""
+function undo(job::DFJob)
+  return deepcopy(UNDO_JOBS[job.id])
+end
     
   

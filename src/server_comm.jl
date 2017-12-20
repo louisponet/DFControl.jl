@@ -91,9 +91,9 @@ function pull_outputs(df_job::DFJob, server = "", server_dir = "", local_dir =""
   pull_server_file(job_fuzzy)
 
   job_file = search_dir(df_job.local_dir,strip(job_fuzzy,'*'))[1]
-  job_name,inputs,outputs,run_command,should_runs = read_job_file(df_job.local_dir*job_file)
+  job_data = read_job_file(df_job.local_dir*job_file)
   pulled_outputs = String[]
-  for (run,output) in zip(should_runs,outputs)
+  for (run,output) in zip(job_data[:should_run],job_data[:output_files])
     if run 
       pull_server_file(output)
       push!(pulled_outputs,output)

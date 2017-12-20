@@ -10,7 +10,7 @@ Point3D(x::Array{<:AbstractFloat,1}) = Point3D(x[1],x[2],x[3])
 Point3D{T}() where T<:AbstractFloat = Point3D{T}(0)
 Point3D() = Point3D(0.0)
 
-import Base: +, -, *, /, convert, promote_rule, show, zero
+import Base: +, -, *, /, convert, promote_rule, show, zero, norm
 +(x::Point3D,y::Point3D) = Point3D(x.x+y.x,x.y+y.y,x.z+y.z)
 -(x::Point3D,y::Point3D) = Point3D(x.x-y.x,x.y-y.y,x.z-y.z)
 *(x::Point3D,y::Point3D) = Point3D(x.x*y.x,x.y*y.y,x.z*y.z)
@@ -164,6 +164,7 @@ Represents an input for DFT calculation.
   server_dir::String -> directory on server.
   """
   mutable struct DFJob
+    id::Int
     name::String
     calculations::Array{DFInput,1}
     local_dir::String
@@ -177,12 +178,22 @@ Represents an input for DFT calculation.
       if server_dir != ""
         server_dir = form_directory(server_dir)
       end
-      new(name,calculations,local_dir,server,server_dir,header)
+      test = filter(x->x.name==name,UNDO_JOBS)
+      if length(test) == 1
+        job = new(test[1].id,name,calculations,local_dir,server,server_dir,header)
+        UNDO_JOBS[test[1].id] = deepcopy(job)
+      elseif length(test) == 0
+        job = new(length(UNDO_JOBS) + 1 ,name,calculations,local_dir,server,server_dir,header)
+        push!(UNDO_JOBS,deepcopy(job))
+      end
+      job
     end
   end
   
   function Base.display(job::DFJob)
-    print_info(job)
+    try
+      print_info(job)
+    end
   end
   
   """

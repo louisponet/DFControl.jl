@@ -58,9 +58,9 @@ function set_flags!(input::DFInput, flags...)
     if flag_type != Void
       if !(flag in found_keys) push!(found_keys,flag) end
       try
-        value = convert(flag_type,value)
+        value = length(value)> 1 ? convert.(flag_type,value) : convert(flag_type,value)
       catch
-        dfprintln("Filename '$(input.filename)':\n  Could not convert '$value' into '$flag_type'.\n    Flag not set.\n")
+        dfprintln("Filename '$(input.filename)':\n  Could not convert '$value' into '$flag_type'.\n    Flag '$flag' not set.\n")
         continue
       end
       
@@ -85,9 +85,9 @@ function set_flags!(input::QEInput, flags...)
       if !(flag in found_keys) push!(found_keys,flag) end
 
       try
-        value = convert(flag_type,value)
+        value = length(value)> 1 ? convert.(flag_type,value) : convert(flag_type,value)
       catch
-        dfprintln("Filename '$(input.filename)':\n  Could not convert '$value' into '$flag_type'.\n    Flag not set.\n")
+        dfprintln("Filename '$(input.filename)':\n  Could not convert '$value' into '$flag_type'.\n    Flag '$flag' not set.\n")
         continue
       end
 
