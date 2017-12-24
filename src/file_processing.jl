@@ -764,7 +764,7 @@ function write_abi_datasets(inputs::Array{AbinitInput,1}, directory)
 
     for group in input_groups
         run_indices = Int[]
-        for (i, _input) in enumerate(group)
+        for (i, _input) in enumerate(reverse(group))
             if _input.run 
                 push!(run_indices, i)
             end

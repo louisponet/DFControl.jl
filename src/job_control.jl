@@ -762,13 +762,13 @@ function change_header_word!(job::DFJob, word::String, new_word::String)
 
     for (i, line) in enumerate(job.header)
         if contains(line, word)
+            job.header[i] = replace(line, word, new_word)
             s = """Old line:
             $line
             New line:
             $(job.header[i])
             """
             dfprintln(s)
-            job.header[i] = replace(line, word, new_word)
         end
     end
 
