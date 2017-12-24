@@ -573,9 +573,9 @@ function read_wannier_input(filename::String, T=Float64; run_command="", run=tru
                 if contains(line, "mp_grid")
                     flags[:mp_grid] = parse_string_array(Int, split(split(line, '=')[2]))
                 else
+                    split_line = strip_split(line, '=')
                     flag       = Symbol(split_line[1])
                     value      = split_line[2]
-                    split_line = strip_split(line, '=')
                     if  lowercase(value) == "t" || lowercase(value) == "true"
                         flags[flag] = true
                     elseif lowercase(value) == "f" || lowercase(value) == "false"
@@ -654,12 +654,36 @@ end
 @pyimport abipy.abio.abivars as abivars
 @pyimport abipy.abilab as abilab
 #also searches the structure but where not doing anything with it now
+# Its very unoptimized but meh
 """
     read_abi_input(filename::String, T=Float64)
 
-Returns an ABINIT input.
+Returns an ABINIT input. We assume that jdtset is on a seperate line. 
+If # DATASET is supplied as first line, it will make sure that amount of datasets are read no matter what ndtset and jdtset are.
+ndtset and jdtset will be taken into account to decide which calculations will be marked as 'should run'.
 """
-function read_abi_input(filename::String, T=Float64; run_command="", run=true, pseudos=[""])
+function read_abi_input(filename::String, T=Float64; run_command="", pseudos=[""])
+
+    jdtset  = Int[]
+    lines   = readlines(filename)
+    open(filename, "w") do f
+        if contains(lines[1],"DATASETS")
+            ndtset = parse(Int,split(lines[1])[end])
+            write(f,"ndtset $ndtset\n")
+        end
+        for (i,line) in enumerate(lines[2:end])
+            if contains(line, "jdtset")
+                j_i    = search(line, 'j')
+                jdtset = parse.(Int, split(line[j_i:end])[2:end])
+            elseif contains(line, "ndtset")
+                continue
+            else
+                write(f, line * "\n")
+            end
+        end
+    end
+
+    s         = String(read(filename))
     abi_input = PyObject(abivars.AbinitInputFile(filename))
     datasets  = abi_input[:datasets]
     structure = abi_input[:structure]
@@ -693,6 +717,7 @@ function read_abi_input(filename::String, T=Float64; run_command="", run=true, p
                 flags[Symbol(flag)] = flag_type != Void ? parse_flag_val(value,flag_type) : error("Couldn't parse flag '$flag' with value '$value'!")
             end
         end
+        run = i in jdtset
         push!(inputs, AbinitInput(newfile, flags,
                                   [AbinitDataBlock(:cell_parameters,  :angstrom, cell),
                                    AbinitDataBlock(:atomic_positions, :frac, atoms),
@@ -733,6 +758,10 @@ function write_abi_datasets(inputs::Array{AbinitInput,1}, directory)
         end
     end
     
+    filenames    = String[]
+    run_commands = String[]
+    pseudos      = Array{Array{String,1},1}()
+
     for group in input_groups
         run_indices = Int[]
         for (i, _input) in enumerate(group)
@@ -742,28 +771,146 @@ function write_abi_datasets(inputs::Array{AbinitInput,1}, directory)
         end
         if length(run_indices) == length(group)
             jdtset = ""
+            ndtset = length(group)
         else
             jdtset = join(["$c" for c in run_indices], " ")
+            ndtset = length(run_indices)
         end
-        open(directory * group[1].filename,"w") do f
-            write(f, "ndtset $(length(group)) jdtset $jdtset\n")
+        file, ext = splitext(group[end].filename)  
+        push!(filenames, file[1:end-1] * ext)
+        push!(run_commands, group[end].run_command)
+        push!(pseudos, get_data(group[end], :pseudos))
+        open(directory * file[1:end-1] * ext, "w") do f
+            write(f, "# DATASETS $(length(group))\n")
+            write(f, "ndtset $ndtset\n")
+            if jdtset != "" 
+                write(f, "jdtset $jdtset\n")
+            end
             write(f, group[1].structure[:abi_string])
             write(f, "\n")
-            for t = 1:length(group)
+            for (t, dt) in enumerate(reverse(group))
                 write_flag(flag_data) = write_flag_line(f, flag_data[1], flag_data[2], "", t)
                 write(f, "#=============== BEGIN DATASET $t ===============#\n")
-                write_flag.(collect(group[t].flags))
+                write_flag.(collect(dt.flags))
                 write(f, "#================ END DATASET $t ================#\n")
             end
         end
     end
-    return map(x -> (x[1].filename, get_data(x[1], :pseudos), x[1].run_command), input_groups)
+    return zip(filenames, pseudos, run_commands)
 end
 
-function read_abi_output(filename::String)
-    result = abilab.abiopen(filename)
-    return result
+#very stupid
+function read_abi_output(filename::String, T=Float64)
+    if contains(filename, "FATBANDS")
+        return read_abi_fatbands(filename, T)
+    elseif contains(filename, "EBANDS.agr")
+        return read_abi_ebands(filename, T)
+    elseif contains(filename, "_EIG")
+        return read_abi_eig(filename, T)
+    else
+        error("Please supply a file with FATBANDS, EBANDS.agr or _EIG in the filename.")
+    end
 end
+
+"Reads an abinit FATBANDS output file and returns the found DFBands, with pdos values in the data field. K-points are not given (they aren't present in the output file)."
+function read_abi_fatbands(filename::String, T=Float64)
+    bands = DFBand[]
+    open(filename, "r") do f
+        while !eof(f)
+            line = readline(f)
+            if contains(line, "BANDS")
+                extra   = Dict{Symbol,Any}(:pdos => T[])
+                eigvals = Array{T,1}
+                line    = readline(f)
+                while line != ""
+                    eigval, pdos = parse.(T, split(line)[2:end])
+                    push!(eigvals, eigval)
+                    push!(extra[:pdos], pdos)
+                    line = readline(f)
+                end
+                push!(bands, DFBand(eigvals, [T[0.0, 0.0, 0.0] for i=1:length(eigvals)], [T[0.0, 0.0, 0.0] for i=1:length(eigvals)], extra))
+            end
+        end
+    end
+    return bands
+end
+
+"Reads an abinit EBANDS.agr output file and returns the found DFBands. K-points only given in crystalline coordinates."
+function read_abi_ebands(filename::String, T=Float64)
+    bands = DFBand[]
+    open(filename, "r") do f
+        k_points_cryst = Array{Array{T,1},1}()
+        while !eof(f)
+            line = readline(f)
+            if contains(line,"List of k-points")
+                line = readline(f)
+                while line[1] != '@'
+                    k_point = parse.(T, replace.(strip.(strip.(strip.(split(line)[4:end], '['), ']'), ','), 'E', 'e'))
+                    push!(k_points_cryst, k_point)
+                    line = readline(f)
+                end
+                
+            elseif contains(line,"target")
+                readline(f)
+                eigvals = T[]
+                line = readline(f) 
+                while line[1] != '&'
+                    push!(eigvals, parse(T, split(line)[2]))
+                    line = readline(f)
+                end
+                push!(bands, DFBand([T[0.0, 0.0, 0.0] for i=1:length(eigvals)], k_points_cryst, eigvals))
+            end
+        end
+    end
+    return bands
+end
+
+"Reads and abinit _EIG output file and returns the found DFBands. K-points are only given in crystalline coordinates."
+function read_abi_eig(filename::String, T=Float64)
+    bands = DFBand[]
+    k_points_array = Array{Array{T,1},1}()
+    eigvals_array  = Array{Array{T,1},1}()
+    open(filename, "r") do f
+        while !eof(f)
+            line = readline(f)
+            if contains(line, "kpt#")
+                push!(k_points_array, parse.(T, split(line)[7:9]))
+                read_abi_eig_block!(f, k_points_array, eigvals_array, T)
+            end
+        end
+    end
+    for eigvals in eigvals_array
+        push!(bands, DFBand([T[0.0, 0.0, 0.0] for i=1:length(eigvals)], k_points_array, eigvals))
+    end
+    return bands
+end 
+
+function read_abi_eig_block!(f, k_points_array, eigvals_array, T=Float64)
+    first_run = isempty(eigvals_array)
+    if eof(f)
+        return
+    end
+    i = 1
+    while !eof(f)
+        line = readline(f)
+        if contains(line,"Eigenvalues")
+            continue
+        elseif contains(line, "kpt#")
+            push!(k_points_array, parse.(T, split(line)[7:9]))
+            read_abi_eig_block!(f, k_points_array, eigvals_array, T)
+        else
+            for val in parse.(T, split(line))
+                if first_run 
+                    push!(eigvals_array, [val])
+                else
+                    push!(eigvals_array[i], val)
+                end
+                i += 1
+            end
+        end
+    end
+end
+
 
 
 #---------------------------END ABINIT SECTION--------------------------#
@@ -862,6 +1009,7 @@ function write_job_files(job::DFJob)
             rm(job.local_dir * file)
         end
     end
+    return new_filenames
 end
 
 
@@ -919,7 +1067,7 @@ function read_job_file(job_file::String)
                 end
                 
                 s_line        = split(line)
-                i,run_command = read_command_line(s_line)      
+                i, run_command = read_command_line(s_line)      
                 push!(data[:run_commands], run_command)
                 #handles QE and Wannier.
                 in_out = strip_split(prod(s_line[i + 1:end]), ">")
@@ -937,11 +1085,7 @@ function read_job_file(job_file::String)
                 if contains(line, "!EOF")
                     push!(data[:input_files],  strip(readline(f), '#'))
                     push!(data[:output_files], strip(readline(f), '#'))
-                    if contains(line, "#")
-                        push!(data[:should_run], false)
-                    else
-                        push!(data[:should_run], true)
-                    end
+                    push!(data[:should_run], true)
                     line = readline(f)
                     while !contains(line, "EOF")
                         if contains(line, ".xml")

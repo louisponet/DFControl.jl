@@ -111,7 +111,6 @@ function load_job(job_dir::String, T=Float64;
         elseif contains(run_command, "abinit")
             push!(t_calcs, read_abi_input(filename, T,
                                           run_command = run_command,
-                                          run         = run,
                                           pseudos     = job_data[:abinit_pseudos])...)
         else
             push!(t_calcs,read_qe_input(filename, T, run_command=run_command, run=run))
@@ -190,7 +189,7 @@ function save_job(job::DFJob)
         mkpath(local_dir)
     end
     job.local_dir = local_dir
-    write_job_files(job)
+    return write_job_files(job)
 end
 
 #Incomplete everything is hardcoded for now still!!!! make it configurable
@@ -199,13 +198,18 @@ end
 
 Pushes a DFJob from it's local directory to its server side directory.
 """
-function push_job(job::DFJob)
+function push_job(job::DFJob, newfiles)
     if !ispath(job.local_dir)
         error("Please save the job locally first using save_job(job)!")
     else
-        for calc in job.calculations
-            run(`scp $(job.local_dir * calc.filename) $(job.server * ":" * job.server_dir)`)
+        for file in newfiles
+            run(`scp $(job.local_dir * file) $(job.server * ":" * job.server_dir)`)
         end
+        # for calc in job.calculations
+        #     if calc.filename in newfiles
+        #         run(`scp $(job.local_dir * calc.filename) $(job.server * ":" * job.server_dir)`)
+        #     end
+        # end
         run(`scp $(job.local_dir * "job.tt") $(job.server * ":" * job.server_dir)`)
     end
 end
@@ -230,8 +234,8 @@ function submit_job(job::DFJob; server=nothing, server_dir=nothing)
         job.server_dir = server_dir
     end
 
-    save_job(job)
-    push_job(job)
+    new_files = save_job(job)
+    push_job(job, new_files)
     run(`ssh -t $(job.server) cd $(job.server_dir) '&&' qsub job.tt`)
 end
 
