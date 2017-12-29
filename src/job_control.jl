@@ -8,7 +8,7 @@ Returns an array of the inputs that match one of the filenames.
 function get_inputs(job::DFJob, filenames::Array)
     out = DFInput[]
     for name in filenames
-        push!(out, filter(x -> contains(x.filename, name), job.calculations)[1])
+        push!(out, filter(x -> contains(x.filename, name), job.calculations)...)
     end
     return out
 end
@@ -670,13 +670,28 @@ function add_block!(job::DFJob, filenames, block::Block)
     end
 end
 
+
+"""
+    add_data!(job::DFJob, filenames, block_symbol, data, option=:none)
+
+Adds a block to the specified filenames.
+"""
+function add_data!(job::DFJob, filenames, block_symbol, data, option=:none)
+    UNDO_JOBS[job.id] = deepcopy(job)
+
+    for input in get_inputs(job, filenames)
+        add_data!(input, block_symbol, data, option)
+    end
+end
+
 """
     change_filename!(job::DFJob, old_filename::String, new_filename::String)
 
 Changes the filename from the old to the new one.
 """
 function change_filename!(job::DFJob, old_filename::String, new_filename::String)
-    input = get_input(job, old_filename)
+    input          = get_input(job, old_filename)
+    old_filename   = input.filename
     input.filename = new_filename
     dfprintln("Input filename in job $(job.name) has been changed from '$old_filename' to '$new_filename'.")
 end
@@ -798,7 +813,8 @@ function get_errors(job::DFJob)
     end
 end
 
-function add_wan_calc!(job::DFJob, k_grid;
+"""
+    add_wan_calc!(job::DFJob, k_grid; 
                        nscf_file          = "nscf.in",
                        wan_file           = "wan.win",
                        pw2wan_file        = "pw2wan.in",
@@ -807,7 +823,28 @@ function add_wan_calc!(job::DFJob, k_grid;
                        wan_flags          = nothing,
                        pw2wan_flags       = nothing)
 
+Adds a wannier calculation to a job. For now only works with QE. 
+"""
+function add_wan_calc!(job::DFJob, k_grid;
+                       nscf_file          = "nscf.in",
+                       wan_file           = "wan.win",
+                       pw2wan_file        = "pw2wan.in",
+                       wan_run_command    = "~/bin/wannier90.x ",
+                       pw2wan_run_command = "mpirun -np 24 ~/bin/pw2wannier90.x",
+                       inner_window       = (0., 0.), #no window given 
+                       outer_window       = (0., 0.), #no outer window given
+                       wan_flags          = Dict{Symbol, Any}(),
+                       pw2wan_flags       = nothing)
+            
     UNDO_JOBS[job.id] = deepcopy(job)
+
+
+    if inner_window != (0., 0.) #scalarize
+        wan_flags = merge!(wan_flags, Dict(:dis_froz_min => inner_window[1], :dis_froz_max => inner_window[2]))
+    end
+    if outer_window != (0., 0.) 
+        wan_flags = merge!(wan_flags, Dict(:dis_win_min => outer_window[1], :dis_win_max => outer_window[2]))
+    end
 
     nscf_calc   = nothing
     scf_calc    = nothing
@@ -826,7 +863,7 @@ function add_wan_calc!(job::DFJob, k_grid;
     end
     
     if nscf_calc != nothing 
-        change_data!(nscf_calc, :k_points, gen_k_grid(k_grid[1], k_grid[2], k_grid[3], :nscf))
+        change_data!(nscf_calc, :k_points, gen_k_grid(k_grid[1], k_grid[2], k_grid[3], :nscf), option=:crystal)
     elseif scf_calc != nothing
         nscf_calc = deepcopy(scf_calc)
         nscf_calc.filename = nscf_file
@@ -838,7 +875,7 @@ function add_wan_calc!(job::DFJob, k_grid;
     end
     nscf_calc.run = true
     
-    std_pw2wan_flags =Dict(:prefix    => get_flag(scf_calc, :prefix),
+    std_pw2wan_flags = Dict(:prefix    => get_flag(scf_calc, :prefix),
                            :write_unk => true,
                            :write_amn => true,
                            :write_mmn => true,
@@ -855,14 +892,16 @@ function add_wan_calc!(job::DFJob, k_grid;
     elseif typeof(scf_calc) == QEInput
         pw2wan_calc = QEInput(pw2wan_file, [QEControlBlock(:inputpp, pw2wan_flags)], QEDataBlock[], pw2wan_run_command, true)
     end
-    
     cell_block = get_block(scf_calc, :cell_parameters)
     if cell_block.option == :alat
-        alat = isnull(get_flag(scf_calc, :A)) ? 
-                   isnull(get_flag(scf_calc, Symbol(String("celldm(1)")))) ?
-                       error("Please set either flag :A or :celldm(1) when cell_parameters are in alat.") :
-                       conversions[:bohr2ang] * get_flag(scf_calc, Symbol(String("celldm(1)"))) :
-                   get_flag(scf_calc, :A)
+        alat = 1.0
+        if get_flag(scf_calc, :A) != nothing
+            alat = get_flag(scf_calc, :A)
+        elseif get_flag(scf_calc, Symbol("celldm(1)")) != nothing
+            alat = conversions[:bohr2ang] * get_flag(scf_calc, Symbol("celldm(1)"))
+        else
+            error("Please set either flag :A or :celldm(1) when cell_parameters are in alat.")
+        end
         cell = cell_block.data .* alat
     elseif cell_block.option == :bohr
         cell = cell_block.data .* conversions[:bohr2ang]
@@ -873,14 +912,15 @@ function add_wan_calc!(job::DFJob, k_grid;
     atoms_block = get_block(scf_calc, :atomic_positions)
     atoms = deepcopy(atoms_block.data)
     if atoms_block.option == :alat
-        alat = isnull(get_flag(scf_calc, :A)) ?
-                   isnull(get_flag(scf_calc, Symbol(String("celldm(1)")))) ?
-                       error("Please set either flag :A or :celldm(1) when cell_parameters are in alat.") :
-                       conversions[:bohr2ang] * get_flag(scf_calc, Symbol(String("celldm(1)"))) :
-                   get_flag(scf_calc,:A) 
-        for (key, positions) in atoms_block.data
-            atoms[key] = positions .* alat
+        alat = 1.0
+        if get_flag(scf_calc, :A) != nothing
+            alat = get_flag(scf_calc, :A)
+        elseif get_flag(scf_calc, Symbol("celldm(1)")) != nothing
+            alat = conversions[:bohr2ang] * get_flag(scf_calc, Symbol("celldm(1)"))
+        else
+            error("Please set either flag :A or :celldm(1) when cell_parameters are in alat.")
         end
+        atoms[key] = positions .* alat
     elseif atoms_block.option == :bohr
         for (key, positions) in atoms_block.data
             atoms[key] = positions .* conversions[:bohr2ang]
@@ -926,4 +966,18 @@ function undo(job::DFJob)
     return deepcopy(UNDO_JOBS[job.id])
 end
 
+"""
+    add_bands_calculation!(job::DFJob, k_path::Array{Array{<:AbstractFloat,1},1})
+
+Checks if there is an scf calculation in the job and takes it's inputs to generate a bands calculation along the given k-path.
+"""
+function add_bands_calculation!(job::DFJob, k_path::Array{Array{T,1},1}; filename="bands.in", run=true) where T<:AbstractFloat
+    for calc in job.calculations
+        if typeof(calc) == QEInput && get_flag(calc,:calculation) == "'scf'"
+           bands_calc = QEInput(calc, filename, run=run, k_points=(:crystal_b, k_path))
+           push!(job.calculations, bands_calc)
+           break
+        end
+    end
+end
 

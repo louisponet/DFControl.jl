@@ -541,9 +541,9 @@ function read_wannier_input(filename::String, T=Float64; run_command="", run=tru
                             line = readline(f)
                             continue
                         end
+                        split_line = strip_split(line)
                         atom       = Symbol(split_line[1])
                         position   = Point3D(parse_string_array(T, split_line[2:4]))
-                        split_line = strip_split(line)
                         if !haskey(atoms,atom)
                             atoms[atom] = [position]
                         else
@@ -616,12 +616,16 @@ function write_wannier_input(input::WannierInput, filename::String=input.filenam
                 end
                 
             elseif block.name == :projections
-                for (atom,symbols) in block.data
-                    write(f, "$atom: $(symbols[1])")
-                    for sym in symbols[2:end]
-                        write(f, ";$sym")
+                if typeof(block.data) <: Dict
+                    for (atom,symbols) in block.data
+                        write(f, "$atom: $(symbols[1])")
+                        for sym in symbols[2:end]
+                            write(f, ";$sym")
+                        end
+                        write(f, "\n")
                     end
-                    write(f, "\n")
+                elseif typeof(block.data) == String
+                    write(f, block.data * "\n")
                 end
                 write(f, "\n")
                 
@@ -818,17 +822,17 @@ function read_abi_fatbands(filename::String, T=Float64)
     open(filename, "r") do f
         while !eof(f)
             line = readline(f)
-            if contains(line, "BANDS")
+            if contains(line, "BAND number")
                 extra   = Dict{Symbol,Any}(:pdos => T[])
-                eigvals = Array{T,1}
+                eigvals = Array{T,1}()
                 line    = readline(f)
-                while line != ""
+                while line != "" && line != "&"
                     eigval, pdos = parse.(T, split(line)[2:end])
                     push!(eigvals, eigval)
                     push!(extra[:pdos], pdos)
                     line = readline(f)
                 end
-                push!(bands, DFBand(eigvals, [T[0.0, 0.0, 0.0] for i=1:length(eigvals)], [T[0.0, 0.0, 0.0] for i=1:length(eigvals)], extra))
+                push!(bands, DFBand{T}([T[0.0, 0.0, 0.0] for i=1:length(eigvals)], [T[0.0, 0.0, 0.0] for i=1:length(eigvals)], eigvals, extra))
             end
         end
     end
@@ -961,7 +965,7 @@ function write_job_files(job::DFJob)
         write_job_name(job, f)
         write_job_header(job, f)
         i = 1
-        while i < length(job.calculations)
+        while i <= length(job.calculations)
             calculation = job.calculations[i]
             run_command = calculation.run_command
             filename    = calculation.filename
@@ -1023,14 +1027,15 @@ function read_command_line(line)
             i = j
             break
         elseif contains(s, "abinit")
-            i=j
+            i = j
             break
         end
     end
     run_command = prod([s * " " for s in line[1:i]])
-    if contains(line[i + 1],"-")
+#TODO think about a better way of handling wannier90, probably with a fixed set of rules. Only 1 wannier90 input, which preprocesses or not..
+    if contains(line[i + 1], "-pp") #this is for wannier90
         run_command *= line[i + 1]
-        i+=1
+        i += 1
     end
     return i, run_command
 end

@@ -44,10 +44,9 @@ mutable struct DFBand{T<:AbstractFloat} <: Band
     k_points_cryst::Array{Array{T,1},1}
     eigvals::Array{T,1}
     extra::Dict{Symbol,Any}
-    function DFBand(k_points_cart::Array{Array{T,1},1}, k_points_cryst::Array{Array{T,1},1}, eigvals::Array{T,1}) where T <: AbstractFloat
-        new{T}(k_points_cart, k_points_cryst, eigvals, Dict{Symbol,Any}())
-    end
 end
+DFBand(k_points_cart::Array{Array{T,1},1}, k_points_cryst::Array{Array{T,1},1}, eigvals::Array{T,1}) where T <: AbstractFloat = DFBand{T}(k_points_cart, k_points_cryst, eigvals, Dict{Symbol,Any}())
+
 
 function Base.display(band::DFBand{T}) where T <: AbstractFloat
     string = """DFBand{$T}:
@@ -134,6 +133,35 @@ mutable struct QEInput <: DFInput
     data_blocks::Array{QEDataBlock,1}
     run_command::String  #everything before < in the job file
     run::Bool
+end
+
+function QEInput(template::QEInput, filename, newflags...; run_command=template.run_command, run=true, new_data...)
+    newflags = Dict(newflags...) # this should handle both Dicts and pairs of flags
+
+    input             = deepcopy(template)
+    input.filename    = filename
+    input.run_command = run_command
+    set_flags!(input, newflags...)
+
+    for (block_name, block_info) in new_data
+        if get_block(input, block_name) != nothing
+            block = get_block(input, block_name)
+            if length(block_info) == 1
+                block.option = :none 
+                block.data   = block_info
+            elseif length(block_info) == 2
+                block.option = block_info[1]
+                block.data   = block_info[2]
+            end
+        else
+            if length(block_info) == 1
+                add_block!(input, QEDataBlock(block_name, :none, block_info))
+            elseif length(block_info) == 2
+                add_block!(input, QEDataBlock(block_name, block_info[1], block_info[2]))
+            end
+        end
+    end
+    return input
 end
 
 mutable struct WannierInput <: DFInput

@@ -4,7 +4,7 @@ character(len=20), public, save :: length_unit
 logical,           public, save :: wvfn_formatted
 logical,           public, save :: spn_formatted
 logical,           public, save :: berry_uHu_formatted
-integer,           public, save :: spin
+character(len=20), public, save :: spin
 integer,           public, save :: num_bands
 integer,           public, save :: num_dump_cycles
 integer,           public, save :: num_print_cycles

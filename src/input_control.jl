@@ -133,6 +133,28 @@ function change_data!(input::DFInput, block_name::Symbol, new_block_data; option
 end
 
 """
+    add_data!(input::DFInput, block_name::Symbol, block_data, block_option=:none)
+
+Adds a block with the given name data and option to the calculation.
+"""
+function add_data!(input::DFInput, block_name::Symbol, block_data, block_option=:none)
+    for block in input.data_blocks
+        if block_name == block.name
+            change_data!(input, block_name, block_data, option=block_option) 
+            return
+        end
+    end
+    if typeof(input)==QEInput
+        block = QEDataBlock(block_name, block_option, block_data)
+    elseif typeof(input) == WannierInput
+        block = WannierDataBlock(block_name, block_option, block_data)
+    elseif typeof(input) == AbinitInput
+        block = AbinitDataBlock(block_name, block_option, block_data)
+    end
+    add_block!(input, block)
+end
+
+"""
     get_flag(input::QEInput, flag::Symbol)
 
 Returns the value of the flag.
