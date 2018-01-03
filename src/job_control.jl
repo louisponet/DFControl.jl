@@ -869,6 +869,11 @@ function add_wan_calc!(job::DFJob, k_grid;
         nscf_calc.filename = nscf_file
         change_flags!(nscf_calc,:calculation => "'nscf'")
         change_data!(nscf_calc, :k_points, gen_k_grid(k_grid[1], k_grid[2], k_grid[3], :nscf), option=:crystal)
+        set_flags!(nscf_calc, :noinv=>true,:nosym=>true)
+        if get_flag(scf_calc,:noinv) != true
+            set_flags!(scf_calc, :noinv =>true,:nosym=>true)
+            warning("Rerun scf because noinv was not set to true, and k-points will rsult in pw2wan error.")
+        end
         push!(job.calculations, nscf_calc)
     else
         error("Job needs to have at least an scf calculation.")
