@@ -1,8 +1,8 @@
 module DFControl
 # using Reexport
     using RecipesBase
-    using Reactive
     using PyCall
+    using Reactive
 
     const print_s = Signal("hello")
     if Pkg.installed("GtkReactive") != nothing
