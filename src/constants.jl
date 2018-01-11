@@ -144,7 +144,6 @@ function construct_abi_flags()
 end
 
 const AbinitFlags    = construct_abi_flags()
-const AbinitDatabase = abivars_db.VariableDatabase(abivars_db.get_abinit_variables())
 
 get_abi_flag_type(flag) = haskey(AbinitFlags, flag) ? AbinitFlags[flag] : Void
 
