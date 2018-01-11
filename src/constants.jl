@@ -134,7 +134,7 @@ get_wan_flag_type(flag) = haskey(WannierControlFlags, flag) ? WannierControlFlag
 
 function construct_abi_flags()
     out      = Dict{Symbol,Type}()
-    open("assets/inputs/abinit/input_variables.txt", "r") do f
+    open(joinpath(assets_dir,"inputs/abinit/input_variables.txt"), "r") do f
         while !eof(f)
             spl = split(readline(f))
             out[parse(spl[1])] = eval(parse(spl[2]))
