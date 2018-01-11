@@ -1,6 +1,7 @@
 using Revise
 using DFControl
 using Plots
+
 #TODO visualize the structure
 reload_dash()
 BiAlO3 = load_job("/home/ponet/Documents/PhD/BiAlO3/NSOC")

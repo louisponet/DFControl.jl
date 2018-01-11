@@ -1,5 +1,25 @@
-const abi_const = Dict{Symbol,Any}(:ev => 1 / 27.2113845, :ha => 1.0, :ry => 0.5, :ang => 1.889716164632)
+const abi_conversions = Dict{Symbol,Any}(:ev => 1 / 27.2113845,
+                                         :ha => 1.0, 
+                                         :ry => 0.5, 
+                                         :ang => 1.889716164632,
+                                         :bohr => 1.0,
+                                         :au => 1.0,
+                                         :angstr => 1.889716164632,
+                                         :angstrom => 1.889716164632,
+                                         :bohrs => 1.0,
+                                         :hartree => 1.0,
+                                         :hartrees => 1.0,
+                                         :k => 1/3.1577513e5,
+                                         :rydberg => 0.5,
+                                         :rydbergs => 0.5,
+                                         :t =>1/2.35e5,
+                                         :tesla => 1/2.35e5)
+                                         
 const conversions = Dict{Symbol,Float64}(:bohr2ang => 0.529177)
+
+abi_conversion(s::String) = abi_conversions[Symbol(s)]
+convert_2abi(value, s::String) = value * abi_conversions[Symbol(s)]
+convert_2abi(value, s::Symbol) = value * abi_conversions[s]
 
 const qe_input_files = search_dir(joinpath(@__DIR__, "../assets/inputs/qe/"), "INPUT")
 
@@ -112,13 +132,13 @@ const WannierControlFlags = read_wan_control_flags(joinpath(@__DIR__, "../assets
 
 get_wan_flag_type(flag) = haskey(WannierControlFlags, flag) ? WannierControlFlags[flag] : Void
 
-@pyimport abipy.abio.abivars_db as abivars_db
-
 function construct_abi_flags()
-    all_vars = abivars_db.get_abinit_variables()
     out      = Dict{Symbol,Type}()
-    for (key, var) in all_vars
-        out[Symbol(key)] = f2julia(var[:vartype])
+    open("assets/inputs/abinit/input_variables.txt", "r") do f
+        while !eof(f)
+            spl = split(readline(f))
+            out[parse(spl[1])] = eval(parse(spl[2]))
+        end
     end
     return out
 end

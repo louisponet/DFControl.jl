@@ -834,7 +834,9 @@ function add_wan_calc!(job::DFJob, k_grid;
                        inner_window       = (0., 0.), #no window given 
                        outer_window       = (0., 0.), #no outer window given
                        wan_flags          = Dict{Symbol, Any}(),
-                       pw2wan_flags       = nothing)
+                       pw2wan_flags       = Dict{Symbol, Any}(),
+                       projections        = nothing,
+                       spin               = false)
             
     UNDO_JOBS[job.id] = deepcopy(job)
 
@@ -881,7 +883,6 @@ function add_wan_calc!(job::DFJob, k_grid;
     nscf_calc.run = true
     
     std_pw2wan_flags = Dict(:prefix    => get_flag(scf_calc, :prefix),
-                           :write_unk => true,
                            :write_amn => true,
                            :write_mmn => true,
                            :outdir    => "'./'",
@@ -892,11 +893,16 @@ function add_wan_calc!(job::DFJob, k_grid;
         pw2wan_flags = merge(std_pw2wan_flags, pw2wan_flags)
     end
     
+    if :wannier_plot in keys(wan_flags) && wan_flags[:wannier_plot]
+        pw2wan_flags[:write_unk] = true
+    end
+
     if pw2wan_calc != nothing
         change_flags!(pw2wan_calc, pw2wan_flags)
     elseif typeof(scf_calc) == QEInput
         pw2wan_calc = QEInput(pw2wan_file, [QEControlBlock(:inputpp, pw2wan_flags)], QEDataBlock[], pw2wan_run_command, true)
     end
+
     cell_block = get_block(scf_calc, :cell_parameters)
     if cell_block.option == :alat
         alat = 1.0
@@ -944,11 +950,47 @@ function add_wan_calc!(job::DFJob, k_grid;
     data_blocks = [WannierDataBlock(:atoms_cart, :ang, atoms),
                    WannierDataBlock(:unit_cell_cart, :ang, cell), 
                    WannierDataBlock(:kpoints, :none, gen_k_grid(k_grid[1], k_grid[2], k_grid[3], :wan))]
+
+    if isempty(projections)
+        push!(data_blocks, WannierDataBlock(:projections, :random, nothing))
+    else
+        push!(data_blocks, WannierDataBlock(:projections, :none, projections))
+    end
+
     wan_calc1 = WannierInput(wan_file, wan_flags, data_blocks, wan_run_command, true, true)
-    wan_calc2 = wan_calc1
-    push!(job.calculations,wan_calc1)
-    push!(job.calculations,pw2wan_calc)
-    push!(job.calculations,wan_calc2)
+    if spin
+        file, ext         = splitext(pw2wan_calc.filename)
+        wan_file, wan_ext = splitext(wan_calc1.filename)
+
+        pw2wan_calc_dn = deepcopy(pw2wan_calc)
+        pw2wan_calc.control_blocks[:inputpp].flags[:spin_component]    = "'up'"
+        pw2wan_calc.control_blocks[:inputpp].flags[:seedname]          = "'$(wan_file * "_up")'"
+        pw2wan_calc_dn.control_blocks[:inputpp].flags[:spin_component] = "'down'"
+        pw2wan_calc_dn.control_blocks[:inputpp].flags[:seedname]       = "'$(wan_file * "_dn")'"
+
+        pw2wan_calc.filename    = file * "_up" * ext
+        pw2wan_calc_dn.filename = file * "_dn" * ext
+        
+        wan_calc_dn1 = deepcopy(wan_calc1)
+        wan_calc1.filename    = wan_file * "_up" * wan_ext
+        wan_calc_dn1.filename = wan_file * "_dn" * wan_ext
+
+        wan_calc2 = deepcopy(wan_calc1)
+        push!(job.calculations, wan_calc1)
+        push!(job.calculations, pw2wan_calc)
+        push!(job.calculations, wan_calc2)
+
+        wan_calc_dn2 = deepcopy(wan_calc_dn1)
+        push!(job.calculations, wan_calc_dn1)
+        push!(job.calculations, pw2wan_calc_dn)
+        push!(job.calculations, wan_calc_dn2)
+
+    else
+        wan_calc2 = deepcopy(wan_calc1)
+        push!(job.calculations, wan_calc1)
+        push!(job.calculations, pw2wan_calc)
+        push!(job.calculations, wan_calc2)
+    end
     print_info(job)
 end
 

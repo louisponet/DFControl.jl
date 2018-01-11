@@ -44,7 +44,7 @@ function parse_flag_val(val, T=Float64)
     t = convert.(T, parse.(split(lowercase(val))))
     #deal with abinit constants -> all flags that are read which are not part of the abi[:structure] get cast into the correct atomic units!
     if length(t) > 1 && typeof(t[end]) == Symbol
-        t = t[1:end-1] .* abi_const[t[end]]
+        t = t[1:end-1] .* abi_conversions[t[end]]
     end
 
     length(t) == 1 ? t[1] : typeof(t) <: Array{Real,1} ? convert.(T,t) : t  
@@ -655,10 +655,12 @@ end
 #---------------------------END WANNIER SECTION ------------------------#
 
 #---------------------------START ABINIT SECTION------------------------#
-@pyimport abipy.abio.abivars as abivars
-@pyimport abipy.abilab as abilab
-#also searches the structure but where not doing anything with it now
-# Its very unoptimized but meh
+const ABI_UNIT_NAMES = [lowercase(s) for s in [
+        "au",
+        "Angstr", "Angstrom", "Angstroms", "Bohr", "Bohrs",
+        "eV", "Ha", "Hartree", "Hartrees", "K", "Ry", "Rydberg", "Rydbergs",
+        "T", "Tesla"]]
+
 """
     read_abi_input(filename::String, T=Float64)
 
@@ -666,45 +668,14 @@ Returns an ABINIT input. We assume that jdtset is on a seperate line.
 If # DATASET is supplied as first line, it will make sure that amount of datasets are read no matter what ndtset and jdtset are.
 ndtset and jdtset will be taken into account to decide which calculations will be marked as 'should run'.
 """
-function read_abi_input(filename::String, T=Float64; run_command="", pseudos=[""])
-
-    jdtset  = Int[]
-    lines   = readlines(filename)
-    open(filename, "w") do f
-        if contains(lines[1],"DATASETS")
-            ndtset = parse(Int,split(lines[1])[end])
-            write(f,"ndtset $ndtset\n")
-        end
-        for (i,line) in enumerate(lines[2:end])
-            if contains(line, "jdtset")
-                j_i    = search(line, 'j')
-                jdtset = parse.(Int, split(line[j_i:end])[2:end])
-            elseif contains(line, "ndtset")
-                continue
-            else
-                write(f, line * "\n")
-            end
-        end
-    end
-
-    s         = String(read(filename))
-    abi_input = PyObject(abivars.AbinitInputFile(filename))
-    datasets  = abi_input[:datasets]
-    structure = abi_input[:structure]
-    cell      = T.(structure[:lattice_vectors]())
-    atoms     = Dict{Symbol,Array{Point3D{T},1}}()
-    for site in structure[:sites]
-        atsym   = Symbol(site[:specie][:symbol])
-        coord   = Point3D{T}(T.(site[:frac_coords]))
-        if !haskey(atoms, atsym)
-            atoms[atsym] = [coord]
-        else
-            push!(atoms[atsym], coord)
-        end
-    end
-    inputs           = Array{AbinitInput,1}()
-    filename         = splitdir(filename)[2]
-    flags_to_discard = ["acell","rprim","natom","ntypat","typat","znucl","xred","acell"]
+function read_abi_input(filename::String, T=Float64; run_command= "", pseudos=[""])
+    datasets = read_abi_datasets(filename, T)
+    structures = extract_structure(datasets...)
+    # structures = [structures[1] ; filter(x -> x[1] != structures[1][1] && x[2] != structures[1][2], structures)]
+    inputs = Array{AbinitInput,1}()
+    jdtset = Int[]
+    ndtset = 0
+    println(datasets)
     for (i, data) in enumerate(datasets)
         file, ext= splitext(filename)
         if length(datasets) > 1
@@ -712,26 +683,266 @@ function read_abi_input(filename::String, T=Float64; run_command="", pseudos=[""
         else
             newfile = file * ext
         end
-        flags = Dict{Symbol,Any}()
-        for (flag, value) in data
-            if flag in flags_to_discard
-                continue
-            else
-                flag_type           = get_abi_flag_type(Symbol(flag))
-                flags[Symbol(flag)] = flag_type != Void ? parse_flag_val(value,flag_type) : error("Couldn't parse flag '$flag' with value '$value'!")
-            end
+        if haskey(data, :jdtset)
+            jdtset = pop!(data,:jdtset)
         end
         run = i in jdtset
-        push!(inputs, AbinitInput(newfile, flags,
-                                  [AbinitDataBlock(:cell_parameters,  :angstrom, cell),
-                                   AbinitDataBlock(:atomic_positions, :frac, atoms),
-                                   AbinitDataBlock(:pseudos, :pseudos, pseudos)],
-                                   structure,
-                                   run_command,
-                                   run))
+
+        push!(inputs, AbinitInput(newfile, datasets, [structures[i][1], structures[i][2],AbinitDataBlock(:pseudos, :pseudos, pseudos)], run_command, run))
     end
     return inputs
 end
+
+@inline function filter_comment(line)
+    for c in ['#', '!']
+        t = findfirst(line,c)
+        if t == 0
+            line = line
+        elseif t == 1
+            return ""
+        else
+            line = line[1:t - 1]
+        end
+    end
+    return line
+end
+
+function expand_star_syntax(s::String)
+    s = strip(s)
+    if !contains(s,"*")
+        return s
+    end
+    # Handle e.g `pawecutdg*`
+    if typeof(parse(string(s[1]))) == Symbol && s[end - 1] == '*' 
+        return s
+    end
+    flag, rest = split(s)
+    spl = strip_split(rest, "*")
+
+    # Handle "*2" case i.e. return "*2"
+    if length(spl) == 1
+        @assert s[1] != '*' "error in expanding start syntax"
+        return string(s[1])
+    end
+
+    val = spl[2]
+    out = "$flag $val"
+    len = parse(string(spl[1]))
+    for i = 1:len-1
+        out *= " $val"
+    end
+    return out
+end
+
+@inline function eval_abinit_operator(s)
+    spl = split(s)
+    out = "$(spl[1])"
+    for p in spl[2:end]
+        out *= " $(eval(parse(string(p))))"
+    end
+    return out
+end
+
+"series like 10 ecut+ 5 are not supported"
+function read_abi_datasets(filename::String, T=Float64)
+    lines = readlines(filename) .|>
+        strip                   .|>
+        lowercase               .|>
+        filter_comment           
+    lines = filter(x -> length(x) > 1, lines) .|>
+        expand_star_syntax                    .|>
+        eval_abinit_operator     
+
+    lines = split(join(lines," "))
+
+    datasets = Array{Dict{Symbol, Any},1}()
+    dataset = Dict{Symbol,Any}()
+    flag = Symbol("start")
+    for (l, line) in enumerate(lines)
+        if contains(line, "?") || contains(line, ":")
+            continue
+        end
+        #convert to the correct abinit units
+        if line in ABI_UNIT_NAMES 
+            dataset[flag] = convert_2abi(dataset[flag], line)
+            continue
+        end
+        if typeof(parse(line)) == Symbol
+            j = tryparse(Int, string(line[end]))
+            if !isnull(j)
+                dtset = get(j)+1
+                while dtset > length(datasets)
+                    push!(datasets, Dict{Symbol, Any}())
+                end
+
+                dataset = datasets[dtset]
+                flag = Symbol(line[1:end-1])
+            else
+                dtset = 1
+                while dtset > length(datasets)
+                    push!(datasets, Dict{Symbol, Any}())
+                end
+                dataset = datasets[dtset]
+                flag = Symbol(line)
+            end
+        else
+            if flag == :ndtset
+                continue
+            end
+            if haskey(dataset,flag)
+                push!(dataset[flag], parse(line))
+            else
+                dataset[flag] = [parse(line)]
+            end
+        end
+    end
+    #make flags that are length one just be their value and that they are in the abivars
+    for (d,data) in enumerate(datasets)
+        for (flag, val) in data
+            flag_type = get_abi_flag_type(flag)
+            if flag_type == Void
+                error("Flag $flag in dataset $d not found in abinit variables.")
+            elseif flag_type != typeof(val)
+                try
+                    val = convert.(flag_type, val)
+                catch
+                    error("Flag type of flag $flag not correct, found: $(typeof(val)) expected:$flag_type.")
+                end
+            elseif flag == :spgroup || flag == :nobj
+                error("Abinit spgroup builder is not supported. Structure must be given explicitly!")
+            end
+            if length(val) == 1
+                data[flag] = val[1]
+            end
+        end
+    end
+
+    return datasets
+end
+
+function extract_structure(abi_datasets...)
+    #possible different structures for different inputs
+    out_structures = Array{Array{AbinitDataBlock, 1}, 1}()
+    natom = 1
+    znucl = 1
+    ntypat =1
+    typat = [1]
+    for data in abi_datasets
+        acell = pop!(data, :acell, [1.0,1.0,1.0])
+        rprimd = zeros(3,3)
+        if haskey(data, :angdeg) 
+            if haskey(data, :rprim)
+                error("rprim and angdeg cannot be used at the same time.")
+            end
+            angdeg = pop!(data, :angdeg)
+            if !all(x -> x > 0, angdeg)
+                error("Angles must be > 0 but got $angdeg")
+            elseif sum(angdeg)
+                error("The sum of angdeg must be lower that 360, angdeg $angdeg")
+            end
+            tol12 = 1e-12
+            rprim = zeros(3,3)
+            if abs(angdeg[1] -angdeg[2]) < tol12 && abs(angdeg[2] - angdeg[3]) < tol12 &&
+            abs(angdeg[1]-90.) + abs(angdeg[2]-90.) + abs(angdeg[3] -90.) > tol12
+
+            # Treat the case of equal angles (except all right angles):
+            # generates trigonal symmetry wrt third axis
+                cosang = cos(pi * angdeg[1]/180.0)
+                a2 = 2.0 / 3.0 * (1.0 - cosang)
+                aa = sqrt(a2)
+                cc = sqrt(1.0-a2)
+                rprim[1,1] = aa     
+                rprim[1,2] = 0.0              
+                rprim[1,3] = cc
+                rprim[2,1] = -0.5 * aa
+                rprim[2,2] = sqrt(3.0) * 0.5 * aa
+                rprim[2,3] = cc
+                rprim[3,1] = -0.5 * aa
+                rprim[3,2] = -sqrt(3.0) * 0.5 * aa
+                rprim[3,3] = cc
+            else:
+                # Treat all the other cases
+                rprim[1,1] = 1.0
+                rprim[2,1] = cos(pi * angdeg[3] / 180.)
+                rprim[2,2] = sin(pi * angdeg[3] / 180.)
+                rprim[3,1] = cos(pi * angdeg[2] / 180.)
+                rprim[3,2] = (cos(pi * angdeg[1] / 180.0) - rprim[2,1] * rprim[3,1]) / rprim[2,2]
+                rprim[3,3] = sqrt(1.0 - rprim[3,1]^2 - rprim[3,2]^2)
+            end
+
+            rprimd = [acell[i] * rprim[i,:] for i=1:3]
+        else
+            rprimd = [acell[i] * reshape(pop!(data,:rprim, eye(3)),3,3)[i,:] for i=1:3]
+        end
+        
+        ntypat = pop!(data, :ntypat, ntypat) 
+        natom = pop!(data, :natom, natom)
+        znucl = pop!(data, :znucl, znucl)
+        #some kind of npsp not supported
+        typat = pop!(data, :typat, typat)
+        typat = typat[1:ntypat]
+        
+        atom_positions = Dict{Symbol,Array{Point3D,1}}()
+        if haskey(data, :xred)
+            atoms = reshape(data[:xred],(div(length(data[:xred]),3), 3))
+            pop!(data, :xred)
+            for i=1:length(typat)
+                typ = typat[i]
+                atom = Array(atoms[i,:])
+                nz = length(filter( x-> x==znucl[typ], znucl))
+                z_sym = nz == 1 ? get_element_sym(znucl[typ]) : Symbol(String(get_element_sym(znucl[typ])) * "$typ")
+                println(rprimd) 
+                if haskey(atom_positions, z_sym)
+                    push!(atom_positions[z_sym], Point3D(atom' * rprimd))
+                else
+                    atom_positions[z_sym] = [Point3D(atom' * rprimd)]
+                end
+            end
+
+
+        elseif haskey(data, :xcart)
+            atoms = reshape(data[:xcart],(div(length(data[:xcart],3),3), 3))
+            pop!(data, :xcart)
+            for (typ, atom) in zip(typat, rows(atoms))
+                z = znucl[typ]
+                nz = length(filter( x-> x==z, znucl))
+                z_sym = nz == 1 ? get_element_sym(z) : Symbol(String(get_element_sym(z)) * "$typ")
+                
+                if haskey(atom_positions, z_sym)
+                    push!(atom_positions[z_sym], Point3D(atom))
+                else
+                    atom_positions[z_sym] = [Point3D(atom)]
+                end
+            end
+
+        elseif haskey(data, :xangst)
+            atoms = reshape(data[:xangst],(div(length(data[:xangst],3),3), 3))
+            pop!(data, :xangst)
+            for (typ, atom) in zip(typat, rows(atoms))
+                z = znucl[typ]
+                nz = length(filter( x-> x==z, znucl))
+                z_sym = nz == 1 ? get_element_sym(z) : Symbol(String(get_element_sym(z)) * "$typ")
+                
+                if haskey(atom_positions, z_sym)
+                    push!(atom_positions[z_sym], abi_conversions[:ang] * Point3D(atom))
+                else
+                    atom_positions[z_sym] = [abi_conversions[:ang] * Point3D(atom)]
+                end
+            end
+  
+        else
+            try 
+                rprimd = out_structures[1][1].data
+                atoms = out_structures[1][2].data
+            catch 
+                error("xred|xcart|xangs must be given in input.")
+            end
+        end
+        push!(out_structures, [AbinitDataBlock(:cell_parameters, :bohr, rprimd), AbinitDataBlock(:atomic_positions, :cart, atoms)])
+    end
+    return out_structures
+end
+
 
 function write_abi_input(input::AbinitInput, filename::String=input.filename)
     flags = input.flags

@@ -1,10 +1,9 @@
 module DFControl
 # using Reexport
     using RecipesBase
-    using PyCall
     using Reactive
 
-    const print_s = Signal("hello")
+    const print_s = Signal("")
     if Pkg.installed("GtkReactive") != nothing
         using Gtk,GtkReactive,Gtk.ShortNames,Colors
         include("dashboard.jl")

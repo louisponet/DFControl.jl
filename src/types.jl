@@ -177,7 +177,7 @@ mutable struct AbinitInput <: DFInput
     filename::String
     flags::Dict{Symbol,Any}
     data_blocks::Array{AbinitDataBlock,1}
-    structure::PyObject
+    # structure::PyObject
     run_command::String
     run::Bool
 end 
@@ -248,5 +248,13 @@ open(joinpath(@__DIR__, "../assets/elements.txt"), "r") do f
     while !eof(f)
         line = split(readline(f))
         ELEMENTS[Symbol(line[4])] = Element(parse(Int64, line[1]), line[9], parse(Float64, line[10]))
+    end
+end
+
+function get_element_sym(z::Int)
+    for (key,val) in ELEMENTS
+        if val.Z == z
+            return key
+        end
     end
 end
