@@ -72,7 +72,6 @@ function load_job(job_dir::String, T=Float64;
     filenames    = String[]
     run_commands = String[]
     should_run   = Bool[]
-    
     if new_job_name != nothing
         job_name = new_job_name
     elseif haskey(job_data,:name)
