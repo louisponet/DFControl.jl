@@ -220,7 +220,7 @@ function set_default_input(calculation::Symbol, input::DFInput)
         expr2file(default_file, :(default_inputs[$(QuoteNode(calculation))] = read_wannier_input($filename * ".win", run_command = $(input.run_command))))
     elseif typeof(input) == QEInput
         write_input(input,filename * ".in")
-        expr2file(default_file, :(default_inputs[$(QuoteNode(calculation))] = read_qe_input($filename * ".in", run_command = $(input.run_command))))
+        expr2file(default_file, :(default_inputs[$(QuoteNode(calculation))] = read_qe_input($filename * ".in", run_command = $(input.run_command), exec=$(input.exec))))
     end
     load_defaults(default_file)
 end

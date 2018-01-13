@@ -1,35 +1,11 @@
 # All the methods to change the inpût control flags, if you want to implement another kind of calculation add a similar one here!
 
 """
-    change_flags!(input::QEInput, new_flag_data...)
-
-Changes the flags inside the input to the new ones if they are already defined and if the new ones have the same type.
-"""
-function change_flags!(input::QEInput, new_flag_data...)
-    found_keys = Symbol[]
-    for block in input.control_blocks
-        for (flag, value) in new_flag_data
-            if haskey(block.flags, flag)
-                old_data = block.flags[flag]
-                if !(flag in found_keys) push!(found_keys, flag) end
-                if typeof(block.flags[flag]) == typeof(value)
-                    block.flags[flag] = value
-                    dfprintln("$(input.filename):\n -> $(block.name):\n  -> $flag:\n      $old_data changed to: $value\n")
-                else
-                    dfprintln("$(input.filename):\n -> $(block.name):\n  -> $flag:\n     type mismatch old:$old_data ($(typeof(old_data))), new: $value) ($(typeof(value)))\n    Change not applied.\n")
-                end
-            end
-        end
-    end
-    return found_keys
-end
-
-"""
     change_flags!(input::DFInput, new_flag_data...)
 
 Changes the flags inside the input to the new ones if they are already defined and if the new ones have the same type.
 """
-function change_flags!(input::DFInput, new_flag_data...)
+function change_flags!(input::Union{AbinitInput, WannierInput}, new_flag_data...)
     found_keys = Symbol[]
     for (flag, value) in new_flag_data
         if haskey(input.flags, flag)
@@ -51,10 +27,11 @@ end
 
 Sets the specified flags in the input. A controlblock will be added if necessary.
 """
-function set_flags!(input::DFInput, flags...)
+function set_flags!(input::Union{AbinitInput, WannierInput}, flags...)
     found_keys = Symbol[]
+    flag_func(flag) = typeof(input) == WannierInput ? get_wan_flag_type(flag) : get_abi_flag_type(flag)
     for (flag, value) in flags
-        flag_type = typeof(input) == WannierInput ? get_wan_flag_type(flag) : get_abi_flag_type(flag)
+        flag_type = flag_func(flag)
         if flag_type != Void
             if !(flag in found_keys) push!(found_keys, flag) end
             try
@@ -77,38 +54,6 @@ function set_flags!(input::DFInput, flags...)
     return found_keys
 end
 
-function set_flags!(input::QEInput, flags...)
-    found_keys = Symbol[]
-    for (flag, value) in flags
-        flag_block, flag_type = get_qe_flag_block_type(flag)
-        if flag_block != Void
-            if !(flag in found_keys) push!(found_keys, flag) end
-            
-            try
-                value = length(value) > 1 ? convert.(flag_type, value) : convert(flag_type, value)
-            catch
-                dfprintln("Filename '$(input.filename)':\n  Could not convert '$value' into '$flag_type'.\n    Flag '$flag' not set.\n")
-                continue
-            end
-            
-            input_block = get_block(input, flag_block)
-            if input_block != nothing
-                if haskey(input_block.flags, flag)
-                    old_data = input_block.flags[flag]
-                    input_block.flags[flag] = value
-                    dfprintln("$(input.filename):\n -> $(input_block.name):\n  -> $flag:\n      $old_data changed to: $value\n")
-                else
-                    input_block.flags[flag] = value
-                    dfprintln("$(input.filename):\n -> $(input_block.name):\n  -> $flag:\n      set to: $value\n")
-                end
-            else
-                push!(input.control_blocks, QEControlBlock(flag_block, Dict(flag => value)))
-                dfprintln("$(input.filename):\n -> New ControlBlock $flag_block:\n  -> $flag:\n      set to: $value\n")
-            end
-        end
-    end
-    return found_keys
-end
 
 """
     change_data!(input::DFInput, block_name::Symbol, new_block_data; option=nothing)
@@ -155,24 +100,11 @@ function add_data!(input::DFInput, block_name::Symbol, block_data, block_option=
 end
 
 """
-    get_flag(input::QEInput, flag::Symbol)
-
-Returns the value of the flag.
-"""
-function get_flag(input::QEInput, flag::Symbol)
-    for block in input.control_blocks
-        if haskey(block.flags, flag)
-            return block.flags[flag]
-        end
-    end
-end
-
-"""
     get_flag(input::DFInput, flag::Symbol)
 
 Returns the value of the flag.
 """
-function get_flag(input::DFInput, flag::Symbol)
+function get_flag(input::Union{AbinitInput, WannierInput}, flag::Symbol)
     if haskey(input.flags, flag)
         return input.flags[flag]
     end
@@ -193,25 +125,11 @@ function get_data(input::DFInput, block_symbol::Symbol)
 end
 
 """
-    get_block(input::QEInput, block_symbol::Symbol)
-
-Returns the block with name `block_symbol`.
-"""
-function get_block(input::QEInput, block_symbol::Symbol)
-    for block in [input.control_blocks; input.data_blocks]
-        if block.name == block_symbol
-            return block
-        end
-    end
-    return nothing
-end
-
-"""
     get_block(input::DFInput, block_symbol::Symbol)
 
 Returns the block with name `block_symbol`.
 """
-function get_block(input::DFInput, block_symbol::Symbol)
+function get_block(input::Union{AbinitInput, WannierInput}, block_symbol::Symbol)
     for block in input.data_blocks
         if block.name == block_symbol
             return block
@@ -222,32 +140,11 @@ end
 
 #removes an input control flag, if you want to implement another input add a similar function here!
 """
-    remove_flags!(input::QEInput, flags...)
-
-Remove the specified flags.
-"""
-function remove_flags!(input::QEInput, flags...)
-    for (i, block) in enumerate(input.control_blocks)
-        for flag in flags
-            if haskey(block.flags, flag)
-                pop!(block.flags, flag)
-                dfprintln("Removed flag '$flag' from block '$(block.name)' in input '$(input.filename)'")
-                if isempty(block.flags)
-                    input.control_blocks = length(input.control_blocks) > i ? [input.control_blocks[1:i - 1]; input.control_blocks[i + 1,end]] : input.control_blocks[1:i - 1]
-                    dfprintln("Removed block '$(block.name)' in input '$(input.filename)', because it was empty.'")
-                    break
-                end
-            end
-        end
-    end
-end
-
-"""
     remove_flags!(input::DFInput, flags...)
 
 Remove the specified flags.
 """
-function remove_flags!(input::DFInput, flags...)
+function remove_flags!(input::Union{AbinitInput, WannierInput}, flags...)
     for flag in flags
         if haskey(input.flags, flag)
             pop!(input.flags, flag, false)
@@ -283,6 +180,38 @@ function add_block!(input::DFInput, block::Block)
     end
     print_blocks(input)
 end
+
+"""
+    print_flag(input::DFInput, flag)
+
+Prints information of the flag inside the input.
+"""
+function print_flag(input::DFInput, flag)
+    if (:control_blocks in fieldnames(input))
+        for block in input.control_blocks
+            if haskey(block.flags, flag)
+                s = """ 
+                Filename: $(input.filename)  
+                Block Name: $(block.name)
+                $flag => $(block.flags[flag])\n
+                """
+                dfprintln(s)
+            end
+        end
+    end
+
+    if (:flags in fieldnames(input))
+        if haskey(input.flags, flag)
+            s = """
+            Filename: $(input.filename)
+            $flag => $(input.flags[flag])\n
+            """
+            dfprintln(s)
+        end
+    end
+end
+
+print_flags(input::DFInput, flags::Array) = print_flag.(input, flags)
 
 """
     print_block(input::DFInput, block_name::Symbol)
@@ -368,60 +297,6 @@ function print_flags(input::DFInput)
     dfprintln("#----------------#\n")
 end
 
-"""
-    print_flags(input::QEInput, block_symbol::Symbol)
-
-Prints the flags of the specified block.
-"""
-function print_flags(input::QEInput, block_symbol::Symbol)
-    block = filter(x -> x.name == block_symbol, input.control_blocks)[1]
-    dfprintln("  $(block.name):")
-    for (flag, value) in block.flags
-        dfprintln("    $flag => $value")
-    end
-    dfprintln("")
-end
-
-"""
-    print_flag(input::DFInput, flag)
-
-Prints information of the flag inside the input.
-"""
-function print_flag(input::DFInput, flag)
-    if (:control_blocks in fieldnames(input))
-        for block in input.control_blocks
-            if haskey(block.flags, flag)
-                s = """ 
-                Filename: $(input.filename)  
-                Block Name: $(block.name)
-                $flag => $(block.flags[flag])\n
-                """
-                dfprintln(s)
-            end
-        end
-    end
-
-    if (:flags in fieldnames(input))
-        if haskey(input.flags, flag)
-            s = """
-            Filename: $(input.filename)
-            $flag => $(input.flags[flag])\n
-            """
-            dfprintln(s)
-        end
-    end
-end
-
-print_flags(input::DFInput, flags::Array) = print_flag.(input, flags)
-
-#finish this macro
-# macro change_data_switch(switches::Array{Tuple{Type,Symbol},1})
-#   return quote 
-#     if typeof(esc(input)) == switches[1][1]
-#       change_data!(esc(input),switches[1][2],)
-#in all of these functions, we use default names, can again be shorter...
-#we only implement fractional atoms stuff does anyone even use anything else?
-#Add more calculations here!
 """
     change_atoms!(input::DFInput, atoms::Dict{Symbol,<:Array{<:Point3D,1}}, pseudo_set_name=:default; pseudo_fuzzy=nothing)
 

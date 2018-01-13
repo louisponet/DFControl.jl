@@ -132,6 +132,7 @@ mutable struct QEInput <: DFInput
     control_blocks::Array{QEControlBlock,1}
     data_blocks::Array{QEDataBlock,1}
     run_command::String  #everything before < in the job file
+    exec::String
     run::Bool
 end
 

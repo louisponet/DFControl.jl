@@ -2580,6 +2580,7 @@ NAMELIST: &CELL
 
 ========================================================================
 CARD: ATOMIC_SPECIES 
+  ________________________________________________________________________
 
    /////////////////////////////////////////
    // Syntax:                             //
@@ -2592,7 +2593,8 @@ CARD: ATOMIC_SPECIES
          X(ntyp)  Mass_X(ntyp)  PseudoPot_X(ntyp)  
    
    /////////////////////////////////////////
-   
+  ________________________________________________________________________
+
    DESCRIPTION OF ITEMS:
    
       +--------------------------------------------------------------------
@@ -2933,6 +2935,7 @@ CARD: K_POINTS { tpiba | automatic | crystal | gamma | tpiba_b | crystal_b | tpi
 ========================================================================
 CARD: CELL_PARAMETERS { alat | bohr | angstrom }
 
+  ________________________________________________________________________
    OPTIONAL CARD, NEEDED ONLY IF "IBRAV" == 0 IS SPECIFIED, IGNORED OTHERWISE !
    
    /////////////////////////////////////////
@@ -2945,6 +2948,8 @@ CARD: CELL_PARAMETERS { alat | bohr | angstrom }
          v3(1)  v3(2)  v3(3)  
    
    /////////////////////////////////////////
+     ________________________________________________________________________
+   
    
    DESCRIPTION OF ITEMS:
    
@@ -2983,6 +2988,7 @@ CARD: CELL_PARAMETERS { alat | bohr | angstrom }
 ========================================================================
 CARD: CONSTRAINTS 
 
+  ________________________________________________________________________
    OPTIONAL CARD, USED FOR CONSTRAINED DYNAMICS OR CONSTRAINED OPTIMISATIONS
    (ONLY IF "ION_DYNAMICS"=='DAMP' OR 'VERLET', VARIABLE-CELL EXCEPTED)
    
@@ -3000,6 +3006,7 @@ CARD: CONSTRAINTS
          constr_type(nconstr)  constr(1)(nconstr)  constr(2)(nconstr)  [  constr(3)(nconstr)  constr(4)(nconstr)  ]  {  constr_target(nconstr)  }  
    
    /////////////////////////////////////////
+  ________________________________________________________________________
    
    DESCRIPTION OF ITEMS:
    
@@ -3103,6 +3110,7 @@ CARD: CONSTRAINTS
 ========================================================================
 CARD: OCCUPATIONS 
 
+  ________________________________________________________________________
    OPTIONAL CARD, USED ONLY IF "OCCUPATIONS" == 'FROM_INPUT', IGNORED OTHERWISE !
    
    /////////////////////////////////////////
@@ -3115,6 +3123,7 @@ CARD: OCCUPATIONS
          
    
    /////////////////////////////////////////
+  ________________________________________________________________________
    
    DESCRIPTION OF ITEMS:
    
@@ -3138,7 +3147,11 @@ CARD: OCCUPATIONS
 
 
 ========================================================================
-CARD: ATOMIC_FORCES 
+CARD: ATOMIC_FORCES
+
+
+
+  ________________________________________________________________________
 
    OPTIONAL CARD USED TO SPECIFY EXTERNAL FORCES ACTING ON ATOMS.
    
@@ -3156,6 +3169,8 @@ CARD: ATOMIC_FORCES
          X(nat)  fx(nat)  fy(nat)  fz(nat)  
    
    /////////////////////////////////////////
+  ________________________________________________________________________
+  
    
    DESCRIPTION OF ITEMS:
    

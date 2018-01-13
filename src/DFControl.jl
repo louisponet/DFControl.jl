@@ -34,14 +34,21 @@ module DFControl
     export apply_fermi_level!
     export gen_k_grid
 
-    include("constants.jl")
-    export QEControlBlocks
-    export WannierControlFlags
+    include("abinit/constants.jl")
+    include("qe/constants.jl")
+    include("wannier90/constants.jl")
     export AbinitFlags
     export AbinitDatabase
     #@Cleanup this should all be just one thing without qe
     #@Cleanup what do we actually want to have as frontend?
-    include("file_processing.jl")
+    include("fileio.jl")
+    include("abinit/fileio.jl")
+    export read_abi_input
+    export read_abi_output
+    export read_abi_fatbands
+    export read_abi_ebands
+    export read_abi_eig
+    include("qe/fileio.jl")
     export read_qe_bands_file
     export read_ks_from_qe_bands_file
     export read_fermi_from_qe_file
@@ -49,17 +56,14 @@ module DFControl
     export read_qe_polarization
     export read_qe_input
     export read_qe_output
+    include("wannier90/fileio.jl")
     export read_wannier_input
-    export read_abi_input
-    export read_abi_output
-    export read_abi_fatbands
-    export read_abi_ebands
-    export read_abi_eig
     export write_input
     export write_job_files
     export expr2file
 
-    include("input_control.jl")
+    include("input.jl")
+    include("qe/input.jl")
     include("job_control.jl")
     export create_job
     export load_job

@@ -126,3 +126,40 @@ function print_qe_namelists()
 end
 
 const assets_dir = joinpath(@__DIR__, "../assets/")
+
+const conversions = Dict{Symbol,Float64}(:bohr2ang => 0.529177)
+
+function fort2julia(f_type)
+    f_type = lowercase(f_type)
+    if f_type == "real"
+        return Float32
+    elseif f_type == "real(kind=dp)"
+        return Float64
+    elseif f_type == "complex(kind=dp)"
+        return Complex{Float64}
+    elseif contains(f_type, "character")
+        return String
+    elseif f_type == "string"
+        return String
+    elseif f_type == "integer"
+        return Int
+    elseif f_type == "logical"
+        return Bool
+    elseif contains(f_type,".D")
+        return replace(f_type, "D", "e")
+    end
+end
+
+function read_block(f, startstr::String, endstr::String)
+    block = [startstr]
+    line = readline(f)
+    while !eof(f)
+        while !contains(line, endstr)
+            line = readline(f)
+            push!(block, line)
+        end
+        return block
+    end
+    error("Block not found: start = $startstr, end = $endstr.")
+end
+

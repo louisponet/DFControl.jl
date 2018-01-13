@@ -112,7 +112,8 @@ function load_job(job_dir::String, T=Float64;
                                           run_command = run_command,
                                           pseudos     = job_data[:abinit_pseudos])...)
         else
-            push!(t_calcs,read_qe_input(filename, T, run_command=run_command, run=run))
+            _t = split(runcommand)
+            push!(t_calcs, read_qe_input(filename, T, run_command=join(_t[1:end-1]," "), exec=_t[end], run=run))
         end
     end
 
