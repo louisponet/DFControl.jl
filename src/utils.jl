@@ -127,7 +127,7 @@ end
 
 const assets_dir = joinpath(@__DIR__, "../assets/")
 
-const conversions = Dict{Symbol,Float64}(:bohr2ang => 0.529177)
+const conversions = OrderedDict{Symbol,Float64}(:bohr2ang => 0.529177)
 
 function fort2julia(f_type)
     f_type = lowercase(f_type)

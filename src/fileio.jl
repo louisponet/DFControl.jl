@@ -1,3 +1,7 @@
+include("qe/fileio.jl")
+include("abinit/fileio.jl")
+include("wannier90/fileio.jl")
+
 #--------------------Used by other file processing------------------#
 function parse_k_line(line, T)
     splt = split(line)
@@ -127,11 +131,12 @@ function write_job_files(job::DFJob)
                 end
                 
             elseif typeof(calculation) == QEInput
+                exec = calculation.exec
                 write_input(calculation, job.local_dir * filename)
                 if !should_run
-                    write(f, "#$run_command <$filename> $(split(filename,".")[1]).out \n")
+                    write(f, "#$run_command $exec <$filename> $(split(filename,".")[1]).out \n")
                 else
-                    write(f, "$run_command <$filename> $(split(filename,".")[1]).out \n")
+                    write(f, "$run_command $exec <$filename> $(split(filename,".")[1]).out \n")
                 end
                 i += 1 
             end
@@ -180,7 +185,7 @@ All files that are read contain "in".
 This reads QE and wannier90 inputs for now.
 """
 function read_job_file(job_file::String)
-    data = Dict{Symbol,Any}()
+    data = OrderedDict{Symbol,Any}()
     data[:name]         = ""
     data[:header]       = Array{String,1}()
     data[:input_files]  = Array{String,1}() 

@@ -43,9 +43,9 @@ mutable struct DFBand{T<:AbstractFloat} <: Band
     k_points_cart::Array{Array{T,1},1}
     k_points_cryst::Array{Array{T,1},1}
     eigvals::Array{T,1}
-    extra::Dict{Symbol,Any}
+    extra::OrderedDict{Symbol,Any}
 end
-DFBand(k_points_cart::Array{Array{T,1},1}, k_points_cryst::Array{Array{T,1},1}, eigvals::Array{T,1}) where T <: AbstractFloat = DFBand{T}(k_points_cart, k_points_cryst, eigvals, Dict{Symbol,Any}())
+DFBand(k_points_cart::Array{Array{T,1},1}, k_points_cryst::Array{Array{T,1},1}, eigvals::Array{T,1}) where T <: AbstractFloat = DFBand{T}(k_points_cart, k_points_cryst, eigvals, OrderedDict{Symbol,Any}())
 
 
 function Base.display(band::DFBand{T}) where T <: AbstractFloat
@@ -69,7 +69,7 @@ abstract type ControlBlock <: Block end
 
 mutable struct QEControlBlock <: ControlBlock
     name::Symbol
-    flags::Dict{Symbol,Any}
+    flags::OrderedDict{Symbol,Any}
 end
 
 function Base.display(block::ControlBlock)
@@ -119,11 +119,11 @@ end
 Represents an input for DFT calculation.
 
 Fieldnames: backend::Symbol -> the DFT package that reads this input.
-control_blocks::Dict{Symbol,Dict{Symbol,Any}} -> maps different control blocks to their dict of flags and values.
-pseudos::Dict{Symbol,String} -> maps atom symbol to pseudo input file.
-cell_param::Dict{Symbol,Any} -> maps the option of cell_parameters to the cell parameters.
-atoms::Dict{Symbol,Any} -> maps atom symbol to position.
-k_points::Dict{Symbol,Any} -> maps option of k_points to k_points.
+control_blocks::OrderedDict{Symbol,OrderedDict{Symbol,Any}} -> maps different control blocks to their OrderedDict of flags and values.
+pseudos::OrderedDict{Symbol,String} -> maps atom symbol to pseudo input file.
+cell_param::OrderedDict{Symbol,Any} -> maps the option of cell_parameters to the cell parameters.
+atoms::OrderedDict{Symbol,Any} -> maps atom symbol to position.
+k_points::OrderedDict{Symbol,Any} -> maps option of k_points to k_points.
 """
 abstract type DFInput end
 
@@ -137,7 +137,7 @@ mutable struct QEInput <: DFInput
 end
 
 function QEInput(template::QEInput, filename, newflags...; run_command=template.run_command, run=true, new_data...)
-    newflags = Dict(newflags...) # this should handle both Dicts and pairs of flags
+    newflags = OrderedDict(newflags...) # this should handle both OrderedDicts and pairs of flags
 
     input             = deepcopy(template)
     input.filename    = filename
@@ -167,7 +167,7 @@ end
 
 mutable struct WannierInput <: DFInput
     filename::String
-    flags::Dict{Symbol,Any}
+    flags::OrderedDict{Symbol,Any}
     data_blocks::Array{WannierDataBlock,1}
     run_command::String
     run::Bool
@@ -176,7 +176,7 @@ end
 
 mutable struct AbinitInput <: DFInput
     filename::String
-    flags::Dict{Symbol,Any}
+    flags::OrderedDict{Symbol,Any}
     data_blocks::Array{AbinitDataBlock,1}
     # structure::PyObject
     run_command::String
@@ -191,7 +191,7 @@ end
 Represents a full DFT job with multiple input files and calculations.
 
 Fieldnames: name::String
-calculations::Dict{String,DFInput} -> calculation type to DFInput
+calculations::OrderedDict{String,DFInput} -> calculation type to DFInput
 flow::Array{Tuple{String,String},1} -> flow chart of calculations. The tuple is (calculation type, input file).
 local_dir::String -> directory on local machine.
 server::String -> server in full host@server t.
@@ -244,7 +244,7 @@ end
 """
 Reads all the elements from the file.
 """
-const ELEMENTS = Dict()
+const ELEMENTS = OrderedDict()
 open(joinpath(@__DIR__, "../assets/elements.txt"), "r") do f
     while !eof(f)
         line = split(readline(f))

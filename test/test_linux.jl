@@ -25,3 +25,5 @@ push!(bx, sl);
 showall(win);
 using Gtk
 scwindow=ScrolledWindow()
+
+

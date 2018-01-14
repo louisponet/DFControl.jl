@@ -55,10 +55,10 @@ end
 """
     set_default_pseudo_dir(pseudo_symbol::Symbol, dir::String)
 
-Adds an entry inside the `default_pseudo_dirs` dictionary with flag `pseudo_symbol`.
+Adds an entry inside the `default_pseudo_dirs` OrderedDictionary with flag `pseudo_symbol`.
 """
 function set_default_pseudo_dir(pseudo_symbol::Symbol, dir::String)
-    expr_ndef = :(default_pseudo_dirs = Dict{Symbol,String}($(Expr(:quote, pseudo_symbol)) => $dir)) 
+    expr_ndef = :(default_pseudo_dirs = OrderedDict{Symbol,String}($(Expr(:quote, pseudo_symbol)) => $dir)) 
     expr_def  = :(default_pseudo_dirs[$(QuoteNode(pseudo_symbol))] = $dir)
     define_def(:default_pseudo_dirs, expr_ndef, expr_def)
 end
@@ -66,7 +66,7 @@ end
 """
     remove_default_pseudo_dir(pseudo_symbol::Symbol)
 
-Removes entry with flag `pseudo_symbol` from the `default_pseudo_dirs` dictionary. 
+Removes entry with flag `pseudo_symbol` from the `default_pseudo_dirs` OrderedDictionary. 
 """
 function remove_default_pseudo_dir(pseudo_symbol::Symbol)
     if isdefined(:default_pseudo_dirs) && haskey(DFControl.default_pseudo_dirs, pseudo_symbol)
@@ -107,7 +107,7 @@ end
 """
     get_default_pseudo_dirs()
 
-Returns the default pseudo dirs dictionary if it's defined. If it is not defined return nothing.
+Returns the default pseudo dirs OrderedDictionary if it's defined. If it is not defined return nothing.
 """
 function get_default_pseudo_dirs()
     if isdefined(:default_pseudo_dirs)
@@ -120,7 +120,7 @@ end
 """
     configure_default_pseudos!(server = get_default_server(), pseudo_dirs=get_default_pseudo_dirs())
 
-Reads the specified `default_pseudo_dirs` on the `default_server` and sets up the `default_pseudo` dictionary.
+Reads the specified `default_pseudo_dirs` on the `default_server` and sets up the `default_pseudo` OrderedDictionary.
 """
 function configure_default_pseudos(server = get_default_server(), pseudo_dirs=get_default_pseudo_dirs())
     if server == ""
@@ -131,22 +131,22 @@ function configure_default_pseudos(server = get_default_server(), pseudo_dirs=ge
         error("Either supply valid pseudo directories or setup a default pseudo dir through 'add_default_pseudo_dir()'.")
     end
 
-    outputs = Dict{Symbol,String}()
+    outputs = OrderedDict{Symbol,String}()
     if typeof(pseudo_dirs) == String
         outputs[:default] = readstring(`ssh -t $server ls $pseudo_dirs`)
-    elseif typeof(pseudo_dirs) <: Dict
+    elseif typeof(pseudo_dirs) <: OrderedDict
         for (name, directory) in pseudo_dirs
             outputs[name] = readstring(`ssh -t $server ls $directory`)
         end
     end
     
     if !isdefined(:default_pseudos)
-        expr2file(default_file, :(default_pseudos = Dict{Symbol,Dict{Symbol,Array{String,1}}}()))
+        expr2file(default_file, :(default_pseudos = OrderedDict{Symbol,OrderedDict{Symbol,Array{String,1}}}()))
         init_defaults(default_file)
     end
     
     for el in keys(ELEMENTS)
-        expr2file(default_file,:(default_pseudos[$(QuoteNode(el))] = Dict{Symbol,Array{String,1}}()))
+        expr2file(default_file,:(default_pseudos[$(QuoteNode(el))] = OrderedDict{Symbol,Array{String,1}}()))
     end
 
     for (name, pseudo_string) in outputs
@@ -210,7 +210,7 @@ Adds the input to the default inputs, writes it to a file in user_defaults folde
 """
 function set_default_input(calculation::Symbol, input::DFInput)
     if !isdefined(:default_inputs)
-        expr = :(default_inputs = Dict{Symbol,DFInput}())
+        expr = :(default_inputs = OrderedDict{Symbol,DFInput}())
         expr2file(default_file,expr)
         init_defaults(default_file)
     end

@@ -12,10 +12,10 @@ end
 """
     read_qe_output(filename::String, T=Float64)
 
-Reads a generic quantum espresso input, returning a dictionary with all found data in the file.
+Reads a generic quantum espresso input, returning a OrderedDictionary with all found data in the file.
 """
 function read_qe_output(filename::String, T=Float64)
-    out = Dict{Symbol,Any}()
+    out = OrderedDict{Symbol,Any}()
     open(filename, "r") do f
         prefac_k     = nothing
         k_eigvals    = Array{Array{T,1},1}()
@@ -91,7 +91,7 @@ function read_qe_output(filename::String, T=Float64)
                     elseif contains(line, "ATOMIC_POSITIONS")
                         out[:pos_option]      = get_card_option(line)
                         line  = readline(f)
-                        atoms = Dict{Symbol,Array{Point3D{T},1}}()
+                        atoms = OrderedDict{Symbol,Array{Point3D{T},1}}()
                         while !contains(line, "End")
                             s_line = split(line)
                             key    = Symbol(s_line[1])
@@ -234,7 +234,7 @@ function read_qe_input(filename, T=Float64::Type; run_command="", run=true, exec
             @label start_label
             if contains(line, "&")
                 c_block_name    = Symbol(lowercase(strip(strip(line), '&')))
-                flag_dict       = Dict{Symbol,Any}()
+                flag_OrderedDict       = OrderedDict{Symbol,Any}()
                 def_block_flags = all_qe_block_flags(exec, c_block_name)
                 line            = readline(f)
                 while strip(line) != "/"
@@ -251,14 +251,14 @@ function read_qe_input(filename, T=Float64::Type; run_command="", run=true, exec
                             continue
                         elseif length(flag_type) != 0 
                             t_val = parse_flag_val(val, flag_type[1]._type)
-                            flag_dict[Symbol(key)] = eltype(t_val) == flag_type[1]._type || flag_type[1]._type == String ? t_val : error("Couldn't parse the value of flag '$key' in file '$filename'!") 
+                            flag_OrderedDict[Symbol(key)] = eltype(t_val) == flag_type[1]._type || flag_type[1]._type == String ? t_val : error("Couldn't parse the value of flag '$key' in file '$filename'!") 
                         else
-                            error("Error reading $filename: flag '$key' not found in QE flag dictionary for control block $c_block_name !")
+                            error("Error reading $filename: flag '$key' not found in QE flag OrderedDictionary for control block $c_block_name !")
                         end
                     end
                     line = readline(f)
                 end
-                push!(control_blocks, QEControlBlock(c_block_name, flag_dict))
+                push!(control_blocks, QEControlBlock(c_block_name, flag_OrderedDict))
                 @goto start_label
                 
             elseif contains(line, "CELL_PARAMETERS") || contains(line, "cell_parameters")
@@ -273,7 +273,7 @@ function read_qe_input(filename, T=Float64::Type; run_command="", run=true, exec
                 
             elseif contains(line, "ATOMIC_SPECIES") || contains(line, "atomic_species")
                 line    = readline(f)
-                pseudos = Dict{Symbol,String}()
+                pseudos = OrderedDict{Symbol,String}()
                 while length(split(line)) == 3
                     pseudos[Symbol(split(line)[1])] = split(line)[end]
                     line = readline(f)
@@ -283,7 +283,7 @@ function read_qe_input(filename, T=Float64::Type; run_command="", run=true, exec
                 
             elseif contains(line, "ATOMIC_POSITIONS") || contains(line, "atomic_positions")
                 option = get_card_option(line)
-                atoms  = Dict{Symbol,Array{Point3D{T},1}}()
+                atoms  = OrderedDict{Symbol,Array{Point3D{T},1}}()
                 line   = readline(f)
                 while length(split(line)) == 4
                     s_line   = split(line)
@@ -321,7 +321,6 @@ function read_qe_input(filename, T=Float64::Type; run_command="", run=true, exec
     return QEInput(splitdir(filename)[2], control_blocks, data_blocks, run_command, exec, run)
 end
 
-#can I use @generated here?
 function write_block_data(f, data)
     if typeof(data) <: Array{Vector{Float64},1} || typeof(data) <: Array{Vector{Float64},1} #k_points
         for x in data
@@ -343,7 +342,7 @@ function write_block_data(f, data)
             end
             write(f, "\n")
         end
-    elseif typeof(data) <: Dict{Symbol,<:Any}
+    elseif typeof(data) <: OrderedDict{Symbol,<:Any}
         for (key, value) in data
             if typeof(value) == String
                 if length(String(key)) > 2 

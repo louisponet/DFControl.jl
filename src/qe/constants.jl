@@ -1,12 +1,12 @@
 #this is both flags and variables, QE calls it variables so ok
-struct QEVariable{T}
+struct QEVariableInfo{T}
     name::Symbol
     _type::Type{T}
     # default::Union{T,Void,Symbol}  #check again v0.7 Some
     description::Array{String, 1}
 end
-QEVariable{T}(name::Symbol, description) where T = QEVariable{T}(name, T, description)
-
+QEVariableInfo{T}(name::Symbol, description) where T = QEVariableInfo{T}(name, T, description)
+QEVariableInfo() = QEVariableInfo(:error, Void, String[])
 function read_qe_variable(lines, i)
     name = gensym()
     var_i = i
@@ -48,24 +48,24 @@ function read_qe_variable(lines, i)
     if contains(lines[var_i], "Variables")
         spl = [split(x,"(")[1] for x in strip.(filter(x -> !contains(x, "="), split(lines[var_i])[2:end]), ',')]
         names = Symbol.(spl)
-        return [QEVariable{_type}(name, description) for name in names], i
+        return [QEVariableInfo{_type}(name, description) for name in names], i
     else
         if contains(lines[var_i], "(")&& contains(lines[var_i], ")")
             name = Symbol(split(strip_split(lines[var_i], ":")[end],"(")[1])
         else
             name = Symbol(strip_split(lines[var_i],":")[end])
         end
-        return [QEVariable{_type}(name, description)], i
+        return [QEVariableInfo{_type}(name, description)], i
     end
 end
 
 struct QEControlBlockInfo
     name::Symbol
-    flags::Array{<:QEVariable, 1}
+    flags::Array{<:QEVariableInfo, 1}
 end
 function QEControlBlockInfo(lines::Array{<:AbstractString, 1})
     name  = Symbol(lowercase(strip_split(lines[1], "&")[2]))
-    flags = QEVariable[] 
+    flags = QEVariableInfo[] 
     for i=1:length(lines)
         line = lines[i]
         if contains(line, "Variable")
@@ -79,19 +79,27 @@ function QEControlBlockInfo(lines::Array{<:AbstractString, 1})
     return QEControlBlockInfo(name, flags)
 end
 
+function get_qe_variable(block::QEControlBlockInfo, variable_name::Symbol)
+    for var in block.flags
+        if var.name == variable_name
+            return var
+        end
+    end
+end
+
 struct QEDataBlockInfo
     name                ::Symbol
     description         ::Array{String, 1}
     options             ::Array{Symbol, 1}
     options_description ::Array{String, 1}
-    variables           ::Array{<:QEVariable, 1}
+    variables           ::Array{<:QEVariableInfo, 1}
 end
 function QEDataBlockInfo(lines::Array{<:AbstractString, 1})
     spl                 = split(lines[1])
     name                = lowercase(spl[2])
     options             = Symbol.(spl[4:2:end])
     description         = String[]
-    variables           = QEVariable[]
+    variables           = QEVariableInfo[]
     options_description = String[]
     i = 2 
     while i <= length(lines) - 1
@@ -131,12 +139,22 @@ function QEDataBlockInfo(lines::Array{<:AbstractString, 1})
     end
     return QEDataBlockInfo(name, description, options, options_description, variables)
 end
+
+function get_qe_variable(block::QEDataBlockInfo, variable_name::Symbol)
+    for var in block.variables
+        if var.name == variable_name
+            return var
+        end
+    end
+end
+
 struct QEInputInfo
     exec::String
     control_blocks::Array{QEControlBlockInfo, 1}
     data_blocks::Array{QEDataBlockInfo, 1}
 end
-function QEInputInfo(filename; exec_name = join([lowercase(splitext(split(filename, "_")[end])[1]),".x"],""))
+
+function QEInputInfo(filename::String; exec_name = join([lowercase(splitext(split(filename, "_")[end])[1]),".x"],""))
     control_block_infos = QEControlBlockInfo[]
     data_block_infos = QEDataBlockInfo[]
     open(filename, "r") do f
@@ -157,59 +175,69 @@ end
 const QEInputInfos = begin
     input_files = search_dir(joinpath(@__DIR__, "../../assets/inputs/qe/"), "INPUT")
     file_paths  = joinpath(@__DIR__, "../../assets/inputs/qe/") .* input_files
-    pw2wannier90_flags = [QEVariable{String}(:outdir        , ["location of temporary output files"]),
-                          QEVariable{String}(:prefix        , ["pwscf filename prefix"]),
-                          QEVariable{String}(:seedname      , ["wannier90 input/output filename prefix"]),
-                          QEVariable{String}(:wan_mode      , ["'standalone' or 'library'"]),
-                          QEVariable{String}(:spin_component, ["'none', 'up' or 'down'"]),
-                          QEVariable{Bool}(:write_mmn     , ["compute M_mn matrix"]),
-                          QEVariable{Bool}(:write_amn     , ["compute A_mn matrix"]),
-                          QEVariable{Bool}(:write_unk     , ["write wavefunctions to file"]),
-                          QEVariable{Bool}(:wvfn_formatted, ["formatted or unformatted output for wavefunctions"]),
-                          QEVariable{Bool}(:reduce_unk    , ["output wavefunctions on a coarse grid to save memory"])]
+    pw2wannier90_flags = [QEVariableInfo{String}(:outdir        , ["location of temporary output files"]),
+                          QEVariableInfo{String}(:prefix        , ["pwscf filename prefix"]),
+                          QEVariableInfo{String}(:seedname      , ["wannier90 input/output filename prefix"]),
+                          QEVariableInfo{String}(:wan_mode      , ["'standalone' or 'library'"]),
+                          QEVariableInfo{String}(:spin_component, ["'none', 'up' or 'down'"]),
+                          QEVariableInfo{Bool}(:write_mmn     , ["compute M_mn matrix"]),
+                          QEVariableInfo{Bool}(:write_amn     , ["compute A_mn matrix"]),
+                          QEVariableInfo{Bool}(:write_unk     , ["write wavefunctions to file"]),
+                          QEVariableInfo{Bool}(:wvfn_formatted, ["formatted or unformatted output for wavefunctions"]),
+                          QEVariableInfo{Bool}(:reduce_unk    , ["output wavefunctions on a coarse grid to save memory"])]
     pw2wannier90_block_info = QEControlBlockInfo(:inputpp, pw2wannier90_flags)
     vcat(QEInputInfo.(file_paths), QEInputInfo("pw2wannier90.x", [pw2wannier90_block_info], QEDataBlockInfo[]))
 end
 
-QEInputInfo(input::QEInput) = filter(x-> contains(input.exec, x.exec), QEInputInfos)[1]
-QEInputInfo(exec::String) = filter(x-> contains(exec, x.exec), QEInputInfos)[1]
+get_qe_input_info(input::QEInput) = filter(x-> contains(input.exec, x.exec), QEInputInfos)[1]
+get_qe_input_info(exec::AbstractString) = filter(x-> contains(exec, x.exec), QEInputInfos)[1]
 
-function get_qe_variable(input_info::QEInputInfo, variable_name)
+function get_qe_variable(input_info::QEInputInfo, variable_name::Symbol)
     for block in vcat(input_info.control_blocks, input_info.data_blocks)
-        for var in block.variables
-            if var.name == variable_name
-                return var
-            end
+        var = get_qe_variable(block, variable_name)
+        if var != nothing
+            return var
+        end
+    end
+end
+
+function get_qe_variable(variable_name::Symbol)
+    for info in QEInputInfos
+        var = get_qe_variable(info, variable_name)
+        if var != nothing
+            return var
         end
     end
 end
 
 function get_qe_block_variable(input_info::QEInputInfo, variable_name)
     for block in vcat(input_info.control_blocks, input_info.data_blocks)
-        for var in block.variables
-            if var.name == variable_name
-                return block, var
-            end
+        var = get_qe_variable(block, variable_name)
+        if var != nothing
+            return block, var
         end
     end
+    return :error, QEVariableInfo()
 end
 
 function get_qe_variable_info(input::QEInput, varname)
     for input_info in QEInputInfos
-        if input_info.exec == input.exec
+        if contains(input.exec,input_info.exec)
             return get_qe_variable(input_info, varname)
         end
     end
 end
 
-all_qe_block_flags(input::QEInput, block_name) = filter(x -> x.name == block, QEInputInfo(input).control_blocks)[1].flags
-all_qe_block_flags(exec::String, block_name) = filter(x -> x.name == block_name, QEInputInfo(exec).control_blocks)[1].flags
+all_qe_block_flags(input::QEInput, block_name) = filter(x -> x.name == block, get_qe_input_info(input).control_blocks)[1].flags
+all_qe_block_flags(exec::AbstractString, block_name) = filter(x -> x.name == block_name, get_qe_input_info(exec).control_blocks)[1].flags
 
-function get_qe_flag_block_type(input::DFInput, flagname)
+function get_qe_block_variable(exec::AbstractString, flagname)
     for input_info in QEInputInfos
-        if input_info.exec == input.exec
+        if contains(exec, input_info.exec)
             return get_qe_block_variable(input_info, flagname)
         end
     end
-    return :error, Void
+    return :error, QEVariableInfo()
 end
+
+get_qe_block_variable(input::DFInput, flagname) = get_qe_block_variable(input.exec, flagname)

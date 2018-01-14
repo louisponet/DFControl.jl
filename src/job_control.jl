@@ -112,7 +112,7 @@ function load_job(job_dir::String, T=Float64;
                                           run_command = run_command,
                                           pseudos     = job_data[:abinit_pseudos])...)
         else
-            _t = split(runcommand)
+            _t = split(run_command)
             push!(t_calcs, read_qe_input(filename, T, run_command=join(_t[1:end-1]," "), exec=_t[end], run=run))
         end
     end
@@ -258,7 +258,7 @@ function add_calculation!(job::DFJob, input::DFInput, index::Int=length(job.calc
 end
 
 """
-    change_flags!(job::DFJob, new_flag_data::Dict{Symbol,<:Any})
+    change_flags!(job::DFJob, new_flag_data::OrderedDict{Symbol,<:Any})
 
 Looks through all the calculations for the specified flags. If any that match and have the same types are found, they will get replaced by the new ones.
 """
@@ -270,7 +270,7 @@ function change_flags!(job::DFJob, new_flag_data...)
 end
 
 """
-    change_flags!(job::DFJob, calc_filenames, new_flag_data::Dict{Symbol,<:Any})
+    change_flags!(job::DFJob, calc_filenames, new_flag_data::OrderedDict{Symbol,<:Any})
 
 Looks through the given calculations for the specified flags. If any that match and have the same types are found, they will get replaced by the new ones.
 """
@@ -334,25 +334,33 @@ set_flags!(job::DFJob, flags...)                   = set_flags!(job, [calc.filen
 set_flags!(job::DFJob, filename::String, flags...) = set_flags!(job, [filename], flags...)
 
 """
-    get_flag(job::DFJob, calc_filenames, flag::Symbol)
+    get_flag(job::DFJob, calc_filenames, flag_name::Symbol)
 
 Looks through the calculation filenames and returns the value of the specified flag.
 """
-function get_flag(job::DFJob, calc_filenames, flag::Symbol)
+function get_flag(job::DFJob, calc_filenames, flag_name::Symbol)
     for calc in get_inputs(job, calc_filenames)
-        return get_flag(calc, flag)
+        flag = get_flag(calc, flag_name)
+        if flag != nothing 
+            return flag
+        end
     end
+    error("Flag $flag not found in any input files.")
 end
 
 """
-    get_flag(job::DFJob, flag::Symbol)
+    get_flag(job::DFJob, flag_name::Symbol)
 
 Looks through all the calculations and returns the value of the specified flag.
 """
-function get_flag(job::DFJob, flag::Symbol)
+function get_flag(job::DFJob, flag_name::Symbol)
     for calc in job.calculations
-        return get_flag(calc, flag)
+        flag = get_flag(calc, flag_name)
+        if flag != nothing 
+            return flag
+        end
     end
+    error("Flag $flag not found in any input files.")
 end
 
 #TODO Change so calculations also have a name.
@@ -466,11 +474,11 @@ function change_flow!(job::DFJob, filenames::Array{String,1}, should_run)
 end
 
 """
-    change_flow!(job::DFJob, should_runs::Union{Dict{String,Bool},Array{Tuple{String,Bool}}})
+    change_flow!(job::DFJob, should_runs::Union{OrderedDict{String,Bool},Array{Tuple{String,Bool}}})
 
 Runs through the calculation filenames and sets whether it should run or not.
 """
-function change_flow!(job::DFJob, should_runs::Union{Dict{String,Bool},Array{Tuple{String,Bool}}})
+function change_flow!(job::DFJob, should_runs::Union{OrderedDict{String,Bool},Array{Tuple{String,Bool}}})
     UNDO_JOBS[job.id] = deepcopy(job)
 
     for (name, should_run) in should_runs
@@ -699,14 +707,14 @@ end
 #---------------------------------END GENERAL SECTION ------------------#
 
 """
-    change_atoms!(job::DFJob, atoms::Dict{Symbol,<:Array{<:Point3D,1}}, pseudo_set_name=:default, pseudo_fuzzy=nothing)
+    change_atoms!(job::DFJob, atoms::OrderedDict{Symbol,<:Array{<:Point3D,1}}, pseudo_set_name=:default, pseudo_fuzzy=nothing, option=:angstrom)
 
 Sets the data blocks with atomic positions to the new one. This is done for all calculations in the job that have that data. 
 If default pseudopotentials are defined, a set can be specified, together with a fuzzy that distinguishes between the possible multiple pseudo strings in the pseudo set. 
 These pseudospotentials are then set in all the calculations that need it.
 All flags which specify the number of atoms inside the calculation also gets set to the correct value.
 """
-function change_atoms!(job::DFJob, atoms::Dict{Symbol,<:Array{<:Point3D,1}}; kwargs...)
+function change_atoms!(job::DFJob, atoms::OrderedDict{Symbol,<:Array{<:Point3D,1}}; kwargs...)
     UNDO_JOBS[job.id] = deepcopy(job)
 
     for calc in job.calculations
@@ -714,6 +722,27 @@ function change_atoms!(job::DFJob, atoms::Dict{Symbol,<:Array{<:Point3D,1}}; kwa
     end
     
 end
+
+"""
+    get_atoms(job::DFJob, calc_filename)
+
+Returns a list of the atomic positions in Angstrom.
+"""
+function get_atoms(job::DFJob, calc_filename)
+    return get_atoms(get_input(job, calc_filename))
+end
+
+"""
+    sync_atoms!(job::DFJob, template_filename::String; kwargs...)
+
+Syncs the atoms to the atoms specified in the template input.
+"""
+function sync_atoms!(job::DFJob, template_filename::String; kwargs...)
+    input = get_input(job, template_filename)
+    atoms = get_atoms(input)
+    change_atoms!(job, atoms; kwargs...)
+end
+
 
 #automatically sets the cell parameters for the entire job, implement others
 """
@@ -739,10 +768,11 @@ end
 
 Changes the data in the k point `DataBlock` inside the specified calculation.
 """
-function change_k_points!(job::DFJob, calc_filename, k_points)
+function change_k_points!(job::DFJob, calc_filenames, k_points)
     UNDO_JOBS[job.id] = deepcopy(job)
-
-    change_k_points!(get_input(job, calc_filename), k_points)
+    for calc in get_inputs(job, calc_filenames)
+        change_k_points!(calc, k_points)
+    end
 end
 
 """
@@ -796,7 +826,7 @@ Prints the possible error messages in outputs of the `DFJob`.
 """
 function get_errors(job::DFJob)
     outputs = pull_outputs(job)
-    errors  = Dict{String,Array{String,1}}()
+    errors  = OrderedDict{String,Array{String,1}}()
     for out in outputs
         errors[out] = read_errors(out)
     end
@@ -833,8 +863,8 @@ function add_wan_calc!(job::DFJob, k_grid;
                        pw2wan_run_command = "mpirun -np 24 ~/bin/pw2wannier90.x",
                        inner_window       = (0., 0.), #no window given 
                        outer_window       = (0., 0.), #no outer window given
-                       wan_flags          = Dict{Symbol, Any}(),
-                       pw2wan_flags       = Dict{Symbol, Any}(),
+                       wan_flags          = OrderedDict{Symbol, Any}(),
+                       pw2wan_flags       = OrderedDict{Symbol, Any}(),
                        projections        = nothing,
                        spin               = false)
             
@@ -842,10 +872,10 @@ function add_wan_calc!(job::DFJob, k_grid;
 
 
     if inner_window != (0., 0.) #scalarize
-        wan_flags = merge!(wan_flags, Dict(:dis_froz_min => inner_window[1], :dis_froz_max => inner_window[2]))
+        wan_flags = merge!(wan_flags, OrderedDict(:dis_froz_min => inner_window[1], :dis_froz_max => inner_window[2]))
     end
     if outer_window != (0., 0.) 
-        wan_flags = merge!(wan_flags, Dict(:dis_win_min => outer_window[1], :dis_win_max => outer_window[2]))
+        wan_flags = merge!(wan_flags, OrderedDict(:dis_win_min => outer_window[1], :dis_win_max => outer_window[2]))
     end
 
     nscf_calc   = nothing
@@ -882,7 +912,7 @@ function add_wan_calc!(job::DFJob, k_grid;
     end
     nscf_calc.run = true
     
-    std_pw2wan_flags = Dict(:prefix    => get_flag(scf_calc, :prefix),
+    std_pw2wan_flags = OrderedDict(:prefix    => get_flag(scf_calc, :prefix),
                            :write_amn => true,
                            :write_mmn => true,
                            :outdir    => "'./'",

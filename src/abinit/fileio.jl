@@ -92,8 +92,8 @@ function read_abi_datasets(filename::String, T=Float64)
 
     lines = split(join(lines," "))
 
-    datasets = Array{Dict{Symbol, Any},1}()
-    dataset = Dict{Symbol,Any}()
+    datasets = Array{OrderedDict{Symbol, Any},1}()
+    dataset = OrderedDict{Symbol,Any}()
     flag = Symbol("start")
     for (l, line) in enumerate(lines)
         if contains(line, "?") || contains(line, ":")
@@ -109,7 +109,7 @@ function read_abi_datasets(filename::String, T=Float64)
             if !isnull(j)
                 dtset = get(j)+1
                 while dtset > length(datasets)
-                    push!(datasets, Dict{Symbol, Any}())
+                    push!(datasets, OrderedDict{Symbol, Any}())
                 end
 
                 dataset = datasets[dtset]
@@ -117,7 +117,7 @@ function read_abi_datasets(filename::String, T=Float64)
             else
                 dtset = 1
                 while dtset > length(datasets)
-                    push!(datasets, Dict{Symbol, Any}())
+                    push!(datasets, OrderedDict{Symbol, Any}())
                 end
                 dataset = datasets[dtset]
                 flag = Symbol(line)
@@ -219,7 +219,7 @@ function extract_structure(abi_datasets...)
         typat = pop!(data, :typat, typat)
         typat = typat[1:ntypat]
         
-        atom_positions = Dict{Symbol,Array{Point3D,1}}()
+        atom_positions = OrderedDict{Symbol,Array{Point3D,1}}()
         if haskey(data, :xred)
             atoms = reshape(data[:xred],(div(length(data[:xred]),3), 3))
             pop!(data, :xred)
@@ -371,7 +371,7 @@ function read_abi_fatbands(filename::String, T=Float64)
         while !eof(f)
             line = readline(f)
             if contains(line, "BAND number")
-                extra   = Dict{Symbol,Any}(:pdos => T[])
+                extra   = OrderedDict{Symbol,Any}(:pdos => T[])
                 eigvals = Array{T,1}()
                 line    = readline(f)
                 while line != "" && line != "&"

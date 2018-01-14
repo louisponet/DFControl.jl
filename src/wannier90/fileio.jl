@@ -4,7 +4,7 @@
 Reads a DFInput from a wannier90 input file.
 """
 function read_wannier_input(filename::String, T=Float64; run_command="", run=true, preprocess=true)
-    flags       = Dict{Symbol,Any}()
+    flags       = OrderedDict{Symbol,Any}()
     data_blocks = Array{WannierDataBlock,1}()
     open(filename,"r") do f
         line = readline(f)
@@ -20,7 +20,7 @@ function read_wannier_input(filename::String, T=Float64; run_command="", run=tru
                 block_name = Symbol(split(lowercase(line))[end])
                 
                 if block_name == :projections
-                    proj_dict = Dict{Symbol,Array{Symbol,1}}()
+                    proj_OrderedDict = OrderedDict{Symbol,Array{Symbol,1}}()
                     line      = readline(f)
                     while !contains(lowercase(line), "end")
                         if contains(line, "!") || line == ""
@@ -35,11 +35,11 @@ function read_wannier_input(filename::String, T=Float64; run_command="", run=tru
                             split_line      = strip_split(line, ':')
                             atom            = Symbol(split_line[1])
                             projections     = [Symbol(proj) for proj in strip_split(split_line[2], ';')]
-                            proj_dict[atom] = projections
+                            proj_OrderedDict[atom] = projections
                             line = readline(f)
                         end
                     end
-                    push!(data_blocks, WannierDataBlock(:projections, :none, proj_dict))
+                    push!(data_blocks, WannierDataBlock(:projections, :none, proj_OrderedDict))
                     @goto start_label
                 
                 elseif block_name == :kpoint_path
@@ -62,23 +62,30 @@ function read_wannier_input(filename::String, T=Float64; run_command="", run=tru
                     line = readline(f)
                     if length(split(line)) == 1
                         option = Symbol(lowercase(line))
+                        line = readline(f)
                     else
                         option = :ang
                     end
                     cell_param = Matrix{T}(3, 3)
                     for i = 1:3
-                        cell_param[i, :] = parse_line(T, readline(f))
+                        cell_param[i, :] = parse_line(T, line)
+                        line = readline(f)
                     end
                     push!(data_blocks, WannierDataBlock(:unit_cell_cart, option, cell_param))
-                    line = readline(f)
+                    # line = readline(f)
                     @goto start_label
             
                 elseif block_name == :atoms_frac || block_name == :atoms_cart
                     line   = readline(f)
-                    atoms  = Dict{Symbol,Array{Point3D{T},1}}()
-                    option = Symbol(split(String(block_name), "_")[end])
+                    atoms  = OrderedDict{Symbol,Array{Point3D{T},1}}()
+                    option = :ang
                     while !contains(lowercase(line), "end")
                         if contains(line, "!") || line == ""
+                            line = readline(f)
+                            continue
+                        end
+                        if length(split(line)) == 1 
+                            option = parse(line)
                             line = readline(f)
                             continue
                         end
@@ -157,7 +164,7 @@ function write_wannier_input(input::WannierInput, filename::String=input.filenam
                 end
                 
             elseif block.name == :projections
-                if typeof(block.data) <: Dict
+                if typeof(block.data) <: OrderedDict
                     for (atom,symbols) in block.data
                         write(f, "$atom: $(symbols[1])")
                         for sym in symbols[2:end]

@@ -1,5 +1,6 @@
 # All the methods to change the inpût control flags, if you want to implement another kind of calculation add a similar one here!
-
+include("qe/input.jl")
+include("wannier90/input.jl")
 """
     change_flags!(input::DFInput, new_flag_data...)
 
@@ -61,6 +62,7 @@ end
 Changes the data of the specified 'DataBlock' to the new data. Optionally also changes the 'DataBlock' option.
 """
 function change_data!(input::DFInput, block_name::Symbol, new_block_data; option=nothing)
+    changed = false
     for data_block in input.data_blocks
         if data_block.name == block_name
             if typeof(data_block.data) != typeof(new_block_data) 
@@ -73,8 +75,10 @@ function change_data!(input::DFInput, block_name::Symbol, new_block_data; option
             dfprintln("")
             data_block.option = option == nothing ? data_block.option : option
             dfprintln("option: $(data_block.option)")
+            changed = true
         end
     end
+    return changed
 end
 
 """
@@ -295,30 +299,6 @@ function print_flags(input::DFInput)
         end
     end
     dfprintln("#----------------#\n")
-end
-
-"""
-    change_atoms!(input::DFInput, atoms::Dict{Symbol,<:Array{<:Point3D,1}}, pseudo_set_name=:default; pseudo_fuzzy=nothing)
-
-Changes the data inside the 'DataBlock' that holds the data of the atom positions.
-If 'default_pseudos' is defined it will look for the pseudo set and also write the correct values inside the 'DataBlock' that defines which pseudopotentials to use.
-"""
-function change_atoms!(input::DFInput, atoms::Dict{Symbol,<:Array{<:Point3D,1}}; pseudo_set=nothing, pseudo_fuzzy=nothing)
-    if typeof(input) == WannierInput
-        change_data!(input, :atoms_frac, atoms)
-    elseif typeof(input) == QEInput
-        change_data!(input, :atomic_positions, atoms)
-        if isdefined(:default_pseudos) && pseudo_set != nothing
-            atomic_species_dict = Dict{Symbol,String}()
-            for atom in keys(atoms)
-                atomic_species_dict[atom] = get_default_pseudo(atom, pseudo_set, pseudo_fuzzy=pseudo_fuzzy)
-            end
-            change_data!(input, :atomic_species, atomic_species_dict)
-        end
-        if isdefined(:default_pseudo_dirs) && pseudo_set != nothing
-            change_flags!(input, :pseudo_dir => "'$(default_pseudo_dirs[pseudo_set])'")
-        end
-    end
 end
 
 """
