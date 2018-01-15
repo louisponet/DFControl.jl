@@ -6,6 +6,7 @@ Pulls a file from the specified server and server dir to the local dir.
 """
 function pull_file(server::String, server_dir::String, local_dir::String, filename::String)
     run(`scp $(server * ":" * server_dir * filename) $local_dir`)
+    return search_dir(local_dir, filename)[1]
 end
 
 """
@@ -16,10 +17,19 @@ Pulls a file from the default server if the default server is specified.
 function pull_file(server_dir::String, local_dir::String, filename::String; server=get_default_server())
     if server != ""
         run(`scp $(server * ":" * server_dir * filename) $local_dir`)
+        return search_dir(local_dir, filename)[1]
     else
         error("Define a default server first using 'set_default_server!(...)'.\n
         Or use function 'pull_file(server::String, server_dir::String, local_dir::String, filename::String)'.")
     end
+end
+
+function pull_files(server_dir::String, local_dir::String, filenames::Array{String}; server=get_default_server())
+    pulled_files = String[]
+    for file in filenames
+       push!(pulled_files, pull_file(server_dir, local_dir, file; server))
+    end 
+    return pulled_files
 end
 
 """
@@ -32,15 +42,16 @@ function pull_file(filepath::String, local_dir::String; server=get_default_serve
     if server != ""
         if local_filename != nothing
             run(`scp $(server * ":" * filepath) $(local_dir * local_filename)`)
+            return search_dir(local_dir, local_filename)[1]
         else
             run(`scp $(server * ":" * filepath) $(local_dir)`)
+            return search_dir(local_dir, splitdir(filepath)[2])[1]
         end
     else
         error("Define a default server first using 'set_default_server!(...)'.\n
         Or use function 'pull_file(server::String, server_dir::String, local_dir::String, filename::String)'.")
     end
 end
-
 
 """
     pull_outputs(df_job::DFJob, server="", server_dir="", local_dir=""; job_fuzzy="*job*", extras=String[])

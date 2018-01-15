@@ -115,6 +115,7 @@ module DFControl
     export read_errors
     export pull_outputs
     export pull_file
+    export pull_files
     export qstat
     export watch_qstat
 
