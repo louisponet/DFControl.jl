@@ -743,23 +743,31 @@ function sync_atoms!(job::DFJob, template_filename::String; kwargs...)
     change_atoms!(job, atoms; kwargs...)
 end
 
+"""
+    sync_cell!(job::DFJob, template_filename::String)
+
+Syncs the cells of all input files to the one given in the template file.
+All cells will be put in Angstrom coordinates.
+"""
+function sync_cell!(job::DFJob, template_filename::String)
+    calc = get_input(job, template_filename)
+    cell = get_cell(calc)
+    for input in job.calculations
+        change_cell!(input, cell, option=:angstrom)
+    end
+end
 
 #automatically sets the cell parameters for the entire job, implement others
 """
-    change_cell_parameters!(job::DFJob, cell_param::Array{AbstractFloat,2})
+    change_cell_parameters!(job::DFJob, cell_param::Matrix)
 
 Changes the cell parameters in all the input files that have that `DataBlock`.
 """
-function change_cell_parameters!(job::DFJob, cell_param::Array{<:AbstractFloat,2})
+function change_cell!(job::DFJob, cell_param::Matrix)
     UNDO_JOBS[job.id] = deepcopy(job)
-    
+
     for calc in job.calculations
-        if typeof(calc) == WannierInput
-            alat = get_flag(job, :A)
-            change_cell_parameters!(calc, alat * cell_param)
-        else
-            change_cell_parameters!(calc, cell_param)
-        end
+        change_cell!(calc, cell_param)
     end
 end
 

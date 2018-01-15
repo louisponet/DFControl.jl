@@ -1,18 +1,18 @@
 module DFControl
 # using Reexport
     using RecipesBase
-    using Reactive
     using DataStructures: OrderedDict
-
-    const print_s = Signal("")
+    
     if Pkg.installed("GtkReactive") != nothing
+        using Reactive
         using Gtk,GtkReactive,Gtk.ShortNames,Colors
+        const print_s = Signal("")
         include("dashboard.jl")
+        dfprintln(s::String) = push!(print_s,s)
         # preserve(map(println,print_s))
     else
-        preserve(map(println,print_s))
+        dfprintln(s::String) = println(s)
     end
-    dfprintln(s::String) = push!(print_s,s)
     export dfprintln 
     include("types.jl")
     export Point3D
@@ -94,8 +94,6 @@ module DFControl
     export print_info 
     export print_flags
     export print_flag
-    export change_atoms!
-    export change_cell_parameters!
     export change_k_points!
     export change_data_option!
     export change_header_word!
@@ -104,7 +102,11 @@ module DFControl
     
     export get_atoms
     export sync_atoms!
-
+    export change_atoms!
+    export get_cell
+    export sync_cell!
+    export change_cell!
+    
     include("plotting.jl")
     export plot_qe_bands
     export plot_qe_kpdos

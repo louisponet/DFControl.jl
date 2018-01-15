@@ -139,7 +139,7 @@ function change_k_points!(input::QEInput, k_grid::Union{NTuple{3, Int}, NTuple{6
         k_points = gen_k_grid(k_grid[1], k_grid[2], k_grid[3], :nscf)
     else
         calc = get_flag(input, :calculation)
-        @assert calc == "'scf'" warn("Expected calculation to be 'scf', got $calc.")
+        @assert calc == "'scf'" || contains(calc, "relax") warn("Expected calculation to be 'scf', 'vc-relax', 'relax'.\nGot $calc.")
         k_option = :automatic
         k_points = [k_grid...]
     end
@@ -158,6 +158,27 @@ function change_k_points!(input::QEInput, k_grid::Array{Array{<:AbstractFloat, 1
     change_data!(input, :k_points, k_grid, option = k_option)
 end
 
+"Returns the cell_parameters in Angstrom."
+function get_cell(input::QEInput)
+    block = get_block(input, :cell_parameters)
+    if block != nothing
+        if block.option == :bohr
+            alat = conversions[:bohr2ang]
+        elseif block.option == :alat
+            alat = get_flag(input,:A) == nothing ? get_flag(input, Symbol("celldm(1)")) * conversions[:bohr2ang] : get_flag(input,:A) 
+        else
+            alat = 1.0
+        end
+        return block.data * alat
+    end
+end
+
+function change_cell!(input::QEInput, cell_parameters::Matrix; option=:angstrom)
+    @assert size(cell_parameters) == (3,3) "Cell parameters has wrong size.\nExpected: (3,3) got ($(size(cell_parameters)[1]), $(size(cell_parameters)[2]))."
+    change_data!(input, :cell_parameters, cell_parameters, option=option)
+end
+
+
 """
     get_atoms(input::QEInput)
 
@@ -165,33 +186,24 @@ Returns a list of the atomic positions in Angstrom. We only support A or celldm(
 """
 function get_atoms(input::QEInput)
     out_atoms = OrderedDict{Symbol, Array{<:Point3D, 1}}()
-    for block in input.data_blocks
-        if block.name == :atomic_positions
-            if block.option == :alat
-                alat = get_flag(input,:A) == nothing ? get_flag(input, Symbol("celldm(1)")) * conversions[:bohr2ang] : get_flag(input,:A)
-                cell = eye(3) * alat
-            elseif block.option == :bohr
-                cell = eye(3) * conversions[:bohr2ang]
-            elseif block.option == :crystal || block.option == :crystal_sg
-                cell_block = get_block(input, :cell_parameters)
-                if cell_block.option == :alat
-                    alat = get_flag(input,:A) == nothing ? get_flag(input, Symbol("celldm(1)")) * conversions[:bohr2ang] : get_flag(input,:A)
-                    cell = cell_block.data * alat
-                elseif cell_block.option == :bohr
-                    cell = cell_block.data * conversions[:bohr2ang]
-                else
-                    cell = cell_block.data
-                end
-            else
-                cell = eye(3)
+    block = get_block(input, :atomic_positions)
+    if block != nothing
+        if block.option == :alat
+            alat = get_flag(input,:A) == nothing ? get_flag(input, Symbol("celldm(1)")) * conversions[:bohr2ang] : get_flag(input,:A)
+            cell = eye(3) * alat
+        elseif block.option == :bohr
+            cell = eye(3) * conversions[:bohr2ang]
+        elseif block.option == :crystal || block.option == :crystal_sg
+            cell = get_cell(input)
+        else
+            cell = eye(3)
+        end
+        for (atom, positions) in block.data
+            t_pos = Point3D[]
+            for pos in positions
+                push!(t_pos, cell' * pos) 
             end
-            for (atom, positions) in block.data
-                t_pos = Point3D[]
-                for pos in positions
-                    push!(t_pos, cell' * pos) 
-                end
-                out_atoms[atom] = t_pos
-            end
+            out_atoms[atom] = t_pos
         end
     end
     return out_atoms
@@ -225,3 +237,4 @@ function change_atoms!(input::QEInput, atoms::OrderedDict{Symbol,<:Array{<:Point
         change_flags!(input, :pseudo_dir => "'$(default_pseudo_dirs[pseudo_set])'")
     end
 end
+

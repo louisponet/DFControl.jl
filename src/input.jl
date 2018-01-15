@@ -302,34 +302,6 @@ function print_flags(input::DFInput)
 end
 
 """
-    change_cell_parameters!(input::DFInput, cell_param::Array{AbstractFloat,2})
-
-Changes the cell parameters `DataBlock`.
-"""
-function change_cell_parameters!(input::DFInput, cell_param::Array{<:AbstractFloat,2})
-    assert(size(cell_param) == (3, 3))
-    if typeof(input) == WannierInput
-        change_data!(input, :unit_cell_cart, cell_param)
-    elseif typeof(input) == QEInput
-        change_data!(input, :cell_parameters, cell_param)
-    end
-end
-
-"""
-    change_k_points!(input::DFInput, calc_filename, k_points)
-
-Changes the data in the k point `DataBlock` inside the specified calculation.
-"""
-function change_k_points!(input::DFInput, k_points)
-    if typeof(input) == WannierInput
-        change_data!(input, :kpoints, k_points)
-    elseif typeof(input) == QEInput
-        change_data!(input, :k_points, k_points)
-    end
-end
-
-
-"""
     change_data_option!(job::DFJob, block_symbol::Symbol, option::Symbol)
 
 Changes the option of specified data block.
