@@ -1066,3 +1066,5 @@ function add_bands_calculation!(job::DFJob, k_path::Array{Array{T,1},1}; filenam
     end
 end
 
+get_path(job::DFJob, calc_filename::String) = 
+    joinpath(job.local_dir, get_input(job, calc_filename).filename)

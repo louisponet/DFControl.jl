@@ -115,14 +115,20 @@ function read_qe_output(filename::String, T=Float64)
                     out[:total_force] = force
                 end
             elseif all(contains.(line,["atom", "Tr[", "up", "down"]))
-                if !haskey(out, :mag_moments)
-                    out[:mag_moments] = T[]
+                key = :colin_mag_moments
+                if !haskey(out, key)
+                    out[key] = T[]
                 end
+                atn = parse(split(line)[2])
                 line = readline(f)
                 while !contains(line, "atomic mag. moment")
                     line = readline(f)
                 end
-                push!(out[:mag_moments], split(line)[5])
+                if length(out[key]) < atn
+                    push!(out[key], parse(split(line)[5]))
+                else
+                    out[key][atn] = parse(split(line)[5])
+                end
             end
         end
         

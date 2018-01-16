@@ -106,7 +106,8 @@ module DFControl
     export get_cell
     export sync_cell!
     export change_cell!
-    
+    export get_path
+
     include("plotting.jl")
     export plot_qe_bands
     export plot_qe_kpdos
