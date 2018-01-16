@@ -94,7 +94,7 @@ module DFControl
     export print_info 
     export print_flags
     export print_flag
-    export change_k_points!
+    export change_kpoints!
     export change_data_option!
     export change_header_word!
     export undo!
@@ -132,14 +132,7 @@ module DFControl
 
     #no extra functionality, for faster scripting
     include("shortnames.jl")
-    export setfls!
-    export chfls!
-    export rmfls!
-    export prtfls
-    export lsfls
-    export ldsj 
-    export ldj 
-    export sbmj 
+    
     init_defaults(default_file)
 
     const UNDO_JOBS = DFJob[]

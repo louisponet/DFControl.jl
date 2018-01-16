@@ -6,7 +6,10 @@ Pulls a file from the specified server and server dir to the local dir.
 """
 function pull_file(server::String, server_dir::String, local_dir::String, filename::String)
     run(`scp $(server * ":" * server_dir * filename) $local_dir`)
-    return search_dir(local_dir, filename)[1]
+    pulled_files = search_dir(local_dir, filename)
+    if !isempty(pulled_files)
+        return pulled_files[1]
+    end
 end
 
 """
@@ -17,7 +20,10 @@ Pulls a file from the default server if the default server is specified.
 function pull_file(server_dir::String, local_dir::String, filename::String; server=get_default_server())
     if server != ""
         run(`scp $(server * ":" * server_dir * filename) $local_dir`)
-        return search_dir(local_dir, filename)[1]
+        pulled_files = search_dir(local_dir, filename)
+        if !isempty(pulled_files)
+            return pulled_files[1]
+        end
     else
         error("Define a default server first using 'set_default_server!(...)'.\n
         Or use function 'pull_file(server::String, server_dir::String, local_dir::String, filename::String)'.")

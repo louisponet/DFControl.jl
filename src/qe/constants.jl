@@ -183,6 +183,7 @@ const QEInputInfos = begin
                           QEVariableInfo{Bool}(:write_mmn     , ["compute M_mn matrix"]),
                           QEVariableInfo{Bool}(:write_amn     , ["compute A_mn matrix"]),
                           QEVariableInfo{Bool}(:write_unk     , ["write wavefunctions to file"]),
+                          QEVariableInfo{Bool}(:write_uHu     , ["write the hamiltonian elements between different k-values"]),
                           QEVariableInfo{Bool}(:wvfn_formatted, ["formatted or unformatted output for wavefunctions"]),
                           QEVariableInfo{Bool}(:reduce_unk    , ["output wavefunctions on a coarse grid to save memory"])]
     pw2wannier90_block_info = QEControlBlockInfo(:inputpp, pw2wannier90_flags)

@@ -12,7 +12,7 @@ function parse_k_line(line, T)
 end
 
 function write_flag_line(f, flag, data, seperator="=", i="")
-    write(f,"  $flag$i $seperator")
+    write(f,"  $flag$i $seperator ")
 
     if typeof(data) <: Array
 

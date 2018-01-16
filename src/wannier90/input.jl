@@ -1,9 +1,9 @@
 """
-    change_k_points!(input::QEInput, k_grid::NTuple{3, Int})
+    change_kpoints!(input::QEInput, k_grid::NTuple{3, Int})
 
 Changes the data in the k point `DataBlock` inside the specified calculation.
 """
-function change_k_points!(input::WannierInput, k_grid::NTuple{3, Int})
+function change_kpoints!(input::WannierInput, k_grid::NTuple{3, Int})
     change_flags!(input, :mp_grid => [k_grid...])
     k_points = gen_k_grid(k_grid[1], k_grid[2], k_grid[3], :wan)
     change_data!(input, :kpoints, k_points)

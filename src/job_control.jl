@@ -772,14 +772,14 @@ function change_cell!(job::DFJob, cell_param::Matrix)
 end
 
 """
-    change_k_points!(job::DFJob, calc_filename, k_points)
+    change_kpoints!(job::DFJob, calc_filename, k_points)
 
 Changes the data in the k point `DataBlock` inside the specified calculation.
 """
-function change_k_points!(job::DFJob, calc_filenames, k_points)
+function change_kpoints!(job::DFJob, calc_filenames, k_points)
     UNDO_JOBS[job.id] = deepcopy(job)
     for calc in get_inputs(job, calc_filenames)
-        change_k_points!(calc, k_points)
+        change_kpoints!(calc, k_points)
     end
 end
 

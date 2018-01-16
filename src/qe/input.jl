@@ -127,11 +127,11 @@ end
 
 #This can be done with a named tuple.
 """
-    change_k_points!(input::QEInput, k_grid::Union{NTuple{3, Int}, NTuple{6, Int}})
+    change_kpoints!(input::QEInput, k_grid::Union{NTuple{3, Int}, NTuple{6, Int}})
 
 Changes the data in the k point `DataBlock` inside the specified calculation.
 """
-function change_k_points!(input::QEInput, k_grid::Union{NTuple{3, Int}, NTuple{6, Int}})
+function change_kpoints!(input::QEInput, k_grid::Union{NTuple{3, Int}, NTuple{6, Int}})
     if length(k_grid) == 3
         calc = get_flag(input, :calculation) 
         @assert calc == "'nscf'" warn("Expected calculation to be 'nscf', got $calc.")
@@ -147,11 +147,11 @@ function change_k_points!(input::QEInput, k_grid::Union{NTuple{3, Int}, NTuple{6
 end
 
 """
-    change_k_points!(input::QEInput, k_grid::Array{Array{<:AbstractFloat, 1}, 1})
+    change_kpoints!(input::QEInput, k_grid::Array{Array{<:AbstractFloat, 1}, 1})
 
 Changes the data in the k point `DataBlock` inside the specified calculation.
 """
-function change_k_points!(input::QEInput, k_grid::Array{Array{<:AbstractFloat, 1}, 1})
+function change_kpoints!(input::QEInput, k_grid::Array{Array{<:AbstractFloat, 1}, 1})
     calc = get_flag(input, :calculation) 
     @assert calc == "'bands'" warn("Expected calculation to be 'bands', got $calc.")
     k_option = :crystal_b
@@ -176,6 +176,7 @@ end
 function change_cell!(input::QEInput, cell_parameters::Matrix; option=:angstrom)
     @assert size(cell_parameters) == (3,3) "Cell parameters has wrong size.\nExpected: (3,3) got ($(size(cell_parameters)[1]), $(size(cell_parameters)[2]))."
     change_data!(input, :cell_parameters, cell_parameters, option=option)
+    remove_flags!(input, [:A, Symbol("celldm(1)")])
 end
 
 

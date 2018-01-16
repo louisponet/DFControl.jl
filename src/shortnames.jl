@@ -11,3 +11,16 @@ const lsfls   = print_flags
 const ldj     = load_job
 const ldsj    = load_server_job
 const sbmj    = submit_job
+export setfls!
+export chfls!
+export rmfls!
+export chflw!
+export prtfls
+export lsfls
+export ldsj 
+export ldj 
+export sbmj
+export prtflw
+export prtdt
+export prti
+export lsfls
