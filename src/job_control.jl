@@ -41,20 +41,6 @@ function get_input(job::DFJob, filenames::Array{String,1})
 end
 
 """
-    create_job(job_name, local_dir, args...; server=get_default_server(),server_dir="")
-
-Creates a new DFJob. 
-"""
-function create_job(job_name, local_dir, args...; server=get_default_server(), server_dir="")
-    local_dir = form_directory(local_dir)
-    inputs    = DFInput[]
-    for arg in args
-        push!(inputs,arg)
-    end
-    return DFJob(job_name, inputs, local_dir, server, server_dir)
-end
-
-"""
     load_job(job_dir::String, T=Float64; job_fuzzy = "job", new_job_name=nothing, new_homedir=nothing, server=get_default_server(),server_dir="")
 
 Loads and returns a DFJob. If local_dir is not specified the job directory will ge registered as the local one.
@@ -300,7 +286,7 @@ end
 change_flags!(job::DFJob, filename::String, args...) = change_flags!(job, [filename], args...)
 
 """
-    set_flags!(job::DFJob, calculations::Array{String,1}, flags...)
+    set_flags!(job::DFJob, calculations::Array{String,1}, flags...; print=true)
 
 Sets the flags in the calculations to the flags specified. 
 This only happens if the specified flags are valid for the calculations.
@@ -308,12 +294,12 @@ If necessary the correct control block will be added to the calculation (e.g. fo
 
 The values that are supplied will be checked whether they are valid.
 """
-function set_flags!(job::DFJob, calculations::Array{String,1}, flags...)
+function set_flags!(job::DFJob, calculations::Array{String,1}, flags...; print=true)
     UNDO_JOBS[job.id] = deepcopy(job)
 
     found_keys = Symbol[]
     for calc in get_inputs(job, calculations)
-        t_found_keys = set_flags!(calc, flags...)
+        t_found_keys = set_flags!(calc, flags..., print=print)
         for key in t_found_keys
             if !(key in found_keys) push!(found_keys, key) end
         end
@@ -323,11 +309,12 @@ function set_flags!(job::DFJob, calculations::Array{String,1}, flags...)
     for (k, v) in flags
         if !(k in found_keys) push!(n_found_keys, k) end
     end
-
-    if 1 < length(n_found_keys)
-        dfprintln("flags '$(join(":" .* String.(n_found_keys),", "))' were not found in the allowed input variables of the specified calculations!")
-    elseif length(n_found_keys) == 1
-        dfprintln("flag '$(":" * String(n_found_keys[1]))' was not found in the allowed input variables of the specified calculations!")
+    if print
+        if 1 < length(n_found_keys)
+            dfprintln("flags '$(join(":" .* String.(n_found_keys),", "))' were not found in the allowed input variables of the specified calculations!")
+        elseif length(n_found_keys) == 1
+            dfprintln("flag '$(":" * String(n_found_keys[1]))' was not found in the allowed input variables of the specified calculations!")
+        end
     end
 end
 set_flags!(job::DFJob, flags...)                   = set_flags!(job, [calc.filename for calc in job.calculations], flags...)

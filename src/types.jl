@@ -226,6 +226,79 @@ mutable struct DFJob
     end
 end
 
+"""
+    DFJob(job_name, local_dir, args...; server=get_default_server(),server_dir="")
+
+Creates a new DFJob. 
+"""
+function DFJob(job_name, local_dir, args...; server=get_default_server(), server_dir="")
+    local_dir = form_directory(local_dir)
+    inputs    = DFInput[]
+    for arg in args
+        push!(inputs,arg)
+    end
+    return DFJob(job_name, inputs, local_dir, server, server_dir)
+end
+
+#TODO implement abinit
+# function DFJob(job_name, local_dir, calculations::Array{Pair{Union{Symbol, String}, Dict},1}, atoms, cell_parameters=eye(3);
+function DFJob(job_name, local_dir, calculations::Array, atoms, cell_parameters=eye(3);
+                    server=get_default_server(), 
+                    server_dir="", 
+                    package=:qe,
+                    bin_dir="~/bin/",
+                    run_command="mpirun -np 24",
+                    common_flags=OrderedDict{Symbol,Any}(),
+                    pseudo_set="",
+                    pseudo_specifier="",
+                    header=get_default_job_header())
+
+    @assert package==:qe "Only implemented for Quantum Espresso!"
+    local_dir = form_directory(local_dir)
+    job_atoms = convert_atoms2symdict(OrderedDict, atoms)
+    job_calcs = DFInput[]
+
+    if typeof(common_flags) != OrderedDict
+        common_flags = OrderedDict(common_flags) 
+    end
+
+    req_flags = OrderedDict(:prefix  => "'$job_name'",
+                     :outdir => "'$server_dir'",
+                     :ibrav   => 0,
+                     :ecutwfc => 25.)
+    merge!(req_flags, common_flags)    
+    for (calc, data) in calculations
+        calc_ = typeof(calc) == String ? Symbol(calc) : calc
+        if in(calc_, [Symbol("vc-relax"), :relax, :scf])
+            k_points = pop!(data, :k_points, [1, 1, 1, 0, 0, 0])
+            k_option = :automatic
+        elseif calc_ == :nscf
+            k_points = pop!(data, :k_points, (1, 1, 1))
+            k_grid   = gen_k_grid(k_points..., :nscf)
+            k_option = :crystal
+        elseif calc_ == :bands
+            k_points = pop!(data, :k_points, [0., 0., 0., 1.])
+            k_option = :crystal_b
+        end
+        flags  = pop!(data, :flags, Dict{Symbol, Any}())
+        push!(flags, :calculation => "'$(string(calc_))'")
+        input_ = QEInput(string(calc_) * ".in",
+                         QEControlBlock[], 
+                         [QEDataBlock(:cell_parameters, :angstrom, cell_parameters),
+                         QEDataBlock(:atomic_species, :none, nothing),
+                         QEDataBlock(:atomic_positions, :angstrom, nothing),
+                         QEDataBlock(:k_points, k_option, k_points)],
+                         run_command,
+                         bin_dir * "pw.x",
+                         true)
+        set_flags!(input_, req_flags..., print=false)
+        set_flags!(input_, flags..., print=false)
+        change_atoms!(input_, job_atoms, pseudo_set = pseudo_set, pseudo_fuzzy = pseudo_specifier, print=false)
+        push!(job_calcs, input_)
+    end
+    return DFJob(job_name, job_calcs, local_dir, server, server_dir, header)
+end
+
 function Base.display(job::DFJob)
     try
         print_info(job)

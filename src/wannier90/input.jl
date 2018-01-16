@@ -3,10 +3,10 @@
 
 Changes the data in the k point `DataBlock` inside the specified calculation.
 """
-function change_kpoints!(input::WannierInput, k_grid::NTuple{3, Int})
+function change_kpoints!(input::WannierInput, k_grid::NTuple{3, Int}; print=true)
     change_flags!(input, :mp_grid => [k_grid...])
     k_points = gen_k_grid(k_grid[1], k_grid[2], k_grid[3], :wan)
-    change_data!(input, :kpoints, k_points)
+    change_data!(input, :kpoints, k_points, print=print)
 end
 
 "Returns the cell parameters in Angstrom."
@@ -22,12 +22,12 @@ function get_cell(input::WannierInput)
     end
 end
 
-function change_cell!(input::WannierInput, cell_parameters; option=:ang)
+function change_cell!(input::WannierInput, cell_parameters; option=:ang, print=true)
     @assert size(cell_parameters) == (3,3) "Cell parameters has wrong size.\nExpected: (3,3) got ($(size(cell_parameters)[1]), $(size(cell_parameters)[2]))."
     if option == :angstrom
         option = :ang
     end
-    change_data!(input, :unit_cell_cart, cell_parameters, option=option)
+    change_data!(input, :unit_cell_cart, cell_parameters, option=option, print=print)
 end
 
 """
@@ -63,16 +63,16 @@ end
 
 Changes the atoms in the input to the specified atoms.
 """
-function change_atoms!(input::WannierInput, atoms::OrderedDict{Symbol,<:Array{<:Point3D,1}}; option=:ang, kwargs...)
+function change_atoms!(input::WannierInput, atoms::OrderedDict{Symbol,<:Array{<:Point3D,1}}; option=:ang, print=true, kwargs...)
     if option == :angstrom
         option = :ang
     end
     for block in input.data_blocks
         if  block.name == :atoms_frac
             block.name = :atoms_cart
-            change_data!(input, :atoms_cart, atoms, option=option)
+            change_data!(input, :atoms_cart, atoms, option=option, print=print)
         elseif block.name == :atoms_cart
-            change_data!(input, :atoms_cart, atoms, option=option)
+            change_data!(input, :atoms_cart, atoms, option=option, print=print)
         end
     end
 end

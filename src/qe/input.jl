@@ -28,9 +28,8 @@ end
 
 Sets the specified flags in the input. A controlblock will be added if necessary.
 """
-function set_flags!(input::QEInput, flags...)
+function set_flags!(input::QEInput, flags...; print=true)
     found_keys = Symbol[]
-    println(input.filename)
     for (flag, value) in flags
         flag_block, flag_info = get_qe_block_variable(input, flag)
         flag_type = flag_info._type
@@ -40,7 +39,7 @@ function set_flags!(input::QEInput, flags...)
             try
                 value = length(value) > 1 ? convert.(flag_type, value) : convert(flag_type, value)
             catch
-                dfprintln("Filename '$(input.filename)':\n  Could not convert '$value' into '$flag_type'.\n    Flag '$flag' not set.\n")
+                if print dfprintln("Filename '$(input.filename)':\n  Could not convert '$value' into '$flag_type'.\n    Flag '$flag' not set.\n") end
                 continue
             end
             
@@ -49,14 +48,14 @@ function set_flags!(input::QEInput, flags...)
                 if haskey(input_block.flags, flag)
                     old_data = input_block.flags[flag]
                     input_block.flags[flag] = value
-                    dfprintln("$(input.filename):\n -> $(input_block.name):\n  -> $flag:\n      $old_data changed to: $value\n")
+                    if print dfprintln("$(input.filename):\n -> $(input_block.name):\n  -> $flag:\n      $old_data changed to: $value\n") end
                 else
                     input_block.flags[flag] = value
-                    dfprintln("$(input.filename):\n -> $(input_block.name):\n  -> $flag:\n      set to: $value\n")
+                    if print dfprintln("$(input.filename):\n -> $(input_block.name):\n  -> $flag:\n      set to: $value\n") end
                 end
             else
-                push!(input.control_blocks, QEControlBlock(flag_block, OrderedDict(flag => value)))
-                dfprintln("$(input.filename):\n -> New ControlBlock $flag_block:\n  -> $flag:\n      set to: $value\n")
+                push!(input.control_blocks, QEControlBlock(flag_block.name, OrderedDict(flag => value)))
+                if print dfprintln("$(input.filename):\n -> New ControlBlock $flag_block:\n  -> $flag:\n      set to: $value\n") end
             end
         end
     end
@@ -131,7 +130,7 @@ end
 
 Changes the data in the k point `DataBlock` inside the specified calculation.
 """
-function change_kpoints!(input::QEInput, k_grid::Union{NTuple{3, Int}, NTuple{6, Int}})
+function change_kpoints!(input::QEInput, k_grid::Union{NTuple{3, Int}, NTuple{6, Int}}; print=true)
     if length(k_grid) == 3
         calc = get_flag(input, :calculation) 
         @assert calc == "'nscf'" warn("Expected calculation to be 'nscf', got $calc.")
@@ -143,7 +142,7 @@ function change_kpoints!(input::QEInput, k_grid::Union{NTuple{3, Int}, NTuple{6,
         k_option = :automatic
         k_points = [k_grid...]
     end
-    change_data!(input, :k_points, k_points, option = k_option)
+    change_data!(input, :k_points, k_points, option = k_option, print=print)
 end
 
 """
@@ -151,11 +150,11 @@ end
 
 Changes the data in the k point `DataBlock` inside the specified calculation.
 """
-function change_kpoints!(input::QEInput, k_grid::Array{Array{<:AbstractFloat, 1}, 1})
+function change_kpoints!(input::QEInput, k_grid::Array{Array{<:AbstractFloat, 1}, 1}; print=true)
     calc = get_flag(input, :calculation) 
     @assert calc == "'bands'" warn("Expected calculation to be 'bands', got $calc.")
     k_option = :crystal_b
-    change_data!(input, :k_points, k_grid, option = k_option)
+    change_data!(input, :k_points, k_grid, option = k_option, print)
 end
 
 "Returns the cell_parameters in Angstrom."
@@ -173,9 +172,9 @@ function get_cell(input::QEInput)
     end
 end
 
-function change_cell!(input::QEInput, cell_parameters::Matrix; option=:angstrom)
+function change_cell!(input::QEInput, cell_parameters::Matrix; option=:angstrom, print=true)
     @assert size(cell_parameters) == (3,3) "Cell parameters has wrong size.\nExpected: (3,3) got ($(size(cell_parameters)[1]), $(size(cell_parameters)[2]))."
-    change_data!(input, :cell_parameters, cell_parameters, option=option)
+    change_data!(input, :cell_parameters, cell_parameters, option=option, print=print)
     remove_flags!(input, [:A, Symbol("celldm(1)")])
 end
 
@@ -218,16 +217,17 @@ If 'default_pseudos' is defined it will look for the pseudo set and also write t
 """
 function change_atoms!(input::QEInput, atoms::OrderedDict{Symbol,<:Array{<:Point3D,1}}; 
                        option       = :angstrom,
-                       pseudo_set  = nothing, 
-                       pseudo_fuzzy = nothing)
+                       pseudo_set   = nothing, 
+                       pseudo_fuzzy = nothing,
+                       print        = true)
 
-    changed = change_data!(input, :atomic_positions, atoms, option=option)
+    changed = change_data!(input, :atomic_positions, atoms, option=option, print=print)
     if !changed
         return
     else
         nat = sum([length(x) for x in values(atoms)])
         ntyp = length(keys(atoms))
-        change_flags!(input, :nat => nat, :ntyp => ntyp)
+        set_flags!(input, :nat => nat, :ntyp => ntyp, print=print)
     end
     if isdefined(:default_pseudos) && pseudo_set != nothing
         atomic_species_OrderedDict = OrderedDict{Symbol,String}()
@@ -235,7 +235,7 @@ function change_atoms!(input::QEInput, atoms::OrderedDict{Symbol,<:Array{<:Point
             atomic_species_OrderedDict[atom] = get_default_pseudo(atom, pseudo_set, pseudo_fuzzy=pseudo_fuzzy)
         end
         change_data!(input, :atomic_species, atomic_species_OrderedDict)
-        change_flags!(input, :pseudo_dir => "'$(default_pseudo_dirs[pseudo_set])'")
+        set_flags!(input, :pseudo_dir => "'$(default_pseudo_dirs[pseudo_set])'",print=print)
     end
 end
 

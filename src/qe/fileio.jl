@@ -114,7 +114,7 @@ function read_qe_output(filename::String, T=Float64)
                     lowest_force      = force
                     out[:total_force] = force
                 end
-            elseif contains(line, "magnetic moment per site")
+            elseif contains(line, "Magnetic moment per site")
                 key = :colin_mag_moments
                 out[key] = T[]
                 line = readline(f)
@@ -380,10 +380,6 @@ function write_qe_input(input::QEInput, filename::String=input.filename)
             write(f, "&$(block.name)\n")
             if block.name == :system
                 atoms = get_data(input, :atomic_positions)
-                nat   = sum(length.([ps for ps in values(atoms)]))
-                ntyp  = length(atoms)
-                write_flag((:nat,  nat))
-                write_flag((:ntyp, ntyp))
             end
             map(write_flag, [(flag, data) for (flag, data) in block.flags])
             write(f, "/\n\n")

@@ -28,7 +28,7 @@ end
 
 Sets the specified flags in the input. A controlblock will be added if necessary.
 """
-function set_flags!(input::Union{AbinitInput, WannierInput}, flags...)
+function set_flags!(input::Union{AbinitInput, WannierInput}, flags...; print=true)
     found_keys = Symbol[]
     flag_func(flag) = typeof(input) == WannierInput ? get_wan_flag_type(flag) : get_abi_flag_type(flag)
     for (flag, value) in flags
@@ -38,17 +38,17 @@ function set_flags!(input::Union{AbinitInput, WannierInput}, flags...)
             try
                 value = length(value) > 1 ? convert.(flag_type, value) : convert(flag_type, value)
             catch
-                dfprintln("Filename '$(input.filename)':\n  Could not convert '$value' into '$flag_type'.\n    Flag '$flag' not set.\n")
+                if print dfprintln("Filename '$(input.filename)':\n  Could not convert '$value' into '$flag_type'.\n    Flag '$flag' not set.\n") end
                 continue
             end
             
             if haskey(input.flags, flag)
                 old_data = input.flags[flag]
                 input.flags[flag] = value
-                dfprintln("$(input.filename):\n  -> $flag:\n      $old_data changed to: $value\n")
+                if print dfprintln("$(input.filename):\n  -> $flag:\n      $old_data changed to: $value\n") end 
             else
                 input.flags[flag] = value
-                dfprintln("$(input.filename):\n  -> $flag:\n      set to: $value\n")
+                if print dfprintln("$(input.filename):\n  -> $flag:\n      set to: $value\n") end
             end
         end
     end
@@ -57,24 +57,26 @@ end
 
 
 """
-    change_data!(input::DFInput, block_name::Symbol, new_block_data; option=nothing)
+    change_data!(input::DFInput, block_name::Symbol, new_block_data; option=nothing, print=true)
 
 Changes the data of the specified 'DataBlock' to the new data. Optionally also changes the 'DataBlock' option.
 """
-function change_data!(input::DFInput, block_name::Symbol, new_block_data; option=nothing)
+function change_data!(input::DFInput, block_name::Symbol, new_block_data; option=nothing, print=true)
     changed = false
     for data_block in input.data_blocks
         if data_block.name == block_name
             if typeof(data_block.data) != typeof(new_block_data) 
-                warn("Overwritten data of type '$(typeof(data_block.data))' with type '$(typeof(new_block_data))'.")
+                if print warn("Overwritten data of type '$(typeof(data_block.data))' with type '$(typeof(new_block_data))'.") end
             end
             old_data        = data_block.data
             data_block.data = new_block_data
-            dfprintln("Block data '$(data_block.name)' in input  '$(input.filename)' is now:")
-            dfprintln(string(data_block.data))
-            dfprintln("")
             data_block.option = option == nothing ? data_block.option : option
-            dfprintln("option: $(data_block.option)")
+            if print 
+                dfprintln("Block data '$(data_block.name)' in input  '$(input.filename)' is now:")
+                dfprintln(string(data_block.data))
+                dfprintln("option: $(data_block.option)")
+                dfprintln("")
+            end
             changed = true
         end
     end
@@ -302,11 +304,11 @@ function print_flags(input::DFInput)
 end
 
 """
-    change_data_option!(job::DFJob, block_symbol::Symbol, option::Symbol)
+    change_data_option!(job::DFJob, block_symbol::Symbol, option::Symbol; print=true)
 
 Changes the option of specified data block.
 """
-function change_data_option!(input::DFInput, block_symbol::Symbol, option::Symbol)
+function change_data_option!(input::DFInput, block_symbol::Symbol, option::Symbol; print=true)
     for fieldname in fieldnames(input)
         field = getfield(input,fieldname)
         if typeof(field) <: Array{<:DataBlock,1}
@@ -314,7 +316,7 @@ function change_data_option!(input::DFInput, block_symbol::Symbol, option::Symbo
                 if block.name == block_symbol
                     old_option   = block.option
                     block.option = option
-                    dfprintln("Option of DataBlock '$(block.name)' in input '$(input.filename)' changed from '$old_option' to '$option'")
+                    if print dfprintln("Option of DataBlock '$(block.name)' in input '$(input.filename)' changed from '$old_option' to '$option'") end
                 end
             end
         end
