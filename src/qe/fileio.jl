@@ -114,20 +114,13 @@ function read_qe_output(filename::String, T=Float64)
                     lowest_force      = force
                     out[:total_force] = force
                 end
-            elseif all(contains.(line,["atom", "Tr[", "up", "down"]))
+            elseif contains(line, "magnetic moment per site")
                 key = :colin_mag_moments
-                if !haskey(out, key)
-                    out[key] = T[]
-                end
-                atn = parse(split(line)[2])
+                out[key] = T[]
                 line = readline(f)
-                while !contains(line, "atomic mag. moment")
+                while !isempty(line)
+                    push!(out[key], parse(split(line)[6]))
                     line = readline(f)
-                end
-                if length(out[key]) < atn
-                    push!(out[key], parse(split(line)[5]))
-                else
-                    out[key][atn] = parse(split(line)[5])
                 end
             end
         end
@@ -241,7 +234,6 @@ Returns a DFInput.
 function read_qe_input(filename, T=Float64::Type; run_command="", run=true, exec="pw.x")
     control_blocks = Array{QEControlBlock,1}()
     data_blocks    = Array{QEDataBlock,1}()
-    
     flags_to_discard = ["nat", "ntyp"]
     open(filename) do f
         line = readline(f)
