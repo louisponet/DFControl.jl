@@ -15,7 +15,7 @@ end
 Reads a generic quantum espresso input, returning a OrderedDictionary with all found data in the file.
 """
 function read_qe_output(filename::String, T=Float64)
-    out = OrderedDict{Symbol,Any}()
+    out = Dict{Symbol,Any}()
     open(filename, "r") do f
         prefac_k     = nothing
         k_eigvals    = Array{Array{T,1},1}()
@@ -114,6 +114,15 @@ function read_qe_output(filename::String, T=Float64)
                     lowest_force      = force
                     out[:total_force] = force
                 end
+            elseif all(contains.(line,["atom", "Tr[", "up", "down"]))
+                if !haskey(out, :mag_moments)
+                    out[:mag_moments] = T[]
+                end
+                line = readline(f)
+                while !contains(line, "atomic mag. moment")
+                    line = readline(f)
+                end
+                push!(out[:mag_moments], split(line)[5])
             end
         end
         
