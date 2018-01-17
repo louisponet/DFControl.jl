@@ -229,6 +229,17 @@ function get_qe_variable_info(input::QEInput, varname)
     end
 end
 
+function get_qe_block_info(block_name::Symbol)
+    for input_info in QEInputInfos
+        for block in [input_info.control_blocks;input_info.data_blocks]
+            if block.name == block_name
+                return block
+            end
+        end
+    end
+end
+
+
 all_qe_block_flags(input::QEInput, block_name) = filter(x -> x.name == block, get_qe_input_info(input).control_blocks)[1].flags
 all_qe_block_flags(exec::AbstractString, block_name) = filter(x -> x.name == block_name, get_qe_input_info(exec).control_blocks)[1].flags
 

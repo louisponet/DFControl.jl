@@ -291,8 +291,8 @@ function DFJob(job_name, local_dir, calculations::Array, atoms, cell_parameters=
         push!(flags, :calculation => "'$(string(calc_))'")
         input_ = QEInput(string(calc_) * ".in",
                          QEControlBlock[], 
-                         [QEDataBlock(:cell_parameters, :angstrom, cell_parameters),
-                         QEDataBlock(:atomic_species, :none, nothing),
+                         [QEDataBlock(:atomic_species, :none, nothing),
+                         QEDataBlock(:cell_parameters, :angstrom, cell_parameters),
                          QEDataBlock(:atomic_positions, :angstrom, nothing),
                          QEDataBlock(:k_points, k_option, k_points)],
                          run_command,
