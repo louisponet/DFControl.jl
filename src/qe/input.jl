@@ -154,6 +154,17 @@ function change_kpoints!(input::QEInput, k_grid::Array{Array{<:AbstractFloat, 1}
     calc = get_flag(input, :calculation) 
     @assert calc == "'bands'" warn("Expected calculation to be 'bands', got $calc.")
     k_option = :crystal_b
+    num_k = 0.0
+    for k in k_grid
+        num_k += k[4]
+    end
+    if num_k > 100.
+        set_flags!(input, :verbosity => "'high'")
+        if print 
+            dfprintln("Set verbosity to high because num_kpoints > 100,\n
+                       otherwise bands won't get printed.")
+        end
+    end
     change_data!(input, :k_points, k_grid, option = k_option, print)
 end
 
@@ -210,16 +221,16 @@ function get_atoms(input::QEInput)
 end
 
 """
-    change_atoms!(input::QEInput, atoms::OrderedDict{Symbol,<:Array{<:Point3D,1}}; option=:angstrom, pseudos_set=nothing, pseudo_fuzzy=nothing)
+    change_atoms!(input::QEInput, atoms::OrderedDict{Symbol,<:Array{<:Point3D,1}}; option=:angstrom, pseudos_set=nothing, pseudo_specifier=nothing)
 
 Changes the atoms in the input to the specified atoms. Also sets up the pseudos if possible.
 If 'default_pseudos' is defined it will look for the pseudo set and also write the correct values inside the 'DataBlock' that defines which pseudopotentials to use.
 """
 function change_atoms!(input::QEInput, atoms::OrderedDict{Symbol,<:Array{<:Point3D,1}}; 
-                       option       = :angstrom,
-                       pseudo_set   = nothing, 
-                       pseudo_fuzzy = nothing,
-                       print        = true)
+                       option           = :angstrom,
+                       pseudo_set       = nothing, 
+                       pseudo_specifier = nothing,
+                       print            = true)
 
     changed = change_data!(input, :atomic_positions, atoms, option=option, print=print)
     if !changed

@@ -278,6 +278,13 @@ function DFJob(job_name, local_dir, calculations::Array, atoms, cell_parameters=
             k_option = :crystal
         elseif calc_ == :bands
             k_points = pop!(data, :k_points, [0., 0., 0., 1.])
+            num_k = 0.0
+            for point in k_points
+                num_k += point[4]
+            end
+            if num_k > 100.
+                push!(data[:flags], :verbosity => "'high'")
+            end
             k_option = :crystal_b
         end
         flags  = pop!(data, :flags, Dict{Symbol, Any}())
@@ -293,7 +300,7 @@ function DFJob(job_name, local_dir, calculations::Array, atoms, cell_parameters=
                          true)
         set_flags!(input_, req_flags..., print=false)
         set_flags!(input_, flags..., print=false)
-        change_atoms!(input_, job_atoms, pseudo_set = pseudo_set, pseudo_fuzzy = pseudo_specifier, print=false)
+        change_atoms!(input_, job_atoms, pseudo_set = pseudo_set, pseudo_specifier = pseudo_specifier, print=false)
         push!(job_calcs, input_)
     end
     return DFJob(job_name, job_calcs, local_dir, server, server_dir, header)
