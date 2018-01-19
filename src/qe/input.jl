@@ -221,7 +221,7 @@ function get_atoms(input::QEInput)
 end
 
 """
-    change_atoms!(input::QEInput, atoms::OrderedDict{Symbol,<:Array{<:Point3D,1}}; option=:angstrom, pseudos_set=nothing, pseudo_specifier=nothing)
+    change_atoms!(input::QEInput, atoms::OrderedDict{Symbol,<:Array{<:Point3D,1}}; option=:angstrom, pseudos_set=nothing, pseudo_specifier="")
 
 Changes the atoms in the input to the specified atoms. Also sets up the pseudos if possible.
 If 'default_pseudos' is defined it will look for the pseudo set and also write the correct values inside the 'DataBlock' that defines which pseudopotentials to use.
@@ -229,7 +229,7 @@ If 'default_pseudos' is defined it will look for the pseudo set and also write t
 function change_atoms!(input::QEInput, atoms::OrderedDict{Symbol,<:Array{<:Point3D,1}}; 
                        option           = :angstrom,
                        pseudo_set       = nothing, 
-                       pseudo_specifier = nothing,
+                       pseudo_specifier = "",
                        print            = true)
 
     changed = change_data!(input, :atomic_positions, atoms, option=option, print=print)
@@ -240,13 +240,20 @@ function change_atoms!(input::QEInput, atoms::OrderedDict{Symbol,<:Array{<:Point
         ntyp = length(keys(atoms))
         set_flags!(input, :nat => nat, :ntyp => ntyp, print=print)
     end
-    if isdefined(:default_pseudos) && pseudo_set != nothing
-        atomic_species_OrderedDict = OrderedDict{Symbol,String}()
-        for atom in keys(atoms)
-            atomic_species_OrderedDict[atom] = get_default_pseudo(atom, pseudo_set, pseudo_fuzzy=pseudo_fuzzy)
-        end
-        change_data!(input, :atomic_species, atomic_species_OrderedDict)
-        set_flags!(input, :pseudo_dir => "'$(default_pseudo_dirs[pseudo_set])'",print=print)
+    if pseudo_set != nothing
+        change_pseudo_set!(input, pseudo_set, pseudo_specifier,print=print)
     end
 end
 
+"Changes the pseudos of the input to the specified default pseudo set."
+function change_pseudo_set!(input::QEInput, pseudo_set, pseudo_specifier=""; print=true)
+    if isdefined(:default_pseudos)
+        atomic_species_dict = OrderedDict{Symbol,String}()
+        atoms = get_atoms(input)
+        for atom in keys(atoms)
+            atomic_species_dict[atom] = get_default_pseudo(atom, pseudo_set, pseudo_specifier=pseudo_specifier)
+        end
+        change_data!(input, :atomic_species, atomic_species_dict)
+        set_flags!(input, :pseudo_dir => "'$(default_pseudo_dirs[pseudo_set])'", print=print)
+    end
+end

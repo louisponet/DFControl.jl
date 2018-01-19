@@ -234,7 +234,6 @@ Returns a DFInput.
 function read_qe_input(filename, T=Float64::Type; run_command="", run=true, exec="pw.x")
     control_blocks = Array{QEControlBlock,1}()
     data_blocks    = Array{QEDataBlock,1}()
-    flags_to_discard = ["nat", "ntyp"]
     open(filename) do f
         line = readline(f)
         while !eof(f)
@@ -254,13 +253,11 @@ function read_qe_input(filename, T=Float64::Type; run_command="", run=true, exec
                         key, val = String.(strip.(split(s, "=")))
                         qe_flag  = Symbol(split(key, "(")[1])
                         flag_type = filter(x->x.name == qe_flag, def_block_flags)
-                        if key in flags_to_discard
-                            continue
-                        elseif length(flag_type) != 0 
+                        if length(flag_type) != 0 
                             t_val = parse_flag_val(val, flag_type[1]._type)
                             flag_OrderedDict[Symbol(key)] = eltype(t_val) == flag_type[1]._type || flag_type[1]._type == String ? t_val : error("Couldn't parse the value of flag '$key' in file '$filename'!") 
                         else
-                            error("Error reading $filename: flag '$key' not found in QE flag OrderedDictionary for control block $c_block_name !")
+                            error("Error reading $filename: flag '$key' not found in QE flag Dictionary for control block $c_block_name !")
                         end
                     end
                     line = readline(f)

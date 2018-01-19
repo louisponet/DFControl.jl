@@ -694,7 +694,7 @@ end
 #---------------------------------END GENERAL SECTION ------------------#
 
 """
-    change_atoms!(job::DFJob, atoms::OrderedDict{Symbol,<:Array{<:Point3D,1}}, pseudo_set_name=:default, pseudo_fuzzy=nothing, option=:angstrom)
+    change_atoms!(job::DFJob, atoms::OrderedDict{Symbol,<:Array{<:Point3D,1}}, pseudo_set_name=:default, pseudo_specifier=nothing, option=:angstrom)
 
 Sets the data blocks with atomic positions to the new one. This is done for all calculations in the job that have that data. 
 If default pseudopotentials are defined, a set can be specified, together with a fuzzy that distinguishes between the possible multiple pseudo strings in the pseudo set. 
@@ -790,6 +790,17 @@ change_data_option!(job::DFJob, filename::String, block_symbol::Symbol, option::
 Changes the option of specified data block in all calculations that have the block.
 """
 change_data_option!(job::DFJob, block_symbol::Symbol, option::Symbol) = change_data_option!(job, [i.filename for i in job.calculations], block_symbol, option)
+
+"Changes the pseudopotentials to the specified one in the default pseudo_set."
+function change_pseudo_set!(job::DFJob, pseudo_set, pseudo_specifier=""; print=true)
+    for calc in job.calculations
+        if typeof(calc) == QEInput
+            change_pseudo_set!(calc, pseudo_set, pseudo_specifier)
+        end
+    end
+end
+
+
 
 """
     replace_header_word!(job::DFJob, word::String, new_word::String)
