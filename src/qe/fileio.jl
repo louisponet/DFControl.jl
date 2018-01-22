@@ -222,25 +222,87 @@ function read_errors(filename::String)
     end
 end
 
-#Incomplete. certain variables are not read well 
+function alat(control_blocks, pop=false)
+    sysblock = block(control_blocks, :system)
+    if sysblock == nothing
+        error("Could not resolve the alat!")
+    end
+    if haskey(sysblock.flags, :A)
+        alat = pop ? pop!(sysblock.flags, :A) : sysblock.flags[:A]
+    elseif haskey(sysblock.flags, celldm_1)
+        alat = pop ? pop!(sysblock.flags, celldm_1) : sysblock.flags[celldm_1]
+        alat *= conversions[:bohr2ang] 
+    else
+        error("So far alat can be specified only through A and celldm(1).")
+    end
+    return alat
+end
 
-#I should use the extra info I got out of the QEControlFlags to parse the correct things!
+#TODO handle more fancy cells
+function extract_cell!(control_blocks, cell_block)
+    if cell_block != nothing
+        alat = 1.0
+        if cell_block.option == :alat
+            @assert pop!(sysblock.flags, :ibrav) == 0 "Only ibrav = 0 allowed for now."
+            alat = alat(control_blocks)
+        
+        elseif cell_block.option == :bohr
+            alat = conversions[:bohr2ang]
+        end
+
+        return alat * cell_block.data
+    end
+end
+         
+function extract_atoms!(control_blocks, atom_block, pseudo_block, cell)
+    atoms = Atom[]
+
+    option = atom_block.option
+    if option == :crystal || option == :crystal_sg
+        primv = cell
+    elseif option == :alat
+        primv = alat(control_blocks, true) * eye(3)
+    elseif option == :bohr 
+        primv = conversions[:bohr2ang] * eye(3)
+    else
+        primv = eye(3)
+    end
+
+    for (at_sym, positions) in atom_block.data
+        pseudo = haskey(pseudo_block.data, at_sym) ? pseudo_block.data[atsym] : error("Please specify a pseudo potential for atom '$at_sym'.")
+        for pos in positions
+            push!(atoms, Atom(at_sym, element(at_sym), primv' * pos, Dict{Symbol, Any}(:pseudo => pseudo)))
+        end
+    end
+
+    return atoms
+end
+
+function extract_structure!(name, control_blocks, cell_block, atom_block, pseudo_block)
+    cell = extract_cell!(control_blocks, cell_block)
+    atoms = extract_atoms!(control_blocks)
+    return Structure(name, cell, atoms)
+end 
+
 """
     read_qe_input(filename, T=Float64)
 
 Reads a Quantum Espresso input file.
 Returns a DFInput.
 """
-function read_qe_input(filename, T=Float64::Type; run_command="", run=true, exec="pw.x")
+function read_qe_input(filename, T=Float64::Type; run_command="", run=true, exec="pw.x", structure_name="NoName")
     control_blocks = Array{QEControlBlock,1}()
     data_blocks    = Array{QEDataBlock,1}()
+    atom_block     = nothing
+    cell_block     = nothing
+    pseudo_block   = nothing
     open(filename) do f
         line = readline(f)
         while !eof(f)
             @label start_label
             if contains(line, "&")
                 c_block_name    = Symbol(lowercase(strip(strip(line), '&')))
-                flag_OrderedDict       = OrderedDict{Symbol,Any}()
+                flag_dict       = OrderedDict{Symbol,Any}()
                 def_block_flags = all_qe_block_flags(exec, c_block_name)
                 line            = readline(f)
                 while strip(line) != "/"
@@ -255,7 +317,7 @@ function read_qe_input(filename, T=Float64::Type; run_command="", run=true, exec
                         flag_type = filter(x->x.name == qe_flag, def_block_flags)
                         if length(flag_type) != 0 
                             t_val = parse_flag_val(val, flag_type[1]._type)
-                            flag_OrderedDict[Symbol(key)] = eltype(t_val) == flag_type[1]._type || flag_type[1]._type == String ? t_val : error("Couldn't parse the value of flag '$key' in file '$filename'!") 
+                            flag_dict[Symbol(key)] = eltype(t_val) == flag_type[1]._type || flag_type[1]._type == String ? t_val : error("Couldn't parse the value of flag '$key' in file '$filename'!") 
                         else
                             error("Error reading $filename: flag '$key' not found in QE flag Dictionary for control block $c_block_name !")
                         end
@@ -272,7 +334,7 @@ function read_qe_input(filename, T=Float64::Type; run_command="", run=true, exec
                 cell[2, 1:3] = parse.(T, split(readline(f)))
                 cell[3, 1:3] = parse.(T, split(readline(f)))
                 line = readline(f)
-                push!(data_blocks, QEDataBlock(:cell_parameters, cell_unit, cell))
+                cell_block = QEDataBlock(:cell_parameters, cell_unit, cell)
                 @goto start_label
                 
             elseif contains(line, "ATOMIC_SPECIES") || contains(line, "atomic_species")
@@ -282,7 +344,7 @@ function read_qe_input(filename, T=Float64::Type; run_command="", run=true, exec
                     pseudos[Symbol(split(line)[1])] = split(line)[end]
                     line = readline(f)
                 end
-                push!(data_blocks, QEDataBlock(:atomic_species, :none, pseudos))
+                pseudo_block = QEDataBlock(:atomic_species, :none, pseudos)
                 @goto start_label
                 
             elseif contains(line, "ATOMIC_POSITIONS") || contains(line, "atomic_positions")
@@ -300,7 +362,7 @@ function read_qe_input(filename, T=Float64::Type; run_command="", run=true, exec
                     end
                     line = readline(f)
                 end
-                push!(data_blocks, QEDataBlock(:atomic_positions, option, atoms))
+                atom_block = QEDataBlock(:atomic_positions, option, atoms)
                 @goto start_label
                 
             elseif contains(line, "K_POINTS") || contains(line, "k_points")
@@ -322,8 +384,11 @@ function read_qe_input(filename, T=Float64::Type; run_command="", run=true, exec
             line = readline(f)
         end
     end
-    return QEInput(splitdir(filename)[2], control_blocks, data_blocks, run_command, exec, run)
+
+    structure = extract_structure!(structure_name, control_blocks, cell_block, atom_block, pseudo_block)
+    return QEInput(splitdir(filename)[2], structure, control_blocks, data_blocks, run_command, exec, run)
 end
+
 
 function write_block_data(f, data)
     if typeof(data) <: Array{Vector{Float64},1} || typeof(data) <: Array{Vector{Float64},1} #k_points

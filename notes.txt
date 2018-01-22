@@ -10,3 +10,16 @@ TODO:
 
 TODO:
     -> autogenerate wannier input
+
+
+structure atom TODO
+
+ - Write QEInput
+ - Write ABI input
+ - Read/Write Wan Input
+ - Load save job
+ - write_job_files
+ - default pseudos
+ - change_atoms 
+ - go through all code basically
+ 

@@ -116,7 +116,7 @@ end
 Prints the flags of the specified block.
 """
 function print_flags(input::QEInput, block_symbol::Symbol)
-    block = filter(x -> x.name == block_symbol, input.control_blocks)[1]
+    block = findfirst(x -> x.name == block_symbol, input.control_blocks)
     dfprintln("  $(block.name):")
     for (flag, value) in block.flags
         dfprintln("    $flag => $value")
@@ -175,7 +175,7 @@ function get_cell(input::QEInput)
         if block.option == :bohr
             alat = conversions[:bohr2ang]
         elseif block.option == :alat
-            alat = get_flag(input,:A) == nothing ? get_flag(input, Symbol("celldm(1)")) * conversions[:bohr2ang] : get_flag(input,:A) 
+            alat = get_flag(input,:A) == nothing ? get_flag(input, celldm_1) * conversions[:bohr2ang] : get_flag(input,:A) 
         else
             alat = 1.0
         end
@@ -186,7 +186,7 @@ end
 function change_cell!(input::QEInput, cell_parameters::Matrix; option=:angstrom, print=true)
     @assert size(cell_parameters) == (3,3) "Cell parameters has wrong size.\nExpected: (3,3) got ($(size(cell_parameters)[1]), $(size(cell_parameters)[2]))."
     change_data!(input, :cell_parameters, cell_parameters, option=option, print=print)
-    remove_flags!(input, [:A, Symbol("celldm(1)")])
+    remove_flags!(input, [:A, celldm_1])
 end
 
 
@@ -200,7 +200,7 @@ function get_atoms(input::QEInput)
     block = get_block(input, :atomic_positions)
     if block != nothing
         if block.option == :alat
-            alat = get_flag(input,:A) == nothing ? get_flag(input, Symbol("celldm(1)")) * conversions[:bohr2ang] : get_flag(input,:A)
+            alat = get_flag(input,:A) == nothing ? get_flag(input, celldm_1) * conversions[:bohr2ang] : get_flag(input,:A)
             cell = eye(3) * alat
         elseif block.option == :bohr
             cell = eye(3) * conversions[:bohr2ang]

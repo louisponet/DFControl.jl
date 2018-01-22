@@ -1,13 +1,12 @@
-#We use angstrom everywhere
-struct Atom{T <: AbstractFloat}
-    id::Symbol
-    element::Element
-    position::Point3D{T}
-end
+
 
 mutable struct Structure{T <: AbstractFloat}
-    name::String
-    cell::Matrix{T}
+    name ::String
+    cell ::Matrix{T}
     atoms::Array{Atom{T}, 1}
+    data ::Dict{Symbol, Any}
 end
 
+Structure(name, cell::Matrix{T}, atoms::Array{Atom{T}, 1}) = Structure(name, cell, atoms, Dict{Symbol, Any}())
+Structure(cell::Matrix{T}, atoms::Array{Atom{T}, 1}) = Structure("NoName", cell, atoms, Dict{Symbol, Any}())
+Structure() = Structure("NoName", eye(3), Atom[], Dict{Symbol, Any}())

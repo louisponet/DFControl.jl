@@ -26,7 +26,13 @@ module DFControl
     export QEInput
     export WannierInput
     export DFJob
+    
+    include("atom.jl")
     export ELEMENTS
+    export Atom
+
+    include("structure.jl")
+    export Structure
 
     include("utils.jl")
     export print_qe_flags
@@ -133,7 +139,6 @@ module DFControl
 
     #no extra functionality, for faster scripting
     include("shortnames.jl")
-    
     init_defaults(default_file)
 
     const UNDO_JOBS = DFJob[]

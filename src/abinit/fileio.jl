@@ -3,17 +3,18 @@
 
 Returns an ABINIT input. We assume that jdtset is on a seperate line. 
 If # DATASET is supplied as first line, it will make sure that amount of datasets are read no matter what ndtset and jdtset are.
-ndtset and jdtset will be taken into account to decide which calculations will be marked as 'should run'.
+`ndtset` and `jdtset` will be taken into account to decide which calculations will be marked as 'should run'.
+Either all structures of the input are the same or all are different, otherwise there will be an error.
 """
 function read_abi_input(filename::String, T=Float64; run_command= "", pseudos=[""])
     datasets = read_abi_datasets(filename, T)
-    structures = extract_structure(datasets...)
-    # structures = [structures[1] ; filter(x -> x[1] != structures[1][1] && x[2] != structures[1][2], structures)]
+    structures = extract_structures!(datasets...)
     inputs = Array{AbinitInput,1}()
     jdtset = Int[]
     ndtset = 0
-    println(datasets)
+    @assert length(datasets) == length(structures) || length(structures) == 1 "All structures of the input have to be the same or all different."
     for (i, data) in enumerate(datasets)
+        structure = length(structures) == 1 ? structures[1] : structures[i]
         file, ext= splitext(filename)
         if length(datasets) > 1
             newfile = file * "$i" * ext
@@ -25,7 +26,7 @@ function read_abi_input(filename::String, T=Float64; run_command= "", pseudos=["
         end
         run = i in jdtset
 
-        push!(inputs, AbinitInput(newfile, datasets, [structures[i][1], structures[i][2],AbinitDataBlock(:pseudos, :pseudos, pseudos)], run_command, run))
+        push!(inputs, AbinitInput(newfile, structure, data, [AbinitDataBlock(:pseudos, :pseudos, pseudos)], run_command, run))
     end
     return inputs
 end
@@ -157,16 +158,19 @@ function read_abi_datasets(filename::String, T=Float64)
     return datasets
 end
 
-function extract_structure(abi_datasets...)
+#Everything is in angstrom, bohr lengths begone foul beasts!
+function extract_structures!(abi_datasets...)
     #possible different structures for different inputs
     out_structures = Array{Array{AbinitDataBlock, 1}, 1}()
+    out_structures = Array{Structure, 1}()
     natom = 1
     znucl = 1
     ntypat =1
     typat = [1]
     for data in abi_datasets
-        acell = pop!(data, :acell, [1.0,1.0,1.0])
-        rprimd = zeros(3,3)
+
+        acell = pop!(data, :acell, [1.0, 1.0, 1.0])
+        rprimd = zeros(3, 3)
         if haskey(data, :angdeg) 
             if haskey(data, :rprim)
                 error("rprim and angdeg cannot be used at the same time.")
@@ -211,7 +215,9 @@ function extract_structure(abi_datasets...)
         else
             rprimd = [acell[i] * reshape(pop!(data,:rprim, eye(3)),3,3)[i,:] for i=1:3]
         end
-        
+        rprimd *= conversions[:bohr2ang]
+
+
         ntypat = pop!(data, :ntypat, ntypat) 
         natom = pop!(data, :natom, natom)
         znucl = pop!(data, :znucl, znucl)
@@ -219,63 +225,55 @@ function extract_structure(abi_datasets...)
         typat = pop!(data, :typat, typat)
         typat = typat[1:ntypat]
         
-        atom_positions = OrderedDict{Symbol,Array{Point3D,1}}()
+        s_atoms = Atom[] 
         if haskey(data, :xred)
-            atoms = reshape(data[:xred],(div(length(data[:xred]),3), 3))
-            pop!(data, :xred)
+            xred = pop!(data, :xred)
+            atoms = reshape(xred, (div(length(xred), 3), 3))
+            
             for i=1:length(typat)
                 typ = typat[i]
                 atom = Array(atoms[i,:])
-                nz = length(filter( x-> x==znucl[typ], znucl))
-                z_sym = nz == 1 ? get_element_sym(znucl[typ]) : Symbol(String(get_element_sym(znucl[typ])) * "$typ")
-                println(rprimd) 
-                if haskey(atom_positions, z_sym)
-                    push!(atom_positions[z_sym], Point3D(atom' * rprimd))
-                else
-                    atom_positions[z_sym] = [Point3D(atom' * rprimd)]
-                end
+                z = znucl[typ]
+                nz = length(filter( x-> x==z, znucl))
+                element = element(z)
+                z_sym = nz == 1 ? element.symbol : Symbol(String(element.symbol) * "$typ") 
+                push!(s_atoms, Atom(z_sym, element, rprimd' * Point3D(atom)))
             end
 
 
         elseif haskey(data, :xcart)
-            atoms = reshape(data[:xcart],(div(length(data[:xcart],3),3), 3))
-            pop!(data, :xcart)
+            xcart = pop!(data, :xcart)
+            atoms = reshape(xcart, (div(length(xcart), 3), 3))
             for (typ, atom) in zip(typat, rows(atoms))
                 z = znucl[typ]
                 nz = length(filter( x-> x==z, znucl))
-                z_sym = nz == 1 ? get_element_sym(z) : Symbol(String(get_element_sym(z)) * "$typ")
-                
-                if haskey(atom_positions, z_sym)
-                    push!(atom_positions[z_sym], Point3D(atom))
-                else
-                    atom_positions[z_sym] = [Point3D(atom)]
-                end
+                element = element(z)
+                z_sym = nz == 1 ? element.symbol : Symbol(String(element.symbol) * "$typ")
+                push!(s_atoms, Atom(z_sym, element, conversions[:bohr2ang] * Point3D(atom)))
             end
 
         elseif haskey(data, :xangst)
-            atoms = reshape(data[:xangst],(div(length(data[:xangst],3),3), 3))
-            pop!(data, :xangst)
+            xangst = pop!(data, :xangst)
+            atoms = reshape(xangst, (div(length(xangst), 3), 3))
             for (typ, atom) in zip(typat, rows(atoms))
                 z = znucl[typ]
                 nz = length(filter( x-> x==z, znucl))
-                z_sym = nz == 1 ? get_element_sym(z) : Symbol(String(get_element_sym(z)) * "$typ")
+                element = element(z)
+                z_sym = nz == 1 ? element.symbol : Symbol(String(element.symbol) * "$typ")
                 
-                if haskey(atom_positions, z_sym)
-                    push!(atom_positions[z_sym], abi_conversions[:ang] * Point3D(atom))
-                else
-                    atom_positions[z_sym] = [abi_conversions[:ang] * Point3D(atom)]
-                end
+                push!(s_atoms, Atom(z_sym, element, Point3D(atom)))
             end
   
         else
             try 
-                rprimd = out_structures[1][1].data
-                atoms = out_structures[1][2].data
+                rprimd = out_structures[1].cell
+                atoms = out_structures[1].atoms
             catch 
                 error("xred|xcart|xangs must be given in input.")
             end
         end
-        push!(out_structures, [AbinitDataBlock(:cell_parameters, :bohr, rprimd), AbinitDataBlock(:atomic_positions, :cart, atoms)])
+        # up till here everything was in bohr, not anymore.
+        push!(out_structures, Structure(rprimd * conversions[:bohr2ang], s_atoms))
     end
     return out_structures
 end

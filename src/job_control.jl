@@ -28,7 +28,7 @@ end
 Returns the input that matches the filename.
 """
 function get_input(job::DFJob, filename::String)
-    return filter(x -> contains(x.filename, filename), job.calculations)[1]
+    return findfirst(x -> contains(x.filename, filename), job.calculations)
 end
 
 """
@@ -944,8 +944,8 @@ function add_wan_calc!(job::DFJob, k_grid;
         alat = 1.0
         if get_flag(scf_calc, :A) != nothing
             alat = get_flag(scf_calc, :A)
-        elseif get_flag(scf_calc, Symbol("celldm(1)")) != nothing
-            alat = conversions[:bohr2ang] * get_flag(scf_calc, Symbol("celldm(1)"))
+        elseif get_flag(scf_calc, celldm_1) != nothing
+            alat = conversions[:bohr2ang] * get_flag(scf_calc, celldm_1)
         else
             error("Please set either flag :A or :celldm(1) when cell_parameters are in alat.")
         end
@@ -962,8 +962,8 @@ function add_wan_calc!(job::DFJob, k_grid;
         alat = 1.0
         if get_flag(scf_calc, :A) != nothing
             alat = get_flag(scf_calc, :A)
-        elseif get_flag(scf_calc, Symbol("celldm(1)")) != nothing
-            alat = conversions[:bohr2ang] * get_flag(scf_calc, Symbol("celldm(1)"))
+        elseif get_flag(scf_calc, celldm_1) != nothing
+            alat = conversions[:bohr2ang] * get_flag(scf_calc, celldm_1)
         else
             error("Please set either flag :A or :celldm(1) when cell_parameters are in alat.")
         end
