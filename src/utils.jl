@@ -127,7 +127,9 @@ end
 
 const assets_dir = joinpath(@__DIR__, "../assets/")
 
-const conversions = OrderedDict{Symbol,Float64}(:bohr2ang => 0.529177)
+const conversions = Dict{Symbol,Float64}(:bohr2ang => 0.529177)
+conversions[:ang2bohr] = 1/conversions[:bohr2ang]
+
 
 function fort2julia(f_type)
     f_type = lowercase(f_type)
@@ -163,41 +165,11 @@ function read_block(f, startstr::String, endstr::String)
     error("Block not found: start = $startstr, end = $endstr.")
 end
 
-function convert_atoms2symdict(T::Type{Union{Dict, OrderedDict}}, atoms::Array{<:AbstractString, 1}, U=Float64)
-    at_dict = T{Symbol, Array{Point3D{U}, 1}}()
-    for line in atoms
-        atsym, x, y, z = parse.(split(line))
-        if !haskey(at_dict, atsym)
-            at_dict[atsym] = [Point3D{U}(x, y, z)]
-        else
-            push!(at_dict[atsym], Point3D{U}(x, y, z))
-        end
-    end
-    return at_dict
-end
 
-function convert_atoms2symdict(T::Union{Type{Dict},Type{OrderedDict}}, atoms::V, U=Float64) where V<:Union{Dict, OrderedDict}
-    at_dict = T{Symbol, Array{Point3D{U}, 1}}()
-    for (atsym, at) in atoms
-        if !haskey(at_dict, atsym)
-            at_dict[atsym] = [Point3D{U}(at[1].x, at[1].y, at[1].z)]
-        end
-        for pos in at[2:end]
-            push!(at_dict[atsym],Point3D{U}(pos.x, pos.y, pos.z))
+function getfirst(f::Function, A)
+    for el in A
+        if f(el)
+            return el
         end
     end
-    return at_dict
-end
-
-function convert_atoms2symdict(T::Union{Type{Dict},Type{OrderedDict}}, atoms::Array{Pair{Symbol, Array{<:AbstractFloat, 1}}, 1}, U=Float64)
-    at_dict = T{Symbol, Array{Point3D{U}, 1}}()
-    for (atsym, at) in atoms
-        if !haskey(at_dict, atsym)
-            at_dict[atsym] = [Point3D{U}(at[1]...)]
-        end
-        for pos in at[2:end]
-            push!(at_dict[atsym],Point3D{U}(pos...))
-        end
-    end
-    return at_dict
 end

@@ -1,7 +1,6 @@
 module DFControl
 # using Reexport
     using RecipesBase
-    using DataStructures: OrderedDict
     
     if Pkg.installed("GtkReactive") != nothing
         using Reactive
@@ -14,7 +13,13 @@ module DFControl
         dfprintln(s::String) = println(s)
     end
     export dfprintln 
+    
     include("types.jl")
+    export ELEMENTS
+    export Atom
+
+    export Structure
+
     export Point3D
     export Band
     export DFBand
@@ -26,7 +31,8 @@ module DFControl
     export QEInput
     export WannierInput
     export DFJob
-    export ELEMENTS
+    
+    
 
     include("utils.jl")
     export print_qe_flags
@@ -133,7 +139,6 @@ module DFControl
 
     #no extra functionality, for faster scripting
     include("shortnames.jl")
-    
     init_defaults(default_file)
 
     const UNDO_JOBS = DFJob[]

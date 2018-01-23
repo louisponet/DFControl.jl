@@ -33,7 +33,11 @@ promote_rule(::Type{Point3D{S}}, ::Type{T}) where {S<:AbstractFloat,T<:Real}    
 promote_rule(::Type{Point3D{S}}, ::Type{Point3D{T}}) where {S<:AbstractFloat,T<:AbstractFloat} = Point3D{promote_type(S,T)}
 
 show(io::IO, x::Point3D)=print(io, "x = $(x.x), y = $(x.y), z = $(x.z)")
+Base.write(f::IO, x::Point3D) = write(f, "$(x.x) $(x.y) $(x.z)")
 
+
+include("atom.jl")
+include("structure.jl")
 abstract type Band end
 
 """
@@ -43,9 +47,9 @@ mutable struct DFBand{T<:AbstractFloat} <: Band
     k_points_cart::Array{Array{T,1},1}
     k_points_cryst::Array{Array{T,1},1}
     eigvals::Array{T,1}
-    extra::OrderedDict{Symbol,Any}
+    extra::Dict{Symbol,Any}
 end
-DFBand(k_points_cart::Array{Array{T,1},1}, k_points_cryst::Array{Array{T,1},1}, eigvals::Array{T,1}) where T <: AbstractFloat = DFBand{T}(k_points_cart, k_points_cryst, eigvals, OrderedDict{Symbol,Any}())
+DFBand(k_points_cart::Array{Array{T,1},1}, k_points_cryst::Array{Array{T,1},1}, eigvals::Array{T,1}) where T <: AbstractFloat = DFBand{T}(k_points_cart, k_points_cryst, eigvals, Dict{Symbol,Any}())
 
 
 function Base.display(band::DFBand{T}) where T <: AbstractFloat
@@ -69,7 +73,7 @@ abstract type ControlBlock <: Block end
 
 mutable struct QEControlBlock <: ControlBlock
     name::Symbol
-    flags::OrderedDict{Symbol,Any}
+    flags::Dict{Symbol,Any}
 end
 
 function Base.display(block::ControlBlock)
@@ -101,6 +105,15 @@ mutable struct AbinitDataBlock <: DataBlock
     data::Any
 end
 
+function block(blocks::Array{<:Block,1}, name::Symbol)
+    found_blocks = filter(x-> x.name == name, blocks)
+    if isempty(found_blocks)
+        return nothing
+    else
+        return found_blocks[1]
+    end
+end
+
 function Base.display(block::DataBlock)
     s = """Block name: $(block.name)
     Block option: $(block.option)
@@ -119,25 +132,26 @@ end
 Represents an input for DFT calculation.
 
 Fieldnames: backend::Symbol -> the DFT package that reads this input.
-control_blocks::OrderedDict{Symbol,OrderedDict{Symbol,Any}} -> maps different control blocks to their OrderedDict of flags and values.
-pseudos::OrderedDict{Symbol,String} -> maps atom symbol to pseudo input file.
-cell_param::OrderedDict{Symbol,Any} -> maps the option of cell_parameters to the cell parameters.
-atoms::OrderedDict{Symbol,Any} -> maps atom symbol to position.
-k_points::OrderedDict{Symbol,Any} -> maps option of k_points to k_points.
+control_blocks::Dict{Symbol,Dict{Symbol,Any}} -> maps different control blocks to their Dict of flags and values.
+pseudos::Dict{Symbol,String} -> maps atom symbol to pseudo input file.
+cell_param::Dict{Symbol,Any} -> maps the option of cell_parameters to the cell parameters.
+atoms::Dict{Symbol,Any} -> maps atom symbol to position.
+k_points::Dict{Symbol,Any} -> maps option of k_points to k_points.
 """
 abstract type DFInput end
 
 mutable struct QEInput <: DFInput
-    filename::String
-    control_blocks::Array{QEControlBlock,1}
-    data_blocks::Array{QEDataBlock,1}
-    run_command::String  #everything before < in the job file
-    exec::String
-    run::Bool
+    filename       ::String
+    structure      ::Union{Structure, Void} 
+    control_blocks ::Array{QEControlBlock,1}
+    data_blocks    ::Array{QEDataBlock,1}
+    run_command    ::String  #everything before < in the job file
+    exec           ::String
+    run            ::Bool
 end
 
 function QEInput(template::QEInput, filename, newflags...; run_command=template.run_command, run=true, new_data...)
-    newflags = OrderedDict(newflags...) # this should handle both OrderedDicts and pairs of flags
+    newflags = Dict(newflags...) # this should handle both OrderedDicts and pairs of flags
 
     input             = deepcopy(template)
     input.filename    = filename
@@ -166,21 +180,22 @@ function QEInput(template::QEInput, filename, newflags...; run_command=template.
 end
 
 mutable struct WannierInput <: DFInput
-    filename::String
-    flags::OrderedDict{Symbol,Any}
-    data_blocks::Array{WannierDataBlock,1}
-    run_command::String
-    run::Bool
-    preprocess::Bool
+    filename    ::String
+    structure   ::Structure
+    flags       ::Dict{Symbol,Any}
+    data_blocks ::Array{WannierDataBlock,1}
+    run_command ::String
+    run         ::Bool
+    preprocess  ::Bool
 end
 
 mutable struct AbinitInput <: DFInput
-    filename::String
-    flags::OrderedDict{Symbol,Any}
-    data_blocks::Array{AbinitDataBlock,1}
-    # structure::PyObject
-    run_command::String
-    run::Bool
+    filename    ::String
+    structure   ::Union{Structure, Void}
+    flags       ::Dict{Symbol,Any}
+    data_blocks ::Array{AbinitDataBlock,1}
+    run_command ::String
+    run         ::Bool
 end 
 
 function Base.display(input::DFInput)
@@ -191,7 +206,7 @@ end
 Represents a full DFT job with multiple input files and calculations.
 
 Fieldnames: name::String
-calculations::OrderedDict{String,DFInput} -> calculation type to DFInput
+calculations::Dict{String,DFInput} -> calculation type to DFInput
 flow::Array{Tuple{String,String},1} -> flow chart of calculations. The tuple is (calculation type, input file).
 local_dir::String -> directory on local machine.
 server::String -> server in full host@server t.
@@ -200,12 +215,13 @@ server_dir::String -> directory on server.
 mutable struct DFJob
     id::Int
     name::String
+    structure::Structure
     calculations::Array{DFInput,1}
     local_dir::String
     server::String
     server_dir::String
     header::Array{String,1}
-    function DFJob(name, calculations, local_dir, server,server_dir, header = get_default_job_header())
+    function DFJob(name, structure, calculations, local_dir, server,server_dir, header = get_default_job_header())
         if local_dir != ""
             local_dir = form_directory(local_dir)
         end
@@ -216,10 +232,10 @@ mutable struct DFJob
 
         test = filter(x -> x.name == name,UNDO_JOBS)
         if length(test) == 1
-            job = new(test[1].id, name, calculations, local_dir, server, server_dir, header)
+            job = new(test[1].id, name, structure, calculations, local_dir, server, server_dir, header)
             UNDO_JOBS[test[1].id] = deepcopy(job)
         elseif length(test) == 0
-            job = new(length(UNDO_JOBS) + 1, name, calculations, local_dir, server, server_dir, header)
+            job = new(length(UNDO_JOBS) + 1, name, structure, calculations, local_dir, server, server_dir, header)
             push!(UNDO_JOBS, deepcopy(job))
         end
         job
@@ -229,15 +245,20 @@ end
 """
     DFJob(job_name, local_dir, args...; server=get_default_server(),server_dir="")
 
-Creates a new DFJob. 
+Creates a new DFJob, possibly passing in calculations in args... 
+When inputs (args) are passed in, the structure of the job will be set to the first found in the inputs. 
 """
 function DFJob(job_name, local_dir, args...; server=get_default_server(), server_dir="")
     local_dir = form_directory(local_dir)
     inputs    = DFInput[]
+    structure = nothing
     for arg in args
         push!(inputs,arg)
+        if arg.structure != nothing && structure != nothing
+            structure = arg.structure
+        end
     end
-    return DFJob(job_name, inputs, local_dir, server, server_dir)
+    return DFJob(job_name, structure, inputs, local_dir, server, server_dir)
 end
 
 #TODO implement abinit
@@ -248,23 +269,22 @@ function DFJob(job_name, local_dir, calculations::Array, atoms, cell_parameters=
                     package=:qe,
                     bin_dir="~/bin/",
                     run_command="mpirun -np 24",
-                    common_flags=OrderedDict{Symbol,Any}(),
-                    pseudo_set="",
+                    common_flags=Dict{Symbol,Any}(),
+                    pseudo_set=:default,
                     pseudo_specifier="",
                     header=get_default_job_header())
 
     @assert package==:qe "Only implemented for Quantum Espresso!"
     local_dir = form_directory(local_dir)
-    job_atoms = convert_atoms2symdict(OrderedDict, atoms)
+    job_atoms = convert_2atoms(atoms,pseudo_set=pseudo_set, pseudo_specifier=pseudo_specifier)
     job_calcs = DFInput[]
-
-    if typeof(common_flags) != OrderedDict
-        common_flags = OrderedDict(common_flags) 
+    structure = Structure()
+    if typeof(common_flags) != Dict
+        common_flags = Dict(common_flags) 
     end
 
-    req_flags = OrderedDict(:prefix  => "'$job_name'",
+    req_flags = Dict(:prefix  => "'$job_name'",
                      :outdir => "'$server_dir'",
-                     :ibrav   => 0,
                      :ecutwfc => 25.)
     merge!(req_flags, common_flags)    
     for (calc, data) in calculations
@@ -290,11 +310,9 @@ function DFJob(job_name, local_dir, calculations::Array, atoms, cell_parameters=
         flags  = pop!(data, :flags, Dict{Symbol, Any}())
         push!(flags, :calculation => "'$(string(calc_))'")
         input_ = QEInput(string(calc_) * ".in",
+                         structure,
                          QEControlBlock[], 
-                         [QEDataBlock(:atomic_species, :none, nothing),
-                         QEDataBlock(:cell_parameters, :angstrom, cell_parameters),
-                         QEDataBlock(:atomic_positions, :angstrom, nothing),
-                         QEDataBlock(:k_points, k_option, k_points)],
+                         [QEDataBlock(:k_points, k_option, k_points)],
                          run_command,
                          bin_dir * "pw.x",
                          true)
@@ -309,33 +327,5 @@ end
 function Base.display(job::DFJob)
     try
         print_info(job)
-    end
-end
-
-"""
-Represents an element.
-"""
-struct Element
-    Z::Int64
-    Name::String
-    atomic_weight::Float64
-end
-
-"""
-Reads all the elements from the file.
-"""
-const ELEMENTS = OrderedDict()
-open(joinpath(@__DIR__, "../assets/elements.txt"), "r") do f
-    while !eof(f)
-        line = split(readline(f))
-        ELEMENTS[Symbol(line[4])] = Element(parse(Int64, line[1]), line[9], parse(Float64, line[10]))
-    end
-end
-
-function get_element_sym(z::Int)
-    for (key,val) in ELEMENTS
-        if val.Z == z
-            return key
-        end
     end
 end

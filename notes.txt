@@ -1,12 +1,12 @@
 TODO:
-    -> implement change_option!
     -> Implement error checking!
 
-TODO:
+structure atom TODO
 
-TODO:
-    -> Fix flags.
-    -> Clear up flag checks in the code now that we have all the input flags!
-
-TODO:
-    -> autogenerate wannier input
+ - Write ABI input
+ - Load save job
+ - write_job_files
+ - default pseudos
+ - change_atoms 
+ - go through all code basically
+ 

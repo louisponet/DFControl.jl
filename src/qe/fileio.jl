@@ -1,3 +1,4 @@
+#this is all pretty hacky with regards to the new structure and atom api. can for sure be a lot better!
 "Quantum espresso card option parser"
 function get_card_option(line)
     if contains(line, "{")
@@ -91,7 +92,7 @@ function read_qe_output(filename::String, T=Float64)
                     elseif contains(line, "ATOMIC_POSITIONS")
                         out[:pos_option]      = get_card_option(line)
                         line  = readline(f)
-                        atoms = OrderedDict{Symbol,Array{Point3D{T},1}}()
+                        atoms = Dict{Symbol,Array{Point3D{T},1}}()
                         while !contains(line, "End")
                             s_line = split(line)
                             key    = Symbol(s_line[1])
@@ -196,6 +197,19 @@ function read_qe_kpdos(filename::String, column=1; fermi=0)
 end
 
 """
+    read_qe_pdos(filename::String, column=1; fermi=0)
+
+Reads partial dos file. One can specify the column of values to read. 
+"""
+function read_qe_pdos(filename::String, column=1; fermi=0)
+    read_tmp = readdlm(filename)
+    energies = read_tmp[:,1] .- fermi
+    values   = read_tmp[:,1+column]
+
+    return energies, values
+end
+
+"""
     read_qe_polarization(filename::String, T=Float64)
 
 Returns the polarization and modulus. 
@@ -222,25 +236,90 @@ function read_errors(filename::String)
     end
 end
 
-#Incomplete. certain variables are not read well 
+function alat(control_blocks, pop=false)
+    sysblock = block(control_blocks, :system)
+    if sysblock == nothing
+        error("Could not resolve the alat!")
+    end
+    if haskey(sysblock.flags, :A)
+        alat = pop ? pop!(sysblock.flags, :A) : sysblock.flags[:A]
+    elseif haskey(sysblock.flags, celldm_1)
+        alat = pop ? pop!(sysblock.flags, celldm_1) : sysblock.flags[celldm_1]
+        alat *= conversions[:bohr2ang] 
+    else
+        error("So far alat can be specified only through A and celldm(1).")
+    end
+    return alat
+end
 
-#I should use the extra info I got out of the QEControlFlags to parse the correct things!
+#TODO handle more fancy cells
+function extract_cell!(control_blocks, cell_block)
+    if cell_block != nothing
+        _alat = 1.0
+        if cell_block.option == :alat
+            @assert pop!(block(control_blocks,:system).flags, :ibrav) == 0 "Only ibrav = 0 allowed for now."
+            _alat = alat(control_blocks)
+        
+        elseif cell_block.option == :bohr
+            _alat = conversions[:bohr2ang]
+        end
+
+        return _alat * cell_block.data
+    end
+end
+         
+function extract_atoms!(control_blocks, atom_block, pseudo_block, cell)
+    atoms = Atom{Float64}[]
+
+    option = atom_block.option
+    if option == :crystal || option == :crystal_sg
+        primv = cell
+    elseif option == :alat
+        primv = alat(control_blocks, true) * eye(3)
+    elseif option == :bohr 
+        primv = conversions[:bohr2ang] * eye(3)
+    else
+        primv = eye(3)
+    end
+
+    for (at_sym, positions) in atom_block.data
+        pseudo = haskey(pseudo_block.data, at_sym) ? pseudo_block.data[at_sym] : error("Please specify a pseudo potential for atom '$at_sym'.")
+        for pos in positions
+            push!(atoms, Atom(at_sym, element(at_sym), primv' * pos, Dict{Symbol, Any}(:pseudo => pseudo)))
+        end
+    end
+
+    return atoms
+end
+
+function extract_structure!(name, control_blocks, cell_block, atom_block, pseudo_block)
+    if atom_block == nothing
+        return nothing
+    end
+    cell = extract_cell!(control_blocks, cell_block)
+    atoms = extract_atoms!(control_blocks, atom_block, pseudo_block, cell)
+    return Structure(name, cell, atoms)
+end 
+
 """
     read_qe_input(filename, T=Float64)
 
 Reads a Quantum Espresso input file.
 Returns a DFInput.
 """
-function read_qe_input(filename, T=Float64::Type; run_command="", run=true, exec="pw.x")
+function read_qe_input(filename, T=Float64::Type; run_command="", run=true, exec="pw.x", structure_name="NoName")
     control_blocks = Array{QEControlBlock,1}()
     data_blocks    = Array{QEDataBlock,1}()
+    atom_block     = nothing
+    cell_block     = nothing
+    pseudo_block   = nothing
     open(filename) do f
         line = readline(f)
         while !eof(f)
             @label start_label
             if contains(line, "&")
                 c_block_name    = Symbol(lowercase(strip(strip(line), '&')))
-                flag_OrderedDict       = OrderedDict{Symbol,Any}()
+                flag_dict       = Dict{Symbol,Any}()
                 def_block_flags = all_qe_block_flags(exec, c_block_name)
                 line            = readline(f)
                 while strip(line) != "/"
@@ -254,15 +333,15 @@ function read_qe_input(filename, T=Float64::Type; run_command="", run=true, exec
                         qe_flag  = Symbol(split(key, "(")[1])
                         flag_type = filter(x->x.name == qe_flag, def_block_flags)
                         if length(flag_type) != 0 
-                            t_val = parse_flag_val(val, flag_type[1]._type)
-                            flag_OrderedDict[Symbol(key)] = eltype(t_val) == flag_type[1]._type || flag_type[1]._type == String ? t_val : error("Couldn't parse the value of flag '$key' in file '$filename'!") 
+                            t_val = parse_flag_val(val, flag_type[1].typ)
+                            flag_dict[Symbol(key)] = eltype(t_val) == flag_type[1].typ || flag_type[1].typ == String ? t_val : error("Couldn't parse the value of flag '$key' in file '$filename'!") 
                         else
                             error("Error reading $filename: flag '$key' not found in QE flag Dictionary for control block $c_block_name !")
                         end
                     end
                     line = readline(f)
                 end
-                push!(control_blocks, QEControlBlock(c_block_name, flag_OrderedDict))
+                push!(control_blocks, QEControlBlock(c_block_name, flag_dict))
                 @goto start_label
                 
             elseif contains(line, "CELL_PARAMETERS") || contains(line, "cell_parameters")
@@ -272,26 +351,27 @@ function read_qe_input(filename, T=Float64::Type; run_command="", run=true, exec
                 cell[2, 1:3] = parse.(T, split(readline(f)))
                 cell[3, 1:3] = parse.(T, split(readline(f)))
                 line = readline(f)
-                push!(data_blocks, QEDataBlock(:cell_parameters, cell_unit, cell))
+                cell_block = QEDataBlock(:cell_parameters, cell_unit, cell)
                 @goto start_label
                 
             elseif contains(line, "ATOMIC_SPECIES") || contains(line, "atomic_species")
                 line    = readline(f)
-                pseudos = OrderedDict{Symbol,String}()
+                pseudos = Dict{Symbol,String}()
                 while length(split(line)) == 3
                     pseudos[Symbol(split(line)[1])] = split(line)[end]
                     line = readline(f)
                 end
-                push!(data_blocks, QEDataBlock(:atomic_species, :none, pseudos))
+                pseudo_block = QEDataBlock(:atomic_species, :none, pseudos)
                 @goto start_label
                 
             elseif contains(line, "ATOMIC_POSITIONS") || contains(line, "atomic_positions")
                 option = get_card_option(line)
-                atoms  = OrderedDict{Symbol,Array{Point3D{T},1}}()
+                atoms  = Dict{Symbol,Array{Point3D{T},1}}()
                 line   = readline(f)
                 while length(split(line)) == 4
                     s_line   = split(line)
                     atom     = Symbol(s_line[1])
+                    x        =
                     position = Point3D(parse(T, s_line[2]), parse(T, s_line[3]), parse(T, s_line[4]))
                     if !haskey(atoms, atom)
                         atoms[atom] = [position]
@@ -300,7 +380,7 @@ function read_qe_input(filename, T=Float64::Type; run_command="", run=true, exec
                     end
                     line = readline(f)
                 end
-                push!(data_blocks, QEDataBlock(:atomic_positions, option, atoms))
+                atom_block = QEDataBlock(:atomic_positions, option, atoms)
                 @goto start_label
                 
             elseif contains(line, "K_POINTS") || contains(line, "k_points")
@@ -322,7 +402,18 @@ function read_qe_input(filename, T=Float64::Type; run_command="", run=true, exec
             line = readline(f)
         end
     end
-    return QEInput(splitdir(filename)[2], control_blocks, data_blocks, run_command, exec, run)
+
+    structure = extract_structure!(structure_name, control_blocks, cell_block, atom_block, pseudo_block)
+    sysblock = block(control_blocks, :system)
+    if sysblock != nothing
+        pop!(sysblock.flags, :ibrav, nothing)
+        pop!(sysblock.flags, :nat, nothing)
+        pop!(sysblock.flags, :ntyp, nothing)
+        pop!(sysblock.flags, :A, nothing)
+        pop!(sysblock.flags, celldm_1, nothing)
+        pop!(sysblock.flags, :celldm, nothing)
+    end
+    return QEInput(splitdir(filename)[2], structure, control_blocks, data_blocks, run_command, exec, run)
 end
 
 function write_block_data(f, data)
@@ -346,20 +437,6 @@ function write_block_data(f, data)
             end
             write(f, "\n")
         end
-    elseif typeof(data) <: OrderedDict{Symbol,<:Any}
-        for (key, value) in data
-            if typeof(value) == String
-                if length(String(key)) > 2 
-                    write(f, "$key $(Float64(ELEMENTS[Symbol(String(key)[1:end - 1])].atomic_weight))   $value\n")
-                else
-                    write(f, "$key $(Float64(ELEMENTS[key].atomic_weight))   $value\n")
-                end
-            elseif typeof(value) <: Array{<:Point3D,1}
-                for at in value
-                    write(f, "$key $(at.x) $(at.y) $(at.z)\n")
-                end
-            end
-        end
     end
 end
 
@@ -373,15 +450,25 @@ function write_qe_input(input::QEInput, filename::String=input.filename)
         write_flag(flag_data) = write_flag_line(f, flag_data[1], flag_data[2])
         write_block(data)     = write_block_data(f, data)
         
+
         for block in input.control_blocks
             write(f, "&$(block.name)\n")
             if block.name == :system
-                atoms = get_data(input, :atomic_positions)
+                structure = input.structure
+                nat   = length(structure.atoms)
+                ntyp  = length(unique_atoms(structure.atoms))
+                A     = 1.0
+                ibrav = 0
+                write(f,"  ibrav = $ibrav\n")
+                write(f,"  A = $A\n")
+                write(f,"  nat = $nat\n")
+                write(f,"  ntyp = $ntyp\n")
             end
             map(write_flag, [(flag, data) for (flag, data) in block.flags])
             write(f, "/\n\n")
         end
         
+        write_structure(f, input)
         for block in input.data_blocks
             if block.option != :none
                 write(f, "$(uppercase(String(block.name))) ($(block.option))\n")
@@ -398,6 +485,35 @@ function write_qe_input(input::QEInput, filename::String=input.filename)
             #write the o_ther cards depending on whether or not they are there
         end
     end
+end
+
+function write_structure(f, input::QEInput)
+    if input.structure == nothing
+        return
+    end
+    structure = input.structure
+    unique_atoms = Symbol[]
+    pseudo_lines = String[]
+    atom_lines   = String[] 
+    for at in structure.atoms 
+        if !in(at.id, unique_atoms)
+            push!(unique_atoms, at.id)
+            push!(pseudo_lines, "$(at.id) $(at.element.atomic_weight)   $(at.data[:pseudo])\n")
+        end
+        push!(atom_lines, "$(at.id)  $(at.position.x) $(at.position.y) $(at.position.z)\n")
+    end
+
+    write(f, "ATOMIC_SPECIES\n")
+    write.(f, pseudo_lines)
+
+    write(f, "\n")
+    write(f, "CELL_PARAMETERS (angstrom)\n")
+    write_cell(f, structure.cell)
+    write(f, "\n")
+    
+    write(f, "ATOMIC_POSITIONS (angstrom) \n")
+    write.(f, atom_lines)
+    write(f, "\n")
 end
 
 

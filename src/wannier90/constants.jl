@@ -1,5 +1,5 @@
 function read_wan_control_flags(filename::String)
-    out = OrderedDict{Symbol,Type}()
+    out = Dict{Symbol,Type}()
     open(filename, "r") do f
         while !eof(f)
             line = readline(f)
