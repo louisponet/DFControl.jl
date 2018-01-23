@@ -181,7 +181,7 @@ function get_default_pseudo(atom::Symbol, pseudo_set_name=:default; pseudo_speci
     end
     if isdefined(:default_pseudos)
         if pseudo_specifier != ""
-            return findfirst(x -> contains(x, pseudo_specifier), default_pseudos[pp_atom][pseudo_set_name])
+            return firstval(x -> contains(x, pseudo_specifier), default_pseudos[pp_atom][pseudo_set_name])
         else
             return default_pseudos[pp_atom][pseudo_set_name][1]
         end

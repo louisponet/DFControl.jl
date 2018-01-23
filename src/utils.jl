@@ -201,3 +201,11 @@ function convert_atoms2symdict(T::Union{Type{Dict},Type{OrderedDict}}, atoms::Ar
     end
     return at_dict
 end
+
+function firstval(f::Funtion, A)
+    for el in A
+        if f(el)
+            return el
+        end
+    end
+end

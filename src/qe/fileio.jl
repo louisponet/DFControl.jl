@@ -196,6 +196,19 @@ function read_qe_kpdos(filename::String, column=1; fermi=0)
 end
 
 """
+    read_qe_pdos(filename::String, column=1; fermi=0)
+
+Reads partial dos file. One can specify the column of values to read. 
+"""
+function read_qe_pdos(filename::String, column=1; fermi=0)
+    read_tmp = readdlm(filename)
+    energies = read_tmp[:,1] .- fermi
+    values   = read_tmp[:,1+column]
+
+    return energies, values
+end
+
+"""
     read_qe_polarization(filename::String, T=Float64)
 
 Returns the polarization and modulus. 

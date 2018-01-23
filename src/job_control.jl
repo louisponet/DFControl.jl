@@ -28,7 +28,7 @@ end
 Returns the input that matches the filename.
 """
 function get_input(job::DFJob, filename::String)
-    return findfirst(x -> contains(x.filename, filename), job.calculations)
+    return firstval(x -> contains(x.filename, filename), job.calculations)
 end
 
 """

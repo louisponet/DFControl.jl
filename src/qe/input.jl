@@ -116,7 +116,7 @@ end
 Prints the flags of the specified block.
 """
 function print_flags(input::QEInput, block_symbol::Symbol)
-    block = findfirst(x -> x.name == block_symbol, input.control_blocks)
+    block = firstval(x -> x.name == block_symbol, input.control_blocks)
     dfprintln("  $(block.name):")
     for (flag, value) in block.flags
         dfprintln("    $flag => $value")

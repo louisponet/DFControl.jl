@@ -195,8 +195,8 @@ const QEInputInfos = begin
     vcat(QEInputInfo.(file_paths), QEInputInfo("pw2wannier90.x", [pw2wannier90_block_info], QEDataBlockInfo[]))
 end
 
-get_qe_input_info(input::QEInput) = findfirst(x-> contains(input.exec, x.exec), QEInputInfos)
-get_qe_input_info(exec::AbstractString) = findfirst(x-> contains(exec, x.exec), QEInputInfos)
+get_qe_input_info(input::QEInput) = firstval(x-> contains(input.exec, x.exec), QEInputInfos)
+get_qe_input_info(exec::AbstractString) = firstval(x-> contains(exec, x.exec), QEInputInfos)
 
 function get_qe_variable(input_info::QEInputInfo, variable_name::Symbol)
     for block in vcat(input_info.control_blocks, input_info.data_blocks)
@@ -245,8 +245,8 @@ function get_qe_block_info(block_name::Symbol)
 end
 
 
-all_qe_block_flags(input::QEInput, block_name) = findfirst(x -> x.name == block, get_qe_input_info(input).control_blocks).flags
-all_qe_block_flags(exec::AbstractString, block_name) = findfirst(x -> x.name == block_name, get_qe_input_info(exec).control_blocks).flags
+all_qe_block_flags(input::QEInput, block_name) = firstval(x -> x.name == block, get_qe_input_info(input).control_blocks).flags
+all_qe_block_flags(exec::AbstractString, block_name) = firstval(x -> x.name == block_name, get_qe_input_info(exec).control_blocks).flags
 
 function get_qe_block_variable(exec::AbstractString, flagname)
     for input_info in QEInputInfos
