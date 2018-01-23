@@ -64,3 +64,32 @@ function unique_atoms(atoms::Array{Atom{T},1 }) where T <: AbstractFloat
     end
     return unique
 end
+
+function convert_2atoms(atoms::Array{<:AbstractString, 1}, U=Float64; pseudo_set=:default, pseudo_specifier="")
+    out_atoms = Atom{U}[]
+    for line in atoms
+        atsym, x, y, z = parse.(split(line))
+        el = element(atsym)
+        pseudo = pseudo_set == :default ? "" : get_default_pseudo(atsym, pseudo_set, pseudo_specifier=pseudo_specifier)
+        if pseudo == "" || pseudo == nothing
+            push!(out_atoms, Atom{U}(atsym, el, Point3D{U}(x, y, z), Dict{Symbol, Any}()))
+        else
+            push!(out_atoms, Atom{U}(atsym, el, Point3D{U}(x, y, z), Dict{Symbol, Any}(:pseudo => pseudo)))
+        end
+    end
+    return out_atoms
+end
+
+function convert_2atoms(atoms, U=Float64; pseudo_set=:default, pseudo_specifier="")
+    out_atoms = Atom{U}[]
+    for (atsym, at) in atoms
+        el = element(atsym)
+        pseudo = pseudo_set == :default ? "" : get_default_pseudo(atsym, pseudo_set, pseudo_specifier=pseudo_specifier)
+        if pseudo == "" || pseudo == nothing
+            push!(out_atoms, Atom{U}(atsym, el, Point3D{U}(x, y, z), Dict{Symbol, Any}()))
+        else
+            push!(out_atoms, Atom{U}(atsym, el, Point3D{U}(x, y, z), Dict{Symbol, Any}(:pseudo => pseudo)))
+        end
+    end
+    return out_atoms
+end

@@ -1,7 +1,6 @@
 module DFControl
 # using Reexport
     using RecipesBase
-    using DataStructures: OrderedDict
     
     if Pkg.installed("GtkReactive") != nothing
         using Reactive

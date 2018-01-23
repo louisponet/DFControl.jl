@@ -1,7 +1,7 @@
 
 
 mutable struct Structure{T <: AbstractFloat}
-    name ::String
+    name ::AbstractString
     cell ::Matrix{T}
     atoms::Array{Atom{T}, 1}
     data ::Dict{Symbol, Any}

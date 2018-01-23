@@ -60,8 +60,8 @@ function read_abi_datasets(filename::String, T=Float64)
 
     lines = split(join(lines," "))
 
-    datasets = Array{OrderedDict{Symbol, Any},1}()
-    dataset = OrderedDict{Symbol,Any}()
+    datasets = Array{Dict{Symbol, Any},1}()
+    dataset = Dict{Symbol,Any}()
     flag = Symbol("start")
     for (l, line) in enumerate(lines)
         if contains(line, "?") || contains(line, ":")
@@ -77,7 +77,7 @@ function read_abi_datasets(filename::String, T=Float64)
             if !isnull(j)
                 dtset = get(j)+1
                 while dtset > length(datasets)
-                    push!(datasets, OrderedDict{Symbol, Any}())
+                    push!(datasets, Dict{Symbol, Any}())
                 end
 
                 dataset = datasets[dtset]
@@ -85,7 +85,7 @@ function read_abi_datasets(filename::String, T=Float64)
             else
                 dtset = 1
                 while dtset > length(datasets)
-                    push!(datasets, OrderedDict{Symbol, Any}())
+                    push!(datasets, Dict{Symbol, Any}())
                 end
                 dataset = datasets[dtset]
                 flag = Symbol(line)
@@ -260,9 +260,7 @@ Either all structures of the input are the same or all are different, otherwise 
 """
 function read_abi_input(filename::String, T=Float64; run_command= "", pseudos=[""], structure_name = "NoName")
     datasets = read_abi_datasets(filename, T)
-    println(datasets[1])
     structures = extract_structures!(datasets..., structure_name = structure_name)
-    println(datasets[1])
     inputs = Array{AbinitInput,1}()
     jdtset = Int[]
     ndtset = 0
@@ -295,9 +293,8 @@ function write_abi_structure(f, structure)
         write(f, "\n")
     end
     write(f,"rprim\n")
-    write(f,"$(structure.cell[1,1]) $(structure.cell[1,2]) $(structure.cell[1,3])\n")
-    write(f,"$(structure.cell[2,1]) $(structure.cell[2,2]) $(structure.cell[2,3])\n")
-    write(f,"$(structure.cell[3,1]) $(structure.cell[3,2]) $(structure.cell[3,3])\n")
+    write_cell(f, structure.cell)
+
     unique = unique_atoms(structure.atoms)
     write(f,"nat $(length(structure.atoms))\n")
     write(f,"ntypat $(length(unique))\n")
@@ -399,7 +396,7 @@ function read_abi_fatbands(filename::String, T=Float64)
         while !eof(f)
             line = readline(f)
             if contains(line, "BAND number")
-                extra   = OrderedDict{Symbol,Any}(:pdos => T[])
+                extra   = Dict{Symbol,Any}(:pdos => T[])
                 eigvals = Array{T,1}()
                 line    = readline(f)
                 while line != "" && line != "&"

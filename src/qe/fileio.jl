@@ -1,3 +1,4 @@
+#this is all pretty hacky with regards to the new structure and atom api. can for sure be a lot better!
 "Quantum espresso card option parser"
 function get_card_option(line)
     if contains(line, "{")
@@ -91,7 +92,7 @@ function read_qe_output(filename::String, T=Float64)
                     elseif contains(line, "ATOMIC_POSITIONS")
                         out[:pos_option]      = get_card_option(line)
                         line  = readline(f)
-                        atoms = OrderedDict{Symbol,Array{Point3D{T},1}}()
+                        atoms = Dict{Symbol,Array{Point3D{T},1}}()
                         while !contains(line, "End")
                             s_line = split(line)
                             key    = Symbol(s_line[1])
@@ -318,7 +319,7 @@ function read_qe_input(filename, T=Float64::Type; run_command="", run=true, exec
             @label start_label
             if contains(line, "&")
                 c_block_name    = Symbol(lowercase(strip(strip(line), '&')))
-                flag_dict       = OrderedDict{Symbol,Any}()
+                flag_dict       = Dict{Symbol,Any}()
                 def_block_flags = all_qe_block_flags(exec, c_block_name)
                 line            = readline(f)
                 while strip(line) != "/"
@@ -355,7 +356,7 @@ function read_qe_input(filename, T=Float64::Type; run_command="", run=true, exec
                 
             elseif contains(line, "ATOMIC_SPECIES") || contains(line, "atomic_species")
                 line    = readline(f)
-                pseudos = OrderedDict{Symbol,String}()
+                pseudos = Dict{Symbol,String}()
                 while length(split(line)) == 3
                     pseudos[Symbol(split(line)[1])] = split(line)[end]
                     line = readline(f)
@@ -365,7 +366,7 @@ function read_qe_input(filename, T=Float64::Type; run_command="", run=true, exec
                 
             elseif contains(line, "ATOMIC_POSITIONS") || contains(line, "atomic_positions")
                 option = get_card_option(line)
-                atoms  = OrderedDict{Symbol,Array{Point3D{T},1}}()
+                atoms  = Dict{Symbol,Array{Point3D{T},1}}()
                 line   = readline(f)
                 while length(split(line)) == 4
                     s_line   = split(line)
@@ -405,10 +406,12 @@ function read_qe_input(filename, T=Float64::Type; run_command="", run=true, exec
     structure = extract_structure!(structure_name, control_blocks, cell_block, atom_block, pseudo_block)
     sysblock = block(control_blocks, :system)
     if sysblock != nothing
-        sysblock.flags[:ibrav] = 0
-        sysblock.flags[:nat]   = length(structure.atoms)
-        sysblock.flags[:ntyp]  = length(unique_atoms(structure.atoms))
-        sysblock.flags[:A]     = 1.0
+        pop!(sysblock.flags, :ibrav, nothing)
+        pop!(sysblock.flags, :nat, nothing)
+        pop!(sysblock.flags, :ntyp, nothing)
+        pop!(sysblock.flags, :A, nothing)
+        pop!(sysblock.flags, celldm_1, nothing)
+        pop!(sysblock.flags, :celldm, nothing)
     end
     return QEInput(splitdir(filename)[2], structure, control_blocks, data_blocks, run_command, exec, run)
 end
@@ -447,8 +450,20 @@ function write_qe_input(input::QEInput, filename::String=input.filename)
         write_flag(flag_data) = write_flag_line(f, flag_data[1], flag_data[2])
         write_block(data)     = write_block_data(f, data)
         
+
         for block in input.control_blocks
             write(f, "&$(block.name)\n")
+            if block.name == :system
+                structure = input.structure
+                nat   = length(structure.atoms)
+                ntyp  = length(unique_atoms(structure.atoms))
+                A     = 1.0
+                ibrav = 0
+                write(f,"  ibrav = $ibrav\n")
+                write(f,"  A = $A\n")
+                write(f,"  nat = $nat\n")
+                write(f,"  ntyp = $ntyp\n")
+            end
             map(write_flag, [(flag, data) for (flag, data) in block.flags])
             write(f, "/\n\n")
         end
@@ -493,9 +508,7 @@ function write_structure(f, input::QEInput)
 
     write(f, "\n")
     write(f, "CELL_PARAMETERS (angstrom)\n")
-    write(f, "$(structure.cell[1,1])  $(structure.cell[1,2])  $(structure.cell[1,3])\n")
-    write(f, "$(structure.cell[2,1])  $(structure.cell[2,2])  $(structure.cell[2,3])\n")
-    write(f, "$(structure.cell[3,1])  $(structure.cell[3,2])  $(structure.cell[3,3])\n")
+    write_cell(f, structure.cell)
     write(f, "\n")
     
     write(f, "ATOMIC_POSITIONS (angstrom) \n")

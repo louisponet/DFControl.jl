@@ -1,3 +1,4 @@
+#THIS IS THE MOST HORRIBLE FUNCTION I HAVE EVER CREATED!!!
 function extract_atoms(atoms_block::T, proj_block::T, cell) where T <: WannierDataBlock
     if atoms_block.name == :atoms_cart
         cell = eye(3)
@@ -9,29 +10,33 @@ function extract_atoms(atoms_block::T, proj_block::T, cell) where T <: WannierDa
     if projections != nothing
         t_ats = Atom{Float64}[]
         for (proj_at, projs) in projections
-            for (pos_at, pos) in atoms
-                if proj_at != pos_at
-                    continue
-                end
-                t_projs = WannProjection[]
-                for proj in projs
-                    size = orbsize(proj)
-                    push!(t_projs, WannProjection(proj, t_start, size, t_start + size - 1))
-                    t_start += size
-                end
-                for p in pos
-                    push!(t_ats, Atom(pos_at, element(pos_at), cell' * p, Dict{Symbol, Any}(:projections => t_projs)))
+            for proj in projs
+                for (pos_at, pos) in atoms
+                    if proj_at != pos_at
+                        continue
+                    end
+                    for ps in pos
+                        size = orbsize(proj)
+                        push!(t_ats, Atom(pos_at, element(pos_at), cell' * ps, Dict{Symbol, Any}(:projections => [WannProjection(proj, t_start, size, t_start + size - 1)])))
+                        t_start += size
+                    end
                 end
             end
         end
         for (pos_at, pos) in atoms
-            for at in t_ats
-                for p in pos
-                    if at.position == cell' * p
-                        println(at)
-                        push!(out_ats, at)
+            for ps in pos
+                same_ats = Atom{Float64}[]
+                for at in t_ats
+                    if at.position == cell' * ps
+                        push!(same_ats, at)
                     end
                 end
+                if length(same_ats) > 1
+                    for at in same_ats[2:end]
+                        push!(same_ats[1].data[:projections], at.data[:projections][1])
+                    end
+                end
+                push!(out_ats, same_ats[1])
             end
         end
     else
@@ -58,14 +63,13 @@ function extract_structure(cell_block::T, atoms_block::T, projections_block::T, 
     return Structure(structure_name, cell, atoms)
 end
 
-
 """
     read_wannier_input(filename::String, T=Float64)
 
 Reads a DFInput from a wannier90 input file.
 """
 function read_wannier_input(filename::String, T=Float64; run_command="", run=true, preprocess=true, structure_name="NoName")
-    flags       = OrderedDict{Symbol,Any}()
+    flags       = Dict{Symbol,Any}()
     data_blocks = Array{WannierDataBlock,1}()
     atoms_block = nothing
     cell_block  = nothing
@@ -84,7 +88,7 @@ function read_wannier_input(filename::String, T=Float64; run_command="", run=tru
                 block_name = Symbol(split(lowercase(line))[end])
                 
                 if block_name == :projections
-                    proj_dict = OrderedDict{Symbol,Array{Symbol,1}}()
+                    proj_dict = Dict{Symbol,Array{Symbol,1}}()
                     line      = readline(f)
                     while !contains(lowercase(line), "end")
                         if contains(line, "!") || line == ""
@@ -141,7 +145,7 @@ function read_wannier_input(filename::String, T=Float64; run_command="", run=tru
             
                 elseif block_name == :atoms_frac || block_name == :atoms_cart
                     line   = readline(f)
-                    atoms  = OrderedDict{Symbol,Array{Point3D{T},1}}()
+                    atoms  = Dict{Symbol,Array{Point3D{T},1}}()
                     option = :ang
                     while !contains(lowercase(line), "end")
                         if contains(line, "!") || line == ""

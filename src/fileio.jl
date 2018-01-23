@@ -185,7 +185,7 @@ All files that are read contain "in".
 This reads QE and wannier90 inputs for now.
 """
 function read_job_file(job_file::String)
-    data = OrderedDict{Symbol,Any}()
+    data = Dict{Symbol,Any}()
     data[:name]         = ""
     data[:header]       = Array{String,1}()
     data[:input_files]  = Array{String,1}() 
@@ -335,3 +335,9 @@ function rm_expr_lhs(filename, lhs)
     end
 end
 
+function write_cell(f::IO, cell::Matrix)
+    @assert size(cell) == (3, 3) "writing cell only allows 3x3 matrices!"
+    write(f, "$(cell[1, 1]) $(cell[1, 2]) $(cell[1, 3])\n")
+    write(f, "$(cell[2, 1]) $(cell[2, 2]) $(cell[2, 3])\n")
+    write(f, "$(cell[3, 1]) $(cell[3, 2]) $(cell[3, 3])\n")
+end

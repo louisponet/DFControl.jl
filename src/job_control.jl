@@ -61,7 +61,7 @@ function load_job(job_dir::String, T=Float64;
     if new_job_name != nothing
         job_name = new_job_name
     elseif haskey(job_data,:name)
-        job_name = job_data[:name]
+        job_name = string(job_data[:name])
     else
         job_name = "noname"
     end
@@ -86,29 +86,45 @@ function load_job(job_dir::String, T=Float64;
                 push!(t_calcs, read_wannier_input(filename * ".win", T,
                                                   run_command = run_command,
                                                   run         = run,
-                                                  preprocess  = true))
+                                                  preprocess  = true,
+                                                  structure_name = job_name))
             else
-                push!(t_calcs,read_wannier_input(filename * ".win", T, 
+                push!(t_calcs, read_wannier_input(filename * ".win", T, 
                                                  run_command = run_command,
                                                  run         = run,
-                                                 preprocess  = false))
+                                                 preprocess  = false,
+                                                 structure_name = job_name))
             end
         elseif contains(run_command, "abinit")
             push!(t_calcs, read_abi_input(filename, T,
                                           run_command = run_command,
-                                          pseudos     = job_data[:abinit_pseudos])...)
+                                          pseudos     = job_data[:abinit_pseudos],
+                                          structure_name = job_name)...)
         else
             _t = split(run_command)
-            push!(t_calcs, read_qe_input(filename, T, run_command=join(_t[1:end-1]," "), exec=_t[end], run=run))
+            push!(t_calcs, read_qe_input(filename, T, run_command=join(_t[1:end-1]," "), exec=_t[end], run=run, structure_name=job_name))
+        end
+    end
+
+    structure = nothing
+    for calc in t_calcs
+        if calc.structure != nothing
+            if structure == nothing
+                structure = calc.structure
+            else
+                for (at1, at2) in zip(structure.atoms, calc.structure.atoms)
+                   merge!(at1.data, at2.data) 
+                end
+                calc.structure = structure
+            end
         end
     end
 
     if new_local_dir != nothing
-        return DFJob(job_name, t_calcs, new_local_dir, server, server_dir, job_data[:header])
+        return DFJob(job_name, structure, t_calcs, new_local_dir, server, server_dir, job_data[:header])
     else
-        return DFJob(job_name, t_calcs, job_dir, server, server_dir, job_data[:header])
+        return DFJob(job_name, structure, t_calcs, job_dir, server, server_dir, job_data[:header])
     end
-
 end
 
 #TODO should we also create a config file for each job with stuff like server etc? and other config things,
@@ -191,11 +207,6 @@ function push_job(job::DFJob, newfiles)
         for file in newfiles
             run(`scp $(job.local_dir * file) $(job.server * ":" * job.server_dir)`)
         end
-        # for calc in job.calculations
-        #     if calc.filename in newfiles
-        #         run(`scp $(job.local_dir * calc.filename) $(job.server * ":" * job.server_dir)`)
-        #     end
-        # end
         run(`scp $(job.local_dir * "job.tt") $(job.server * ":" * job.server_dir)`)
     end
 end
@@ -236,6 +247,7 @@ function add_calculation!(job::DFJob, input::DFInput, index::Int=length(job.calc
 
     UNDO_JOBS[job.id] = deepcopy(job)
 
+    input.structure = job.structure
     input.filename = filename
     input.run_command = run_command
     insert!(job.calculations, index, input)
@@ -244,7 +256,7 @@ function add_calculation!(job::DFJob, input::DFInput, index::Int=length(job.calc
 end
 
 """
-    change_flags!(job::DFJob, new_flag_data::OrderedDict{Symbol,<:Any})
+    change_flags!(job::DFJob, new_flag_data::Dict{Symbol,<:Any})
 
 Looks through all the calculations for the specified flags. If any that match and have the same types are found, they will get replaced by the new ones.
 """
@@ -256,7 +268,7 @@ function change_flags!(job::DFJob, new_flag_data...)
 end
 
 """
-    change_flags!(job::DFJob, calc_filenames, new_flag_data::OrderedDict{Symbol,<:Any})
+    change_flags!(job::DFJob, calc_filenames, new_flag_data::Dict{Symbol,<:Any})
 
 Looks through the given calculations for the specified flags. If any that match and have the same types are found, they will get replaced by the new ones.
 """
@@ -461,11 +473,11 @@ function change_flow!(job::DFJob, filenames::Array{String,1}, should_run)
 end
 
 """
-    change_flow!(job::DFJob, should_runs::Union{OrderedDict{String,Bool},Array{Tuple{String,Bool}}})
+    change_flow!(job::DFJob, should_runs::Union{Dict{String,Bool},Array{Tuple{String,Bool}}})
 
 Runs through the calculation filenames and sets whether it should run or not.
 """
-function change_flow!(job::DFJob, should_runs::Union{OrderedDict{String,Bool},Array{Tuple{String,Bool}}})
+function change_flow!(job::DFJob, should_runs::Union{Dict{String,Bool},Array{Tuple{String,Bool}}})
     UNDO_JOBS[job.id] = deepcopy(job)
 
     for (name, should_run) in should_runs
@@ -694,20 +706,16 @@ end
 #---------------------------------END GENERAL SECTION ------------------#
 
 """
-    change_atoms!(job::DFJob, atoms::OrderedDict{Symbol,<:Array{<:Point3D,1}}, pseudo_set_name=:default, pseudo_specifier=nothing, option=:angstrom)
+    change_atoms!(job::DFJob, atoms::Dict{Symbol,<:Array{<:Point3D,1}}, pseudo_set_name=:default, pseudo_specifier=nothing, option=:angstrom)
 
 Sets the data blocks with atomic positions to the new one. This is done for all calculations in the job that have that data. 
 If default pseudopotentials are defined, a set can be specified, together with a fuzzy that distinguishes between the possible multiple pseudo strings in the pseudo set. 
 These pseudospotentials are then set in all the calculations that need it.
 All flags which specify the number of atoms inside the calculation also gets set to the correct value.
 """
-function change_atoms!(job::DFJob, atoms::OrderedDict{Symbol,<:Array{<:Point3D,1}}; kwargs...)
+function change_atoms!(job::DFJob, atoms::Dict{Symbol,<:Array{<:Point3D,1}}; kwargs...)
     UNDO_JOBS[job.id] = deepcopy(job)
-
-    for calc in job.calculations
-        change_atoms!(calc, atoms; kwargs...)
-    end
-    
+    job.structure.atoms = convert_2atoms(atoms; kwargs...)
 end
 
 """
@@ -716,46 +724,19 @@ end
 Returns a list of the atomic positions in Angstrom.
 """
 function get_atoms(job::DFJob, calc_filename)
-    return get_atoms(get_input(job, calc_filename))
-end
-
-"""
-    sync_atoms!(job::DFJob, template_filename::String; kwargs...)
-
-Syncs the atoms to the atoms specified in the template input.
-"""
-function sync_atoms!(job::DFJob, template_filename::String; kwargs...)
-    input = get_input(job, template_filename)
-    atoms = get_atoms(input)
-    change_atoms!(job, atoms; kwargs...)
-end
-
-"""
-    sync_cell!(job::DFJob, template_filename::String)
-
-Syncs the cells of all input files to the one given in the template file.
-All cells will be put in Angstrom coordinates.
-"""
-function sync_cell!(job::DFJob, template_filename::String)
-    calc = get_input(job, template_filename)
-    cell = get_cell(calc)
-    for input in job.calculations
-        change_cell!(input, cell, option=:angstrom)
-    end
+    return job.structure.atoms 
 end
 
 #automatically sets the cell parameters for the entire job, implement others
 """
     change_cell_parameters!(job::DFJob, cell_param::Matrix)
 
-Changes the cell parameters in all the input files that have that `DataBlock`.
+Changes the cell parameters of the structure in the job.
 """
 function change_cell!(job::DFJob, cell_param::Matrix)
     UNDO_JOBS[job.id] = deepcopy(job)
 
-    for calc in job.calculations
-        change_cell!(calc, cell_param)
-    end
+    job.structure.cell = cell_param
 end
 
 """
@@ -792,15 +773,13 @@ Changes the option of specified data block in all calculations that have the blo
 change_data_option!(job::DFJob, block_symbol::Symbol, option::Symbol) = change_data_option!(job, [i.filename for i in job.calculations], block_symbol, option)
 
 "Changes the pseudopotentials to the specified one in the default pseudo_set."
-function change_pseudo_set!(job::DFJob, pseudo_set, pseudo_specifier=""; print=true)
-    for calc in job.calculations
-        if typeof(calc) == QEInput
-            change_pseudo_set!(calc, pseudo_set, pseudo_specifier)
-        end
+function change_pseudo_set!(job::DFJob, pseudo_set, pseudo_specifier="")
+    for (i, atom) in enumerate(job.structure.atoms)
+        pseudo = get_default_pseudo(atom.id, pseudo_set, pseudo_specifier=pseudo_specifier)
+        atom.data[:pseudo] = pseudo == nothing ? warning("Pseudo for $(atom.id) at index $i not found in set $pseudo_set.") : pseudo
     end
+    set_flags!(job, :pseudo_dir => get_default_pseudo_dir(pseudo_set))
 end
-
-
 
 """
     replace_header_word!(job::DFJob, word::String, new_word::String)
@@ -832,7 +811,7 @@ Prints the possible error messages in outputs of the `DFJob`.
 """
 function get_errors(job::DFJob)
     outputs = pull_outputs(job)
-    errors  = OrderedDict{String,Array{String,1}}()
+    errors  = Dict{String,Array{String,1}}()
     for out in outputs
         errors[out] = read_errors(out)
     end
@@ -869,8 +848,8 @@ function add_wan_calc!(job::DFJob, k_grid;
                        pw2wan_run_command = "mpirun -np 24 ~/bin/pw2wannier90.x",
                        inner_window       = (0., 0.), #no window given 
                        outer_window       = (0., 0.), #no outer window given
-                       wan_flags          = OrderedDict{Symbol, Any}(),
-                       pw2wan_flags       = OrderedDict{Symbol, Any}(),
+                       wan_flags          = Dict{Symbol, Any}(),
+                       pw2wan_flags       = Dict{Symbol, Any}(),
                        projections        = nothing,
                        spin               = false)
             
@@ -878,10 +857,10 @@ function add_wan_calc!(job::DFJob, k_grid;
 
 
     if inner_window != (0., 0.) #scalarize
-        wan_flags = merge!(wan_flags, OrderedDict(:dis_froz_min => inner_window[1], :dis_froz_max => inner_window[2]))
+        wan_flags = merge!(wan_flags, Dict(:dis_froz_min => inner_window[1], :dis_froz_max => inner_window[2]))
     end
     if outer_window != (0., 0.) 
-        wan_flags = merge!(wan_flags, OrderedDict(:dis_win_min => outer_window[1], :dis_win_max => outer_window[2]))
+        wan_flags = merge!(wan_flags, Dict(:dis_win_min => outer_window[1], :dis_win_max => outer_window[2]))
     end
 
     nscf_calc   = nothing
@@ -918,7 +897,7 @@ function add_wan_calc!(job::DFJob, k_grid;
     end
     nscf_calc.run = true
     
-    std_pw2wan_flags = OrderedDict(:prefix    => get_flag(scf_calc, :prefix),
+    std_pw2wan_flags = Dict(:prefix    => get_flag(scf_calc, :prefix),
                            :write_amn => true,
                            :write_mmn => true,
                            :outdir    => "'./'",
@@ -939,61 +918,19 @@ function add_wan_calc!(job::DFJob, k_grid;
         pw2wan_calc = QEInput(pw2wan_file, [QEControlBlock(:inputpp, pw2wan_flags)], QEDataBlock[], pw2wan_run_command, true)
     end
 
-    cell_block = get_block(scf_calc, :cell_parameters)
-    if cell_block.option == :alat
-        alat = 1.0
-        if get_flag(scf_calc, :A) != nothing
-            alat = get_flag(scf_calc, :A)
-        elseif get_flag(scf_calc, celldm_1) != nothing
-            alat = conversions[:bohr2ang] * get_flag(scf_calc, celldm_1)
-        else
-            error("Please set either flag :A or :celldm(1) when cell_parameters are in alat.")
-        end
-        cell = cell_block.data .* alat
-    elseif cell_block.option == :bohr
-        cell = cell_block.data .* conversions[:bohr2ang]
-    else
-        cell = cell_block.data
-    end
-    
-    atoms_block = get_block(scf_calc, :atomic_positions)
-    atoms = deepcopy(atoms_block.data)
-    if atoms_block.option == :alat
-        alat = 1.0
-        if get_flag(scf_calc, :A) != nothing
-            alat = get_flag(scf_calc, :A)
-        elseif get_flag(scf_calc, celldm_1) != nothing
-            alat = conversions[:bohr2ang] * get_flag(scf_calc, celldm_1)
-        else
-            error("Please set either flag :A or :celldm(1) when cell_parameters are in alat.")
-        end
-        atoms[key] = positions .* alat
-    elseif atoms_block.option == :bohr
-        for (key, positions) in atoms_block.data
-            atoms[key] = positions .* conversions[:bohr2ang]
-        end
-    elseif atoms_block.option == :crystal
-        for (key, positions) in atoms_block.data
-            t_pos = Point3D[]
-            for p in positions
-                push!(t_pos, cell * p)
-            end
-            atoms[key] = t_pos
-        end
-    end
     wan_flags[:mp_grid] = typeof(k_grid) <: Array ? k_grid : convert(Array, k_grid)
 
-    data_blocks = [WannierDataBlock(:atoms_cart, :ang, atoms),
-                   WannierDataBlock(:unit_cell_cart, :ang, cell), 
-                   WannierDataBlock(:kpoints, :none, gen_k_grid(k_grid[1], k_grid[2], k_grid[3], :wan))]
+    data_blocks = [WannierDataBlock(:kpoints, :none, gen_k_grid(k_grid[1], k_grid[2], k_grid[3], :wan))]
 
     if isempty(projections)
-        push!(data_blocks, WannierDataBlock(:projections, :random, nothing))
+        for atom in job.structure.atoms
+            atom.data[:projections] = :random
+        end
     else
-        push!(data_blocks, WannierDataBlock(:projections, :none, projections))
+        add_projections(projections, job.structure.atoms)
     end
 
-    wan_calc1 = WannierInput(wan_file, wan_flags, data_blocks, wan_run_command, true, true)
+    wan_calc1 = WannierInput(wan_file, structure, wan_flags, data_blocks, wan_run_command, true, true)
     if spin
         file, ext         = splitext(pw2wan_calc.filename)
         wan_file, wan_ext = splitext(wan_calc1.filename)
@@ -1055,13 +992,9 @@ end
 Checks if there is an scf calculation in the job and takes it's inputs to generate a bands calculation along the given k-path.
 """
 function add_bands_calculation!(job::DFJob, k_path::Array{Array{T,1},1}; filename="bands.in", run=true) where T<:AbstractFloat
-    for calc in job.calculations
-        if typeof(calc) == QEInput && get_flag(calc,:calculation) == "'scf'"
-           bands_calc = QEInput(calc, filename, run=run, k_points=(:crystal_b, k_path))
-           push!(job.calculations, bands_calc)
-           break
-        end
-    end
+    calc = getfirst(x -> typeof(x) == QEInput && get_flag(x, :calculation) == "'scf'", job.calculations)
+    bands_calc = QEInput(calc, filename, run=run, k_points=(:crystal_b, k_path))
+    push!(job.calculations, bands_calc)
 end
 
 get_path(job::DFJob, calc_filename::String) = 
