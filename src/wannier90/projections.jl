@@ -23,17 +23,19 @@ end
 function add_projections(projections, atoms)
     t_start = 1
     for (proj_at, projs) in projections
-        for at in atoms
-            if at.id != proj_at
-                continue
-            end
-            t_projs = WannProjection[]
-            for proj in projs 
+        for proj in projs 
+            for at in atoms
                 size = orbsize(proj)
-                push!(t_projs, WannProjection(proj, t_start, size, t_start + size - 1))
+                if at.id == proj_at
+                    t_proj = WannProjection(proj, t_start, size, t_start + size - 1)
+                    if !haskey(at.data, :projections)
+                        at.data[:projections] = [t_proj]
+                    else
+                        push!(at.data[:projections], t_proj)
+                    end
+                end
                 t_start += size
             end
-            at.data[:projections] = t_projs
         end
     end
 end
