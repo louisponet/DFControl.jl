@@ -14,7 +14,13 @@ module DFControl
         dfprintln(s::String) = println(s)
     end
     export dfprintln 
+    
     include("types.jl")
+    export ELEMENTS
+    export Atom
+
+    export Structure
+
     export Point3D
     export Band
     export DFBand
@@ -27,12 +33,7 @@ module DFControl
     export WannierInput
     export DFJob
     
-    include("atom.jl")
-    export ELEMENTS
-    export Atom
-
-    include("structure.jl")
-    export Structure
+    
 
     include("utils.jl")
     export print_qe_flags

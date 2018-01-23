@@ -33,7 +33,11 @@ promote_rule(::Type{Point3D{S}}, ::Type{T}) where {S<:AbstractFloat,T<:Real}    
 promote_rule(::Type{Point3D{S}}, ::Type{Point3D{T}}) where {S<:AbstractFloat,T<:AbstractFloat} = Point3D{promote_type(S,T)}
 
 show(io::IO, x::Point3D)=print(io, "x = $(x.x), y = $(x.y), z = $(x.z)")
+Base.write(f::IO, x::Point3D) = write(f, "$(x.x) $(x.y) $(x.z)")
 
+
+include("atom.jl")
+include("structure.jl")
 abstract type Band end
 
 """

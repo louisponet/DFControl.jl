@@ -32,7 +32,7 @@ function set_flags!(input::QEInput, flags...; print=true)
     found_keys = Symbol[]
     for (flag, value) in flags
         flag_block, flag_info = get_qe_block_variable(input, flag)
-        flag_type = flag_info._type
+        flag_type = flag_info.typ
         if flag_type != Void
             if !(flag in found_keys) push!(found_keys, flag) end
             
@@ -116,7 +116,7 @@ end
 Prints the flags of the specified block.
 """
 function print_flags(input::QEInput, block_symbol::Symbol)
-    block = firstval(x -> x.name == block_symbol, input.control_blocks)
+    block = getfirst(x -> x.name == block_symbol, input.control_blocks)
     dfprintln("  $(block.name):")
     for (flag, value) in block.flags
         dfprintln("    $flag => $value")

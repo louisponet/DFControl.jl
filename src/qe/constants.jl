@@ -6,7 +6,7 @@ const celldm_1 = Symbol("celldm(1)")
 #this is both flags and variables, QE calls it variables so ok
 struct QEVariableInfo{T}
     name::Symbol
-    _type::Type{T}
+    typ::Type{T}
     # default::Union{T,Void,Symbol}  #check again v0.7 Some
     description::Array{String, 1}
 end
@@ -16,7 +16,7 @@ function read_qe_variable(lines, i)
     name = gensym()
     var_i = i
     i += 2
-    _type = fort2julia(strip_split(lines[i])[2])
+    typ = fort2julia(strip_split(lines[i])[2])
     description = String[]
     # default = nothing
     i += 1
@@ -26,13 +26,13 @@ function read_qe_variable(lines, i)
         #     _t = strip_split(line)[2]
         #     _t = strip(strip(_t,'('),')')
         #     if contains(_t, "D")
-        #         default = parse(_type, replace(_t,"D","e"))
+        #         default = parse(typ, replace(_t,"D","e"))
         #     else
         #         _t = contains(_t,"=") ?split(_t,"=")[end] : _t
-        #         default = _type ==String ? _t : parse(_t)
+        #         default = typ ==String ? _t : parse(_t)
         #         println(_t)
         #         if typeof(default) != Symbol 
-        #             default = convert(_type, default)
+        #             default = convert(typ, default)
         #         end
         #     end
         if contains(line, "Description")
@@ -53,14 +53,14 @@ function read_qe_variable(lines, i)
     if contains(lines[var_i], "Variables")
         spl = [split(x,"(")[1] for x in strip.(filter(x -> !contains(x, "="), split(lines[var_i])[2:end]), ',')]
         names = Symbol.(spl)
-        return [QEVariableInfo{_type}(name, description) for name in names], i
+        return [QEVariableInfo{typ}(name, description) for name in names], i
     else
         if contains(lines[var_i], "(")&& contains(lines[var_i], ")")
             name = Symbol(split(strip_split(lines[var_i], ":")[end],"(")[1])
         else
             name = Symbol(strip_split(lines[var_i],":")[end])
         end
-        return [QEVariableInfo{_type}(name, description)], i
+        return [QEVariableInfo{typ}(name, description)], i
     end
 end
 
@@ -195,8 +195,8 @@ const QEInputInfos = begin
     vcat(QEInputInfo.(file_paths), QEInputInfo("pw2wannier90.x", [pw2wannier90_block_info], QEDataBlockInfo[]))
 end
 
-get_qe_input_info(input::QEInput) = firstval(x-> contains(input.exec, x.exec), QEInputInfos)
-get_qe_input_info(exec::AbstractString) = firstval(x-> contains(exec, x.exec), QEInputInfos)
+get_qe_input_info(input::QEInput) = getfirst(x-> contains(input.exec, x.exec), QEInputInfos)
+get_qe_input_info(exec::AbstractString) = getfirst(x-> contains(exec, x.exec), QEInputInfos)
 
 function get_qe_variable(input_info::QEInputInfo, variable_name::Symbol)
     for block in vcat(input_info.control_blocks, input_info.data_blocks)
@@ -245,8 +245,8 @@ function get_qe_block_info(block_name::Symbol)
 end
 
 
-all_qe_block_flags(input::QEInput, block_name) = firstval(x -> x.name == block, get_qe_input_info(input).control_blocks).flags
-all_qe_block_flags(exec::AbstractString, block_name) = firstval(x -> x.name == block_name, get_qe_input_info(exec).control_blocks).flags
+all_qe_block_flags(input::QEInput, block_name) = getfirst(x -> x.name == block, get_qe_input_info(input).control_blocks).flags
+all_qe_block_flags(exec::AbstractString, block_name) = getfirst(x -> x.name == block_name, get_qe_input_info(exec).control_blocks).flags
 
 function get_qe_block_variable(exec::AbstractString, flagname)
     for input_info in QEInputInfos

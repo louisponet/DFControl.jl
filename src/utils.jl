@@ -127,7 +127,9 @@ end
 
 const assets_dir = joinpath(@__DIR__, "../assets/")
 
-const conversions = OrderedDict{Symbol,Float64}(:bohr2ang => 0.529177)
+const conversions = Dict{Symbol,Float64}(:bohr2ang => 0.529177)
+conversions[:ang2bohr] = 1/conversions[:bohr2ang]
+
 
 function fort2julia(f_type)
     f_type = lowercase(f_type)
@@ -202,7 +204,7 @@ function convert_atoms2symdict(T::Union{Type{Dict},Type{OrderedDict}}, atoms::Ar
     return at_dict
 end
 
-function firstval(f::Funtion, A)
+function getfirst(f::Function, A)
     for el in A
         if f(el)
             return el

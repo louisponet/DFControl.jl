@@ -254,21 +254,21 @@ end
 #TODO handle more fancy cells
 function extract_cell!(control_blocks, cell_block)
     if cell_block != nothing
-        alat = 1.0
+        _alat = 1.0
         if cell_block.option == :alat
-            @assert pop!(sysblock.flags, :ibrav) == 0 "Only ibrav = 0 allowed for now."
-            alat = alat(control_blocks)
+            @assert pop!(block(control_blocks,:system).flags, :ibrav) == 0 "Only ibrav = 0 allowed for now."
+            _alat = alat(control_blocks)
         
         elseif cell_block.option == :bohr
-            alat = conversions[:bohr2ang]
+            _alat = conversions[:bohr2ang]
         end
 
-        return alat * cell_block.data
+        return _alat * cell_block.data
     end
 end
          
 function extract_atoms!(control_blocks, atom_block, pseudo_block, cell)
-    atoms = Atom[]
+    atoms = Atom{Float64}[]
 
     option = atom_block.option
     if option == :crystal || option == :crystal_sg
@@ -282,7 +282,7 @@ function extract_atoms!(control_blocks, atom_block, pseudo_block, cell)
     end
 
     for (at_sym, positions) in atom_block.data
-        pseudo = haskey(pseudo_block.data, at_sym) ? pseudo_block.data[atsym] : error("Please specify a pseudo potential for atom '$at_sym'.")
+        pseudo = haskey(pseudo_block.data, at_sym) ? pseudo_block.data[at_sym] : error("Please specify a pseudo potential for atom '$at_sym'.")
         for pos in positions
             push!(atoms, Atom(at_sym, element(at_sym), primv' * pos, Dict{Symbol, Any}(:pseudo => pseudo)))
         end
@@ -292,8 +292,11 @@ function extract_atoms!(control_blocks, atom_block, pseudo_block, cell)
 end
 
 function extract_structure!(name, control_blocks, cell_block, atom_block, pseudo_block)
+    if atom_block == nothing
+        return nothing
+    end
     cell = extract_cell!(control_blocks, cell_block)
-    atoms = extract_atoms!(control_blocks)
+    atoms = extract_atoms!(control_blocks, atom_block, pseudo_block, cell)
     return Structure(name, cell, atoms)
 end 
 
@@ -329,15 +332,15 @@ function read_qe_input(filename, T=Float64::Type; run_command="", run=true, exec
                         qe_flag  = Symbol(split(key, "(")[1])
                         flag_type = filter(x->x.name == qe_flag, def_block_flags)
                         if length(flag_type) != 0 
-                            t_val = parse_flag_val(val, flag_type[1]._type)
-                            flag_dict[Symbol(key)] = eltype(t_val) == flag_type[1]._type || flag_type[1]._type == String ? t_val : error("Couldn't parse the value of flag '$key' in file '$filename'!") 
+                            t_val = parse_flag_val(val, flag_type[1].typ)
+                            flag_dict[Symbol(key)] = eltype(t_val) == flag_type[1].typ || flag_type[1].typ == String ? t_val : error("Couldn't parse the value of flag '$key' in file '$filename'!") 
                         else
                             error("Error reading $filename: flag '$key' not found in QE flag Dictionary for control block $c_block_name !")
                         end
                     end
                     line = readline(f)
                 end
-                push!(control_blocks, QEControlBlock(c_block_name, flag_OrderedDict))
+                push!(control_blocks, QEControlBlock(c_block_name, flag_dict))
                 @goto start_label
                 
             elseif contains(line, "CELL_PARAMETERS") || contains(line, "cell_parameters")
@@ -367,6 +370,7 @@ function read_qe_input(filename, T=Float64::Type; run_command="", run=true, exec
                 while length(split(line)) == 4
                     s_line   = split(line)
                     atom     = Symbol(s_line[1])
+                    x        =
                     position = Point3D(parse(T, s_line[2]), parse(T, s_line[3]), parse(T, s_line[4]))
                     if !haskey(atoms, atom)
                         atoms[atom] = [position]
@@ -399,9 +403,15 @@ function read_qe_input(filename, T=Float64::Type; run_command="", run=true, exec
     end
 
     structure = extract_structure!(structure_name, control_blocks, cell_block, atom_block, pseudo_block)
+    sysblock = block(control_blocks, :system)
+    if sysblock != nothing
+        sysblock.flags[:ibrav] = 0
+        sysblock.flags[:nat]   = length(structure.atoms)
+        sysblock.flags[:ntyp]  = length(unique_atoms(structure.atoms))
+        sysblock.flags[:A]     = 1.0
+    end
     return QEInput(splitdir(filename)[2], structure, control_blocks, data_blocks, run_command, exec, run)
 end
-
 
 function write_block_data(f, data)
     if typeof(data) <: Array{Vector{Float64},1} || typeof(data) <: Array{Vector{Float64},1} #k_points
@@ -424,20 +434,6 @@ function write_block_data(f, data)
             end
             write(f, "\n")
         end
-    elseif typeof(data) <: OrderedDict{Symbol,<:Any}
-        for (key, value) in data
-            if typeof(value) == String
-                if length(String(key)) > 2 
-                    write(f, "$key $(Float64(ELEMENTS[Symbol(String(key)[1:end - 1])].atomic_weight))   $value\n")
-                else
-                    write(f, "$key $(Float64(ELEMENTS[key].atomic_weight))   $value\n")
-                end
-            elseif typeof(value) <: Array{<:Point3D,1}
-                for at in value
-                    write(f, "$key $(at.x) $(at.y) $(at.z)\n")
-                end
-            end
-        end
     end
 end
 
@@ -453,13 +449,11 @@ function write_qe_input(input::QEInput, filename::String=input.filename)
         
         for block in input.control_blocks
             write(f, "&$(block.name)\n")
-            if block.name == :system
-                atoms = get_data(input, :atomic_positions)
-            end
             map(write_flag, [(flag, data) for (flag, data) in block.flags])
             write(f, "/\n\n")
         end
         
+        write_structure(f, input)
         for block in input.data_blocks
             if block.option != :none
                 write(f, "$(uppercase(String(block.name))) ($(block.option))\n")
@@ -476,6 +470,37 @@ function write_qe_input(input::QEInput, filename::String=input.filename)
             #write the o_ther cards depending on whether or not they are there
         end
     end
+end
+
+function write_structure(f, input::QEInput)
+    if input.structure == nothing
+        return
+    end
+    structure = input.structure
+    unique_atoms = Symbol[]
+    pseudo_lines = String[]
+    atom_lines   = String[] 
+    for at in structure.atoms 
+        if !in(at.id, unique_atoms)
+            push!(unique_atoms, at.id)
+            push!(pseudo_lines, "$(at.id) $(at.element.atomic_weight)   $(at.data[:pseudo])\n")
+        end
+        push!(atom_lines, "$(at.id)  $(at.position.x) $(at.position.y) $(at.position.z)\n")
+    end
+
+    write(f, "ATOMIC_SPECIES\n")
+    write.(f, pseudo_lines)
+
+    write(f, "\n")
+    write(f, "CELL_PARAMETERS (angstrom)\n")
+    write(f, "$(structure.cell[1,1])  $(structure.cell[1,2])  $(structure.cell[1,3])\n")
+    write(f, "$(structure.cell[2,1])  $(structure.cell[2,2])  $(structure.cell[2,3])\n")
+    write(f, "$(structure.cell[3,1])  $(structure.cell[3,2])  $(structure.cell[3,3])\n")
+    write(f, "\n")
+    
+    write(f, "ATOMIC_POSITIONS (angstrom) \n")
+    write.(f, atom_lines)
+    write(f, "\n")
 end
 
 

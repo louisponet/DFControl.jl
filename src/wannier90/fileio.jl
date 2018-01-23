@@ -1,11 +1,75 @@
+function extract_atoms(atoms_block::T, proj_block::T, cell) where T <: WannierDataBlock
+    if atoms_block.name == :atoms_cart
+        cell = eye(3)
+    end
+    projections = proj_block.data
+    atoms = atoms_block.data
+    t_start = 1
+    out_ats = Atom{Float64}[] 
+    if projections != nothing
+        t_ats = Atom{Float64}[]
+        for (proj_at, projs) in projections
+            for (pos_at, pos) in atoms
+                if proj_at != pos_at
+                    continue
+                end
+                t_projs = WannProjection[]
+                for proj in projs
+                    size = orbsize(proj)
+                    push!(t_projs, WannProjection(proj, t_start, size, t_start + size - 1))
+                    t_start += size
+                end
+                for p in pos
+                    push!(t_ats, Atom(pos_at, element(pos_at), cell' * p, Dict{Symbol, Any}(:projections => t_projs)))
+                end
+            end
+        end
+        for (pos_at, pos) in atoms
+            for at in t_ats
+                for p in pos
+                    if at.position == cell' * p
+                        println(at)
+                        push!(out_ats, at)
+                    end
+                end
+            end
+        end
+    else
+        for (pos_at, pos) in atoms 
+            for p in pos
+                push!(out_ats, Atom(pos_at, element(pos_at), cell' * p, Dict{Symbol, Any}(:projections => :random)))
+            end
+        end
+    end
+    return out_ats
+end
+
+function extract_structure(cell_block::T, atoms_block::T, projections_block::T, structure_name="NoName") where T <: Union{WannierDataBlock, Void}
+    if atoms_block == nothing || cell_block == nothing
+        return nothing
+    end
+    if cell_block.option == :ang
+        cell = cell_block.data
+    elseif cell_block.option == :bohr
+        cell = conversions[:bohr2ang] * cell_block.data
+    end
+
+    atoms = extract_atoms(atoms_block, projections_block, cell)
+    return Structure(structure_name, cell, atoms)
+end
+
+
 """
     read_wannier_input(filename::String, T=Float64)
 
 Reads a DFInput from a wannier90 input file.
 """
-function read_wannier_input(filename::String, T=Float64; run_command="", run=true, preprocess=true)
+function read_wannier_input(filename::String, T=Float64; run_command="", run=true, preprocess=true, structure_name="NoName")
     flags       = OrderedDict{Symbol,Any}()
     data_blocks = Array{WannierDataBlock,1}()
+    atoms_block = nothing
+    cell_block  = nothing
+    proj_block  = nothing
     open(filename,"r") do f
         line = readline(f)
         while !eof(f)
@@ -20,7 +84,7 @@ function read_wannier_input(filename::String, T=Float64; run_command="", run=tru
                 block_name = Symbol(split(lowercase(line))[end])
                 
                 if block_name == :projections
-                    proj_OrderedDict = OrderedDict{Symbol,Array{Symbol,1}}()
+                    proj_dict = OrderedDict{Symbol,Array{Symbol,1}}()
                     line      = readline(f)
                     while !contains(lowercase(line), "end")
                         if contains(line, "!") || line == ""
@@ -28,18 +92,18 @@ function read_wannier_input(filename::String, T=Float64; run_command="", run=tru
                             continue
                         end
                         if contains(line, "random")
-                            push!(data_blocks, WannierDataBlock(:projections, :random, nothing))
+                            proj_block = WannierDataBlock(:projections, :random, nothing)
                             line = readline(f)
                             break
                         else
                             split_line      = strip_split(line, ':')
                             atom            = Symbol(split_line[1])
                             projections     = [Symbol(proj) for proj in strip_split(split_line[2], ';')]
-                            proj_OrderedDict[atom] = projections
+                            proj_dict[atom] = projections
                             line = readline(f)
                         end
                     end
-                    push!(data_blocks, WannierDataBlock(:projections, :none, proj_OrderedDict))
+                    proj_block = WannierDataBlock(:projections, :none, proj_dict)
                     @goto start_label
                 
                 elseif block_name == :kpoint_path
@@ -71,7 +135,7 @@ function read_wannier_input(filename::String, T=Float64; run_command="", run=tru
                         cell_param[i, :] = parse_line(T, line)
                         line = readline(f)
                     end
-                    push!(data_blocks, WannierDataBlock(:unit_cell_cart, option, cell_param))
+                    cell_block = WannierDataBlock(:unit_cell_cart, option, cell_param)
                     # line = readline(f)
                     @goto start_label
             
@@ -99,7 +163,7 @@ function read_wannier_input(filename::String, T=Float64; run_command="", run=tru
                         end
                         line = readline(f)
                     end
-                    push!(data_blocks, WannierDataBlock(block_name, option, atoms))
+                    atoms_block = WannierDataBlock(block_name, option, atoms)
                     @goto start_label
         
                 elseif block_name == :kpoints
@@ -140,7 +204,8 @@ function read_wannier_input(filename::String, T=Float64; run_command="", run=tru
             line = readline(f)
         end
     end
-    return WannierInput(splitdir(filename)[2], flags, data_blocks, run_command, run, preprocess)
+    structure = extract_structure(cell_block, atoms_block, proj_block, structure_name)
+    return WannierInput(splitdir(filename)[2], structure, flags, data_blocks, run_command, run, preprocess)
 end
 
 """
@@ -154,6 +219,40 @@ function write_wannier_input(input::WannierInput, filename::String=input.filenam
             write_flag_line(f, flag, value)
         end
         write(f, "\n")
+
+        structure = input.structure
+        if structure != nothing
+            write(f,"begin unit_cell_cart\n")
+            write(f, "$(structure.cell[1,1]) $(structure.cell[1,2]) $(structure.cell[1,3])\n")
+            write(f, "$(structure.cell[2,1]) $(structure.cell[2,2]) $(structure.cell[2,3])\n")
+            write(f, "$(structure.cell[3,1]) $(structure.cell[3,2]) $(structure.cell[3,3])\n")
+            write(f,"end unit_cell_cart\n")
+            write(f, "\n")
+        end
+        write(f, "begin projections\n")
+        for at in unique_atoms(structure.atoms)
+            if (haskey(at.data, :projections) && at.data[:projections] == :random) || !haskey(at.data,:projections)
+                write(f, "random\n")
+                break
+            end
+            write(f, "$(at.id): $(at.data[:projections][1].orb)")
+            if length(at.data[:projections]) > 1
+                for proj in at.data[:projections][2:end]
+                    write(f, ";$(proj.orb)")
+                end
+            end
+            write(f, "\n")
+        end
+        write(f, "end projections\n")
+        
+        write(f, "\n")
+        write(f, "begin atoms_cart\n")
+        for at in structure.atoms
+            write(f, "$(at.id)  $(at.position.x) $(at.position.y) $(at.position.z)\n")
+        end
+        write(f, "end atoms_cart\n")
+        write(f, "\n")
+
         for block in input.data_blocks
             write(f, "begin $(block.name)\n")
             if block.name == :kpoint_path
@@ -161,34 +260,6 @@ function write_wannier_input(input::WannierInput, filename::String=input.filenam
                     letter1, k_points1 = block.data[i]
                     letter2, k_points2 = block.data[i+1]
                     write(f, "$letter1 $(k_points1[1]) $(k_points1[2]) $(k_points1[3]) $letter2 $(k_points2[1]) $(k_points2[2]) $(k_points2[3])\n")
-                end
-                
-            elseif block.name == :projections
-                if typeof(block.data) <: OrderedDict
-                    for (atom,symbols) in block.data
-                        write(f, "$atom: $(symbols[1])")
-                        for sym in symbols[2:end]
-                            write(f, ";$sym")
-                        end
-                        write(f, "\n")
-                    end
-                elseif typeof(block.data) == String
-                    write(f, block.data * "\n")
-                end
-                write(f, "\n")
-                
-            elseif block.name == :unit_cell_cart
-                matrix = block.data
-                write(f, "$(block.option)\n")
-                write(f, "$(matrix[1, 1]) $(matrix[1, 2]) $(matrix[1, 3])\n")
-                write(f, "$(matrix[2, 1]) $(matrix[2, 2]) $(matrix[2, 3])\n")
-                write(f, "$(matrix[3, 1]) $(matrix[3, 2]) $(matrix[3, 3])\n")
-                
-            elseif block.name == :atoms_frac || block.name == :atoms_cart
-                for (atom, points) in block.data
-                    for point in points
-                        write(f, "$atom $(point.x) $(point.y) $(point.z)\n")
-                    end
                 end
                 
             elseif block.name == :kpoints

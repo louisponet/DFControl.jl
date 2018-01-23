@@ -17,7 +17,7 @@ const ELEMENTS = Element[]
 open(joinpath(@__DIR__, "../assets/elements.txt"), "r") do f
     while !eof(f)
         line = split(readline(f))
-        push!(ELEMENTS, Element(Symbol(line[4]), parse(line[1]), line[9], parse(line[10]))
+        push!(ELEMENTS, Element(Symbol(line[4]), parse(line[1]), line[9], parse(line[10])))
     end
 end
 
@@ -53,3 +53,14 @@ Atom(id::Symbol, element::Symbol, position::Point3D)  = Atom(id, ELEMENTS[elemen
 
 positions(atoms::Array{<:Atom, 1}, id::Symbol) = [x.position for x in filter(y -> y.id == id, atoms)]
 
+function unique_atoms(atoms::Array{Atom{T},1 }) where T <: AbstractFloat
+    ids    = Symbol[]
+    unique = Atom{T}[]
+    for at in atoms
+        if !in(at.id, ids) 
+            push!(ids, at.id)
+            push!(unique, at)
+        end
+    end
+    return unique
+end

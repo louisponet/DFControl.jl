@@ -1,22 +1,9 @@
 TODO:
-    -> implement change_option!
     -> Implement error checking!
-
-TODO:
-
-TODO:
-    -> Fix flags.
-    -> Clear up flag checks in the code now that we have all the input flags!
-
-TODO:
-    -> autogenerate wannier input
-
 
 structure atom TODO
 
- - Write QEInput
  - Write ABI input
- - Read/Write Wan Input
  - Load save job
  - write_job_files
  - default pseudos
