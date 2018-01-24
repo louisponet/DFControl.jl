@@ -4,7 +4,7 @@ module DFControl
     
     if Pkg.installed("GtkReactive") != nothing
         using Reactive
-        using Gtk,GtkReactive,Gtk.ShortNames,Colors
+        using Gtk, GtkReactive, Gtk.ShortNames, Colors
         const print_s = Signal("")
         include("dashboard.jl")
         dfprintln(s::String) = push!(print_s,s)
@@ -15,7 +15,7 @@ module DFControl
     export dfprintln 
     
     include("types.jl")
-    export ELEMENTS
+    export element
     export Atom
 
     export Structure
@@ -23,16 +23,6 @@ module DFControl
     export Point3D
     export Band
     export DFBand
-    export ControlBlock
-    export QEControlBlock
-    export DataBlock
-    export QEDataBlock
-    export DFInput
-    export QEInput
-    export WannierInput
-    export DFJob
-    
-    
 
     include("utils.jl")
     export print_qe_flags
@@ -41,10 +31,17 @@ module DFControl
     export apply_fermi_level!
     export gen_k_grid
 
-    
-
     include("input.jl")
+    export ControlBlock
+    export QEControlBlock
+    export DataBlock
+    export QEDataBlock
+    export DFInput
+    export QEInput
+    export WannierInput
+
     include("job_control.jl")
+    export DFJob
     export create_job
     export load_job
     export pull_job
@@ -86,10 +83,8 @@ module DFControl
     export undo
     
     export get_atoms
-    export sync_atoms!
     export change_atoms!
     export get_cell
-    export sync_cell!
     export change_cell!
     export get_path
 

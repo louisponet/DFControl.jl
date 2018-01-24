@@ -17,7 +17,7 @@ function extract_atoms(atoms_block::T, proj_block::T, cell) where T <: WannierDa
                     end
                     for ps in pos
                         size = orbsize(proj)
-                        push!(t_ats, Atom(pos_at, element(pos_at), cell' * ps, Dict{Symbol, Any}(:projections => [WannProjection(proj, t_start, size, t_start + size - 1)])))
+                        push!(t_ats, Atom(pos_at, element(pos_at), cell' * ps, Dict{Symbol, Any}(:projections => [Projection(Orbital(proj), t_start, size, t_start + size - 1)])))
                         t_start += size
                     end
                 end
@@ -227,9 +227,7 @@ function write_wannier_input(input::WannierInput, filename::String=input.filenam
         structure = input.structure
         if structure != nothing
             write(f,"begin unit_cell_cart\n")
-            write(f, "$(structure.cell[1,1]) $(structure.cell[1,2]) $(structure.cell[1,3])\n")
-            write(f, "$(structure.cell[2,1]) $(structure.cell[2,2]) $(structure.cell[2,3])\n")
-            write(f, "$(structure.cell[3,1]) $(structure.cell[3,2]) $(structure.cell[3,3])\n")
+            write_cell(f, structure.cell)
             write(f,"end unit_cell_cart\n")
             write(f, "\n")
         end
