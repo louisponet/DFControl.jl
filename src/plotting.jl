@@ -1,3 +1,5 @@
+
+
 #@TODO create nice ticks when ks=:relative
 """
 Recipe to plot a DFBand. If ks is set to relative it calculates the relative offset of the k_points to the middle of the k-point path and puts that on the x-axis.

@@ -1,6 +1,107 @@
-# All the methods to change the inpût control flags, if you want to implement another kind of calculation add a similar one here!
+#these are all the control blocks, they hold the flags that guide the calculation
+abstract type Block end
+abstract type ControlBlock <: Block end
+
+mutable struct QEControlBlock <: ControlBlock
+    name::Symbol
+    flags::Dict{Symbol,Any}
+end
+
+function Base.display(block::ControlBlock)
+    dfprintln("Block name: $(block.name)\n  flags:")
+    for (flag, value) in block.flags
+        dfprintln("    $flag => $value")
+    end
+    dfprintln("")
+end
+
+#these are all the data blocks, they hold the specific data for the calculation
+abstract type DataBlock <: Block end
+
+mutable struct QEDataBlock <: DataBlock
+    name::Symbol
+    option::Symbol
+    data::Any
+end
+
+mutable struct WannierDataBlock <: DataBlock
+    name::Symbol
+    option::Symbol
+    data::Any
+end
+
+mutable struct AbinitDataBlock <: DataBlock
+    name::Symbol
+    option::Symbol
+    data::Any
+end
+
+function block(blocks::Array{<:Block,1}, name::Symbol)
+    found_blocks = filter(x-> x.name == name, blocks)
+    if isempty(found_blocks)
+        return nothing
+    else
+        return found_blocks[1]
+    end
+end
+
+function Base.display(block::DataBlock)
+    s = """Block name: $(block.name)
+    Block option: $(block.option)
+    Block data:
+    """
+    dfprintln(s)
+    dfprintln(string(block.data) * "\n\n")
+end
+
+function Base.display(blocks::Array{<:Block})
+    map(display, blocks)
+end
+
+"""
+Represents an input for DFT calculation.
+
+Fieldnames: backend::Symbol -> the DFT package that reads this input.
+control_blocks::Dict{Symbol,Dict{Symbol,Any}} -> maps different control blocks to their Dict of flags and values.
+pseudos::Dict{Symbol,String} -> maps atom symbol to pseudo input file.
+cell_param::Dict{Symbol,Any} -> maps the option of cell_parameters to the cell parameters.
+atoms::Dict{Symbol,Any} -> maps atom symbol to position.
+k_points::Dict{Symbol,Any} -> maps option of k_points to k_points.
+"""
+abstract type DFInput end
+
 include("qe/input.jl")
-include("wannier90/input.jl")
+
+mutable struct WannierInput <: DFInput
+    filename    ::String
+    structure   ::Structure
+    flags       ::Dict{Symbol,Any}
+    data_blocks ::Array{WannierDataBlock,1}
+    run_command ::String
+    run         ::Bool
+    preprocess  ::Bool
+end
+
+"""
+    change_kpoints!(input::WannierInput, k_grid::NTuple{3, Int}; print=true)
+
+Changes the data in the k point `DataBlock` inside the specified calculation.
+"""
+function change_kpoints!(input::WannierInput, k_grid::NTuple{3, Int}; print=true)
+    change_flags!(input, :mp_grid => [k_grid...])
+    k_points = gen_k_grid(k_grid[1], k_grid[2], k_grid[3], :wan)
+    change_data!(input, :kpoints, k_points, print=print)
+end
+
+mutable struct AbinitInput <: DFInput
+    filename    ::String
+    structure   ::Union{Structure, Void}
+    flags       ::Dict{Symbol,Any}
+    data_blocks ::Array{AbinitDataBlock,1}
+    run_command ::String
+    run         ::Bool
+end 
+
 """
     change_flags!(input::DFInput, new_flag_data...)
 
@@ -301,6 +402,10 @@ function print_flags(input::DFInput)
         end
     end
     dfprintln("#----------------#\n")
+end
+
+function Base.display(input::DFInput)
+    print_info(input)
 end
 
 """

@@ -1,3 +1,132 @@
+#here all the different input structures for the different calculations go
+"""
+Represents a full DFT job with multiple input files and calculations.
+
+Fieldnames: name::String
+calculations::Dict{String,DFInput} -> calculation type to DFInput
+flow::Array{Tuple{String,String},1} -> flow chart of calculations. The tuple is (calculation type, input file).
+local_dir::String -> directory on local machine.
+server::String -> server in full host@server t.
+server_dir::String -> directory on server.
+"""
+mutable struct DFJob
+    id::Int
+    name::String
+    structure::Structure
+    calculations::Array{DFInput,1}
+    local_dir::String
+    server::String
+    server_dir::String
+    header::Array{String,1}
+    function DFJob(name, structure, calculations, local_dir, server,server_dir, header = get_default_job_header())
+        if local_dir != ""
+            local_dir = form_directory(local_dir)
+        end
+
+        if server_dir != ""
+            server_dir = form_directory(server_dir)
+        end
+
+        test = filter(x -> x.name == name,UNDO_JOBS)
+        if length(test) == 1
+            job = new(test[1].id, name, structure, calculations, local_dir, server, server_dir, header)
+            UNDO_JOBS[test[1].id] = deepcopy(job)
+        elseif length(test) == 0
+            job = new(length(UNDO_JOBS) + 1, name, structure, calculations, local_dir, server, server_dir, header)
+            push!(UNDO_JOBS, deepcopy(job))
+        end
+        job
+    end
+end
+
+"""
+    DFJob(job_name, local_dir, args...; server=get_default_server(),server_dir="")
+
+Creates a new DFJob, possibly passing in calculations in args... 
+When inputs (args) are passed in, the structure of the job will be set to the first found in the inputs. 
+"""
+function DFJob(job_name, local_dir, args...; server=get_default_server(), server_dir="")
+    local_dir = form_directory(local_dir)
+    inputs    = DFInput[]
+    structure = nothing
+    for arg in args
+        push!(inputs,arg)
+        if arg.structure != nothing && structure != nothing
+            structure = arg.structure
+        end
+    end
+    return DFJob(job_name, structure, inputs, local_dir, server, server_dir)
+end
+
+#TODO implement abinit
+# function DFJob(job_name, local_dir, calculations::Array{Pair{Union{Symbol, String}, Dict},1}, atoms, cell_parameters=eye(3);
+function DFJob(job_name, local_dir, calculations::Array, atoms, cell_parameters=eye(3);
+                    server=get_default_server(), 
+                    server_dir="", 
+                    package=:qe,
+                    bin_dir="~/bin/",
+                    run_command="mpirun -np 24",
+                    common_flags=Dict{Symbol,Any}(),
+                    pseudo_set=:default,
+                    pseudo_specifier="",
+                    header=get_default_job_header())
+
+    @assert package==:qe "Only implemented for Quantum Espresso!"
+    local_dir = form_directory(local_dir)
+    job_atoms = convert_2atoms(atoms,pseudo_set=pseudo_set, pseudo_specifier=pseudo_specifier)
+    job_calcs = DFInput[]
+    structure = Structure()
+    if typeof(common_flags) != Dict
+        common_flags = Dict(common_flags) 
+    end
+
+    req_flags = Dict(:prefix  => "'$job_name'",
+                     :outdir => "'$server_dir'",
+                     :ecutwfc => 25.)
+    merge!(req_flags, common_flags)    
+    for (calc, data) in calculations
+        calc_ = typeof(calc) == String ? Symbol(calc) : calc
+        if in(calc_, [Symbol("vc-relax"), :relax, :scf])
+            k_points = pop!(data, :k_points, [1, 1, 1, 0, 0, 0])
+            k_option = :automatic
+        elseif calc_ == :nscf
+            k_points = pop!(data, :k_points, (1, 1, 1))
+            k_grid   = gen_k_grid(k_points..., :nscf)
+            k_option = :crystal
+        elseif calc_ == :bands
+            k_points = pop!(data, :k_points, [0., 0., 0., 1.])
+            num_k = 0.0
+            for point in k_points
+                num_k += point[4]
+            end
+            if num_k > 100.
+                push!(data[:flags], :verbosity => "'high'")
+            end
+            k_option = :crystal_b
+        end
+        flags  = pop!(data, :flags, Dict{Symbol, Any}())
+        push!(flags, :calculation => "'$(string(calc_))'")
+        input_ = QEInput(string(calc_) * ".in",
+                         structure,
+                         QEControlBlock[], 
+                         [QEDataBlock(:k_points, k_option, k_points)],
+                         run_command,
+                         bin_dir * "pw.x",
+                         true)
+        set_flags!(input_, req_flags..., print=false)
+        set_flags!(input_, flags..., print=false)
+        change_atoms!(input_, job_atoms, pseudo_set = pseudo_set, pseudo_specifier = pseudo_specifier, print=false)
+        push!(job_calcs, input_)
+    end
+    return DFJob(job_name, job_calcs, local_dir, server, server_dir, header)
+end
+
+function Base.display(job::DFJob)
+    try
+        print_info(job)
+    end
+end
+
 #-------------------BEGINNING GENERAL SECTION-------------#
 #all get_inputs return arrays, get_input returns the first element if multiple are found
 """

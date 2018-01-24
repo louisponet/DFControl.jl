@@ -1,3 +1,41 @@
+mutable struct QEInput <: DFInput
+    filename       ::String
+    structure      ::Union{Structure, Void} 
+    control_blocks ::Array{QEControlBlock,1}
+    data_blocks    ::Array{QEDataBlock,1}
+    run_command    ::String  #everything before < in the job file
+    exec           ::String
+    run            ::Bool
+end
+
+function QEInput(template::QEInput, filename, newflags...; run_command=template.run_command, run=true, new_data...)
+    newflags = Dict(newflags...) # this should handle both OrderedDicts and pairs of flags
+
+    input             = deepcopy(template)
+    input.filename    = filename
+    input.run_command = run_command
+    set_flags!(input, newflags...)
+
+    for (block_name, block_info) in new_data
+        if get_block(input, block_name) != nothing
+            block = get_block(input, block_name)
+            if length(block_info) == 1
+                block.option = :none 
+                block.data   = block_info
+            elseif length(block_info) == 2
+                block.option = block_info[1]
+                block.data   = block_info[2]
+            end
+        else
+            if length(block_info) == 1
+                add_block!(input, QEDataBlock(block_name, :none, block_info))
+            elseif length(block_info) == 2
+                add_block!(input, QEDataBlock(block_name, block_info[1], block_info[2]))
+            end
+        end
+    end
+    return input
+end
 
 """
     change_flags!(input::QEInput, new_flag_data...)

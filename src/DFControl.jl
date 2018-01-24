@@ -41,28 +41,7 @@ module DFControl
     export apply_fermi_level!
     export gen_k_grid
 
-    include("constants.jl")
-    export AbinitFlags
-    export AbinitDatabase
-    #@Cleanup this should all be just one thing without qe
-    #@Cleanup what do we actually want to have as frontend?
-    include("fileio.jl")
-    export read_abi_input
-    export read_abi_output
-    export read_abi_fatbands
-    export read_abi_ebands
-    export read_abi_eig
-    export read_qe_bands_file
-    export read_ks_from_qe_bands_file
-    export read_fermi_from_qe_file
-    export read_qe_kpdos
-    export read_qe_polarization
-    export read_qe_input
-    export read_qe_output
-    export read_wannier_input
-    export write_input
-    export write_job_files
-    export expr2file
+    
 
     include("input.jl")
     include("job_control.jl")
@@ -113,6 +92,28 @@ module DFControl
     export sync_cell!
     export change_cell!
     export get_path
+
+    include("constants.jl")
+    export AbinitFlags
+    export AbinitDatabase
+
+    include("fileio.jl")
+    export read_abi_input
+    export read_abi_output
+    export read_abi_fatbands
+    export read_abi_ebands
+    export read_abi_eig
+    export read_qe_bands_file
+    export read_ks_from_qe_bands_file
+    export read_fermi_from_qe_file
+    export read_qe_kpdos
+    export read_qe_polarization
+    export read_qe_input
+    export read_qe_output
+    export read_wannier_input
+    export write_input
+    export write_job_files
+    export expr2file
 
     include("plotting.jl")
     export plot_qe_bands
