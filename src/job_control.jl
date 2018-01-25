@@ -242,7 +242,11 @@ function load_job(job_dir::String, T=Float64;
                 structure = calc.structure
             else
                 for (at1, at2) in zip(structure.atoms, calc.structure.atoms)
-                   merge!(at1.data, at2.data) 
+                    for name in fieldnames(typeof(at1))
+                        if (isdefined(at2, name) && !isdefined(at1, name)) || (iszero(getfield(at1, name)) && !iszero(getfield(at2, name)))
+                            at1[name] = at2[name]
+                        end
+                    end
                 end
                 calc.structure = structure
             end
@@ -905,7 +909,7 @@ change_data_option!(job::DFJob, block_symbol::Symbol, option::Symbol) = change_d
 function change_pseudo_set!(job::DFJob, pseudo_set, pseudo_specifier="")
     for (i, atom) in enumerate(job.structure.atoms)
         pseudo = get_default_pseudo(atom.id, pseudo_set, pseudo_specifier=pseudo_specifier)
-        atom.data[:pseudo] = pseudo == nothing ? warning("Pseudo for $(atom.id) at index $i not found in set $pseudo_set.") : pseudo
+        atom.pseudo = pseudo == nothing ? warning("Pseudo for $(atom.id) at index $i not found in set $pseudo_set.") : pseudo
     end
     set_flags!(job, :pseudo_dir => get_default_pseudo_dir(pseudo_set))
 end
@@ -1053,7 +1057,7 @@ function add_wan_calc!(job::DFJob, k_grid;
 
     if isempty(projections)
         for atom in job.structure.atoms
-            atom.data[:projections] = :random
+            atom.projections = :random
         end
     else
         add_projections(projections, job.structure.atoms)

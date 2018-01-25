@@ -285,7 +285,7 @@ function extract_atoms!(control_blocks, atom_block, pseudo_block, cell)
     for (at_sym, positions) in atom_block.data
         pseudo = haskey(pseudo_block.data, at_sym) ? pseudo_block.data[at_sym] : error("Please specify a pseudo potential for atom '$at_sym'.")
         for pos in positions
-            push!(atoms, Atom(at_sym, element(at_sym), primv' * pos, Dict{Symbol, Any}(:pseudo => pseudo)))
+            push!(atoms, Atom(at_sym, element(at_sym), primv' * pos, :pseudo => pseudo))
         end
     end
 
@@ -498,7 +498,7 @@ function write_structure(f, input::QEInput)
     for at in structure.atoms 
         if !in(at.id, unique_atoms)
             push!(unique_atoms, at.id)
-            push!(pseudo_lines, "$(at.id) $(at.element.atomic_weight)   $(at.data[:pseudo])\n")
+            push!(pseudo_lines, "$(at.id) $(at.element.atomic_weight)   $(at.pseudo)\n")
         end
         push!(atom_lines, "$(at.id)  $(at.position.x) $(at.position.y) $(at.position.z)\n")
     end
