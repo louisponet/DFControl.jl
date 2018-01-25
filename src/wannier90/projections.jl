@@ -13,7 +13,6 @@ end
 orbsize(orbital::Orbital) = Int(orbital) * 2 + 1
 orbsize(orbital::Symbol)  = Orbital(orbital) * 2 + 1 
 
-
 struct Projection
     orb::Orbital
     start::Int

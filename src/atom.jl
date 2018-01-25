@@ -42,10 +42,28 @@ end
 
 #We use angstrom everywhere
 struct Atom{T <: AbstractFloat}
-    id      ::Symbol
-    element ::Element
-    position::Point3D{T}
-    data    ::Dict{Symbol, Any}
+    id       ::Symbol
+    element  ::Element
+    position ::Point3D{T}
+    data     ::Dict{Symbol, Any}
+    test     ::T
+end
+function Atom(id::Symbol, element::Element, position::Point3D{T},data, args::KeyValIterable...) where T
+    names = fieldnames(Atom)
+    inputs = Any[]
+    for name in names[5:end] 
+        found = false
+        for (field, value) in args
+            if field == name
+                push!(inputs, value)
+                found = true
+            end
+        end
+        if !found
+            push!(inputs, zero(fieldtype(Atom, name)))
+        end
+    end
+    return Atom{T}(id, element, position,data, inputs...)
 end
 
 Atom(id::Symbol, element::Element, position::Point3D) = Atom(id, element, position, Dict{Symbol, Any}())
