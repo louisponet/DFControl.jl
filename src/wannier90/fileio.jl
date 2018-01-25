@@ -17,7 +17,7 @@ function extract_atoms(atoms_block::T, proj_block::T, cell) where T <: WannierDa
                     end
                     for ps in pos
                         size = orbsize(proj)
-                        push!(t_ats, Atom(pos_at, element(pos_at), cell' * ps, Dict{Symbol, Any}(:projections => [Projection(Orbital(proj), t_start, size, t_start + size - 1)])))
+                        push!(t_ats, Atom(pos_at, element(pos_at), cell' * ps, :projections => [Projection(Orbital(proj), t_start, size, t_start + size - 1)]))
                         t_start += size
                     end
                 end
@@ -33,7 +33,7 @@ function extract_atoms(atoms_block::T, proj_block::T, cell) where T <: WannierDa
                 end
                 if length(same_ats) > 1
                     for at in same_ats[2:end]
-                        push!(same_ats[1].data[:projections], at.data[:projections][1])
+                        push!(same_ats[1].projections, at.projections[1])
                     end
                 end
                 push!(out_ats, same_ats[1])
@@ -42,7 +42,7 @@ function extract_atoms(atoms_block::T, proj_block::T, cell) where T <: WannierDa
     else
         for (pos_at, pos) in atoms 
             for p in pos
-                push!(out_ats, Atom(pos_at, element(pos_at), cell' * p, Dict{Symbol, Any}(:projections => :random)))
+                push!(out_ats, Atom(pos_at, element(pos_at), cell' * p, :projections => :random))
             end
         end
     end
@@ -233,13 +233,13 @@ function write_wannier_input(input::WannierInput, filename::String=input.filenam
         end
         write(f, "begin projections\n")
         for at in unique_atoms(structure.atoms)
-            if (haskey(at.data, :projections) && at.data[:projections] == :random) || !haskey(at.data,:projections)
+            if at.projections == :random || !isdefined(at, :projections)
                 write(f, "random\n")
                 break
             end
-            write(f, "$(at.id): $(at.data[:projections][1].orb)")
-            if length(at.data[:projections]) > 1
-                for proj in at.data[:projections][2:end]
+            write(f, "$(at.id): $(at.projections[1].orb)")
+            if length(at.projections) > 1
+                for proj in at.projections[2:end]
                     write(f, ";$(proj.orb)")
                 end
             end

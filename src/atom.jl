@@ -41,19 +41,43 @@ function element(z::Int)
 end
 
 #We use angstrom everywhere
-struct Atom{T <: AbstractFloat}
-    id      ::Symbol
-    element ::Element
-    position::Point3D{T}
-    data    ::Dict{Symbol, Any}
+mutable struct Atom{T <: AbstractFloat}
+    id          ::Symbol
+    element     ::Element
+    position    ::Point3D{T}
+    pseudo      ::String
+    l_soc       ::T
+    projections ::Array{Projection, 1}
+    mag_moment  ::Array{T, 1}        
+    function Atom(id::Symbol, element::Element, position::Point3D{T}, args...) where T <: AbstractFloat
+        atom          = new{T}()
+        atom.id       = id
+        atom.element  = element
+        atom.position = position
+        names = fieldnames(Atom)
+        types = fieldtype.(Atom, names)
+        for (name, typ) in zip(names[4:end], types[4:end])
+            found = false
+            for (field, value) in args
+                if field == name
+                    setfield!(atom, field, convert(typ, value))
+                    found = true
+                end
+            end
+            if !found
+                try
+                    setfield!(atom, field, zero(typ))
+                end
+            end
+        end
+        return atom
+    end
 end
-
-Atom(id::Symbol, element::Element, position::Point3D) = Atom(id, element, position, Dict{Symbol, Any}())
-Atom(id::Symbol, element::Symbol, position::Point3D)  = Atom(id, ELEMENTS[element], position, Dict{Symbol, Any}())
+Atom(id::Symbol, element::Symbol, position::Point3D, args...)  = Atom(id, ELEMENTS[element], position, args...)
 
 positions(atoms::Array{<:Atom, 1}, id::Symbol) = [x.position for x in filter(y -> y.id == id, atoms)]
 
-function unique_atoms(atoms::Array{Atom{T},1 }) where T <: AbstractFloat
+function unique_atoms(atoms::Array{Atom{T}, 1}) where T <: AbstractFloat
     ids    = Symbol[]
     unique = Atom{T}[]
     for at in atoms
@@ -65,30 +89,30 @@ function unique_atoms(atoms::Array{Atom{T},1 }) where T <: AbstractFloat
     return unique
 end
 
-function convert_2atoms(atoms::Array{<:AbstractString, 1}, U=Float64; pseudo_set=:default, pseudo_specifier="")
-    out_atoms = Atom{U}[]
+function convert_2atoms(atoms::Array{<:AbstractString, 1}, T=Float64; pseudo_set=:default, pseudo_specifier="")
+    out_atoms = Atom{T}[]
     for line in atoms
         atsym, x, y, z = parse.(split(line))
         el = element(atsym)
         pseudo = pseudo_set == :default ? "" : get_default_pseudo(atsym, pseudo_set, pseudo_specifier=pseudo_specifier)
         if pseudo == "" || pseudo == nothing
-            push!(out_atoms, Atom{U}(atsym, el, Point3D{U}(x, y, z), Dict{Symbol, Any}()))
+            push!(out_atoms, Atom{T}(atsym, el, Point3D{U}(x, y, z)))
         else
-            push!(out_atoms, Atom{U}(atsym, el, Point3D{U}(x, y, z), Dict{Symbol, Any}(:pseudo => pseudo)))
+            push!(out_atoms, Atom{T}(atsym, el, Point3D{U}(x, y, z), :pseudo => pseudo))
         end
     end
     return out_atoms
 end
 
-function convert_2atoms(atoms, U=Float64; pseudo_set=:default, pseudo_specifier="")
-    out_atoms = Atom{U}[]
+function convert_2atoms(atoms, T=Float64; pseudo_set=:default, pseudo_specifier="")
+    out_atoms = Atom{T}[]
     for (atsym, at) in atoms
         el = element(atsym)
         pseudo = pseudo_set == :default ? "" : get_default_pseudo(atsym, pseudo_set, pseudo_specifier=pseudo_specifier)
         if pseudo == "" || pseudo == nothing
-            push!(out_atoms, Atom{U}(atsym, el, Point3D{U}(x, y, z), Dict{Symbol, Any}()))
+            push!(out_atoms, Atom{T}(atsym, el, Point3D{T}(x, y, z)))
         else
-            push!(out_atoms, Atom{U}(atsym, el, Point3D{U}(x, y, z), Dict{Symbol, Any}(:pseudo => pseudo)))
+            push!(out_atoms, Atom{T}(atsym, el, Point3D{T}(x, y, z), :pseudo => pseudo))
         end
     end
     return out_atoms

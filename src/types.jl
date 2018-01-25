@@ -1,3 +1,4 @@
+const KeyValIterable = Union{Array{Pair{Symbol, Any}, 1}, Dict{Symbol, Any}}
 "Point in 3D space in cartesian coordinates with specified float type"
 struct Point3D{T<:AbstractFloat}
     x::T

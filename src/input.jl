@@ -60,13 +60,6 @@ end
 
 """
 Represents an input for DFT calculation.
-
-Fieldnames: backend::Symbol -> the DFT package that reads this input.
-control_blocks::Dict{Symbol,Dict{Symbol,Any}} -> maps different control blocks to their Dict of flags and values.
-pseudos::Dict{Symbol,String} -> maps atom symbol to pseudo input file.
-cell_param::Dict{Symbol,Any} -> maps the option of cell_parameters to the cell parameters.
-atoms::Dict{Symbol,Any} -> maps atom symbol to position.
-k_points::Dict{Symbol,Any} -> maps option of k_points to k_points.
 """
 abstract type DFInput end
 

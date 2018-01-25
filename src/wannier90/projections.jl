@@ -13,7 +13,6 @@ end
 orbsize(orbital::Orbital) = Int(orbital) * 2 + 1
 orbsize(orbital::Symbol)  = Orbital(orbital) * 2 + 1 
 
-
 struct Projection
     orb::Orbital
     start::Int
@@ -29,10 +28,10 @@ function add_projections(projections, atoms)
                 size = orbsize(proj)
                 if at.id == proj_at
                     t_proj = Projection(Orbital(proj), t_start, size, t_start + size - 1)
-                    if !haskey(at.data, :projections)
-                        at.data[:projections] = [t_proj]
+                    if !isdefined(at, :projections)
+                        at.projections = [t_proj]
                     else
-                        push!(at.data[:projections], t_proj)
+                        push!(at.projections, t_proj)
                     end
                 end
                 t_start += size
