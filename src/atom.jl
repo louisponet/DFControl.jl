@@ -104,7 +104,6 @@ function convert_2atoms(atoms, T=Float64)
     for (atsym, at) in atoms
         el = element(atsym)
         for pos in at
-            println(pos)
             push!(out_atoms, Atom(atsym, el, pos))
         end
     end

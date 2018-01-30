@@ -39,7 +39,7 @@ function read_qe_output(filename::String, T=Float64)
             elseif contains(line, "Fermi")
                 out[:fermi]        = parse(T, split(line)[5])
             elseif contains(line, "lowest unoccupied") || contains(line, "highest occupied")
-                out[:fermi]        = parse(T, split(line)[5])
+                out[:fermi]        = parse(T, split(line)[7])
                 
                 #setup for k_points
             elseif contains(line, "celldm(1)")
