@@ -8,7 +8,8 @@ end
 Point3D()                                   = Point3D(0.0)
 Point3D(x::T) where T<:AbstractFloat        = Point3D{T}(x, x, x)
 Point3D(::Type{T},x) where T<:AbstractFloat = Point3D{T}(x, x, x)
-Point3D(x::Array{<:AbstractFloat,1})        = Point3D(x[1], x[2], x[3])
+Point3D(x::Array{<:AbstractFloat, 1})        = Point3D(x[1], x[2], x[3])
+convert(::Type{Point3D}, x::Array{<:AbstractFloat, 1}) = Point3D(x[1], x[2], x[3])
 Point3D{T}() where T<:AbstractFloat         = Point3D{T}(0)
 
 import Base: +, -, *, /, convert, promote_rule, show, zero, norm

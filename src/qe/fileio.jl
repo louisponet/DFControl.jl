@@ -457,10 +457,10 @@ function write_qe_input(input::QEInput, filename::String=input.filename)
                 structure = input.structure
                 nat   = length(structure.atoms)
                 ntyp  = length(unique_atoms(structure.atoms))
-                A     = 1.0
+                # A     = 1.0
                 ibrav = 0
                 write(f,"  ibrav = $ibrav\n")
-                write(f,"  A = $A\n")
+                # write(f,"  A = $A\n")
                 write(f,"  nat = $nat\n")
                 write(f,"  ntyp = $ntyp\n")
             end

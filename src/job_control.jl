@@ -243,6 +243,12 @@ function load_job(job_dir::String, T=Float64;
             else
                 for (at1, at2) in zip(structure.atoms, calc.structure.atoms)
                     for name in fieldnames(typeof(at1))
+                        if name in [:id, :element, :position, :pseudo]
+                            continue
+                        end
+                        if !isdefined(at2, name)
+                            continue
+                        end
                         if (isdefined(at2, name) && !isdefined(at1, name)) || (iszero(getfield(at1, name)) && !iszero(getfield(at2, name)))
                             at1[name] = at2[name]
                         end
@@ -261,8 +267,7 @@ function load_job(job_dir::String, T=Float64;
 end
 
 #TODO should we also create a config file for each job with stuff like server etc? and other config things,
-#      which if not supplied could contain the default stuff?
-"""
+#      which if not supplied could contain the default stuff?"""
     pull_job(server::String, server_dir::String, local_dir::String; job_fuzzy="*job*")
 
 Pulls job from server. If no specific inputs are supplied it pulls all .in and .tt files.
@@ -846,20 +851,19 @@ If default pseudopotentials are defined, a set can be specified, together with a
 These pseudospotentials are then set in all the calculations that need it.
 All flags which specify the number of atoms inside the calculation also gets set to the correct value.
 """
-function change_atoms!(job::DFJob, atoms::Dict{Symbol,<:Array{<:Point3D,1}}; kwargs...)
+function change_atoms!(job::DFJob, atoms::Dict{Symbol,<:Array{<:Point3D,1}}; pseudo_set = :default, pseudo_specifier="")
     UNDO_JOBS[job.id] = deepcopy(job)
-    job.structure.atoms = convert_2atoms(atoms; kwargs...)
+    job.structure.atoms = convert_2atoms(atoms)
+    change_pseudo_set!(job, pseudo_set, pseudo_specifier)
 end
 
 """
-    get_atoms(job::DFJob, calc_filename)
+    get_atoms(job::DFJob)
 
-Returns a list of the atomic positions in Angstrom.
+Returns a list the atoms in the structure.
 """
-function get_atoms(job::DFJob, calc_filename)
-    return job.structure.atoms 
-end
-
+get_atoms(job::DFJob) = job.structure.atoms 
+get_cell(job::DFJob)  = job.structure.cell
 #automatically sets the cell parameters for the entire job, implement others
 """
     change_cell_parameters!(job::DFJob, cell_param::Matrix)
@@ -911,7 +915,7 @@ function change_pseudo_set!(job::DFJob, pseudo_set, pseudo_specifier="")
         pseudo = get_default_pseudo(atom.id, pseudo_set, pseudo_specifier=pseudo_specifier)
         atom.pseudo = pseudo == nothing ? warning("Pseudo for $(atom.id) at index $i not found in set $pseudo_set.") : pseudo
     end
-    set_flags!(job, :pseudo_dir => get_default_pseudo_dir(pseudo_set))
+    set_flags!(job, :pseudo_dir => "'$(get_default_pseudo_dir(pseudo_set))'")
 end
 
 """

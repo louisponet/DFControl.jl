@@ -89,30 +89,23 @@ function unique_atoms(atoms::Array{Atom{T}, 1}) where T <: AbstractFloat
     return unique
 end
 
-function convert_2atoms(atoms::Array{<:AbstractString, 1}, T=Float64; pseudo_set=:default, pseudo_specifier="")
+function convert_2atoms(atoms::Array{<:AbstractString, 1}, T=Float64)
     out_atoms = Atom{T}[]
     for line in atoms
         atsym, x, y, z = parse.(split(line))
         el = element(atsym)
-        pseudo = pseudo_set == :default ? "" : get_default_pseudo(atsym, pseudo_set, pseudo_specifier=pseudo_specifier)
-        if pseudo == "" || pseudo == nothing
-            push!(out_atoms, Atom{T}(atsym, el, Point3D{U}(x, y, z)))
-        else
-            push!(out_atoms, Atom{T}(atsym, el, Point3D{U}(x, y, z), :pseudo => pseudo))
-        end
+        push!(out_atoms, Atom(atsym, el, Point3D{U}(x, y, z)))
     end
     return out_atoms
 end
 
-function convert_2atoms(atoms, T=Float64; pseudo_set=:default, pseudo_specifier="")
+function convert_2atoms(atoms, T=Float64)
     out_atoms = Atom{T}[]
     for (atsym, at) in atoms
         el = element(atsym)
-        pseudo = pseudo_set == :default ? "" : get_default_pseudo(atsym, pseudo_set, pseudo_specifier=pseudo_specifier)
-        if pseudo == "" || pseudo == nothing
-            push!(out_atoms, Atom{T}(atsym, el, Point3D{T}(x, y, z)))
-        else
-            push!(out_atoms, Atom{T}(atsym, el, Point3D{T}(x, y, z), :pseudo => pseudo))
+        for pos in at
+            println(pos)
+            push!(out_atoms, Atom(atsym, el, pos))
         end
     end
     return out_atoms
