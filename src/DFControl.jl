@@ -87,6 +87,7 @@ module DFControl
     export get_cell
     export change_cell!
     export get_path
+    export add_wan_calc!
 
     include("constants.jl")
     export AbinitFlags

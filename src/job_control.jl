@@ -250,7 +250,7 @@ function load_job(job_dir::String, T=Float64;
                             continue
                         end
                         if (isdefined(at2, name) && !isdefined(at1, name)) || (iszero(getfield(at1, name)) && !iszero(getfield(at2, name)))
-                            at1[name] = at2[name]
+                            setfield!(at1, name, getfield(at2,name))
                         end
                     end
                 end
@@ -267,7 +267,8 @@ function load_job(job_dir::String, T=Float64;
 end
 
 #TODO should we also create a config file for each job with stuff like server etc? and other config things,
-#      which if not supplied could contain the default stuff?"""
+#      which if not supplied could contain the default stuff?
+"""
     pull_job(server::String, server_dir::String, local_dir::String; job_fuzzy="*job*")
 
 Pulls job from server. If no specific inputs are supplied it pulls all .in and .tt files.
@@ -981,8 +982,9 @@ function add_wan_calc!(job::DFJob, k_grid;
                        nscf_file          = "nscf.in",
                        wan_file           = "wan.win",
                        pw2wan_file        = "pw2wan.in",
-                       wan_run_command    = "~/bin/wannier90.x ",
-                       pw2wan_run_command = "mpirun -np 24 ~/bin/pw2wannier90.x",
+                       wan_run_command    = "~/bin/wannier90.x",
+                       pw2wan_run_command = "mpirun -np 24",
+                       pw2wan_exec        = "~/bin/pw2wannier90.x",
                        inner_window       = (0., 0.), #no window given 
                        outer_window       = (0., 0.), #no outer window given
                        wan_flags          = Dict{Symbol, Any}(),
@@ -1033,7 +1035,7 @@ function add_wan_calc!(job::DFJob, k_grid;
         error("Job needs to have at least an scf calculation.")
     end
     nscf_calc.run = true
-    
+    structure = job.structure
     std_pw2wan_flags = Dict(:prefix    => get_flag(scf_calc, :prefix),
                            :write_amn => true,
                            :write_mmn => true,
@@ -1052,7 +1054,7 @@ function add_wan_calc!(job::DFJob, k_grid;
     if pw2wan_calc != nothing
         change_flags!(pw2wan_calc, pw2wan_flags)
     elseif typeof(scf_calc) == QEInput
-        pw2wan_calc = QEInput(pw2wan_file, [QEControlBlock(:inputpp, pw2wan_flags)], QEDataBlock[], pw2wan_run_command, true)
+        pw2wan_calc = QEInput(pw2wan_file,structure, [QEControlBlock(:inputpp, pw2wan_flags)], QEDataBlock[], pw2wan_run_command, pw2wan_exec, true)
     end
 
     wan_flags[:mp_grid] = typeof(k_grid) <: Array ? k_grid : convert(Array, k_grid)

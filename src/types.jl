@@ -9,7 +9,6 @@ Point3D()                                   = Point3D(0.0)
 Point3D(x::T) where T<:AbstractFloat        = Point3D{T}(x, x, x)
 Point3D(::Type{T},x) where T<:AbstractFloat = Point3D{T}(x, x, x)
 Point3D(x::Array{<:AbstractFloat, 1})        = Point3D(x[1], x[2], x[3])
-convert(::Type{Point3D}, x::Array{<:AbstractFloat, 1}) = Point3D(x[1], x[2], x[3])
 Point3D{T}() where T<:AbstractFloat         = Point3D{T}(0)
 
 import Base: +, -, *, /, convert, promote_rule, show, zero, norm
@@ -31,6 +30,7 @@ convert(::Type{Point3D}, x::T) where T<:AbstractFloat             = Point3D{T}(x
 convert(::Type{Point3D{T}}, x::Real) where T<:AbstractFloat       = Point3D{T}(x, x, x)
 convert(::Type{Point3D{T}}, x::Point3D) where T<:AbstractFloat    = Point3D{T}(x.x, x.y, x.z)
 convert(::Type{Point3D{T}}, x::Array{T,1}) where T<:AbstractFloat = Point3D{T}(x[1], x[2], x[3])
+convert(::Type{Point3D}, x::Array{<:AbstractFloat, 1}) = Point3D(x[1], x[2], x[3])
 promote_rule(::Type{Point3D{S}}, ::Type{T}) where {S<:AbstractFloat,T<:Real}                   = Point3D{promote_type(S,T)}
 promote_rule(::Type{Point3D{S}}, ::Type{Point3D{T}}) where {S<:AbstractFloat,T<:AbstractFloat} = Point3D{promote_type(S,T)}
 
