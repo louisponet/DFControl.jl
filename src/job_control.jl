@@ -42,8 +42,8 @@ end
 """
     DFJob(job_name, local_dir, args...; server=get_default_server(),server_dir="")
 
-Creates a new DFJob, possibly passing in calculations in args... 
-When inputs (args) are passed in, the structure of the job will be set to the first found in the inputs. 
+Creates a new DFJob, possibly passing in calculations in args...
+When inputs (args) are passed in, the structure of the job will be set to the first found in the inputs.
 """
 function DFJob(job_name, local_dir, args...; server=get_default_server(), server_dir="")
     local_dir = form_directory(local_dir)
@@ -61,8 +61,8 @@ end
 #TODO implement abinit
 # function DFJob(job_name, local_dir, calculations::Array{Pair{Union{Symbol, String}, Dict},1}, atoms, cell_parameters=eye(3);
 function DFJob(job_name, local_dir, calculations::Array, atoms, cell_parameters=eye(3);
-                    server=get_default_server(), 
-                    server_dir="", 
+                    server=get_default_server(),
+                    server_dir="",
                     package=:qe,
                     bin_dir="~/bin/",
                     run_command="mpirun -np 24",
@@ -77,13 +77,13 @@ function DFJob(job_name, local_dir, calculations::Array, atoms, cell_parameters=
     job_calcs = DFInput[]
     structure = Structure()
     if typeof(common_flags) != Dict
-        common_flags = Dict(common_flags) 
+        common_flags = Dict(common_flags)
     end
 
     req_flags = Dict(:prefix  => "'$job_name'",
                      :outdir => "'$server_dir'",
                      :ecutwfc => 25.)
-    merge!(req_flags, common_flags)    
+    merge!(req_flags, common_flags)
     for (calc, data) in calculations
         calc_ = typeof(calc) == String ? Symbol(calc) : calc
         if in(calc_, [Symbol("vc-relax"), :relax, :scf])
@@ -108,7 +108,7 @@ function DFJob(job_name, local_dir, calculations::Array, atoms, cell_parameters=
         push!(flags, :calculation => "'$(string(calc_))'")
         input_ = QEInput(string(calc_) * ".in",
                          structure,
-                         QEControlBlock[], 
+                         QEControlBlock[],
                          [QEDataBlock(:k_points, k_option, k_points)],
                          run_command,
                          bin_dir * "pw.x",
@@ -121,12 +121,11 @@ function DFJob(job_name, local_dir, calculations::Array, atoms, cell_parameters=
     return DFJob(job_name, job_calcs, local_dir, server, server_dir, header)
 end
 
-function Base.display(job::DFJob)
+function Base.show(job::DFJob)
     try
         print_info(job)
     end
 end
-
 #-------------------BEGINNING GENERAL SECTION-------------#
 #all get_inputs return arrays, get_input returns the first element if multiple are found
 """
@@ -180,9 +179,9 @@ function load_job(job_dir::String, T=Float64;
                   new_local_dir = nothing,
                   server        = get_default_server(),
                   server_dir    = "")
-    
+
     job_dir = form_directory(job_dir)
-    
+
     job_data = read_job_file(job_dir * search_dir(job_dir, job_fuzzy)[1])
     filenames    = String[]
     run_commands = String[]
@@ -218,7 +217,7 @@ function load_job(job_dir::String, T=Float64;
                                                   preprocess  = true,
                                                   structure_name = job_name))
             else
-                push!(t_calcs, read_wannier_input(filename * ".win", T, 
+                push!(t_calcs, read_wannier_input(filename * ".win", T,
                                                  run_command = run_command,
                                                  run         = run,
                                                  preprocess  = false,
@@ -439,7 +438,7 @@ change_flags!(job::DFJob, filename::String, args...) = change_flags!(job, [filen
 """
     set_flags!(job::DFJob, calculations::Array{String,1}, flags...; print=true)
 
-Sets the flags in the calculations to the flags specified. 
+Sets the flags in the calculations to the flags specified.
 This only happens if the specified flags are valid for the calculations.
 If necessary the correct control block will be added to the calculation (e.g. for QEInputs).
 
@@ -479,7 +478,7 @@ Looks through the calculation filenames and returns the value of the specified f
 function get_flag(job::DFJob, calc_filenames, flag_name::Symbol)
     for calc in get_inputs(job, calc_filenames)
         flag = get_flag(calc, flag_name)
-        if flag != nothing 
+        if flag != nothing
             return flag
         end
     end
@@ -494,7 +493,7 @@ Looks through all the calculations and returns the value of the specified flag.
 function get_flag(job::DFJob, flag_name::Symbol)
     for calc in job.calculations
         flag = get_flag(calc, flag_name)
-        if flag != nothing 
+        if flag != nothing
             return flag
         end
     end
@@ -847,8 +846,8 @@ end
 """
     change_atoms!(job::DFJob, atoms::Dict{Symbol,<:Array{<:Point3D,1}}, pseudo_set_name=:default, pseudo_specifier=nothing, option=:angstrom)
 
-Sets the data blocks with atomic positions to the new one. This is done for all calculations in the job that have that data. 
-If default pseudopotentials are defined, a set can be specified, together with a fuzzy that distinguishes between the possible multiple pseudo strings in the pseudo set. 
+Sets the data blocks with atomic positions to the new one. This is done for all calculations in the job that have that data.
+If default pseudopotentials are defined, a set can be specified, together with a fuzzy that distinguishes between the possible multiple pseudo strings in the pseudo set.
 These pseudospotentials are then set in all the calculations that need it.
 All flags which specify the number of atoms inside the calculation also gets set to the correct value.
 """
@@ -863,7 +862,7 @@ end
 
 Returns a list the atoms in the structure.
 """
-get_atoms(job::DFJob) = job.structure.atoms 
+get_atoms(job::DFJob) = job.structure.atoms
 get_cell(job::DFJob)  = job.structure.cell
 #automatically sets the cell parameters for the entire job, implement others
 """
@@ -957,7 +956,7 @@ function get_errors(job::DFJob)
     for (filename, errs) in errors
         dfprintln("Error in output '$filename':")
         for err in errs
-            dfprintln("$err") 
+            dfprintln("$err")
         end
     end
 
@@ -967,7 +966,7 @@ function get_errors(job::DFJob)
 end
 
 """
-    add_wan_calc!(job::DFJob, k_grid; 
+    add_wan_calc!(job::DFJob, k_grid;
                        nscf_file          = "nscf.in",
                        wan_file           = "wan.win",
                        pw2wan_file        = "pw2wan.in",
@@ -976,7 +975,7 @@ end
                        wan_flags          = nothing,
                        pw2wan_flags       = nothing)
 
-Adds a wannier calculation to a job. For now only works with QE. 
+Adds a wannier calculation to a job. For now only works with QE.
 """
 function add_wan_calc!(job::DFJob, k_grid;
                        nscf_file          = "nscf.in",
@@ -985,20 +984,20 @@ function add_wan_calc!(job::DFJob, k_grid;
                        wan_run_command    = "~/bin/wannier90.x",
                        pw2wan_run_command = "mpirun -np 24",
                        pw2wan_exec        = "~/bin/pw2wannier90.x",
-                       inner_window       = (0., 0.), #no window given 
+                       inner_window       = (0., 0.), #no window given
                        outer_window       = (0., 0.), #no outer window given
                        wan_flags          = Dict{Symbol, Any}(),
                        pw2wan_flags       = Dict{Symbol, Any}(),
                        projections        = nothing,
                        spin               = false)
-            
+
     UNDO_JOBS[job.id] = deepcopy(job)
 
 
     if inner_window != (0., 0.) #scalarize
         wan_flags = merge!(wan_flags, Dict(:dis_froz_min => inner_window[1], :dis_froz_max => inner_window[2]))
     end
-    if outer_window != (0., 0.) 
+    if outer_window != (0., 0.)
         wan_flags = merge!(wan_flags, Dict(:dis_win_min => outer_window[1], :dis_win_max => outer_window[2]))
     end
 
@@ -1011,14 +1010,14 @@ function add_wan_calc!(job::DFJob, k_grid;
             if calculation == "'scf'"
                 scf_calc    = calc
             elseif calculation == "'nscf'"
-                nscf_calc   = calc 
+                nscf_calc   = calc
             elseif calc.control_blocks[1].name == :inputpp
-                pw2wan_calc = calc 
+                pw2wan_calc = calc
             end
         end
     end
-    
-    if nscf_calc != nothing 
+
+    if nscf_calc != nothing
         change_data!(nscf_calc, :k_points, gen_k_grid(k_grid[1], k_grid[2], k_grid[3], :nscf), option=:crystal)
     elseif scf_calc != nothing
         nscf_calc = deepcopy(scf_calc)
@@ -1040,13 +1039,13 @@ function add_wan_calc!(job::DFJob, k_grid;
                            :write_amn => true,
                            :write_mmn => true,
                            :outdir    => "'./'",
-                           :seedname  => "'$(splitext(wan_file)[1])'") 
+                           :seedname  => "'$(splitext(wan_file)[1])'")
     if pw2wan_flags == nothing
         pw2wan_flags = std_pw2wan_flags
     else
         pw2wan_flags = merge(std_pw2wan_flags, pw2wan_flags)
     end
-    
+
     if :wannier_plot in keys(wan_flags) && wan_flags[:wannier_plot]
         pw2wan_flags[:write_unk] = true
     end
@@ -1082,7 +1081,7 @@ function add_wan_calc!(job::DFJob, k_grid;
 
         pw2wan_calc.filename    = file * "_up" * ext
         pw2wan_calc_dn.filename = file * "_dn" * ext
-        
+
         wan_calc_dn1 = deepcopy(wan_calc1)
         wan_calc1.filename    = wan_file * "_up" * wan_ext
         wan_calc_dn1.filename = wan_file * "_dn" * wan_ext
@@ -1136,5 +1135,5 @@ function add_bands_calculation!(job::DFJob, k_path::Array{Array{T,1},1}; filenam
     push!(job.calculations, bands_calc)
 end
 
-get_path(job::DFJob, calc_filename::String) = 
+get_path(job::DFJob, calc_filename::String) =
     joinpath(job.local_dir, get_input(job, calc_filename).filename)

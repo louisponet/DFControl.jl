@@ -1,19 +1,6 @@
 module DFControl
 # using Reexport
     using RecipesBase
-    
-    if Pkg.installed("GtkReactive") != nothing
-        using Reactive
-        using Gtk, GtkReactive, Gtk.ShortNames, Colors
-        const print_s = Signal("")
-        include("dashboard.jl")
-        dfprintln(s::String) = push!(print_s,s)
-        # preserve(map(println,print_s))
-    else
-        dfprintln(s::String) = println(s)
-    end
-    export dfprintln 
-    
     include("types.jl")
     export element
     export Atom
@@ -73,7 +60,7 @@ module DFControl
     export print_blocks
     export print_data
     export print_filename
-    export print_info 
+    export print_info
     export print_flags
     export print_flag
     export change_kpoints!
@@ -81,7 +68,7 @@ module DFControl
     export change_header_word!
     export undo!
     export undo
-    
+
     export get_atoms
     export change_atoms!
     export get_cell
@@ -138,6 +125,24 @@ module DFControl
     include("shortnames.jl")
     init_defaults(default_file)
 
+    if Pkg.installed("Atom") != nothing
+        include("printing.jl")
+        # preserve(map(println,print_s))
+        dfprintln(s::String) = println(s)
+
+    elseif Pkg.installed("GtkReactive") != nothing
+        using Reactive
+        using Gtk, GtkReactive, Gtk.ShortNames, Colors
+        const print_s = Signal("")
+        include("dashboard.jl")
+        dfprintln(s::String) = push!(print_s,s)
+        # preserve(map(println,print_s))
+
+    else
+        dfprintln(s::String) = println(s)
+    end
+
+    export dfprintln
     const UNDO_JOBS = DFJob[]
 
 end

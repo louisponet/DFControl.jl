@@ -15,16 +15,19 @@ mutable struct TestAtom{T <: AbstractFloat}
         atom.id = id
         atom.element = element
         atom.position=position
-        for name in names[4:end] 
+        for name in names[4:end]
             for (field, value) in args
                 if field == name
                     setfield!(atom, field, value)
                 end
             end
         end
-        return atom 
+        return atom
     end
 end
 
 Atom(id::Symbol, element::Symbol, position::Point3D, data...)  = Atom(id, ELEMENTS[element], position, data...)
 @code_warntype(test(t))
+
+
+@enter show(5)

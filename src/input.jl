@@ -2,11 +2,6 @@
 abstract type Block end
 abstract type ControlBlock <: Block end
 
-mutable struct QEControlBlock <: ControlBlock
-    name::Symbol
-    flags::Dict{Symbol,Any}
-end
-
 function Base.display(block::ControlBlock)
     dfprintln("Block name: $(block.name)\n  flags:")
     for (flag, value) in block.flags
@@ -15,14 +10,15 @@ function Base.display(block::ControlBlock)
     dfprintln("")
 end
 
+function Base.show(io::IO, block::ControlBlock)
+    println("Block name: $(block.name)\n  flags:")
+    for (flag, value) in block.flags
+        println("    $flag => $value")
+    end
+    println("")
+end
 #these are all the data blocks, they hold the specific data for the calculation
 abstract type DataBlock <: Block end
-
-mutable struct QEDataBlock <: DataBlock
-    name::Symbol
-    option::Symbol
-    data::Any
-end
 
 mutable struct WannierDataBlock <: DataBlock
     name::Symbol
@@ -44,7 +40,6 @@ function block(blocks::Array{<:Block,1}, name::Symbol)
         return found_blocks[1]
     end
 end
-
 function Base.display(block::DataBlock)
     s = """Block name: $(block.name)
     Block option: $(block.option)
@@ -93,7 +88,7 @@ mutable struct AbinitInput <: DFInput
     data_blocks ::Array{AbinitDataBlock,1}
     run_command ::String
     run         ::Bool
-end 
+end
 
 """
     change_flags!(input::DFInput, new_flag_data...)
@@ -135,11 +130,11 @@ function set_flags!(input::Union{AbinitInput, WannierInput}, flags...; print=tru
                 if print dfprintln("Filename '$(input.filename)':\n  Could not convert '$value' into '$flag_type'.\n    Flag '$flag' not set.\n") end
                 continue
             end
-            
+
             if haskey(input.flags, flag)
                 old_data = input.flags[flag]
                 input.flags[flag] = value
-                if print dfprintln("$(input.filename):\n  -> $flag:\n      $old_data changed to: $value\n") end 
+                if print dfprintln("$(input.filename):\n  -> $flag:\n      $old_data changed to: $value\n") end
             else
                 input.flags[flag] = value
                 if print dfprintln("$(input.filename):\n  -> $flag:\n      set to: $value\n") end
@@ -159,13 +154,13 @@ function change_data!(input::DFInput, block_name::Symbol, new_block_data; option
     changed = false
     for data_block in input.data_blocks
         if data_block.name == block_name
-            if typeof(data_block.data) != typeof(new_block_data) 
+            if typeof(data_block.data) != typeof(new_block_data)
                 if print warn("Overwritten data of type '$(typeof(data_block.data))' with type '$(typeof(new_block_data))'.") end
             end
             old_data        = data_block.data
             data_block.data = new_block_data
             data_block.option = option == nothing ? data_block.option : option
-            if print 
+            if print
                 dfprintln("Block data '$(data_block.name)' in input  '$(input.filename)' is now:")
                 dfprintln(string(data_block.data))
                 dfprintln("option: $(data_block.option)")
@@ -185,7 +180,7 @@ Adds a block with the given name data and option to the calculation.
 function add_data!(input::DFInput, block_name::Symbol, block_data, block_option=:none)
     for block in input.data_blocks
         if block_name == block.name
-            change_data!(input, block_name, block_data, option=block_option) 
+            change_data!(input, block_name, block_data, option=block_option)
             return
         end
     end
@@ -219,7 +214,7 @@ function get_data(input::DFInput, block_symbol::Symbol)
     block = get_block(input, block_symbol)
     if block != nothing && typeof(block) <: DataBlock
         return block.data
-    else 
+    else
         error("No `DataBlock` with name '$block_symbol' found. ")
     end
 end
@@ -254,16 +249,16 @@ function remove_flags!(input::Union{AbinitInput, WannierInput}, flags...)
 end
 
 """
-    get_blocks(input::DFInput) 
+    get_blocks(input::DFInput)
 
 Returns all the blocks inside a calculation.
 """
-function get_blocks(input::DFInput) 
+function get_blocks(input::DFInput)
     out = Block[]
     for block in getfield.(input, filter(x -> contains(String(x), "block"), fieldnames(input)))
         push!(out, block...)
     end
-    return out 
+    return out
 end
 
 """
@@ -290,8 +285,8 @@ function print_flag(input::DFInput, flag)
     if (:control_blocks in fieldnames(input))
         for block in input.control_blocks
             if haskey(block.flags, flag)
-                s = """ 
-                Filename: $(input.filename)  
+                s = """
+                Filename: $(input.filename)
                 Block Name: $(block.name)
                 $flag => $(block.flags[flag])\n
                 """
@@ -324,7 +319,7 @@ function print_block(input::DFInput, block_name::Symbol)
     for block in input_blocks
         if block.name == block_name
             print_filename(input)
-            display(block) 
+            display(block)
             found = true
         end
     end
