@@ -1,6 +1,17 @@
+
+mutable struct QEControlBlock <: ControlBlock
+    name::Symbol
+    flags::Dict{Symbol,Any}
+end
+
+mutable struct QEDataBlock <: DataBlock
+    name::Symbol
+    option::Symbol
+    data::Any
+end
 mutable struct QEInput <: DFInput
     filename       ::String
-    structure      ::Union{Structure, Void} 
+    structure      ::Union{Structure, Void}
     control_blocks ::Array{QEControlBlock,1}
     data_blocks    ::Array{QEDataBlock,1}
     run_command    ::String  #everything before < in the job file
@@ -20,7 +31,7 @@ function QEInput(template::QEInput, filename, newflags...; run_command=template.
         if get_block(input, block_name) != nothing
             block = get_block(input, block_name)
             if length(block_info) == 1
-                block.option = :none 
+                block.option = :none
                 block.data   = block_info
             elseif length(block_info) == 2
                 block.option = block_info[1]
@@ -73,14 +84,14 @@ function set_flags!(input::QEInput, flags...; print=true)
         flag_type = flag_info.typ
         if flag_type != Void
             if !(flag in found_keys) push!(found_keys, flag) end
-            
+
             try
                 value = length(value) > 1 ? convert.(flag_type, value) : convert(flag_type, value)
             catch
                 if print dfprintln("Filename '$(input.filename)':\n  Could not convert '$value' into '$flag_type'.\n    Flag '$flag' not set.\n") end
                 continue
             end
-            
+
             input_block = get_block(input, flag_block.name)
             if input_block != nothing
                 if haskey(input_block.flags, flag)
@@ -170,7 +181,7 @@ Changes the data in the k point `DataBlock` inside the specified calculation.
 """
 function change_kpoints!(input::QEInput, k_grid::Union{NTuple{3, Int}, NTuple{6, Int}}; print=true)
     if length(k_grid) == 3
-        calc = get_flag(input, :calculation) 
+        calc = get_flag(input, :calculation)
         @assert calc == "'nscf'" warn("Expected calculation to be 'nscf', got $calc.")
         k_option = :crystal
         k_points = gen_k_grid(k_grid[1], k_grid[2], k_grid[3], :nscf)
@@ -189,7 +200,7 @@ end
 Changes the data in the k point `DataBlock` inside the specified calculation.
 """
 function change_kpoints!(input::QEInput, k_grid::Array{Array{<:AbstractFloat, 1}, 1}; print=true)
-    calc = get_flag(input, :calculation) 
+    calc = get_flag(input, :calculation)
     @assert calc == "'bands'" warn("Expected calculation to be 'bands', got $calc.")
     k_option = :crystal_b
     num_k = 0.0
@@ -198,7 +209,7 @@ function change_kpoints!(input::QEInput, k_grid::Array{Array{<:AbstractFloat, 1}
     end
     if num_k > 100.
         set_flags!(input, :verbosity => "'high'")
-        if print 
+        if print
             dfprintln("Set verbosity to high because num_kpoints > 100,\n
                        otherwise bands won't get printed.")
         end
