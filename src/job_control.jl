@@ -121,11 +121,6 @@ function DFJob(job_name, local_dir, calculations::Array, atoms, cell_parameters=
     return DFJob(job_name, job_calcs, local_dir, server, server_dir, header)
 end
 
-function Base.show(job::DFJob)
-    try
-        print_info(job)
-    end
-end
 #-------------------BEGINNING GENERAL SECTION-------------#
 #all get_inputs return arrays, get_input returns the first element if multiple are found
 """
@@ -247,8 +242,7 @@ function load_job(job_dir::String, T=Float64;
                         end
                         if !isdefined(at2, name)
                             continue
-                        end
-                        if (isdefined(at2, name) && !isdefined(at1, name)) || (iszero(getfield(at1, name)) && !iszero(getfield(at2, name)))
+                        else
                             setfield!(at1, name, getfield(at2,name))
                         end
                     end
@@ -389,12 +383,11 @@ function add_calculation!(job::DFJob, input::DFInput, index::Int=length(job.calc
     input.filename = filename
     input.run_command = run_command
     insert!(job.calculations, index, input)
-    print_info(input)
-    print_flow(job)
+    return job
 end
 
 """
-    change_flags!(job::DFJob, new_flag_data::Dict{Symbol,<:Any})
+    change_flags!(job::DFJob, new_flag_data...)
 
 Looks through all the calculations for the specified flags. If any that match and have the same types are found, they will get replaced by the new ones.
 """
@@ -403,10 +396,11 @@ function change_flags!(job::DFJob, new_flag_data...)
 
     calc_filenames = [calc.filename for calc in job.calculations]
     change_flags!(job, calc_filenames, new_flag_data...)
+    return job
 end
 
 """
-    change_flags!(job::DFJob, calc_filenames, new_flag_data::Dict{Symbol,<:Any})
+    change_flags!(job::DFJob, calc_filenames::Array{String,1}, new_flag_data...)
 
 Looks through the given calculations for the specified flags. If any that match and have the same types are found, they will get replaced by the new ones.
 """
@@ -415,7 +409,7 @@ function change_flags!(job::DFJob, calc_filenames::Array{String,1}, new_flag_dat
 
     found_keys = Symbol[]
     for calc in get_inputs(job, calc_filenames)
-        t_found_keys = change_flags!(calc, new_flag_data...)
+        t_found_keys, = change_flags!(calc, new_flag_data...)
         for key in t_found_keys
             if !(key in found_keys) push!(found_keys, key) end
         end
@@ -431,7 +425,7 @@ function change_flags!(job::DFJob, calc_filenames::Array{String,1}, new_flag_dat
     elseif length(n_found_keys) == 1
         dfprintln("flag '$(":"*String(n_found_keys[1]))' was not found in any input file, please set it first!")
     end
-
+    return job
 end
 change_flags!(job::DFJob, filename::String, args...) = change_flags!(job, [filename], args...)
 
@@ -449,7 +443,7 @@ function set_flags!(job::DFJob, calculations::Array{String,1}, flags...; print=t
 
     found_keys = Symbol[]
     for calc in get_inputs(job, calculations)
-        t_found_keys = set_flags!(calc, flags..., print=print)
+        t_found_keys, = set_flags!(calc, flags..., print=print)
         for key in t_found_keys
             if !(key in found_keys) push!(found_keys, key) end
         end
@@ -466,6 +460,7 @@ function set_flags!(job::DFJob, calculations::Array{String,1}, flags...; print=t
             dfprintln("flag '$(":" * String(n_found_keys[1]))' was not found in the allowed input variables of the specified calculations!")
         end
     end
+    return job
 end
 set_flags!(job::DFJob, flags...)                   = set_flags!(job, [calc.filename for calc in job.calculations], flags...)
 set_flags!(job::DFJob, filename::String, flags...) = set_flags!(job, [filename], flags...)
@@ -525,9 +520,10 @@ function get_block(job::DFJob, calc_filenames, block_symbol::Symbol)
 end
 
 """
-    change_data!(job::DFJob, calc_filenames, data_block_name::Symbol, new_block_data)
+    change_data!(job::DFJob, calc_filenames, data_block_name::Symbol, new_block_data; option=nothing)
 
-Looks through the calculation filenames and changes the data of the datablock with `data_block_name` to `new_block_data`
+Looks through the calculation filenames and changes the data of the datablock with `data_block_name` to `new_block_data`.
+if option is specified it will set the block option to it.
 """
 function change_data!(job::DFJob, calc_filenames, data_block_name::Symbol, new_block_data; option=nothing)
     UNDO_JOBS[job.id] = deepcopy(job)
@@ -548,6 +544,7 @@ function remove_flags!(job::DFJob, calc_filenames::Array{<:String,1}, flags...)
     for calc in get_inputs(job, calc_filenames)
         remove_flags!(calc, flags...)
     end
+    return job
 end
 remove_flags!(job::DFJob, filename::String, flags...) = remove_flags!(job, [filename], flags...)
 
@@ -562,6 +559,7 @@ function remove_flags!(job::DFJob, flags...)
     for calc in job.calculations
         remove_flags!(calc, flags...)
     end
+    return job
 end
 
 """
@@ -577,7 +575,7 @@ function set_flow!(job::DFJob, should_runs::Array{Bool,1})
     for (calc, should_run) in zip(job.calculations, should_runs)
         calc.run = should_run
     end
-    print_flow(job)
+    return job
 end
 
 """
@@ -593,12 +591,11 @@ function change_flow!(job::DFJob, should_runs...)
             input.run = run
         end
     end
-
-    print_flow(job)
+    return job
 end
 
 """
-    change_flow!(job::DFJob, filenames, should_run)
+    change_flow!(job::DFJob, filenames::Array{String,1}, should_run)
 
 Goes throug the calculation filenames and sets whether it should run or not.
 """
@@ -608,6 +605,7 @@ function change_flow!(job::DFJob, filenames::Array{String,1}, should_run)
     for calc in get_inputs(job, filenames)
         calc.run = should_run
     end
+    return job
 end
 
 """
@@ -622,7 +620,7 @@ function change_flow!(job::DFJob, should_runs::Union{Dict{String,Bool},Array{Tup
         change_flow!(job, name, should_run)
     end
 
-    print_flow(job)
+    return job
 end
 
 """
@@ -638,6 +636,7 @@ function change_run_command!(job::DFJob, filenames, run_command)
         dfprintln("Run command of file '$(calc.filename)' is now: '$(calc.run_command)'")
     end
 
+    return job
 end
 
 """
@@ -652,157 +651,6 @@ function get_run_command(job::DFJob, filename)
 end
 
 """
-    print_run_command(job::DFJob, filenames)
-
-Prints the run command of the specified calculations.
-"""
-function print_run_command(job::DFJob, filenames)
-    for calc in get_inputs(job, filenames)
-        dfprintln("Run command of file '$(calc.filename)' is: '$(calc.run_command)'.")
-        dfprintln("")
-    end
-end
-
-"""
-    print_flow(job::DFJob)
-
-Prints the calculation sequence of the job.
-"""
-function print_flow(job::DFJob)
-    for (i, calc) in enumerate(job.calculations)
-        dfprintln("$i: $(calc.filename) => runs: $(calc.run)")
-    end
-end
-
-"""
-    print_block(job::DFJob, block_name::Symbol)
-
-Prints information of the specified block name of all the calculations in the job.
-"""
-function print_block(job::DFJob, block_name::Symbol)
-    for calc in job.calculations
-        if print_block(calc, block_name) dfprintln("") end
-    end
-end
-
-"""
-    print_block(job::DFJob, filenames, block_symbol::Symbol)
-
-Prints the information of the block in a selected file of the job.
-"""
-function print_block(job::DFJob, filenames, block_symbol::Symbol)
-    for calc in get_inputs(job, filenames)
-        print_block(calc, block_symbol)
-    end
-end
-
-"""
-    print_blocks(job::DFJob, calc_filenames)
-
-Prints information on all the blocks in the specified calculations.
-"""
-function print_blocks(job::DFJob, calc_filenames)
-    for calc in get_inputs(job, calc_filenames)
-        print_blocks(calc)
-    end
-end
-
-"""
-    print_blocks(job::DFJob)
-
-Prints information of all the blocks of all the calculations in the job.
-"""
-function print_blocks(job::DFJob)
-    for calc in job.calculations
-        print_blocks(calc)
-        dfprintln("#------------------------------------#")
-    end
-end
-print_data(job::DFJob)                     = print_blocks(job)
-print_data(job::DFJob, calc_filenames)     = print_blocks(job, calc_filenames)
-print_data(job::DFJob, block_name::Symbol) = print_block(job, block_name)
-
-"""
-    print_info(job::DFJob, filenames::Array{String,1})
-
-Prints general info of the job, and the specified filenames.
-"""
-function print_info(job::DFJob, filenames::Array{String,1})
-    s = """--------------------
-    DFJob:      $(job.name)
-    Local_dir:  $(job.local_dir)
-    Server:     $(job.server)
-    Server_dir: $(job.server_dir)
-    $(length(job.calculations)) calculations
-    --------------------
-    """
-    dfprintln(s)
-
-    for calc in get_inputs(job, filenames)
-        print_info(calc)
-        dfprintln(" ")
-    end
-
-end
-print_info(job::DFJob)                   = print_info(job, [calc.filename for calc in job.calculations])
-print_info(job::DFJob, filename::String) = print_info(job, [filename])
-
-"""
-    print_flags(job::DFJob)
-
-Prints flags of all the calculations in the job.
-"""
-function print_flags(job::DFJob)
-    for calc in job.calculations
-        print_flags(calc)
-    end
-end
-
-"""
-    print_flags(job::DFJob, calc_filename::String)
-
-Prints flags of the specified calculation.
-"""
-function print_flags(job::DFJob, calc_filename::String)
-    for calc in get_inputs(job, calc_filename)
-        print_flags(calc)
-    end
-end
-
-"""
-    print_flags(job::DFJob, calc_filenames::Array{String,1})
-
-Prints the flags of the specified calculations.
-"""
-function print_flags(job::DFJob, calc_filenames::Array{String,1})
-    for file in calc_filenames
-        print_flags(job, file)
-    end
-end
-
-"""
-    print_flags(job::DFJob, flags)
-
-Prints the specified flags running through all the claculations in the job.
-"""
-function print_flags(job::DFJob, flags::Array{Symbol,1})
-    for flag in flags
-        print_flag(job, flag)
-    end
-end
-
-"""
-    print_flag(job::DFJob, flag::Symbol)
-
-Prints the specified flag running through all the calculations in the job.
-"""
-function print_flag(job::DFJob, flag::Symbol)
-    for calc in job.calculations
-        print_flag(calc, flag)
-    end
-end
-
-"""
     add_block!(job::DFJob, filenames, block::Block)
 
 Adds a block to the specified filenames.
@@ -813,6 +661,7 @@ function add_block!(job::DFJob, filenames, block::Block)
     for input in get_inputs(job, filenames)
         add_block!(input, block)
     end
+    return job
 end
 
 
@@ -827,6 +676,7 @@ function add_data!(job::DFJob, filenames, block_symbol, data, option=:none)
     for input in get_inputs(job, filenames)
         add_data!(input, block_symbol, data, option)
     end
+    return job
 end
 
 """
@@ -855,6 +705,7 @@ function change_atoms!(job::DFJob, atoms::Dict{Symbol,<:Array{<:Point3D,1}}; pse
     UNDO_JOBS[job.id] = deepcopy(job)
     job.structure.atoms = convert_2atoms(atoms)
     change_pseudo_set!(job, pseudo_set, pseudo_specifier)
+    return job
 end
 
 """
@@ -874,6 +725,7 @@ function change_cell!(job::DFJob, cell_param::Matrix)
     UNDO_JOBS[job.id] = deepcopy(job)
 
     job.structure.cell = cell_param
+    return job
 end
 
 """
@@ -886,6 +738,7 @@ function change_kpoints!(job::DFJob, calc_filenames, k_points)
     for calc in get_inputs(job, calc_filenames)
         change_kpoints!(calc, k_points)
     end
+    return job
 end
 
 """
@@ -899,6 +752,7 @@ function change_data_option!(job::DFJob, filenames::Array{String,1}, block_symbo
     for calc in get_inputs(job, filenames)
         change_data_option!(calc, block_symbol, option)
     end
+    return job
 end
 change_data_option!(job::DFJob, filename::String, block_symbol::Symbol, option::Symbol) = change_data_option!(job, [filename], block_symbol, option)
 
@@ -916,6 +770,7 @@ function change_pseudo_set!(job::DFJob, pseudo_set, pseudo_specifier="")
         atom.pseudo = pseudo == nothing ? warning("Pseudo for $(atom.id) at index $i not found in set $pseudo_set.") : pseudo
     end
     set_flags!(job, :pseudo_dir => "'$(get_default_pseudo_dir(pseudo_set))'")
+    return job
 end
 
 """
@@ -938,7 +793,7 @@ function change_header_word!(job::DFJob, word::String, new_word::String)
             dfprintln(s)
         end
     end
-
+    return job
 end
 
 """
@@ -1102,7 +957,7 @@ function add_wan_calc!(job::DFJob, k_grid;
         push!(job.calculations, pw2wan_calc)
         push!(job.calculations, wan_calc2)
     end
-    print_info(job)
+    return job
 end
 
 """
@@ -1113,6 +968,7 @@ Undos the last change to the calculations of the job.
 function undo!(job::DFJob)
     job.calculations[:] = UNDO_JOBS[job.id].calculations[:]
     dfprintln("Restored the calculations of job '$(job.name)' to their previous state.")
+    return job
 end
 
 """
@@ -1133,6 +989,7 @@ function add_bands_calculation!(job::DFJob, k_path::Array{Array{T,1},1}; filenam
     calc = getfirst(x -> typeof(x) == QEInput && get_flag(x, :calculation) == "'scf'", job.calculations)
     bands_calc = QEInput(calc, filename, run=run, k_points=(:crystal_b, k_path))
     push!(job.calculations, bands_calc)
+    return job
 end
 
 get_path(job::DFJob, calc_filename::String) =

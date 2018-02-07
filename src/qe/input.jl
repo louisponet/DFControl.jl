@@ -69,7 +69,7 @@ function change_flags!(input::QEInput, new_flag_data...)
             end
         end
     end
-    return found_keys
+    return found_keys, input
 end
 
 """
@@ -108,7 +108,7 @@ function set_flags!(input::QEInput, flags...; print=true)
             end
         end
     end
-    return found_keys
+    return found_keys, input
 end
 
 """
@@ -157,22 +157,8 @@ function remove_flags!(input::QEInput, flags...)
             end
         end
     end
+    return input
 end
-
-"""
-    print_flags(input::QEInput, block_symbol::Symbol)
-
-Prints the flags of the specified block.
-"""
-function print_flags(input::QEInput, block_symbol::Symbol)
-    block = getfirst(x -> x.name == block_symbol, input.control_blocks)
-    dfprintln("  $(block.name):")
-    for (flag, value) in block.flags
-        dfprintln("    $flag => $value")
-    end
-    dfprintln("")
-end
-
 #This can be done with a named tuple.
 """
     change_kpoints!(input::QEInput, k_grid::Union{NTuple{3, Int}, NTuple{6, Int}})
@@ -192,6 +178,7 @@ function change_kpoints!(input::QEInput, k_grid::Union{NTuple{3, Int}, NTuple{6,
         k_points = [k_grid...]
     end
     change_data!(input, :k_points, k_points, option = k_option, print=print)
+    return input
 end
 
 """
@@ -215,4 +202,5 @@ function change_kpoints!(input::QEInput, k_grid::Array{Array{<:AbstractFloat, 1}
         end
     end
     change_data!(input, :k_points, k_grid, option = k_option, print)
+    return input
 end

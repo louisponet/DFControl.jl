@@ -19,7 +19,6 @@ display(projwfc_input)
 @test get_flag(projwfc_input,:kresolveddos) == true
 
 test_bands = read_qe_bands_file(joinpath(@__DIR__,"../assets/outputs/bands.out"))
-@test display(test_bands[1]) == display([test_bands[1]])[1]
 kpdos_test,(ticks,tickvals)  = read_qe_kpdos(joinpath(@__DIR__,"../assets/outputs/kpdos.out"))
 @test length(test_bands) == 48
 @test length(test_bands[1].k_points_cart) == 201
@@ -59,7 +58,7 @@ print_qe_namelists()
 
 if isdefined(:default_pseudo_dirs)
   pr_l = length(default_pseudo_dirs)
-else 
+else
   pr_l =0
 end
 add_default_pseudo_dir(:default,"/test/test/test")
@@ -80,7 +79,7 @@ if isdefined(:default_job_header)
 end
 set_default_job_header(["asdf","asdf"])
 set_default_job_header(["asdf","asdf"])
-@test default_job_header ==["asdf","asdf"] 
+@test default_job_header ==["asdf","asdf"]
 if isdefined(:pr_h)
   set_default_job_header(pr_h)
 end
@@ -89,6 +88,6 @@ set_default_input(scf_input,:scf)
 set_default_input(scf_input,:scf)
 set_default_input(bands_input,:bands)
 
-@test default_inputs[:scf].run_command == scf_input.run_command 
+@test default_inputs[:scf].run_command == scf_input.run_command
 remove_default_input(:scf)
 remove_default_input(:bands)

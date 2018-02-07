@@ -1,34 +1,25 @@
 """
 Searches a directory for all files containing the key.
-
-Input: path::String,
-key::String
 """
 search_dir(path::String, key) = filter(x -> contains(x, key), readdir(path))
 
 """
 Parse an array of strings into an array of a type.
-
-Input:  T::Type,
-array::Array{String,1}
-Return: Array{T,1}
 """
 parse_string_array(T::Type, array) = map(x -> (v = tryparse(T, x); isnull(v) ? 0.0 : get(v)), array)
 
 """
 Parse a line for occurrences of type T.
-
-Input:  T::Type,
-line::String
-Return: Array{T,1}
 """
 parse_line(T::Type, line::String) = parse_string_array(T, split(line))
 
 """
-Mutatatively applies the fermi level to all eigvals in the band. If fermi is a quantum espresso scf output file it will try to find it in there.
+Splits a line using arguments, then strips spaces from the splits.
+"""
+strip_split(line, args...) = strip.(split(line, args...))
 
-Input:  band::Band,
-fermi::Union{String,AbstractFloat}
+"""
+Mutatatively applies the fermi level to all eigvals in the band. If fermi is a quantum espresso scf output file it will try to find it in there.
 """
 function apply_fermi_level!(band::Band, fermi::Union{String,AbstractFloat})
     if typeof(fermi) == String
@@ -40,16 +31,7 @@ function apply_fermi_level!(band::Band, fermi::Union{String,AbstractFloat})
 end
 
 """
-Same as above but for an array of bands. Is this even necessary?
-"""
-function apply_fermi_level!{T<:Band}(bands::Array{T}, fermi)
-    for band in bands
-        apply_fermi_level!(band,fermi)
-    end
-end
-
-"""
-Same as above but not mutatatively.
+Applies the fermi level to all eigvals in the band. If fermi is a quantum espresso scf output file it will try to find it in there.
 """
 function apply_fermi_level(band::Band, fermi)
     T = typeof(band.eigvals[1])
@@ -63,19 +45,8 @@ function apply_fermi_level(band::Band, fermi)
     return out
 end
 
-function apply_fermi_level(bands::Array{T}, fermi) where T <: Band
-    out = similar(bands)
-    for (i, band) in enumerate(bands)
-        out[i] = apply_fermi_level(band, fermi)
-    end
-    return out
-end
-
 """
 Makes sure that a directory string ends with "/".
-
-Input:  directory::String
-Return: String
 """
 function form_directory(directory::String)
     if directory[end] != '/'
@@ -97,39 +68,6 @@ function gen_k_grid(na, nb, nc, input, T=Float64)
         return reshape([T[a, b, c, 1 / (na * nb * nc)] for a in collect(linspace(0, 1, na + 1))[1:end - 1], b in collect(linspace(0, 1, nb + 1))[1:end - 1], c in collect(linspace(0, 1, nc + 1))[1:end - 1]], (na * nb * nc))
     end
 end
-
-strip_split(line, args...) = strip.(split(line, args...))
-
-#Incomplete for now only QE flags are returned
-"""
-    print_qe_flags(namelist_symbol::Symbol)
-
-Prints the possible Quantum Espresso input flags and their type for a given input namelist.
-"""
-function print_qe_flags(namelist_symbol::Symbol)
-    for block in QEControlFlags
-        if block.name == namelist_symbol
-            display(block)
-        end
-    end
-end
-
-"""
-print_qe_namelists()
-
-Prints all the possible Quantum Espresso input namelists.
-"""
-function print_qe_namelists()
-    for block in QEControlFlags
-        dfprintln(block.name)
-    end
-end
-
-const assets_dir = joinpath(@__DIR__, "../assets/")
-
-const conversions = Dict{Symbol,Float64}(:bohr2ang => 0.529177)
-conversions[:ang2bohr] = 1/conversions[:bohr2ang]
-
 
 function fort2julia(f_type)
     f_type = lowercase(f_type)
@@ -165,7 +103,9 @@ function read_block(f, startstr::String, endstr::String)
     error("Block not found: start = $startstr, end = $endstr.")
 end
 
-
+"""
+It's like filter()[1].
+"""
 function getfirst(f::Function, A)
     for el in A
         if f(el)

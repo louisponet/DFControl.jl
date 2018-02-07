@@ -52,19 +52,3 @@ mutable struct DFBand{T<:AbstractFloat} <: Band
     extra::Dict{Symbol,Any}
 end
 DFBand(k_points_cart::Array{Array{T,1},1}, k_points_cryst::Array{Array{T,1},1}, eigvals::Array{T,1}) where T <: AbstractFloat = DFBand{T}(k_points_cart, k_points_cryst, eigvals, Dict{Symbol,Any}())
-
-
-function Base.display(band::DFBand{T}) where T <: AbstractFloat
-    string = """DFBand{$T}:
-    k_points of length $(length(band.k_points_cryst)):
-    cart:    $(band.k_points_cart[1]) -> $(band.k_points_cart[end])
-    cryst:   $(band.k_points_cryst[1]) -> $(band.k_points_cryst[end])
-    eigvals: $(band.eigvals[1]) -> $(band.eigvals[end])
-    extra:   $(band.extra)
-    """
-    dfprintln(string)
-end
-
-function Base.display(bands::Array{<:DFBand})
-    map(display,bands)
-end

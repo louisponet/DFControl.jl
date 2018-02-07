@@ -1,3 +1,4 @@
+__precompile__(true)
 module DFControl
 # using Reexport
     using RecipesBase
@@ -66,6 +67,9 @@ module DFControl
     export change_kpoints!
     export change_data_option!
     export change_header_word!
+    export change_pseudo_set!
+    export add_bands_calculation!
+    export get_path
     export undo!
     export undo
 
@@ -123,25 +127,26 @@ module DFControl
 
     #no extra functionality, for faster scripting
     include("shortnames.jl")
-    init_defaults(default_file)
 
     if Pkg.installed("Atom") != nothing
-        include("printing.jl")
-        # preserve(map(println,print_s))
+        include("display/printing_juno.jl")
         dfprintln(s::String) = println(s)
 
-    elseif Pkg.installed("GtkReactive") != nothing
-        using Reactive
-        using Gtk, GtkReactive, Gtk.ShortNames, Colors
-        const print_s = Signal("")
-        include("dashboard.jl")
-        dfprintln(s::String) = push!(print_s,s)
-        # preserve(map(println,print_s))
-
+    # elseif Pkg.installed("GtkReactive") != nothing
+    #     using Reactive
+    #     using Gtk, GtkReactive, Gtk.ShortNames, Colors
+    #     const print_s = Signal("")
+    #     include("display/overloads.jl")
+    #     include("display/dashboard.jl")
+    #     dfprintln(s::String) = push!(print_s,s)
+    #
     else
         dfprintln(s::String) = println(s)
     end
-
+    function __init__()
+        init_defaults(default_file)
+    end
+    include("display/printing.jl")
     export dfprintln
     const UNDO_JOBS = DFJob[]
 

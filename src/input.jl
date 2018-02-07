@@ -2,21 +2,6 @@
 abstract type Block end
 abstract type ControlBlock <: Block end
 
-function Base.display(block::ControlBlock)
-    dfprintln("Block name: $(block.name)\n  flags:")
-    for (flag, value) in block.flags
-        dfprintln("    $flag => $value")
-    end
-    dfprintln("")
-end
-
-function Base.show(io::IO, block::ControlBlock)
-    println("Block name: $(block.name)\n  flags:")
-    for (flag, value) in block.flags
-        println("    $flag => $value")
-    end
-    println("")
-end
 #these are all the data blocks, they hold the specific data for the calculation
 abstract type DataBlock <: Block end
 
@@ -40,19 +25,6 @@ function block(blocks::Array{<:Block,1}, name::Symbol)
         return found_blocks[1]
     end
 end
-function Base.display(block::DataBlock)
-    s = """Block name: $(block.name)
-    Block option: $(block.option)
-    Block data:
-    """
-    dfprintln(s)
-    dfprintln(string(block.data) * "\n\n")
-end
-
-function Base.display(blocks::Array{<:Block})
-    map(display, blocks)
-end
-
 """
 Represents an input for DFT calculation.
 """
@@ -79,6 +51,7 @@ function change_kpoints!(input::WannierInput, k_grid::NTuple{3, Int}; print=true
     change_flags!(input, :mp_grid => [k_grid...])
     k_points = gen_k_grid(k_grid[1], k_grid[2], k_grid[3], :wan)
     change_data!(input, :kpoints, k_points, print=print)
+    return input
 end
 
 mutable struct AbinitInput <: DFInput
@@ -109,7 +82,7 @@ function change_flags!(input::Union{AbinitInput, WannierInput}, new_flag_data...
             end
         end
     end
-    return found_keys
+    return found_keys, input
 end
 
 """
@@ -141,7 +114,7 @@ function set_flags!(input::Union{AbinitInput, WannierInput}, flags...; print=tru
             end
         end
     end
-    return found_keys
+    return found_keys, input
 end
 
 
@@ -169,7 +142,7 @@ function change_data!(input::DFInput, block_name::Symbol, new_block_data; option
             changed = true
         end
     end
-    return changed
+    return changed, input
 end
 
 """
@@ -180,8 +153,7 @@ Adds a block with the given name data and option to the calculation.
 function add_data!(input::DFInput, block_name::Symbol, block_data, block_option=:none)
     for block in input.data_blocks
         if block_name == block.name
-            change_data!(input, block_name, block_data, option=block_option)
-            return
+            return change_data!(input, block_name, block_data, option=block_option)
         end
     end
     if typeof(input)==QEInput
@@ -192,6 +164,7 @@ function add_data!(input::DFInput, block_name::Symbol, block_data, block_option=
         block = AbinitDataBlock(block_name, block_option, block_data)
     end
     add_block!(input, block)
+    return input
 end
 
 """
@@ -246,6 +219,7 @@ function remove_flags!(input::Union{AbinitInput, WannierInput}, flags...)
             dfprintln("Removed flag '$flag' from input '$(input.filename)'")
         end
     end
+    return input
 end
 
 """
@@ -273,127 +247,7 @@ function add_block!(input::DFInput, block::Block)
         typeof(block) <: ControlBlock
         push!(input.control_blocks, block)
     end
-    print_blocks(input)
-end
-
-"""
-    print_flag(input::DFInput, flag)
-
-Prints information of the flag inside the input.
-"""
-function print_flag(input::DFInput, flag)
-    if (:control_blocks in fieldnames(input))
-        for block in input.control_blocks
-            if haskey(block.flags, flag)
-                s = """
-                Filename: $(input.filename)
-                Block Name: $(block.name)
-                $flag => $(block.flags[flag])\n
-                """
-                dfprintln(s)
-            end
-        end
-    end
-
-    if (:flags in fieldnames(input))
-        if haskey(input.flags, flag)
-            s = """
-            Filename: $(input.filename)
-            $flag => $(input.flags[flag])\n
-            """
-            dfprintln(s)
-        end
-    end
-end
-
-print_flags(input::DFInput, flags::Array) = print_flag.(input, flags)
-
-"""
-    print_block(input::DFInput, block_name::Symbol)
-
-Print the information of a 'Block' inside the input.
-"""
-function print_block(input::DFInput, block_name::Symbol)
-    found        = false
-    input_blocks = get_blocks(input)
-    for block in input_blocks
-        if block.name == block_name
-            print_filename(input)
-            display(block)
-            found = true
-        end
-    end
-    return found
-end
-
-"""
-    print_blocks(input::DFInput)
-
-Print the information on all Blocks inside the input.
-"""
-function print_blocks(input::DFInput)
-    print_filename(input)
-    get_blocks(input) |> display
-    dfprintln("")
-end
-
-"""
-    print_filename(input::DFInput)
-
-Prints the filename associated with the input.
-"""
-function print_filename(input::DFInput)
-    dfprintln("Input file: $(input.filename)")
-end
-
-"""
-    print_info(input::DFInput)
-
-Prints general info of the input.
-"""
-function print_info(input::DFInput)
-    dfprintln("Filename: $(input.filename)")
-    if (:control_blocks in fieldnames(input))
-        dfprintln("  Control Blocks:")
-        for (i, block) in enumerate(input.control_blocks)
-            dfprintln("    $i: $(block.name)")
-        end
-    end
-    dfprintln("  Data Blocks:")
-    for (i, block) in enumerate(input.data_blocks)
-        dfprintln("    $i: $(block.name)")
-    end
-    dfprintln("  Run command: $(input.run_command)")
-    dfprintln("  Runs: $(input.run)")
-end
-
-"""
-    print_flags(input::DFInput)
-
-Prints all the flags of the input.
-"""
-function print_flags(input::DFInput)
-    dfprintln("#----------------#")
-    dfprintln("Filename: $(input.filename)")
-    if (:control_blocks in fieldnames(input))
-        for block in input.control_blocks
-            dfprintln("  $(block.name):")
-            for (flag, value) in block.flags
-                dfprintln("    $flag => $value")
-            end
-            dfprintln("")
-        end
-    end
-    if (:flags in fieldnames(input))
-        for (flag, value) in input.flags
-            dfprintln("  $flag => $value")
-        end
-    end
-    dfprintln("#----------------#\n")
-end
-
-function Base.display(input::DFInput)
-    print_info(input)
+    return input
 end
 
 """
@@ -414,4 +268,5 @@ function change_data_option!(input::DFInput, block_symbol::Symbol, option::Symbo
             end
         end
     end
+    return input
 end

@@ -4,10 +4,10 @@ function GtkCssProviderFromData!(provider::GtkCssProvider; data=nothing, filenam
     source_count = (data !== nothing) + (filename !== nothing)
     @assert(source_count <= 1,
     "GtkCssProvider must have at most one data or filename argument")
-    
+
     if data !== nothing
         Gtk.GError() do error_check
-            
+
             ccall((:gtk_css_provider_load_from_data, libgtk), Bool,
             (Ptr{Gtk.GObject}, Ptr{UInt8}, Clong, Ptr{Ptr{Gtk.GError}}),
             provider, string(data), sizeof(data), error_check)
@@ -64,13 +64,13 @@ const accum_signal = foldp((x, y) -> y == "reset" ? "" : x * "\n" * y, "\nWelcom
 const t_signal     = Signal("")
 const dash_signal  = foldp((x, y) -> x * "\n" * y, "", t_signal)
 
-foreach(print_s) do s  
+foreach(print_s) do s
     @async begin
         sleep(0.1)
         text2 = value(print_s)
         if text2 != "reset" && s == text2
             push!(t_signal, "$(value(blocks))\n" * value(accum_signal) * "\n===================================\n")
-            push!(blocks,   value(blocks) + 1) 
+            push!(blocks,   value(blocks) + 1)
             push!(print_s,  "reset")
         end
     end
