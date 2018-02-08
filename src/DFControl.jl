@@ -2,13 +2,16 @@ __precompile__(true)
 module DFControl
 # using Reexport
     using RecipesBase
+    using StaticArrays
+    using GeometryTypes
     include("types.jl")
     export element
+    export AbstractAtom
     export Atom
-
+    export Point3D
+    export AbstractStructure
     export Structure
 
-    export Point3D
     export Band
     export DFBand
 

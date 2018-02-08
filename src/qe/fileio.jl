@@ -346,7 +346,7 @@ function read_qe_input(filename, T=Float64::Type; run_command="", run=true, exec
 
             elseif contains(line, "CELL_PARAMETERS") || contains(line, "cell_parameters")
                 cell_unit    = get_card_option(line)
-                cell         = Matrix{T}(3, 3)
+                cell         = MMatrix{3, 3, T}()
                 cell[1, 1:3] = parse.(T, split(readline(f)))
                 cell[2, 1:3] = parse.(T, split(readline(f)))
                 cell[3, 1:3] = parse.(T, split(readline(f)))

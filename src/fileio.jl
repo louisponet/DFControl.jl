@@ -44,17 +44,17 @@ function parse_flag_val(val, T=Float64)
         val = replace(val, "d", "e")
     end
 
-    val = strip(val, '.') 
+    val = strip(val, '.')
     t = convert.(T, parse.(split(lowercase(val))))
     #deal with abinit constants -> all flags that are read which are not part of the abi[:structure] get cast into the correct atomic units!
     if length(t) > 1 && typeof(t[end]) == Symbol
         t = t[1:end-1] .* abi_conversions[t[end]]
     end
 
-    length(t) == 1 ? t[1] : typeof(t) <: Array{Real,1} ? convert.(T,t) : t  
+    length(t) == 1 ? t[1] : typeof(t) <: Array{Real,1} ? convert.(T,t) : t
 end
 
-#---------------------------BEGINNING GENERAL SECTION-------------------# 
+#---------------------------BEGINNING GENERAL SECTION-------------------#
 """
     write_input(df_input::DFInput, filename::String=df_input.filename)
 
@@ -94,7 +94,7 @@ Writes all the input files and job file that are linked to a DFJob.
 function write_job_files(job::DFJob)
     files_to_remove = search_dir(job.local_dir, ".in")
     new_filenames   = String[]
-    num_abi         = 0 
+    num_abi         = 0
     open(job.local_dir * "job.tt", "w") do f
         write(f, "#!/bin/bash\n")
         write_job_name(job, f)
@@ -127,9 +127,9 @@ function write_job_files(job::DFJob)
                         write(f, "$pp\n")
                     end
                     write(f, "!EOF\n")
-                    num_abi += 1 
+                    num_abi += 1
                 end
-                
+
             elseif typeof(calculation) == QEInput
                 exec = calculation.exec
                 write_input(calculation, job.local_dir * filename)
@@ -138,12 +138,12 @@ function write_job_files(job::DFJob)
                 else
                     write(f, "$run_command $exec <$filename> $(split(filename,".")[1]).out \n")
                 end
-                i += 1 
+                i += 1
             end
             push!(new_filenames, filename)
         end
     end
-    
+
     for file in files_to_remove
         if !in(file, new_filenames)
             rm(job.local_dir * file)
@@ -188,9 +188,9 @@ function read_job_file(job_file::String)
     data = Dict{Symbol,Any}()
     data[:name]         = ""
     data[:header]       = Array{String,1}()
-    data[:input_files]  = Array{String,1}() 
-    data[:output_files] = Array{String,1}() 
-    data[:run_commands] = Array{String,1}() 
+    data[:input_files]  = Array{String,1}()
+    data[:output_files] = Array{String,1}()
+    data[:run_commands] = Array{String,1}()
     data[:should_run]   = Array{Bool,1}()
     open(job_file, "r") do f
         readline(f)
@@ -206,9 +206,9 @@ function read_job_file(job_file::String)
                 else
                     push!(data[:should_run], true)
                 end
-                
+
                 s_line        = split(line)
-                i, run_command = read_command_line(s_line)      
+                i, run_command = read_command_line(s_line)
                 push!(data[:run_commands], run_command)
                 #handles QE and Wannier.
                 in_out = strip_split(prod(s_line[i + 1:end]), ">")
@@ -216,8 +216,12 @@ function read_job_file(job_file::String)
                     push!(data[:input_files],  strip(in_out[1], '<'))
                     push!(data[:output_files], in_out[2])
                 else
-                    push!(data[:input_files], strip(in_out[1], '<'))
-                end 
+                    input_file = strip(in_out[1], '<')
+                    push!(data[:input_files], input_file)
+                    if contains(run_command, "wannier90.x")
+                        push!(data[:output_files], input_file * ".wout")
+                    end
+                end
             elseif contains(line, "abinit ")
                 data[:abinit_pseudos] = Array{String,1}()
                 s_line         = split(line)
@@ -235,7 +239,7 @@ function read_job_file(job_file::String)
                         line = readline(f)
                     end
                 end
-                
+
                 #this is reading the sbatch lines
             elseif contains(line, "#SBATCH")
                 if contains(line, "-J")
@@ -243,7 +247,7 @@ function read_job_file(job_file::String)
                 else
                     push!(data[:header], line)
                 end
-            else  
+            else
                 push!(data[:header], line)
             end
         end
@@ -272,19 +276,19 @@ function expr2file(filename::String, expression::Expr)
     lines     = readlines(filename)
     new_lines = String[]
     found     = false
-    
+
     if expression.head != eq
         error("For now only writing of assignment expressions is possible.")
     end
-    
+
     lhs = expression.args[1]
     rhs = expression.args[2]
-    
+
     for line in lines
         if line == ""
             continue
         end
-        
+
         expr = parse(line)
         if typeof(expr) == Void
             continue
@@ -292,10 +296,10 @@ function expr2file(filename::String, expression::Expr)
         if expr.head != eq
             continue
         end
-        
+
         lhs_t = expr.args[1]
         rhs_t = expr.args[2]
-        
+
         if lhs_t == lhs
             found = true
             push!(new_lines, "$(:($lhs = $rhs))")
@@ -303,7 +307,7 @@ function expr2file(filename::String, expression::Expr)
             push!(new_lines, "$expr")
         end
     end
-    
+
     open(filename, "w") do f
         for line in new_lines
             write(f, line * "\n")
@@ -318,7 +322,7 @@ function rm_expr_lhs(filename, lhs)
     lines       = readlines(filename)
     write_lines = String[]
     ind_2_rm    = 0
-    
+
     for line in lines
         lhs_t = parse(line).args[1]
         if lhs_t == lhs
@@ -327,7 +331,7 @@ function rm_expr_lhs(filename, lhs)
             push!(write_lines, line)
         end
     end
-    
+
     open(filename, "w") do f
         for line in write_lines
             write(f,line * "\n")

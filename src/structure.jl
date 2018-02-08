@@ -1,12 +1,13 @@
 
+abstract type AbstractStructure{T} end
 
-mutable struct Structure{T <: AbstractFloat}
+mutable struct Structure{T <: AbstractFloat} <: AbstractStructure{T}
     name ::AbstractString
-    cell ::Matrix{T}
-    atoms::Array{Atom{T}, 1}
+    cell ::Mat3{T}
+    atoms::Vector{<:AbstractAtom{T}}
     data ::Dict{Symbol, Any}
 end
 
-Structure(name, cell::Matrix{T}, atoms::Array{Atom{T}, 1}) where T <: AbstractFloat = Structure(name, cell, atoms, Dict{Symbol, Any}())
-Structure(cell::Matrix{T}, atoms::Array{Atom{T}, 1}) where T <: AbstractFloat = Structure("NoName", cell, atoms, Dict{Symbol, Any}())
+Structure(name, cell::Mat3{T}, atoms::Vector{Atom{T}}) where T <: AbstractFloat = Structure{T}(name, cell, atoms, Dict{Symbol, Any}())
+Structure(cell::Matrix{T}, atoms::Vector{Atom{T}}) where T <: AbstractFloat = Structure{T}("NoName", cell, atoms, Dict{Symbol, Any}())
 Structure() = Structure("NoName", eye(3), Atom[], Dict{Symbol, Any}())

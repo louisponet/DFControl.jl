@@ -19,6 +19,6 @@ end
     Tree(runstring , [SubTree(Text("$f → "), getfield(x, f)) for f in fields])
 end
 
-@render i::Inline x::Atom begin
-    Tree(Text("$(x.id)  ang: $(round(x.position.x, 5)) $(round(x.position.y, 5)) $(round(x.position.z, 5))"), [SubTree(Text("$f → "), getfield_(x, f)) for f in fieldnames(x)[2:end]])
+@render i::Inline x::AbstractAtom begin
+    Tree(Text("$(x.id)  ang: $(round(x.position[1], 5)) $(round(x.position[2], 5)) $(round(x.position[3], 5))"), [SubTree(Text("$f → "), getfield_(x, f)) for f in fieldnames(x)[2:end]])
 end

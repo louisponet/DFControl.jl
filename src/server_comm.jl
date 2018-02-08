@@ -33,7 +33,7 @@ function pull_files(server_dir::String, local_dir::String, filenames::Array{Stri
     pulled_files = String[]
     for file in filenames
        push!(pulled_files, pull_file(server_dir, local_dir, file; server))
-    end 
+    end
     return pulled_files
 end
 
@@ -84,19 +84,19 @@ function pull_outputs(df_job::DFJob, server="", server_dir="", local_dir=""; job
         mkpath(df_job.local_dir)
     end
     pull_server_file(filename) = pull_file(df_job.server, df_job.server_dir, df_job.local_dir, filename)
-    
+
     pull_server_file(job_fuzzy)
-    
+
     job_file = search_dir(df_job.local_dir, strip(job_fuzzy, '*'))[1]
     job_data = read_job_file(df_job.local_dir * job_file)
     pulled_outputs = String[]
-    for (run, output) in zip(job_data[:should_run], job_data[:output_files])
-        if run 
+    for output in job_data[:output_files]
+        try
             pull_server_file(output)
             push!(pulled_outputs, output)
         end
     end
-    
+
     for fuzzy in extras
         pull_server_file(fuzzy)
         push!(pulled_outputs, search_dir(df_job.local_dir, strip(fuzzy,'*'))...)

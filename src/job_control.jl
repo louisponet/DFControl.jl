@@ -12,7 +12,7 @@ server_dir::String -> directory on server.
 mutable struct DFJob
     id::Int
     name::String
-    structure::Structure
+    structure::AbstractStructure
     calculations::Array{DFInput,1}
     local_dir::String
     server::String

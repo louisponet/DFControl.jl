@@ -40,16 +40,14 @@ function element(z::Int)
     return found[1]
 end
 
+abstract type AbstractAtom{T} end
 #We use angstrom everywhere
-mutable struct Atom{T <: AbstractFloat}
+mutable struct Atom{T<:AbstractFloat} <: AbstractAtom{T}
     id          ::Symbol
     element     ::Element
     position    ::Point3D{T}
     pseudo      ::String
-    l_soc       ::T
     projections ::Array{Projection, 1}
-    mag_moment  ::Array{T, 1}
-    wfcs        
     function Atom(id::Symbol, element::Element, position::Point3D{T}, args...) where T <: AbstractFloat
         atom          = new{T}()
         atom.id       = id

@@ -1,12 +1,5 @@
 TODO:
     -> Implement error checking!
 
-structure atom TODO
-
- - Write ABI input
- - Load save job
- - write_job_files
- - default pseudos
- - change_atoms 
- - go through all code basically
- 
+TODO: Structure, Atom
+    -> What we might want to do instead of just adding more fields to Atom and Structure is to have an abstract type Atom, and then a WanAtom and ControlAtom or something similar. And same for the structure. That way we can keep the two packages kind off disentangled, and just have a ControlAtom field in the WanAtom field. This seems a good idea.

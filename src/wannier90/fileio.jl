@@ -1,12 +1,12 @@
 #THIS IS THE MOST HORRIBLE FUNCTION I HAVE EVER CREATED!!!
 function extract_atoms(atoms_block::T, proj_block::T, cell) where T <: WannierDataBlock
     if atoms_block.name == :atoms_cart
-        cell = eye(3)
+        cell = Mat3(eye(3))
     end
     projections = proj_block.data
     atoms = atoms_block.data
     t_start = 1
-    out_ats = Atom{Float64}[] 
+    out_ats = Atom{Float64}[]
     if projections != nothing
         t_ats = Atom{Float64}[]
         for (proj_at, projs) in projections
@@ -17,7 +17,7 @@ function extract_atoms(atoms_block::T, proj_block::T, cell) where T <: WannierDa
                     end
                     for ps in pos
                         size = orbsize(proj)
-                        push!(t_ats, Atom(pos_at, element(pos_at), cell' * ps, :projections => [Projection(Orbital(proj), t_start, size, t_start + size - 1)]))
+                        push!(t_ats, Atom(pos_at, element(pos_at), Point3(cell' * ps), :projections => [Projection(Orbital(proj), t_start, size, t_start + size - 1)]))
                         t_start += size
                     end
                 end
@@ -40,7 +40,7 @@ function extract_atoms(atoms_block::T, proj_block::T, cell) where T <: WannierDa
             end
         end
     else
-        for (pos_at, pos) in atoms 
+        for (pos_at, pos) in atoms
             for p in pos
                 push!(out_ats, Atom(pos_at, element(pos_at), cell' * p, :projections => :random))
             end
@@ -60,7 +60,7 @@ function extract_structure(cell_block::T, atoms_block::T, projections_block::T, 
     end
 
     atoms = extract_atoms(atoms_block, projections_block, cell)
-    return Structure(structure_name, cell, atoms)
+    return Structure(structure_name, Mat3(cell), atoms)
 end
 
 """
@@ -78,7 +78,7 @@ function read_wannier_input(filename::String, T=Float64; run_command="", run=tru
         line = readline(f)
         while !eof(f)
             @label start_label
-            
+
             if contains(line, "!") || line == "" || contains(lowercase(line), "end")
                 line = readline(f)
                 continue
@@ -86,7 +86,7 @@ function read_wannier_input(filename::String, T=Float64; run_command="", run=tru
 
             if contains(lowercase(line), "begin")
                 block_name = Symbol(split(lowercase(line))[end])
-                
+
                 if block_name == :projections
                     proj_dict = Dict{Symbol,Array{Symbol,1}}()
                     line      = readline(f)
@@ -109,7 +109,7 @@ function read_wannier_input(filename::String, T=Float64; run_command="", run=tru
                     end
                     proj_block = WannierDataBlock(:projections, :none, proj_dict)
                     @goto start_label
-                
+
                 elseif block_name == :kpoint_path
                     line = readline(f)
                     k_path_array = Array{Tuple{Symbol,Array{T,1}},1}()
@@ -125,7 +125,7 @@ function read_wannier_input(filename::String, T=Float64; run_command="", run=tru
                 end
                 push!(data_blocks, WannierDataBlock(:kpoint_path, :none, k_path_array))
                 @goto start_label
-            
+
                 elseif block_name == :unit_cell_cart
                     line = readline(f)
                     if length(split(line)) == 1
@@ -142,7 +142,7 @@ function read_wannier_input(filename::String, T=Float64; run_command="", run=tru
                     cell_block = WannierDataBlock(:unit_cell_cart, option, cell_param)
                     # line = readline(f)
                     @goto start_label
-            
+
                 elseif block_name == :atoms_frac || block_name == :atoms_cart
                     line   = readline(f)
                     atoms  = Dict{Symbol,Array{Point3D{T},1}}()
@@ -152,7 +152,7 @@ function read_wannier_input(filename::String, T=Float64; run_command="", run=tru
                             line = readline(f)
                             continue
                         end
-                        if length(split(line)) == 1 
+                        if length(split(line)) == 1
                             option = parse(line)
                             line = readline(f)
                             continue
@@ -169,7 +169,7 @@ function read_wannier_input(filename::String, T=Float64; run_command="", run=tru
                     end
                     atoms_block = WannierDataBlock(block_name, option, atoms)
                     @goto start_label
-        
+
                 elseif block_name == :kpoints
                     line     = readline(f)
                     k_points = Array{Array{T,1},1}()
@@ -246,11 +246,11 @@ function write_wannier_input(input::WannierInput, filename::String=input.filenam
             write(f, "\n")
         end
         write(f, "end projections\n")
-        
+
         write(f, "\n")
         write(f, "begin atoms_cart\n")
         for at in structure.atoms
-            write(f, "$(at.id)  $(at.position.x) $(at.position.y) $(at.position.z)\n")
+            write(f, "$(at.id)  $(at.position[1]) $(at.position[2]) $(at.position[3])\n")
         end
         write(f, "end atoms_cart\n")
         write(f, "\n")
@@ -263,7 +263,7 @@ function write_wannier_input(input::WannierInput, filename::String=input.filenam
                     letter2, k_points2 = block.data[i+1]
                     write(f, "$letter1 $(k_points1[1]) $(k_points1[2]) $(k_points1[3]) $letter2 $(k_points2[1]) $(k_points2[2]) $(k_points2[3])\n")
                 end
-                
+
             elseif block.name == :kpoints
                 for k in block.data
                     write(f, "$(k[1]) $(k[2]) $(k[3])\n")
