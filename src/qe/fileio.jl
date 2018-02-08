@@ -368,11 +368,7 @@ function read_qe_input(filename, T=Float64::Type; run_command="", run=true, exec
                 option = get_card_option(line)
                 atoms  = Dict{Symbol,Array{Point3D{T},1}}()
                 line   = readline(f)
-                while length(split(line)) == 4 || length(split(line)) == 0
-                    if isempty(line) || contains(line, "!")
-                        line = readline(f)
-                        continue
-                    end
+                while length(split(line)) == 4
                     s_line   = split(line)
                     atom     = Symbol(s_line[1])
                     position = Point3D(parse(T, s_line[2]), parse(T, s_line[3]), parse(T, s_line[4]))

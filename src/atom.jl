@@ -48,7 +48,8 @@ mutable struct Atom{T <: AbstractFloat}
     pseudo      ::String
     l_soc       ::T
     projections ::Array{Projection, 1}
-    mag_moment  ::Array{T, 1}        
+    mag_moment  ::Array{T, 1}
+    wfcs        
     function Atom(id::Symbol, element::Element, position::Point3D{T}, args...) where T <: AbstractFloat
         atom          = new{T}()
         atom.id       = id
@@ -81,7 +82,7 @@ function unique_atoms(atoms::Array{Atom{T}, 1}) where T <: AbstractFloat
     ids    = Symbol[]
     unique = Atom{T}[]
     for at in atoms
-        if !in(at.id, ids) 
+        if !in(at.id, ids)
             push!(ids, at.id)
             push!(unique, at)
         end

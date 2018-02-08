@@ -3,7 +3,7 @@ const default_file = joinpath(@__DIR__, "../user_defaults/user_defaults.jl")
 
 function init_defaults(filename::String)
     raw_input       = ""
-    names_to_export = Symbol[] 
+    names_to_export = Symbol[]
     open(filename, "r") do f
         while !eof(f)
             line = readline(f)
@@ -25,7 +25,7 @@ end
 
 function load_defaults(filename::String=default_file)
     raw_input       = ""
-    names_to_export = Symbol[] 
+    names_to_export = Symbol[]
     open(filename, "r") do f
         while !eof(f)
             raw_input *= readline(f) * "; "
@@ -38,7 +38,7 @@ end
 "Macro which allows you to define any default variable that will get loaded every time you use this package."
 macro add_default(expr)
     expr2file(default_file, expr)
-    @eval expr
+    eval(Main, expr)
     load_defaults()
 end
 
@@ -58,7 +58,7 @@ end
 Adds an entry inside the `default_pseudo_dirs` OrderedDictionary with flag `pseudo_symbol`.
 """
 function set_default_pseudo_dir(pseudo_symbol::Symbol, dir::String)
-    expr_ndef = :(default_pseudo_dirs = Dict{Symbol,String}($(Expr(:quote, pseudo_symbol)) => $dir)) 
+    expr_ndef = :(default_pseudo_dirs = Dict{Symbol,String}($(Expr(:quote, pseudo_symbol)) => $dir))
     expr_def  = :(default_pseudo_dirs[$(QuoteNode(pseudo_symbol))] = $dir)
     define_def(:default_pseudo_dirs, expr_ndef, expr_def)
 end
@@ -66,7 +66,7 @@ end
 """
     remove_default_pseudo_dir(pseudo_symbol::Symbol)
 
-Removes entry with flag `pseudo_symbol` from the `default_pseudo_dirs` OrderedDictionary. 
+Removes entry with flag `pseudo_symbol` from the `default_pseudo_dirs` OrderedDictionary.
 """
 function remove_default_pseudo_dir(pseudo_symbol::Symbol)
     if isdefined(:default_pseudo_dirs) && haskey(DFControl.default_pseudo_dirs, pseudo_symbol)
@@ -143,19 +143,19 @@ function configure_default_pseudos(server = get_default_server(), pseudo_dirs=ge
             outputs[name] = readstring(`ssh -t $server ls $directory`)
         end
     end
-    
+
     if !isdefined(:default_pseudos)
         expr2file(default_file, :(default_pseudos = Dict{Symbol,Dict{Symbol,Array{String,1}}}()))
         init_defaults(default_file)
     end
-    
-    for el in keys(ELEMENTS)
-        expr2file(default_file,:(default_pseudos[$(QuoteNode(el))] = Dict{Symbol,Array{String,1}}()))
+
+    for el in ELEMENTS
+        expr2file(default_file,:(default_pseudos[$(QuoteNode(el.symbol))] = Dict{Symbol,Array{String,1}}()))
     end
 
     for (name, pseudo_string) in outputs
         pseudos = filter(x -> x != "", split(pseudo_string, "\n"))
-        i = 1 
+        i = 1
         while i <= length(pseudos)
             pseudo  = pseudos[i]
             element = Symbol(titlecase(String(split(split(pseudo, ".")[1], "_")[1])))
@@ -195,7 +195,7 @@ end
 """
     set_default_job_header(lines)
 
-Sets the header that will get added to each job.tt file. 
+Sets the header that will get added to each job.tt file.
 """
 function set_default_job_header(lines)
     expr = :(default_job_header = $lines)
@@ -255,4 +255,3 @@ function get_default_job_header()
         return ""
     end
 end
-

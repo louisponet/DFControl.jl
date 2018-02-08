@@ -113,3 +113,38 @@ function getfirst(f::Function, A)
         end
     end
 end
+
+function parse_block(f, types...; to_strip=',')
+    output = []
+    len_typ = length(types)
+    while !eof(f)
+        line = strip.(split(readline(f)), to_strip)
+        len_lin = length(line)
+        if isempty(line)
+            continue
+        end
+        i,j = 1,1
+        tmp = []
+        while i <= len_typ && j <= len_lin
+            typ = types[i]
+            l   = line[j]
+            try
+                t   = parse(l)
+                if typeof(t) == typ
+                    push!(tmp, t)
+                    i+=1
+                    j+=1
+                else
+                    j+=1
+                end
+            catch
+                j+=1
+            end
+        end
+        if length(tmp) < length(types)
+            return output
+        end
+        push!(output, Tuple{types...}(tmp))
+    end
+    return output
+end
