@@ -148,3 +148,29 @@ function parse_block(f, types...; to_strip=',')
     end
     return output
 end
+
+function findspecifier(str, strs::Vector{<:AbstractString})
+    tmp = Char[]
+    i = 1
+    for s in strs
+        if s == str
+            continue
+        end
+        for (ch1, ch2) in zip(str, s)
+            if ch1 != ch2
+                push!(tmp, ch1)
+            elseif !isempty(tmp)
+                break
+            end
+        end
+        !isempty(tmp) && break
+        i += 1
+    end
+    testout = join(tmp)
+    for s in strs[i+1:end]
+        if contains(s, testout)
+            return findspecifier(str, strs[i+1:end])
+        end
+    end
+    return testout
+end

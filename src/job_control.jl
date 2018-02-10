@@ -121,6 +121,51 @@ function DFJob(job_name, local_dir, calculations::Array, atoms, cell_parameters=
     return DFJob(job_name, job_calcs, local_dir, server, server_dir, header)
 end
 
+function DFJob(job::DFJob, flagstoset...;
+               cell             = nothing,
+               atoms            = nothing,
+               pseudo_set       = nothing,
+               pseudo_specifier = "",
+               server_dir       = nothing,
+               local_dir        = nothing,
+               name             = nothing)
+
+    newjob = deepcopy(job)
+
+    if cell != nothing
+        change_cell!(newjob, cell)
+    end
+    if atoms != nothing
+        if pseudo_set == nothing
+            pseudo_set, specifier = getpseudoset(job.structure.atoms[1])
+            specifier = pseudo_specifier == nothing ? specifier : pseudo_specifier
+            change_atoms!(newjob, atoms, pseudo_set = pseudo_set, pseudo_specifier=specifier)
+        else
+            change_atoms!(newjob, atoms, pseudo_set = pseudo_set, pseudo_specifier= pseudo_specifier)
+        end
+    end
+    if pseudo_set != nothing && atoms == nothing
+        change_pseudo_set!(newjob, pseudo_set, pseudo_specifier)
+    end
+    if server_dir != nothing
+        change_server_dir!(newjob, server_dir)
+    end
+    if local_dir != nothing
+        change_local_dir!(newjob, local_dir)
+    end
+    if name != nothing
+        newjob.name = name
+    end
+
+    stfls!(newjob, flagstoset...)
+    return newjob
+end
+
+
+
+
+
+
 #-------------------BEGINNING GENERAL SECTION-------------#
 #all get_inputs return arrays, get_input returns the first element if multiple are found
 """
@@ -994,3 +1039,24 @@ end
 
 get_path(job::DFJob, calc_filename::String) =
     joinpath(job.local_dir, get_input(job, calc_filename).filename)
+
+"""
+Sets the server dir of the job.
+"""
+function set_server_dir!(job, dir)
+    dir = form_directory(dir)
+    job.server_dir = dir
+    return job
+end
+
+"""
+Sets the local dir of the job.
+"""
+function set_local_dir!(job, dir)
+    dir = form_directory(dir)
+    job.local_dir = dir
+    return job
+end
+
+change_server_dir!(job, dir) = set_server_dir!(job, dir)
+change_local_dir!(job, dir)  = set_local_dir!(job, dir)

@@ -75,13 +75,15 @@ module DFControl
     export get_path
     export undo!
     export undo
-
+    export set_server_dir!
     export get_atoms
     export change_atoms!
     export get_cell
     export change_cell!
     export get_path
     export add_wan_calc!
+    export change_local_dir!
+    export change_server_dir!
 
     include("constants.jl")
     export AbinitFlags
@@ -134,15 +136,6 @@ module DFControl
     if Pkg.installed("Atom") != nothing
         include("display/printing_juno.jl")
         dfprintln(s::String) = println(s)
-
-    # elseif Pkg.installed("GtkReactive") != nothing
-    #     using Reactive
-    #     using Gtk, GtkReactive, Gtk.ShortNames, Colors
-    #     const print_s = Signal("")
-    #     include("display/overloads.jl")
-    #     include("display/dashboard.jl")
-    #     dfprintln(s::String) = push!(print_s,s)
-    #
     else
         dfprintln(s::String) = println(s)
     end

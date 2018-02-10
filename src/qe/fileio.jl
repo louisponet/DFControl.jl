@@ -275,11 +275,11 @@ function extract_atoms!(control_blocks, atom_block, pseudo_block, cell)
     if option == :crystal || option == :crystal_sg
         primv = cell
     elseif option == :alat
-        primv = alat(control_blocks, true) * eye(3)
+        primv = alat(control_blocks, true) * Mat3(eye(3))
     elseif option == :bohr
-        primv = conversions[:bohr2ang] * eye(3)
+        primv = conversions[:bohr2ang] * Mat3(eye(3))
     else
-        primv = eye(3)
+        primv = Mat3(eye(3))
     end
 
     for (at_sym, positions) in atom_block.data
@@ -499,7 +499,7 @@ function write_structure(f, input::QEInput)
             push!(unique_atoms, at.id)
             push!(pseudo_lines, "$(at.id) $(at.element.atomic_weight)   $(at.pseudo)\n")
         end
-        push!(atom_lines, "$(at.id)  $(at.position.x) $(at.position.y) $(at.position.z)\n")
+        push!(atom_lines, "$(at.id)  $(at.position[1]) $(at.position[2]) $(at.position[3])\n")
     end
 
     write(f, "ATOMIC_SPECIES\n")

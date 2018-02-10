@@ -255,3 +255,22 @@ function get_default_job_header()
         return ""
     end
 end
+
+function getpseudoset(elsym::Symbol, str::String)
+    if !isdefined(:default_pseudos)
+        return :none, ""
+    else
+        for (key, val) in default_pseudos[elsym]
+            if length(val) == 1
+                str == val[1] && return key, ""
+            else
+                for v in val
+                    if v == str
+                        return key, findspecifier(str, val)
+                    end
+                end
+            end
+        end
+    end
+    return :none, ""
+end

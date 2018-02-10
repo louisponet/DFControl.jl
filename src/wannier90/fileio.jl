@@ -17,7 +17,7 @@ function extract_atoms(atoms_block::T, proj_block::T, cell) where T <: WannierDa
                     end
                     for ps in pos
                         size = orbsize(proj)
-                        push!(t_ats, Atom(pos_at, element(pos_at), Point3(cell' * ps), :projections => [Projection(Orbital(proj), t_start, size, t_start + size - 1)]))
+                        push!(t_ats, Atom(pos_at, element(pos_at), cell' * ps, :projections => [Projection(Orbital(proj), t_start, size, t_start + size - 1)]))
                         t_start += size
                     end
                 end
@@ -79,7 +79,7 @@ function read_wannier_input(filename::String, T=Float64; run_command="", run=tru
         while !eof(f)
             @label start_label
 
-            if contains(line, "!") || line == "" || contains(lowercase(line), "end")
+            if contains(line, "!") || line == "" || contains(lowercase(line), "end") || contains(line, "#")
                 line = readline(f)
                 continue
             end
@@ -213,7 +213,7 @@ function read_wannier_input(filename::String, T=Float64; run_command="", run=tru
 end
 
 """
-    write_wannier_input(filename::String, input::DFInput)
+    write_wannier_input(filename::String, input::DFInput)"
 
 Writes the input of a wannier90 input file.
 """

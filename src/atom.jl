@@ -76,9 +76,9 @@ Atom(id::Symbol, element::Symbol, position::Point3D, args...)  = Atom(id, ELEMEN
 
 positions(atoms::Array{<:Atom, 1}, id::Symbol) = [x.position for x in filter(y -> y.id == id, atoms)]
 
-function unique_atoms(atoms::Array{Atom{T}, 1}) where T <: AbstractFloat
+function unique_atoms(atoms::Array{<:AbstractAtom{T}, 1}) where T <: AbstractFloat
     ids    = Symbol[]
-    unique = Atom{T}[]
+    unique = AbstractAtom{T}[]
     for at in atoms
         if !in(at.id, ids)
             push!(ids, at.id)
@@ -108,3 +108,5 @@ function convert_2atoms(atoms, T=Float64)
     end
     return out_atoms
 end
+
+getpseudoset(at::AbstractAtom) = getpseudoset(at.element.symbol, at.pseudo)

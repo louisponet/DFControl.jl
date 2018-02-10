@@ -339,7 +339,7 @@ function rm_expr_lhs(filename, lhs)
     end
 end
 
-function write_cell(f::IO, cell::Matrix)
+function write_cell(f::IO, cell::AbstractMatrix)
     @assert size(cell) == (3, 3) "writing cell only allows 3x3 matrices!"
     write(f, "$(cell[1, 1]) $(cell[1, 2]) $(cell[1, 3])\n")
     write(f, "$(cell[2, 1]) $(cell[2, 2]) $(cell[2, 3])\n")
