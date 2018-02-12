@@ -746,9 +746,12 @@ If default pseudopotentials are defined, a set can be specified, together with a
 These pseudospotentials are then set in all the calculations that need it.
 All flags which specify the number of atoms inside the calculation also gets set to the correct value.
 """
-function change_atoms!(job::DFJob, atoms::Dict{Symbol,<:Array{<:Point3D,1}}; pseudo_set = :default, pseudo_specifier="")
+change_atoms!(job::DFJob, atoms::Dict{Symbol,<:Array{<:Point3D,1}}; kwargs...) = change_atoms(job, convert_2atoms(atoms); kwargs...)
+
+function change_atoms!(job::DFJob, atoms::Vector{<:AbstractAtom}; pseudo_set = :default, pseudo_specifier="")
     UNDO_JOBS[job.id] = deepcopy(job)
-    job.structure.atoms = convert_2atoms(atoms)
+
+    job.structure.atoms = atoms
     change_pseudo_set!(job, pseudo_set, pseudo_specifier)
     return job
 end

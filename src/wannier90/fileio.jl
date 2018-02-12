@@ -139,7 +139,7 @@ function read_wannier_input(filename::String, T=Float64; run_command="", run=tru
                         cell_param[i, :] = parse_line(T, line)
                         line = readline(f)
                     end
-                    cell_block = WannierDataBlock(:unit_cell_cart, option, cell_param)
+                    cell_block = WannierDataBlock(:unit_cell_cart, option, Mat3(cell_param))
                     # line = readline(f)
                     @goto start_label
 
