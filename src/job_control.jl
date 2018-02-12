@@ -1060,3 +1060,8 @@ end
 
 change_server_dir!(job, dir) = set_server_dir!(job, dir)
 change_local_dir!(job, dir)  = set_local_dir!(job, dir)
+
+"""
+Changes the projections of the specified atoms inside the job structure.
+"""
+change_projections!(job::DFJob, projections...) = change_projections!(job.structure, projections...)

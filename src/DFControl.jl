@@ -84,6 +84,7 @@ module DFControl
     export add_wan_calc!
     export change_local_dir!
     export change_server_dir!
+    export change_projections!
 
     include("constants.jl")
     export AbinitFlags
