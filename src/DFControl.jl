@@ -100,6 +100,7 @@ module DFControl
     export read_ks_from_qe_bands_file
     export read_fermi_from_qe_file
     export read_qe_kpdos
+    export read_qe_pdos
     export read_qe_polarization
     export read_qe_input
     export read_qe_output
