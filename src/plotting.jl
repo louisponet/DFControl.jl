@@ -43,7 +43,6 @@ To plot multiple bands on one plot.
 @recipe function f(bands::Array{<:DFBand,1}, ks=nothing)
     for (i, band) in enumerate(bands)
         @series begin
-            label --> (haskey(d, :label) ? d[:label] : "Band $i")
             band, ks
         end
     end
