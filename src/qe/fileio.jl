@@ -32,7 +32,7 @@ function read_qe_output(filename::String, T=Float64)
                 mod    = parse(T, s_line[5][1:end-1])
                 readline(f)
                 s_line = parse.(T, split(readline(f))[6:2:10])
-                out[:polarization] = Point3D{T}(P * s_line[1], P * s_line[2], P * s_line[3])
+                out[:polarization] = Point3{T}(P * s_line[1], P * s_line[2], P * s_line[3])
                 out[:pol_mod]      = mod
 
                 #fermi energy
@@ -92,14 +92,14 @@ function read_qe_output(filename::String, T=Float64)
                     elseif contains(line, "ATOMIC_POSITIONS")
                         out[:pos_option]      = get_card_option(line)
                         line  = readline(f)
-                        atoms = Dict{Symbol,Array{Point3D{T},1}}()
+                        atoms = Dict{Symbol,Array{Point3{T},1}}()
                         while !contains(line, "End")
                             s_line = split(line)
                             key    = Symbol(s_line[1])
                             if key in keys(atoms)
-                                push!(atoms[key], Point3D{T}(parse.(T, s_line[2:end])...))
+                                push!(atoms[key], Point3{T}(parse.(T, s_line[2:end])...))
                             else
-                                atoms[key] = [Point3D{T}(parse.(T, s_line[2:end])...)]
+                                atoms[key] = [Point3{T}(parse.(T, s_line[2:end])...)]
                             end
                             line = readline(f)
                         end
@@ -366,12 +366,12 @@ function read_qe_input(filename, T=Float64::Type; run_command="", run=true, exec
 
             elseif contains(line, "ATOMIC_POSITIONS") || contains(line, "atomic_positions")
                 option = get_card_option(line)
-                atoms  = Dict{Symbol,Array{Point3D{T},1}}()
+                atoms  = Dict{Symbol,Array{Point3{T},1}}()
                 line   = readline(f)
                 while length(split(line)) == 4
                     s_line   = split(line)
                     atom     = Symbol(s_line[1])
-                    position = Point3D(parse(T, s_line[2]), parse(T, s_line[3]), parse(T, s_line[4]))
+                    position = Point3(parse(T, s_line[2]), parse(T, s_line[3]), parse(T, s_line[4]))
                     if !haskey(atoms, atom)
                         atoms[atom] = [position]
                     else

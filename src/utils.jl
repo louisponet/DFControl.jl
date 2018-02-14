@@ -90,19 +90,6 @@ function fort2julia(f_type)
     end
 end
 
-function read_block(f, startstr::String, endstr::String)
-    block = [startstr]
-    line = readline(f)
-    while !eof(f)
-        while !contains(line, endstr)
-            line = readline(f)
-            push!(block, line)
-        end
-        return block
-    end
-    error("Block not found: start = $startstr, end = $endstr.")
-end
-
 """
 It's like filter()[1].
 """
@@ -114,6 +101,13 @@ function getfirst(f::Function, A)
     end
 end
 
+"""
+    parse_block(f, types...; to_strip=',')
+
+Takes the specified types and parses each line into the types.
+When it finds a line where it cannot match all the types, it stops and returns  the parsed values.
+The split and strip keywords let the user specify how to first split the line, then strip the splits from the strip char.
+"""
 function parse_block(f, types...; to_strip=',')
     output = []
     len_typ = length(types)
@@ -147,30 +141,4 @@ function parse_block(f, types...; to_strip=',')
         push!(output, Tuple{types...}(tmp))
     end
     return output
-end
-
-function findspecifier(str, strs::Vector{<:AbstractString})
-    tmp = Char[]
-    i = 1
-    for s in strs
-        if s == str
-            continue
-        end
-        for (ch1, ch2) in zip(str, s)
-            if ch1 != ch2
-                push!(tmp, ch1)
-            elseif !isempty(tmp)
-                break
-            end
-        end
-        !isempty(tmp) && break
-        i += 1
-    end
-    testout = join(tmp)
-    for s in strs[i+1:end]
-        if contains(s, testout)
-            return findspecifier(str, strs[i+1:end])
-        end
-    end
-    return testout
 end

@@ -18,7 +18,7 @@ function expand_star_syntax(s::String)
         return s
     end
     # Handle e.g `pawecutdg*`
-    if typeof(parse(string(s[1]))) == Symbol && s[end - 1] == '*' 
+    if typeof(parse(string(s[1]))) == Symbol && s[end - 1] == '*'
         return s
     end
     flag, rest = split(s)
@@ -53,14 +53,14 @@ function read_abi_datasets(filename::String, T=Float64)
     lines = readlines(filename) .|>
         strip                   .|>
         lowercase               .|>
-        filter_comment           
+        filter_comment
     lines = filter(x -> length(x) > 1, lines) .|>
         expand_star_syntax                    .|>
-        eval_abinit_operator     
+        eval_abinit_operator
 
     lines = split(join(lines," "))
 
-    datasets = Array{Dict{Symbol, Any},1}()
+    datasets = Vector{Dict{Symbol, Any}}()
     dataset = Dict{Symbol,Any}()
     flag = Symbol("start")
     for (l, line) in enumerate(lines)
@@ -68,7 +68,7 @@ function read_abi_datasets(filename::String, T=Float64)
             continue
         end
         #convert to the correct abinit units
-        if line in ABI_UNIT_NAMES 
+        if line in ABI_UNIT_NAMES
             dataset[flag] = convert_2abi(dataset[flag], line)
             continue
         end
@@ -128,8 +128,8 @@ end
 #Everything is in angstrom, bohr lengths begone foul beasts!
 function extract_structures!(abi_datasets...; structure_name = "NoName")
     #possible different structures for different inputs
-    out_structures = Array{Array{AbinitDataBlock, 1}, 1}()
-    out_structures = Array{Structure, 1}()
+    out_structures = Vector{Vector{AbinitDataBlock}}()
+    out_structures = Vector{Structure}()
     natom = 1
     znucl = 1
     ntypat =1
@@ -138,7 +138,7 @@ function extract_structures!(abi_datasets...; structure_name = "NoName")
 
         acell = pop!(data, :acell, [1.0, 1.0, 1.0])
         rprimd = zeros(3, 3)
-        if haskey(data, :angdeg) 
+        if haskey(data, :angdeg)
             if haskey(data, :rprim)
                 error("rprim and angdeg cannot be used at the same time.")
             end
@@ -159,8 +159,8 @@ function extract_structures!(abi_datasets...; structure_name = "NoName")
                 a2 = 2.0 / 3.0 * (1.0 - cosang)
                 aa = sqrt(a2)
                 cc = sqrt(1.0-a2)
-                rprim[1,1] = aa     
-                rprim[1,2] = 0.0              
+                rprim[1,1] = aa
+                rprim[1,2] = 0.0
                 rprim[1,3] = cc
                 rprim[2,1] = -0.5 * aa
                 rprim[2,2] = sqrt(3.0) * 0.5 * aa
@@ -188,26 +188,26 @@ function extract_structures!(abi_datasets...; structure_name = "NoName")
         end
         rprimd *= conversions[:bohr2ang]
 
-        ntypat = pop!(data, :ntypat, ntypat) 
+        ntypat = pop!(data, :ntypat, ntypat)
         natom = pop!(data, :natom, natom)
         znucl = pop!(data, :znucl, znucl)
         #some kind of npsp not supported
         typat = pop!(data, :typat, typat)
         typat = typat[1:natom]
-        
-        s_atoms = Atom{eltype(rprimd)}[] 
+
+        s_atoms = Atom{eltype(rprimd)}[]
         if haskey(data, :xred)
             xred = pop!(data, :xred)
             atoms = reshape(xred, (div(length(xred), 3), 3))
-            
+
             for i=1:length(typat)
                 typ = typat[i]
                 atom = Array(atoms[i,:])
                 z = znucl[typ]
                 nz = length(filter( x-> x==z, znucl))
                 _element = element(z)
-                z_sym = nz == 1 ? _element.symbol : Symbol(String(_element.symbol) * "$typ") 
-                push!(s_atoms, Atom(z_sym, _element, rprimd' * Point3D(atom)))
+                z_sym = nz == 1 ? _element.symbol : Symbol(String(_element.symbol) * "$typ")
+                push!(s_atoms, Atom(z_sym, _element, rprimd' * Point3(atom)))
             end
 
 
@@ -219,7 +219,7 @@ function extract_structures!(abi_datasets...; structure_name = "NoName")
                 nz = length(filter( x-> x==z, znucl))
                 _element = element(z)
                 z_sym = nz == 1 ? _element.symbol : Symbol(String(_element.symbol) * "$typ")
-                push!(s_atoms, Atom(z_sym, _element, conversions[:bohr2ang] * Point3D(atom)))
+                push!(s_atoms, Atom(z_sym, _element, conversions[:bohr2ang] * Point3(atom)))
             end
 
         elseif haskey(data, :xangst)
@@ -230,15 +230,15 @@ function extract_structures!(abi_datasets...; structure_name = "NoName")
                 nz = length(filter( x-> x==z, znucl))
                 element = element(z)
                 z_sym = nz == 1 ? _element.symbol : Symbol(String(_element.symbol) * "$typ")
-                
-                push!(s_atoms, Atom(z_sym, _element, Point3D(atom)))
+
+                push!(s_atoms, Atom(z_sym, _element, Point3(atom)))
             end
-  
+
         else
-            try 
+            try
                 rprimd = out_structures[1].cell
                 atoms = out_structures[1].atoms
-            catch 
+            catch
                 error("xred|xcart|xangs must be given in input.")
             end
         end
@@ -253,7 +253,7 @@ end
 """
     read_abi_input(filename::String, T=Float64)
 
-Returns an ABINIT input. We assume that jdtset is on a seperate line. 
+Returns an ABINIT input. We assume that jdtset is on a seperate line.
 If # DATASET is supplied as first line, it will make sure that amount of datasets are read no matter what ndtset and jdtset are.
 `ndtset` and `jdtset` will be taken into account to decide which calculations will be marked as 'should run'.
 Either all structures of the input are the same or all are different, otherwise there will be an error.
@@ -286,36 +286,35 @@ function read_abi_input(filename::String, T=Float64; run_command= "", pseudos=["
 end
 
 function write_abi_structure(f, structure)
-    write(f,"acell 1.0 1.0 1.0\n")
-    write(f,"xangst\n")
+    write(f, "acell 1.0 1.0 1.0\n")
+    write(f, "xangst\n")
     for at in structure.atoms
         write(f, at.position)
         write(f, "\n")
     end
-    write(f,"rprim\n")
+    write(f, "rprim\n")
     write_cell(f, structure.cell)
 
     unique = unique_atoms(structure.atoms)
-    write(f,"nat $(length(structure.atoms))\n")
-    write(f,"ntypat $(length(unique))\n")
-    write(f,"typat\n")
+    write(f, "nat $(length(structure.atoms))\n")
+    write(f, "ntypat $(length(unique))\n")
+    write(f, "typat\n")
     i = 1
     for at in structure.atoms
-        write(f,"$(findfirst(x->x.id == at.id, unique)) ")
+        write(f, "$(findfirst(x->x.id == at.id, unique)) ")
         if i == 3
             i=0
             write(f,"\n")
         end
         i+=1
     end
-    write(f,"\n")
-    write(f,"znucl ")
+    write(f, "\n")
+    write(f, "znucl ")
     for at in unique
-        write(f,"$(at.element.Z) ")
+        write(f, "$(at.element.Z) ")
     end
     write(f, "\n")
 end
-
 
 #question: Does it matter that we might be writing redundant data such as spinat etc?
 """
@@ -324,8 +323,8 @@ end
 Takes all the inputs, sees which ones have the same structure and constructs input files for each seperate sturcture.
 The filename of the first input of a certain structure is used as file for all the datasets.
 """
-function write_abi_datasets(inputs::Array{AbinitInput,1}, directory)
-    input_groups = Array{Array{AbinitInput,1},1}([[inputs[end]]])
+function write_abi_datasets(inputs::Vector{AbinitInput}, directory)
+    input_groups = Vector{Vector{AbinitInput}}([[inputs[end]]])
     for input in reverse(inputs)[2:end]
         for group in input_groups
             if group[1].structure == input.structure
@@ -334,15 +333,15 @@ function write_abi_datasets(inputs::Array{AbinitInput,1}, directory)
             end
         end
     end
-    
+
     filenames    = String[]
     run_commands = String[]
-    pseudos      = Array{Array{String,1},1}()
+    pseudos      = Vector{Vector{String}}()
 
     for group in input_groups
         run_indices = Int[]
         for (i, _input) in enumerate(reverse(group))
-            if _input.run 
+            if _input.run
                 push!(run_indices, i)
             end
         end
@@ -353,14 +352,14 @@ function write_abi_datasets(inputs::Array{AbinitInput,1}, directory)
             jdtset = join(["$c" for c in run_indices], " ")
             ndtset = length(run_indices)
         end
-        file, ext = splitext(group[end].filename)  
+        file, ext = splitext(group[end].filename)
         push!(filenames, file[1:end-1] * ext)
         push!(run_commands, group[end].run_command)
         push!(pseudos, get_data(group[end], :pseudos))
         open(directory * file[1:end-1] * ext, "w") do f
             write(f, "# DATASETS $(length(group))\n")
             write(f, "ndtset $ndtset\n")
-            if jdtset != "" 
+            if jdtset != ""
                 write(f, "jdtset $jdtset\n")
             end
             write_abi_structure(f, group[1].structure)
@@ -397,7 +396,7 @@ function read_abi_fatbands(filename::String, T=Float64)
             line = readline(f)
             if contains(line, "BAND number")
                 extra   = Dict{Symbol,Any}(:pdos => T[])
-                eigvals = Array{T,1}()
+                eigvals = Vector{T}()
                 line    = readline(f)
                 while line != "" && line != "&"
                     eigval, pdos = parse.(T, split(line)[2:end])
@@ -416,7 +415,7 @@ end
 function read_abi_ebands(filename::String, T=Float64)
     bands = DFBand[]
     open(filename, "r") do f
-        k_points_cryst = Array{Array{T,1},1}()
+        k_points_cryst = Vector{Vector{T}}()
         while !eof(f)
             line = readline(f)
             if contains(line,"List of k-points")
@@ -426,11 +425,11 @@ function read_abi_ebands(filename::String, T=Float64)
                     push!(k_points_cryst, k_point)
                     line = readline(f)
                 end
-                
+
             elseif contains(line,"target")
                 readline(f)
                 eigvals = T[]
-                line = readline(f) 
+                line = readline(f)
                 while line[1] != '&'
                     push!(eigvals, parse(T, split(line)[2]))
                     line = readline(f)
@@ -445,8 +444,8 @@ end
 "Reads and abinit _EIG output file and returns the found DFBands. K-points are only given in crystalline coordinates."
 function read_abi_eig(filename::String, T=Float64)
     bands = DFBand[]
-    k_points_array = Array{Array{T,1},1}()
-    eigvals_array  = Array{Array{T,1},1}()
+    k_points_array = Vector{Vector{T}}()
+    eigvals_array  = Vector{Vector{T}}()
     open(filename, "r") do f
         while !eof(f)
             line = readline(f)
@@ -460,7 +459,7 @@ function read_abi_eig(filename::String, T=Float64)
         push!(bands, DFBand([T[0.0, 0.0, 0.0] for i=1:length(eigvals)], k_points_array, eigvals))
     end
     return bands
-end 
+end
 
 function read_abi_eig_block!(f, k_points_array, eigvals_array, T=Float64)
     first_run = isempty(eigvals_array)
@@ -477,7 +476,7 @@ function read_abi_eig_block!(f, k_points_array, eigvals_array, T=Float64)
             read_abi_eig_block!(f, k_points_array, eigvals_array, T)
         else
             for val in parse.(T, split(line))
-                if first_run 
+                if first_run
                     push!(eigvals_array, [val])
                 else
                     push!(eigvals_array[i], val)
@@ -487,5 +486,3 @@ function read_abi_eig_block!(f, k_points_array, eigvals_array, T=Float64)
         end
     end
 end
-
-

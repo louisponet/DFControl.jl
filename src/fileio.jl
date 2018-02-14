@@ -51,7 +51,7 @@ function parse_flag_val(val, T=Float64)
         t = t[1:end-1] .* abi_conversions[t[end]]
     end
 
-    length(t) == 1 ? t[1] : typeof(t) <: Array{Real,1} ? convert.(T,t) : t
+    length(t) == 1 ? t[1] : typeof(t) <: Vector{Real} ? convert.(T,t) : t
 end
 
 #---------------------------BEGINNING GENERAL SECTION-------------------#
@@ -117,7 +117,7 @@ function write_job_files(job::DFJob)
                 end
                 i += 1
             elseif typeof(calculation) == AbinitInput
-                abinit_inputs     = Array{AbinitInput,1}(filter(x -> typeof(x) == AbinitInput, job.calculations))
+                abinit_inputs     = Vector{AbinitInput}(filter(x -> typeof(x) == AbinitInput, job.calculations))
                 i += length(abinit_inputs)
                 abinit_jobfiles   = write_abi_datasets(abinit_inputs, job.local_dir)
                 for (filename, pseudos, run_command) in abinit_jobfiles
@@ -185,13 +185,13 @@ All files that are read contain "in".
 This reads QE and wannier90 inputs for now.
 """
 function read_job_file(job_file::String)
-    data = Dict{Symbol,Any}()
+    data = Dict{Symbol, Any}()
     data[:name]         = ""
-    data[:header]       = Array{String,1}()
-    data[:input_files]  = Array{String,1}()
-    data[:output_files] = Array{String,1}()
-    data[:run_commands] = Array{String,1}()
-    data[:should_run]   = Array{Bool,1}()
+    data[:header]       = Vector{String}()
+    data[:input_files]  = Vector{String}()
+    data[:output_files] = Vector{String}()
+    data[:run_commands] = Vector{String}()
+    data[:should_run]   = Vector{Bool}()
     open(job_file, "r") do f
         readline(f)
         while !eof(f)
@@ -255,22 +255,8 @@ function read_job_file(job_file::String)
     return data
 end
 
-#Incomplete: because QE is stupid we have to find a way to distinguish nscf and bands outputs hardcoded.
-# function read_output(filename::string, args...)
-#   open(filename,"r") do f
-#     while !eof(f)
-#       line = readline(f)
-
-#       if contains(line,"self-consistent calculation")
-#         return
-#       elseif contains(line,"band structure calculation") && !contains(filename,"nscf")
-#         return read_qe_bands_file(filename,args...)
-#       elseif contains(line, "
-
-
 #---------------------------END GENERAL SECTION-------------------#
 
-#Incomplete: we should probably handle writing an array of expressions as well!
 function expr2file(filename::String, expression::Expr)
     eq        = Symbol("=")
     lines     = readlines(filename)

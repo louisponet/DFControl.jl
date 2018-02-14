@@ -135,7 +135,7 @@ function configure_default_pseudos(server = get_default_server(), pseudo_dirs=ge
         error("Either supply valid pseudo directories or setup a default pseudo dir through 'add_default_pseudo_dir()'.")
     end
 
-    outputs = Dict{Symbol,String}()
+    outputs = Dict{Symbol, String}()
     if typeof(pseudo_dirs) == String
         outputs[:default] = readstring(`ssh -t $server ls $pseudo_dirs`)
     elseif typeof(pseudo_dirs) <: Dict
@@ -145,12 +145,12 @@ function configure_default_pseudos(server = get_default_server(), pseudo_dirs=ge
     end
 
     if !isdefined(:default_pseudos)
-        expr2file(default_file, :(default_pseudos = Dict{Symbol,Dict{Symbol,Array{String,1}}}()))
+        expr2file(default_file, :(default_pseudos = Dict{Symbol, Dict{Symbol, Vector{String}}}()))
         init_defaults(default_file)
     end
 
     for el in ELEMENTS
-        expr2file(default_file,:(default_pseudos[$(QuoteNode(el.symbol))] = Dict{Symbol,Array{String,1}}()))
+        expr2file(default_file,:(default_pseudos[$(QuoteNode(el.symbol))] = Dict{Symbol, Vector{String}}()))
     end
 
     for (name, pseudo_string) in outputs
@@ -214,7 +214,7 @@ Adds the input to the default inputs, writes it to a file in user_defaults folde
 """
 function set_default_input(calculation::Symbol, input::DFInput)
     if !isdefined(:default_inputs)
-        expr = :(default_inputs = Dict{Symbol,DFInput}())
+        expr = :(default_inputs = Dict{Symbol, DFInput}())
         expr2file(default_file,expr)
         init_defaults(default_file)
     end
@@ -254,6 +254,32 @@ function get_default_job_header()
     else
         return ""
     end
+end
+
+function findspecifier(str, strs::Vector{<:AbstractString})
+    tmp = Char[]
+    i = 1
+    for s in strs
+        if s == str
+            continue
+        end
+        for (ch1, ch2) in zip(str, s)
+            if ch1 != ch2
+                push!(tmp, ch1)
+            elseif !isempty(tmp)
+                break
+            end
+        end
+        !isempty(tmp) && break
+        i += 1
+    end
+    testout = join(tmp)
+    for s in strs[i+1:end]
+        if contains(s, testout)
+            return findspecifier(str, strs[i+1:end])
+        end
+    end
+    return testout
 end
 
 function getpseudoset(elsym::Symbol, str::String)

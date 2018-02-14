@@ -17,7 +17,7 @@ mutable struct AbinitDataBlock <: DataBlock
     data::Any
 end
 
-function block(blocks::Array{<:Block,1}, name::Symbol)
+function block(blocks::Vector{<:Block}, name::Symbol)
     found_blocks = filter(x-> x.name == name, blocks)
     if isempty(found_blocks)
         return nothing
@@ -36,7 +36,7 @@ mutable struct WannierInput <: DFInput
     filename    ::String
     structure   ::Structure
     flags       ::Dict{Symbol,Any}
-    data_blocks ::Array{WannierDataBlock,1}
+    data_blocks ::Vector{WannierDataBlock}
     run_command ::String
     run         ::Bool
     preprocess  ::Bool
@@ -58,7 +58,7 @@ mutable struct AbinitInput <: DFInput
     filename    ::String
     structure   ::Union{Structure, Void}
     flags       ::Dict{Symbol,Any}
-    data_blocks ::Array{AbinitDataBlock,1}
+    data_blocks ::Vector{AbinitDataBlock}
     run_command ::String
     run         ::Bool
 end

@@ -29,7 +29,7 @@ function pull_file(server_dir::String, local_dir::String, filename::String; serv
     end
 end
 
-function pull_files(server_dir::String, local_dir::String, filenames::Array{String}; server=get_default_server())
+function pull_files(server_dir::String, local_dir::String, filenames::Vector{String}; server=get_default_server())
     pulled_files = String[]
     for file in filenames
        push!(pulled_files, pull_file(server_dir, local_dir, file; server))
@@ -109,16 +109,12 @@ end
 
 If sbatch is running on server it will return the output of the `qstat` command.
 """
-function qstat(server)
-    run(`ssh -t $server qstat`)
-end
-qstat() = qstat(get_default_server())
+qstat(server) = run(`ssh -t $server qstat`)
+qstat()       = qstat(get_default_server())
 
 """
     watch_qstat(server)
 If sbatch is running on server it will return the output of the `watch qstat` command.
 """
-function watch_qstat(server)
-    run(`ssh -t $server watch qstat`)
-end
-watch_qstat() = watch_qstat(get_default_server())
+watch_qstat(server) = run(`ssh -t $server watch qstat`)
+watch_qstat()       = watch_qstat(get_default_server())

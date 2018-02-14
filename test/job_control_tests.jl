@@ -41,7 +41,7 @@ rm(test_dir)
 # change_data = Dict(:sk1=>3,:sk2=>3.2,:prefix=>"'test'",:noncolin => false, :ecutwfc=> 35,:test => true, :ion_dynamics=>true , :trash=>'d')
 # change_data2 = Dict(:bleirgh => "'stuff'")
 data = get_data(df_job,"nscf",:atomic_positions)
-data[:Te] = data[:Te].+Point3D(0.01f0)
+data[:Te] = data[:Te].+Point3(0.01f0)
 change_data!(df_job,"nscf",:atomic_positions,data)
 @test get_block(df_job,"nscf",:atomic_positions).data == data
 
@@ -95,12 +95,12 @@ print_flags(df_job)
 
 # @test check_job_data(df_job,check_keys) == Dict(:sk1=>3,:prefix=>"'test'",:noncolin => false, :ecutwfc=> 35)
 
-# set_data1 = Dict(:Ze => [Point3D(1.2,3.2,1.2)])
+# set_data1 = Dict(:Ze => [Point3(1.2,3.2,1.2)])
 # set_data2 = Dict(:control => Dict(:test => true))
 # set_job_data!(df_job,[1,3],:atoms,set_data1)
 # set_job_data!(df_job,[1,3],:control_blocks,set_data2)
 # @test df_job.calculations[3][2].control_blocks[:control][:test]
 # @test df_job.calculations[1][2].control_blocks[:control][:pseudo_dir] == "'./'"
-# @test df_job.calculations[1][2].atoms[:Ze] == [Point3D(1.2,3.2,1.2)]
+# @test df_job.calculations[1][2].atoms[:Ze] == [Point3(1.2,3.2,1.2)]
 
 # dfprintln("")

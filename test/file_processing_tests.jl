@@ -9,7 +9,7 @@ display(projwfc_input)
 @test get_data(scf_input,:atomic_species)[:Te] == "Te.rel-pbesol-dn-kjpaw_psl.0.2.2.UPF"
 @test get_block(scf_input,:k_points).option == :automatic
 @test get_block(scf_input,:k_points).data[3] == 10
-@test get_block(scf_input,:atomic_positions).data[:Te] == [Point3D{Float64}(0.523252856, 0.523252856, 0.523252856)]
+@test get_block(scf_input,:atomic_positions).data[:Te] == [Point3{Float64}(0.523252856, 0.523252856, 0.523252856)]
 
 @test get_data(scf_input,:atomic_species)[:Te] == get_data(bands_input,:atomic_species)[:Te]
 @test get_block(bands_input, :cell_parameters).data == get_block(scf_input, :cell_parameters).data
@@ -40,7 +40,7 @@ wan_test = read_wannier_input(joinpath(@__DIR__,"../assets/inputs/wannier/wan.wi
 @test length(get_data(wan_test,:kpoints)) == prod(get_flag(wan_test,:mp_grid))
 @test length(get_data(wan_test,:atoms_frac)) == 2
 @test get_flag(wan_test,:write_rmn)
-@test get_data(wan_test,:atoms_frac)[:Te] == [Point3D{Float64}(0.52325284,0.52325284,0.52325284)]
+@test get_data(wan_test,:atoms_frac)[:Te] == [Point3{Float64}(0.52325284,0.52325284,0.52325284)]
 
 test_filename = joinpath(@__DIR__,"../assets/inputs/wannier/wan_test.win")
 write_input(wan_test,test_filename)

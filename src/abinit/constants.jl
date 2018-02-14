@@ -5,8 +5,8 @@ const ABI_UNIT_NAMES = [lowercase(s) for s in [
         "T", "Tesla"]]
 
 const abi_conversions = Dict{Symbol,Any}(:ev => 1 / 27.2113845,
-                                         :ha => 1.0, 
-                                         :ry => 0.5, 
+                                         :ha => 1.0,
+                                         :ry => 0.5,
                                          :ang => 1.889716164632,
                                          :bohr => 1.0,
                                          :au => 1.0,
@@ -25,7 +25,7 @@ convert_2abi(value, s::String) = value * abi_conversions[Symbol(s)]
 convert_2abi(value, s::Symbol) = value * abi_conversions[s]
 
 function construct_abi_flags()
-    out      = Dict{Symbol,Type}()
+    out      = Dict{Symbol, Type}()
     open(joinpath(assets_dir,"inputs/abinit/input_variables.txt"), "r") do f
         while !eof(f)
             spl = split(readline(f))

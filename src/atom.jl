@@ -4,10 +4,10 @@ include("wannier90/projections.jl")
 Represents an element.
 """
 struct Element
-    symbol::Symbol
-    Z::Int64
-    name::String
-    atomic_weight::Float64
+    symbol        ::Symbol
+    Z             ::Int64
+    name          ::String
+    atomic_weight ::Float64
 end
 
 """
@@ -45,10 +45,10 @@ abstract type AbstractAtom{T} end
 mutable struct Atom{T<:AbstractFloat} <: AbstractAtom{T}
     id          ::Symbol
     element     ::Element
-    position    ::Point3D{T}
+    position    ::Point3{T}
     pseudo      ::String
-    projections ::Array{Projection, 1}
-    function Atom(id::Symbol, element::Element, position::Point3D{T}, args...) where T <: AbstractFloat
+    projections ::Vector{Projection}
+    function Atom(id::Symbol, element::Element, position::Point3{T}, args...) where T <: AbstractFloat
         atom          = new{T}()
         atom.id       = id
         atom.element  = element
@@ -72,11 +72,11 @@ mutable struct Atom{T<:AbstractFloat} <: AbstractAtom{T}
         return atom
     end
 end
-Atom(id::Symbol, element::Symbol, position::Point3D, args...)  = Atom(id, ELEMENTS[element], position, args...)
+Atom(id::Symbol, element::Symbol, position::Point3, args...)  = Atom(id, ELEMENTS[element], position, args...)
 
-positions(atoms::Array{<:Atom, 1}, id::Symbol) = [x.position for x in filter(y -> y.id == id, atoms)]
+positions(atoms::Vector{<:Atom}, id::Symbol) = [x.position for x in filter(y -> y.id == id, atoms)]
 
-function unique_atoms(atoms::Array{<:AbstractAtom{T}, 1}) where T <: AbstractFloat
+function unique_atoms(atoms::Vector{<:AbstractAtom{T}}) where T <: AbstractFloat
     ids    = Symbol[]
     unique = AbstractAtom{T}[]
     for at in atoms
@@ -88,12 +88,12 @@ function unique_atoms(atoms::Array{<:AbstractAtom{T}, 1}) where T <: AbstractFlo
     return unique
 end
 
-function convert_2atoms(atoms::Array{<:AbstractString, 1}, T=Float64)
+function convert_2atoms(atoms::Vector{<:AbstractString}, T=Float64)
     out_atoms = Atom{T}[]
     for line in atoms
         atsym, x, y, z = parse.(split(line))
         el = element(atsym)
-        push!(out_atoms, Atom(atsym, el, Point3D{U}(x, y, z)))
+        push!(out_atoms, Atom(atsym, el, Point3{U}(x, y, z)))
     end
     return out_atoms
 end

@@ -8,7 +8,7 @@ module DFControl
     export element
     export AbstractAtom
     export Atom
-    export Point3D
+    export Point3
     export AbstractStructure
     export Structure
 

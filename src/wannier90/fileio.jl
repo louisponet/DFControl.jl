@@ -145,7 +145,7 @@ function read_wannier_input(filename::String, T=Float64; run_command="", run=tru
 
                 elseif block_name == :atoms_frac || block_name == :atoms_cart
                     line   = readline(f)
-                    atoms  = Dict{Symbol,Array{Point3D{T},1}}()
+                    atoms  = Dict{Symbol,Array{Point3{T},1}}()
                     option = :ang
                     while !contains(lowercase(line), "end")
                         if contains(line, "!") || line == ""
@@ -159,7 +159,7 @@ function read_wannier_input(filename::String, T=Float64; run_command="", run=tru
                         end
                         split_line = strip_split(line)
                         atom       = Symbol(split_line[1])
-                        position   = Point3D(parse_string_array(T, split_line[2:4]))
+                        position   = Point3(parse_string_array(T, split_line[2:4]))
                         if !haskey(atoms,atom)
                             atoms[atom] = [position]
                         else

@@ -12,8 +12,8 @@ end
 mutable struct QEInput <: DFInput
     filename       ::String
     structure      ::Union{Structure, Void}
-    control_blocks ::Array{QEControlBlock,1}
-    data_blocks    ::Array{QEDataBlock,1}
+    control_blocks ::Vector{QEControlBlock}
+    data_blocks    ::Vector{QEDataBlock}
     run_command    ::String  #everything before < in the job file
     exec           ::String
     run            ::Bool
@@ -182,11 +182,11 @@ function change_kpoints!(input::QEInput, k_grid::Union{NTuple{3, Int}, NTuple{6,
 end
 
 """
-    change_kpoints!(input::QEInput, k_grid::Array{Array{<:AbstractFloat, 1}, 1})
+    change_kpoints!(input::QEInput, k_grid::Vector{Vector{<:AbstractFloat}})
 
 Changes the data in the k point `DataBlock` inside the specified calculation.
 """
-function change_kpoints!(input::QEInput, k_grid::Array{Array{<:AbstractFloat, 1}, 1}; print=true)
+function change_kpoints!(input::QEInput, k_grid::Vector{Vector{<:AbstractFloat}}; print=true)
     calc = get_flag(input, :calculation)
     @assert calc == "'bands'" warn("Expected calculation to be 'bands', got $calc.")
     k_option = :crystal_b

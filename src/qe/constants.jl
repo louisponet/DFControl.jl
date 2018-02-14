@@ -1,7 +1,17 @@
 const celldm_1 = Symbol("celldm(1)")
 
-
-
+function read_block(f, startstr::String, endstr::String)
+    block = [startstr]
+    line = readline(f)
+    while !eof(f)
+        while !contains(line, endstr)
+            line = readline(f)
+            push!(block, line)
+        end
+        return block
+    end
+    error("Block not found: start = $startstr, end = $endstr.")
+end
 
 #this is both flags and variables, QE calls it variables so ok
 struct QEVariableInfo{T}
@@ -21,7 +31,7 @@ function read_qe_variable(lines, i)
     # default = nothing
     i += 1
     line = lines[i]
-    while !contains(line,"+------") 
+    while !contains(line,"+------")
         # if contains(line, "Default")
         #     _t = strip_split(line)[2]
         #     _t = strip(strip(_t,'('),')')
@@ -31,7 +41,7 @@ function read_qe_variable(lines, i)
         #         _t = contains(_t,"=") ?split(_t,"=")[end] : _t
         #         default = typ ==String ? _t : parse(_t)
         #         println(_t)
-        #         if typeof(default) != Symbol 
+        #         if typeof(default) != Symbol
         #             default = convert(typ, default)
         #         end
         #     end
@@ -39,7 +49,7 @@ function read_qe_variable(lines, i)
             push!(description, strip_split(line,":")[2])
             i += 1
             line = lines[i]
-            while !contains(line,"+------") 
+            while !contains(line,"+------")
                 push!(description, strip(lines[i]))
                 i += 1
                 line = lines[i]
@@ -70,7 +80,7 @@ struct QEControlBlockInfo
 end
 function QEControlBlockInfo(lines::Array{<:AbstractString, 1})
     name  = Symbol(lowercase(strip_split(lines[1], "&")[2]))
-    flags = QEVariableInfo[] 
+    flags = QEVariableInfo[]
     for i=1:length(lines)
         line = lines[i]
         if contains(line, "Variable")
@@ -106,7 +116,7 @@ function QEDataBlockInfo(lines::Array{<:AbstractString, 1})
     description         = String[]
     variables           = QEVariableInfo[]
     options_description = String[]
-    i = 2 
+    i = 2
     while i <= length(lines) - 1
         line = strip(lines[i])
         if contains(line, "___________") && !contains(line, "+--")
