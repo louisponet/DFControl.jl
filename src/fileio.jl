@@ -71,11 +71,11 @@ function write_input(df_input::DFInput, filename::String=df_input.filename)
 end
 
 #Incomplete: only works with SBATCH right now
-function write_job_name(job::DFJob, f)
+function write_job_name(f, job::DFJob)
     write(f, "#SBATCH -J $(job.name) \n")
 end
 
-function write_job_header(job::DFJob, f)
+function write_job_header(f, job::DFJob)
     job_header = job.header == "" ? get_default_job_header() : job.header
     for line in job_header
         if contains(line, "\n")
@@ -86,6 +86,46 @@ function write_job_header(job::DFJob, f)
     end
 end
 
+function writetojob(f, job, inputs::Vector{AbinitInput})
+    abinit_jobfiles   = write_abi_datasets(inputs, job.local_dir)
+    num_abi = 0
+    for (filename, pseudos, run_command) in abinit_jobfiles
+        file, ext = splitext(filename)
+        write(f, "$run_command << !EOF\n$filename\n$(file * ".out")\n$(job.name * "_Xi$num_abi")\n$(job.name * "_Xo$num_abi")\n$(job.name * "_Xx$num_abi")\n")
+        for pp in pseudos
+            write(f, "$pp\n")
+        end
+        write(f, "!EOF\n")
+        num_abi += 1
+    end
+end
+
+function writetojob(f, job, input::QEInput)
+    exec        = input.exec
+    run_command = input.run_command
+    filename    = input.filename
+    should_run  = input.run
+    write_input(input, job.local_dir * filename)
+    if !should_run
+        write(f, "#$run_command $exec <$filename> $(split(filename,".")[1]).out \n")
+    else
+        write(f, "$run_command $exec <$filename> $(split(filename,".")[1]).out \n")
+    end
+end
+
+function writetojob(f, job, input::WannierInput)
+    write_input(input, job.local_dir * filename)
+    run_command = input.run_command
+    filename    = input.filename
+    if input.preprocess
+        run_command *= " -pp"
+    end
+    if !should_run
+        write(f, "#$run_command $(filename[1:end-4])\n")
+    else
+        write(f, "$run_command $(filename[1:end-4])\n")
+    end
+end
 """
     write_job_files(job::DFJob)
 
@@ -93,54 +133,15 @@ Writes all the input files and job file that are linked to a DFJob.
 """
 function write_job_files(job::DFJob)
     files_to_remove = search_dir(job.local_dir, ".in")
-    new_filenames   = String[]
-    num_abi         = 0
+    new_filenames   = getfield.(job.calculations, :filename)
     open(job.local_dir * "job.tt", "w") do f
         write(f, "#!/bin/bash\n")
-        write_job_name(job, f)
-        write_job_header(job, f)
-        i = 1
-        while i <= length(job.calculations)
-            calculation = job.calculations[i]
-            run_command = calculation.run_command
-            filename    = calculation.filename
-            should_run  = calculation.run
-            if typeof(calculation) == WannierInput
-                write_input(calculation, job.local_dir * filename)
-                if calculation.preprocess
-                    run_command *= " -pp"
-                end
-                if !should_run
-                    write(f, "#$run_command $(filename[1:end-4])\n")
-                else
-                    write(f, "$run_command $(filename[1:end-4])\n")
-                end
-                i += 1
-            elseif typeof(calculation) == AbinitInput
-                abinit_inputs     = Vector{AbinitInput}(filter(x -> typeof(x) == AbinitInput, job.calculations))
-                i += length(abinit_inputs)
-                abinit_jobfiles   = write_abi_datasets(abinit_inputs, job.local_dir)
-                for (filename, pseudos, run_command) in abinit_jobfiles
-                    file, ext = splitext(filename)
-                    write(f, "$run_command << !EOF\n$filename\n$(file * ".out")\n$(job.name * "_Xi$num_abi")\n$(job.name * "_Xo$num_abi")\n$(job.name * "_Xx$num_abi")\n")
-                    for pp in pseudos
-                        write(f, "$pp\n")
-                    end
-                    write(f, "!EOF\n")
-                    num_abi += 1
-                end
-
-            elseif typeof(calculation) == QEInput
-                exec = calculation.exec
-                write_input(calculation, job.local_dir * filename)
-                if !should_run
-                    write(f, "#$run_command $exec <$filename> $(split(filename,".")[1]).out \n")
-                else
-                    write(f, "$run_command $exec <$filename> $(split(filename,".")[1]).out \n")
-                end
-                i += 1
-            end
-            push!(new_filenames, filename)
+        write_job_name(f, job)
+        write_job_header(f, job)
+        abiinputs = Vector{AbinitInput}(filter(x -> typeof(x) == AbinitInput, job.calculations))
+        !isempty(abiinputs) && writetojob(f, job, abiinputs)
+        for calc in filter(x -> typeof(x) != AbinitInput, job.calculations)
+            writetojob(f, job, calc)
         end
     end
 
@@ -152,8 +153,7 @@ function write_job_files(job::DFJob)
     return new_filenames
 end
 
-
-function read_command_line(line)
+function read_job_line(line)
     if typeof(line) <: String
         line = split(line)
     end
@@ -168,7 +168,6 @@ function read_command_line(line)
         end
     end
     run_command = prod([s * " " for s in line[1:i]])
-#TODO think about a better way of handling wannier90, probably with a fixed set of rules. Only 1 wannier90 input, which preprocesses or not..
     if contains(line[i + 1], "-pp") #this is for wannier90
         run_command *= line[i + 1]
         i += 1
@@ -180,9 +179,8 @@ end
 """
     read_job_file(job_file::String)
 
-Reads and returns the name, input files, run_commands and whether or not they need to be commented out.
-All files that are read contain "in".
-This reads QE and wannier90 inputs for now.
+Reads and returns all the relevant information contained in the job input file.
+All files that are read contain extension "in".
 """
 function read_job_file(job_file::String)
     data = Dict{Symbol, Any}()
@@ -207,8 +205,8 @@ function read_job_file(job_file::String)
                     push!(data[:should_run], true)
                 end
 
-                s_line        = split(line)
-                i, run_command = read_command_line(s_line)
+                s_line         = split(line)
+                i, run_command = read_job_line(s_line)
                 push!(data[:run_commands], run_command)
                 #handles QE and Wannier.
                 in_out = strip_split(prod(s_line[i + 1:end]), ">")
@@ -225,7 +223,7 @@ function read_job_file(job_file::String)
             elseif contains(line, "abinit ")
                 data[:abinit_pseudos] = Array{String,1}()
                 s_line         = split(line)
-                i, run_command = read_command_line(s_line)
+                i, run_command = read_job_line(s_line)
                 push!(data[:run_commands], strip(run_command, '#'))
                 if contains(line, "!EOF")
                     push!(data[:input_files],  strip(readline(f), '#'))

@@ -31,7 +31,7 @@ module DFControl
     export QEInput
     export WannierInput
 
-    include("job_control.jl")
+    include("job.jl")
     export DFJob
     export create_job
     export load_job
