@@ -214,7 +214,7 @@ Adds the input to the default inputs, writes it to a file in user_defaults folde
 """
 function set_default_input(calculation::Symbol, input::DFInput)
     if !isdefined(:default_inputs)
-        expr = :(default_inputs = Dict{Symbol, DFInput}())
+        expr = :(default_inputs = Dict{Symbol, Tuple{DFInput, Union{AbstractStructure, Void}}}())
         expr2file(default_file,expr)
         init_defaults(default_file)
     end

@@ -212,32 +212,9 @@ function load_job(job_dir::String, T=Float64;
 
     job_dir = form_directory(job_dir)
 
-    name, header, inputs = read_job_inputs(job_dir * search_dir(job_dir, job_fuzzy)[1])
+    name, header, inputs, structure = read_job_inputs(job_dir * search_dir(job_dir, job_fuzzy)[1])
     j_name = isempty(new_job_name) ? name : new_job_name
     structure_name = split(j_name, "_")[1]
-    structure = nothing
-    for calc in inputs
-        if calc.structure != nothing
-            if structure == nothing
-                structure = calc.structure
-            else
-                for (at1, at2) in zip(structure.atoms, calc.structure.atoms)
-                    for name in fieldnames(typeof(at1))
-                        if name in [:id, :element, :position, :pseudo]
-                            continue
-                        end
-                        if !isdefined(at2, name)
-                            continue
-                        else
-                            setfield!(at1, name, getfield(at2,name))
-                        end
-                    end
-                end
-                calc.structure = structure
-            end
-        end
-    end
-
     structure.name = structure_name
 
     if new_local_dir != nothing

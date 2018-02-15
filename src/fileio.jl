@@ -60,15 +60,6 @@ end
 
 Writes the input file for a DFInput.Backend of DFInput decides what writing function is called.
 """
-function write_input(df_input::DFInput, filename::String=df_input.filename)
-    if typeof(df_input) == QEInput
-        write_qe_input(df_input, filename)
-    elseif typeof(df_input) == WannierInput
-        write_wannier_input(df_input, filename)
-    elseif typeof(df_input) == AbinitInput
-        write_abi_input(df_input, filename)
-    end
-end
 
 #Incomplete: only works with SBATCH right now
 function write_job_name(f, job::DFJob)
@@ -108,7 +99,7 @@ function writetojob(f, job, input::QEInput)
     run_command = input.run_command
     filename    = input.filename
     should_run  = input.run
-    write_input(input, job.local_dir * filename)
+    write_input(input, job.structure, job.local_dir * filename)
     if !should_run
         write(f, "#$run_command $exec <$filename> $(split(filename,".")[1]).out \n")
     else
@@ -131,7 +122,7 @@ function writetojob(f, job, input::WannierInput)
             id+=1
         end
     end
-    write_input(input, job.local_dir * filename)
+    write_input(input, job.structure, job.local_dir * filename)
     run_command = join([run_command, exec], " ")
     calc = length(job.calculations) > id ? job.calculations[id+1] : nothing
     if typeof(calc) == QEInput && contains(calc.exec, "pw2wannier90")
@@ -251,7 +242,8 @@ function read_job_inputs(job_file::String)
     dir = splitdir(job_file)[1]
     name   = ""
     header = Vector{String}()
-    inputs = DFInput[]
+    inputs     = DFInput[]
+    structures = Union{AbstractStructure, Void}[]
     open(job_file, "r") do f
         readline(f)
         while !eof(f)
@@ -263,15 +255,17 @@ function read_job_inputs(job_file::String)
                 run_command, exec, file, run = read_job_line(line)
                 only_exec = splitdir(exec)[2]
                 if only_exec in parseable_qe_execs
-                    input = read_qe_input(joinpath(dir, file), run_command=run_command, run=run, exec=exec)
+                    input, structure = read_qe_input(joinpath(dir, file), run_command=run_command, run=run, exec=exec)
                 elseif only_exec == "wannier90.x"
-                    input = read_wannier_input(joinpath(dir, splitext(file)[1] * ".win"), run_command=run_command, run=run, exec=exec)
+                    input, structure = read_wannier_input(joinpath(dir, splitext(file)[1] * ".win"), run_command=run_command, run=run, exec=exec)
                 end
                 id = find(x-> x == splitext(file)[1], getindex.(splitext.(getfield.(inputs, :filename)),1))
                 if !isempty(id)
                     inputs[id[1]] = input
+                    structures[id[1]] = structure
                 else
                     push!(inputs, input)
+                    push!(structures, structure)
                 end
             #Incomplete: Handle abinit in the new way!
             # elseif contains(line, "abinit ")
@@ -304,7 +298,8 @@ function read_job_inputs(job_file::String)
             end
         end
     end
-    return name, header, inputs
+    outstruct = merge_structures(structures)
+    return name, header, inputs, outstruct
 end
 
 #---------------------------END GENERAL SECTION-------------------#

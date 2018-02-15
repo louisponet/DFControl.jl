@@ -34,7 +34,6 @@ include("qe/input.jl")
 
 mutable struct WannierInput <: DFInput
     filename    ::String
-    structure   ::Structure
     flags       ::Dict{Symbol,Any}
     data_blocks ::Vector{WannierDataBlock}
     run_command ::String

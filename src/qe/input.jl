@@ -11,7 +11,6 @@ mutable struct QEDataBlock <: DataBlock
 end
 mutable struct QEInput <: DFInput
     filename       ::String
-    structure      ::Union{Structure, Void}
     control_blocks ::Vector{QEControlBlock}
     data_blocks    ::Vector{QEDataBlock}
     run_command    ::String  #everything before < in the job file

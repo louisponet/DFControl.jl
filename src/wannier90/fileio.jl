@@ -209,22 +209,21 @@ function read_wannier_input(filename::String, T=Float64; run_command="", run=tru
         end
     end
     structure = extract_structure(cell_block, atoms_block, proj_block, structure_name)
-    return WannierInput(splitdir(filename)[2], structure, flags, data_blocks, run_command, exec, run)
+    return WannierInput(splitdir(filename)[2], flags, data_blocks, run_command, exec, run), structure
 end
 
 """
-    write_wannier_input(filename::String, input::DFInput)"
+    write_input(filename::String, input::DFInput)"
 
 Writes the input of a wannier90 input file.
 """
-function write_wannier_input(input::WannierInput, filename::String=input.filename)
+function write_input(input::WannierInput, structure, filename::String=input.filename)
     open(filename, "w") do f
         for (flag, value) in input.flags
             write_flag_line(f, flag, value)
         end
         write(f, "\n")
 
-        structure = input.structure
         if structure != nothing
             write(f,"begin unit_cell_cart\n")
             write_cell(f, structure.cell)

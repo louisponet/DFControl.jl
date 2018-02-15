@@ -413,7 +413,7 @@ function read_qe_input(filename, T=Float64::Type; run_command="", run=true, exec
         pop!(sysblock.flags, celldm_1, nothing)
         pop!(sysblock.flags, :celldm, nothing)
     end
-    return QEInput(splitdir(filename)[2], structure, control_blocks, data_blocks, run_command, exec, run)
+    return QEInput(splitdir(filename)[2], control_blocks, data_blocks, run_command, exec, run), structure
 end
 
 function write_block_data(f, data)
@@ -441,11 +441,11 @@ function write_block_data(f, data)
 end
 
 """
-    write_qe_input(filename::String, df_input::DFInput)
+    write_input(filename::String, df_input::DFInput)
 
 Writes a Quantum Espresso input file.
 """
-function write_qe_input(input::QEInput, filename::String=input.filename)
+function write_input(input::QEInput, structure, filename::String=input.filename)
     open(filename, "w") do f
         write_flag(flag_data) = write_flag_line(f, flag_data[1], flag_data[2])
         write_block(data)     = write_block_data(f, data)
@@ -454,7 +454,6 @@ function write_qe_input(input::QEInput, filename::String=input.filename)
         for block in input.control_blocks
             write(f, "&$(block.name)\n")
             if block.name == :system
-                structure = input.structure
                 nat   = length(structure.atoms)
                 ntyp  = length(unique_atoms(structure.atoms))
                 # A     = 1.0
@@ -468,7 +467,7 @@ function write_qe_input(input::QEInput, filename::String=input.filename)
             write(f, "/\n\n")
         end
 
-        write_structure(f, input)
+        write_structure(f, structure, input)
         for block in input.data_blocks
             if block.option != :none
                 write(f, "$(uppercase(String(block.name))) ($(block.option))\n")
@@ -487,11 +486,7 @@ function write_qe_input(input::QEInput, filename::String=input.filename)
     end
 end
 
-function write_structure(f, input::QEInput)
-    if input.structure == nothing
-        return
-    end
-    structure = input.structure
+function write_structure(f, structure, input::QEInput)
     unique_atoms = Symbol[]
     pseudo_lines = String[]
     atom_lines   = String[]
