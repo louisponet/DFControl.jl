@@ -68,7 +68,7 @@ end
 
 Reads a DFInput from a wannier90 input file.
 """
-function read_wannier_input(filename::String, T=Float64; run_command="", run=true, preprocess=true, structure_name="NoName")
+function read_wannier_input(filename::String, T=Float64; run_command="", run=true, exec="wannier90.x", structure_name="NoName")
     flags       = Dict{Symbol,Any}()
     data_blocks = Array{WannierDataBlock,1}()
     atoms_block = nothing
@@ -209,7 +209,7 @@ function read_wannier_input(filename::String, T=Float64; run_command="", run=tru
         end
     end
     structure = extract_structure(cell_block, atoms_block, proj_block, structure_name)
-    return WannierInput(splitdir(filename)[2], structure, flags, data_blocks, run_command, run, preprocess)
+    return WannierInput(splitdir(filename)[2], structure, flags, data_blocks, run_command, exec, run)
 end
 
 """

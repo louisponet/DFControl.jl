@@ -38,8 +38,8 @@ mutable struct WannierInput <: DFInput
     flags       ::Dict{Symbol,Any}
     data_blocks ::Vector{WannierDataBlock}
     run_command ::String
+    exec        ::String
     run         ::Bool
-    preprocess  ::Bool
 end
 
 """

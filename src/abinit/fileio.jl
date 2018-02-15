@@ -187,7 +187,7 @@ function extract_structures!(abi_datasets...; structure_name = "NoName")
             end
         end
         rprimd *= conversions[:bohr2ang]
-
+        rprimd = Mat3(rprimd)
         ntypat = pop!(data, :ntypat, ntypat)
         natom = pop!(data, :natom, natom)
         znucl = pop!(data, :znucl, znucl)
@@ -267,7 +267,7 @@ function read_abi_input(filename::String, T=Float64; run_command= "", pseudos=["
     @assert length(datasets) == length(structures) || length(structures) == 1 "All structures of the input have to be the same or all different."
     for (i, data) in enumerate(datasets)
         structure = length(structures) == 1 ? structures[1] : structures[i]
-        file, ext= splitext(filename)
+        file, ext= splitext(splitdir(filename)[2])
         if length(datasets) > 1
             newfile = file * "$i" * ext
         else

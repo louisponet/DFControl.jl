@@ -88,8 +88,10 @@ end
 
 function writetojob(f, job, inputs::Vector{AbinitInput})
     abinit_jobfiles   = write_abi_datasets(inputs, job.local_dir)
+    abifiles = String[]
     num_abi = 0
     for (filename, pseudos, run_command) in abinit_jobfiles
+        push!(abifiles, filename)
         file, ext = splitext(filename)
         write(f, "$run_command << !EOF\n$filename\n$(file * ".out")\n$(job.name * "_Xi$num_abi")\n$(job.name * "_Xo$num_abi")\n$(job.name * "_Xx$num_abi")\n")
         for pp in pseudos
@@ -98,6 +100,7 @@ function writetojob(f, job, inputs::Vector{AbinitInput})
         write(f, "!EOF\n")
         num_abi += 1
     end
+    return abifiles
 end
 
 function writetojob(f, job, input::QEInput)
@@ -111,20 +114,43 @@ function writetojob(f, job, input::QEInput)
     else
         write(f, "$run_command $exec <$filename> $(split(filename,".")[1]).out \n")
     end
+    return 1
 end
 
 function writetojob(f, job, input::WannierInput)
-    write_input(input, job.local_dir * filename)
     run_command = input.run_command
     filename    = input.filename
-    if input.preprocess
-        run_command *= " -pp"
+    should_run  = input.run
+    exec        = input.exec
+    #cleanup ugly
+    id = 1
+    for calc in job.calculations
+        if calc.filename == input.filename
+            break
+        else
+            id+=1
+        end
     end
+    write_input(input, job.local_dir * filename)
+    run_command = join([run_command, exec], " ")
+    calc = length(job.calculations) > id ? job.calculations[id+1] : nothing
+    if typeof(calc) == QEInput && contains(calc.exec, "pw2wannier90")
+        stfls!(calc, :seedname => "'$(splitext(input.filename)[1])'")
+        if calc.run
+            write(f, "$run_command -pp $(filename[1:end-4])\n")
+        else
+            write(f, "#$run_command -pp $(filename[1:end-4])\n")
+        end
+        writetojob(f, job, calc)
+    end
+
     if !should_run
         write(f, "#$run_command $(filename[1:end-4])\n")
     else
         write(f, "$run_command $(filename[1:end-4])\n")
     end
+
+    return 3
 end
 """
     write_job_files(job::DFJob)
@@ -139,9 +165,10 @@ function write_job_files(job::DFJob)
         write_job_name(f, job)
         write_job_header(f, job)
         abiinputs = Vector{AbinitInput}(filter(x -> typeof(x) == AbinitInput, job.calculations))
-        !isempty(abiinputs) && writetojob(f, job, abiinputs)
-        for calc in filter(x -> typeof(x) != AbinitInput, job.calculations)
-            writetojob(f, job, calc)
+        !isempty(abiinputs) && push!(new_filenames, writetojob(f, job, abiinputs)...)
+        i = length(abiinputs) + 1
+        while i <= length(job.calculations)
+            i += writetojob(f, job, job.calculations[i])
         end
     end
 
@@ -154,27 +181,65 @@ function write_job_files(job::DFJob)
 end
 
 function read_job_line(line)
-    if typeof(line) <: String
-        line = split(line)
+    line = strip(line)
+    line = replace(line, ['>', '<'], " ")
+
+    if line[1] == '#'
+        run = false
+        line = line[2:end]
+    else
+        run = true
     end
+
+    spl = strip_split(line)
     i = 0
-    for (j, s) in enumerate(line)
+    for (j, s) in enumerate(spl)
         if contains(s, ".x")
             i = j
             break
-        elseif contains(s, "abinit")
-            i = j
-            break
+        # elseif contains(s, "abinit")
+        #     i = j
+        #     break
         end
     end
-    run_command = prod([s * " " for s in line[1:i]])
-    if contains(line[i + 1], "-pp") #this is for wannier90
-        run_command *= line[i + 1]
-        i += 1
-    end
-    return i, run_command
+
+    run_command  = join(spl[1:i-1], " ")
+    exec         = spl[i]
+    input        = spl[i+1] == "-pp" ? spl[i+2] : spl[i+1]
+    return run_command, exec, input, run
 end
 
+function read_job_filenames(job_file::String)
+    input_files = String[]
+    output_files = String[]
+    open(job_file, "r") do f
+        readline(f)
+        while !eof(f)
+            line = readline(f)
+            if isempty(line)
+                continue
+            end
+            if contains(line, ".x")
+                spl = split(line)
+                i = find(x -> contains(x, ".x"), spl)[1] + 1
+                in_out = strip_split(prod(filter(x -> !contains(x, "-pp"), spl[i:end])), ">")
+                if length(in_out) == 2
+                    push!(input_files,  strip(in_out[1], '<'))
+                    push!(output_files, in_out[2])
+                else
+                    input_file = strip(in_out[1], '<')
+                    if contains(line, "wannier90.x") && !contains(line, "pw2wannier90")
+                        input = splitext(input_file)[1] * ".win"
+                        output =splitext(input_file)[1] * ".wout"
+                        !in(output, output_files) && push!(output_files, output)
+                        !in(input, input_files) && push!(input_files, input)
+                    end
+                end
+            end
+        end
+    end
+    return input_files, output_files
+end
 
 """
     read_job_file(job_file::String)
@@ -182,14 +247,11 @@ end
 Reads and returns all the relevant information contained in the job input file.
 All files that are read contain extension "in".
 """
-function read_job_file(job_file::String)
-    data = Dict{Symbol, Any}()
-    data[:name]         = ""
-    data[:header]       = Vector{String}()
-    data[:input_files]  = Vector{String}()
-    data[:output_files] = Vector{String}()
-    data[:run_commands] = Vector{String}()
-    data[:should_run]   = Vector{Bool}()
+function read_job_inputs(job_file::String)
+    dir = splitdir(job_file)[1]
+    name   = ""
+    header = Vector{String}()
+    inputs = DFInput[]
     open(job_file, "r") do f
         readline(f)
         while !eof(f)
@@ -198,59 +260,51 @@ function read_job_file(job_file::String)
                 continue
             end
             if contains(line, ".x ")
-                if contains(line, "#")
-                    push!(data[:should_run], false)
-                    line = line[2:end]
+                run_command, exec, file, run = read_job_line(line)
+                only_exec = splitdir(exec)[2]
+                if only_exec in parseable_qe_execs
+                    input = read_qe_input(joinpath(dir, file), run_command=run_command, run=run, exec=exec)
+                elseif only_exec == "wannier90.x"
+                    input = read_wannier_input(joinpath(dir, splitext(file)[1] * ".win"), run_command=run_command, run=run, exec=exec)
+                end
+                id = find(x-> x == splitext(file)[1], getindex.(splitext.(getfield.(inputs, :filename)),1))
+                if !isempty(id)
+                    inputs[id[1]] = input
                 else
-                    push!(data[:should_run], true)
+                    push!(inputs, input)
                 end
-
-                s_line         = split(line)
-                i, run_command = read_job_line(s_line)
-                push!(data[:run_commands], run_command)
-                #handles QE and Wannier.
-                in_out = strip_split(prod(s_line[i + 1:end]), ">")
-                if length(in_out) == 2
-                    push!(data[:input_files],  strip(in_out[1], '<'))
-                    push!(data[:output_files], in_out[2])
-                else
-                    input_file = strip(in_out[1], '<')
-                    push!(data[:input_files], input_file)
-                    if contains(run_command, "wannier90.x")
-                        push!(data[:output_files], input_file * ".wout")
-                    end
-                end
-            elseif contains(line, "abinit ")
-                data[:abinit_pseudos] = Array{String,1}()
-                s_line         = split(line)
-                i, run_command = read_job_line(s_line)
-                push!(data[:run_commands], strip(run_command, '#'))
-                if contains(line, "!EOF")
-                    push!(data[:input_files],  strip(readline(f), '#'))
-                    push!(data[:output_files], strip(readline(f), '#'))
-                    push!(data[:should_run], true)
-                    line = readline(f)
-                    while !contains(line, "EOF")
-                        if contains(line, ".xml")
-                            push!(data[:abinit_pseudos], strip(line, '#'))
-                        end
-                        line = readline(f)
-                    end
-                end
-
-                #this is reading the sbatch lines
+            #Incomplete: Handle abinit in the new way!
+            # elseif contains(line, "abinit ")
+            #     data[:abinit_pseudos] = Array{String,1}()
+            #     s_line         = split(line)
+            #     i, run_command = read_job_line(s_line)
+            #     push!(data[:run_commands], strip(run_command, '#'))
+            #     if contains(line, "!EOF")
+            #         push!(data[:input_files],  strip(readline(f), '#'))
+            #         push!(data[:output_files], strip(readline(f), '#'))
+            #         push!(data[:should_run], true)
+            #         line = readline(f)
+            #         while !contains(line, "EOF")
+            #             if contains(line, ".xml")
+            #                 push!(data[:abinit_pseudos], strip(line, '#'))
+            #             end
+            #             line = readline(f)
+            #         end
+            #     end
+            #
+            #     #this is reading the sbatch lines
             elseif contains(line, "#SBATCH")
                 if contains(line, "-J")
-                    data[:name] = split(line)[end]
+                    name = split(line)[end]
                 else
-                    push!(data[:header], line)
+                    push!(header, line)
                 end
             else
-                push!(data[:header], line)
+                push!(header, line)
             end
         end
     end
-    return data
+    return name, header, inputs
 end
 
 #---------------------------END GENERAL SECTION-------------------#

@@ -205,67 +205,18 @@ Loads and returns a DFJob. If local_dir is not specified the job directory will 
 """
 function load_job(job_dir::String, T=Float64;
                   job_fuzzy     = "job",
-                  new_job_name  = nothing,
+                  new_job_name  = "",
                   new_local_dir = nothing,
                   server        = get_default_server(),
                   server_dir    = "")
 
     job_dir = form_directory(job_dir)
 
-    job_data = read_job_file(job_dir * search_dir(job_dir, job_fuzzy)[1])
-    filenames    = String[]
-    run_commands = String[]
-    should_run   = Bool[]
-    if new_job_name != nothing
-        job_name = new_job_name
-    elseif haskey(job_data,:name)
-        job_name = string(job_data[:name])
-    else
-        job_name = "noname"
-    end
-
-    for (i, file) in enumerate(job_data[:input_files])
-        if length(search_dir(job_dir, file)) == 0 && job_data[:should_run][i]
-            error("Error: there are calculations that should run but have no input file ($file).")
-        elseif length(search_dir(job_dir, file)) != 0
-            push!(filenames,    file)
-            push!(run_commands, job_data[:run_commands][i])
-            push!(should_run,   job_data[:should_run][i])
-        end
-    end
-
-    t_calcs = Array{DFInput,1}()
-    for (filename, run_command, run) in zip(filenames, run_commands, should_run)
-        filename = job_dir * filename
-        if contains(run_command, "wan") && !contains(run_command, "pw2wannier90")
-            s_run_command = split(run_command)
-            if "-pp" in s_run_command
-                run_command = join(s_run_command[1:end-1])
-                push!(t_calcs, read_wannier_input(filename * ".win", T,
-                                                  run_command = run_command,
-                                                  run         = run,
-                                                  preprocess  = true,
-                                                  structure_name = job_name))
-            else
-                push!(t_calcs, read_wannier_input(filename * ".win", T,
-                                                 run_command = run_command,
-                                                 run         = run,
-                                                 preprocess  = false,
-                                                 structure_name = job_name))
-            end
-        elseif contains(run_command, "abinit")
-            push!(t_calcs, read_abi_input(filename, T,
-                                          run_command = run_command,
-                                          pseudos     = job_data[:abinit_pseudos],
-                                          structure_name = job_name)...)
-        else
-            _t = split(run_command)
-            push!(t_calcs, read_qe_input(filename, T, run_command=join(_t[1:end-1]," "), exec=_t[end], run=run, structure_name=job_name))
-        end
-    end
-
+    name, header, inputs = read_job_inputs(job_dir * search_dir(job_dir, job_fuzzy)[1])
+    j_name = isempty(new_job_name) ? name : new_job_name
+    structure_name = split(j_name, "_")[1]
     structure = nothing
-    for calc in t_calcs
+    for calc in inputs
         if calc.structure != nothing
             if structure == nothing
                 structure = calc.structure
@@ -287,10 +238,12 @@ function load_job(job_dir::String, T=Float64;
         end
     end
 
+    structure.name = structure_name
+
     if new_local_dir != nothing
-        return DFJob(job_name, structure, t_calcs, new_local_dir, server, server_dir, job_data[:header])
+        return DFJob(j_name, structure, inputs, new_local_dir, server, server_dir, header)
     else
-        return DFJob(job_name, structure, t_calcs, job_dir, server, server_dir, job_data[:header])
+        return DFJob(j_name, structure, inputs, job_dir, server, server_dir, header)
     end
 end
 
@@ -313,16 +266,11 @@ function pull_job(server::String, server_dir::String, local_dir::String; job_fuz
     job_file = search_dir(local_dir, strip(job_fuzzy, '*'))[1]
 
     if job_file != nothing
-        job_data = read_job_file(local_dir * job_file)
-        for (file, run_command) in zip(job_data[:input_files], job_data[:run_commands])
-            if !contains(file, ".") && contains(run_command, "wannier90.x")
-                pull_server_file(file * ".win")
-            else
-                pull_server_file(file)
-            end
+        input_files, output_files = read_job_filenames(local_dir * job_file)
+        for file in input_files
+            pull_server_file(file)
         end
     end
-
 end
 
 pull_job(args...; kwargs...) = pull_job(get_default_server(), args..., kwargs...)
@@ -335,7 +283,7 @@ Pulls a server job to local directory and then loads it. A fuzzy search for the 
 """
 function load_server_job(server::String, server_dir::String, local_dir::String;
                          job_fuzzy    = "*job*",
-                         new_job_name = nothing)
+                         new_job_name = "")
 
     pull_job(server,server_dir,local_dir)
     return load_job(local_dir, server=server, server_dir=server_dir, new_job_name=new_job_name)
