@@ -11,7 +11,7 @@ mutable struct DFJob
     server       ::String
     server_dir   ::String
     header       ::Vector{String}
-    function DFJob(name, structure, calculations, local_dir, server,server_dir, header = get_default_job_header())
+    function DFJob(name, structure, calculations, local_dir, server, server_dir, header = get_default_job_header())
         if local_dir != ""
             local_dir = form_directory(local_dir)
         end
@@ -32,28 +32,9 @@ mutable struct DFJob
     end
 end
 
-"""
-    DFJob(job_name, local_dir, args...; server=get_default_server(),server_dir="")
-
-Creates a new DFJob, possibly passing in calculations in args...
-When inputs (args) are passed in, the structure of the job will be set to the first found in the inputs.
-"""
-function DFJob(job_name, local_dir, args...; server=get_default_server(), server_dir="")
-    local_dir = form_directory(local_dir)
-    inputs    = DFInput[]
-    structure = nothing
-    for arg in args
-        push!(inputs,arg)
-        if arg.structure != nothing && structure != nothing
-            structure = arg.structure
-        end
-    end
-    return DFJob(job_name, structure, inputs, local_dir, server, server_dir)
-end
-
 #TODO implement abinit
 # function DFJob(job_name, local_dir, calculations::Array{Pair{Union{Symbol, String}, Dict},1}, atoms, cell_parameters=eye(3);
-function DFJob(job_name, local_dir, calculations::Vector, atoms, cell_parameters=eye(3);
+function DFJob(job_name, local_dir, calculations::Vector, structure::AbstractStructure;
                     server=get_default_server(),
                     server_dir="",
                     package=:qe,
@@ -68,7 +49,6 @@ function DFJob(job_name, local_dir, calculations::Vector, atoms, cell_parameters
     local_dir = form_directory(local_dir)
     job_atoms = convert_2atoms(atoms,pseudo_set=pseudo_set, pseudo_specifier=pseudo_specifier)
     job_calcs = DFInput[]
-    structure = Structure()
     if typeof(common_flags) != Dict
         common_flags = Dict(common_flags)
     end
@@ -100,7 +80,6 @@ function DFJob(job_name, local_dir, calculations::Vector, atoms, cell_parameters
         flags  = pop!(data, :flags, Dict{Symbol, Any}())
         push!(flags, :calculation => "'$(string(calc_))'")
         input_ = QEInput(string(calc_) * ".in",
-                         structure,
                          QEControlBlock[],
                          [QEDataBlock(:k_points, k_option, k_points)],
                          run_command,
@@ -111,7 +90,12 @@ function DFJob(job_name, local_dir, calculations::Vector, atoms, cell_parameters
         change_atoms!(input_, job_atoms, pseudo_set = pseudo_set, pseudo_specifier = pseudo_specifier, print=false)
         push!(job_calcs, input_)
     end
-    return DFJob(job_name, job_calcs, local_dir, server, server_dir, header)
+    return DFJob(job_name, structure, job_calcs, local_dir, server, server_dir, header)
+end
+
+function DFJob(job_name, local_dir, calculations::Vector, ciffile::String; kwargs...)
+    structure = Structure(ciffile, name=job_name)
+    return DFJob(job_name, local_dir, calculations, structure; kwargs...)
 end
 
 function DFJob(job::DFJob, flagstoset...;

@@ -11,6 +11,7 @@ end
 Structure(name, cell::Mat3{T}, atoms::Vector{Atom{T}}) where T <: AbstractFloat = Structure{T}(name, cell, atoms, Dict{Symbol, Any}())
 Structure(cell::Matrix{T}, atoms::Vector{Atom{T}}) where T <: AbstractFloat = Structure{T}("NoName", cell, atoms, Dict{Symbol, Any}())
 Structure() = Structure("NoName", eye(3), Atom[], Dict{Symbol, Any}())
+Structure(cif_file::String; name="NoName") = cif2structure(cif_file, structure_name = name)
 
 """
 Returns all the atoms inside the structure with the specified symbol
@@ -62,4 +63,20 @@ function merge_structures(structures::Vector{Union{<:AbstractStructure, Void}})
         end
     end
     return out_structure
+end
+
+"Uses cif2cell to parse a cif file, then returns the parsed structure. Requires cif2cell to be installed."
+function cif2structure(cif_file::String; structure_name="NoName")
+    tmpdir = tempdir()
+    tmpfile = joinpath(tmpdir, "tmp.in")
+    @assert splitext(cif_file)[2] == ".cif" error("Please specify a valid cif input file")
+    try
+        run(`cif2cell $cif_file -p quantum-espresso -o $tmpfile`)
+    catch
+        error("Please install cif2cell to use this feature (https://sourceforge.net/projects/cif2cell/)")
+    end
+
+    bla, structure = read_qe_input(tmpfile, structure_name = structure_name)
+    rm(tmpfile)
+    return structure
 end
