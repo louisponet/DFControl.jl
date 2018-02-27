@@ -113,27 +113,23 @@ function writetojob(f, job, input::WannierInput)
     filename    = input.filename
     should_run  = input.run
     exec        = input.exec
-    #cleanup ugly
-    id = 1
-    for calc in job.calculations
-        if calc.filename == input.filename
-            break
-        else
-            id+=1
-        end
-    end
-    write_input(input, job.structure, job.local_dir * filename)
     run_command = join([run_command, exec], " ")
-    calc = length(job.calculations) > id ? job.calculations[id+1] : nothing
-    if typeof(calc) == QEInput && contains(calc.exec, "pw2wannier90")
-        stfls!(calc, :seedname => "'$(splitext(input.filename)[1])'")
-        if calc.run
-            write(f, "$run_command -pp $(filename[1:end-4])\n")
-        else
-            write(f, "#$run_command -pp $(filename[1:end-4])\n")
-        end
-        writetojob(f, job, calc)
+    #cleanup ugly
+    id = findfirst(job.calculations, input)
+    seedname = splitext(filename)[1]
+
+    pw2wanid = findfirst(x -> x.control_blocks[1].name == :inputpp && contains(x.exec, "pw2wannier90"), job.calculations[id+1:end])+id
+    pw2wan   = job.calculations[pw2wanid]
+    stfls!(pw2wan, :seedname => "'$(splitext(input.filename)[1])'")
+
+    if pw2wan.run
+        write(f, "$run_command -pp $(filename[1:end-4])\n")
+    else
+        write(f, "#$run_command -pp $(filename[1:end-4])\n")
     end
+
+    write_input(input, job.structure, job.local_dir * filename)
+    writetojob(f, job, pw2wan)
 
     if !should_run
         write(f, "#$run_command $(filename[1:end-4])\n")
@@ -141,7 +137,7 @@ function writetojob(f, job, input::WannierInput)
         write(f, "$run_command $(filename[1:end-4])\n")
     end
 
-    return 3
+    return 2
 end
 """
     write_job_files(job::DFJob)
