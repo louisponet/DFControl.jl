@@ -167,7 +167,9 @@ Changes the data in the k point `DataBlock` inside the specified calculation.
 function change_kpoints!(input::QEInput, k_grid::Union{NTuple{3, Int}, NTuple{6, Int}}; print=true)
     if length(k_grid) == 3
         calc = get_flag(input, :calculation)
-        @assert calc == "'nscf'" warn("Expected calculation to be 'nscf', got $calc.")
+        if calc != "'nscf'"
+            return
+        end
         k_option = :crystal
         k_points = gen_k_grid(k_grid[1], k_grid[2], k_grid[3], :nscf)
     else
