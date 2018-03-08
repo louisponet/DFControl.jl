@@ -303,12 +303,12 @@ function extract_structure!(name, control_blocks, cell_block, atom_block, pseudo
 end
 
 """
-    read_qe_input(filename, T=Float64)
+    read_qe_input(filename, T=Float64; exec="pw.x",  run_command="", run=true, structure_name="NoName")
 
-Reads a Quantum Espresso input file.
+Reads a Quantum Espresso input file. The exec get's used to find which flags are allowed in this input file, and convert the read values to the correct Types.
 Returns a DFInput.
 """
-function read_qe_input(filename, T=Float64::Type; run_command="", run=true, exec="pw.x", structure_name="NoName")
+function read_qe_input(filename, T=Float64::Type; exec="pw.x", run_command="", run=true, structure_name="NoName")
     control_blocks = Array{QEControlBlock,1}()
     data_blocks    = Array{QEDataBlock,1}()
     atom_block     = nothing

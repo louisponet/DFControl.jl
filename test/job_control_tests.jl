@@ -1,11 +1,11 @@
 using DFControl, Base.Test
 
-test_job_path = joinpath(@__DIR__,"../assets/inputs/test_job")
-df_job = load_job(test_job_path)
+test_job_path = joinpath(@__DIR__, "../assets/inputs/test_job")
+df_job = load_job(test_job_path);
 display(df_job)
-df_job2 = load_job(joinpath(@__DIR__,test_job_path),new_local_dir="blabla")
+df_job2 = load_job(joinpath(@__DIR__,test_job_path),new_local_dir="blabla");
 @test df_job2.local_dir    == "blabla/"
-@test length(df_job.calculations) == 7
+@test length(df_job.calculations) == 6
 @test get_input(df_job,"nscf").run_command == get_run_command(df_job,"nscf")
 @test df_job.local_dir     == test_job_path*"/"
 
@@ -40,38 +40,29 @@ rm(test_dir)
 
 # change_data = Dict(:sk1=>3,:sk2=>3.2,:prefix=>"'test'",:noncolin => false, :ecutwfc=> 35,:test => true, :ion_dynamics=>true , :trash=>'d')
 # change_data2 = Dict(:bleirgh => "'stuff'")
-data = get_data(df_job,"nscf",:atomic_positions)
-data[:Te] = data[:Te].+Point3(0.01f0)
-change_data!(df_job,"nscf",:atomic_positions,data)
-@test get_block(df_job,"nscf",:atomic_positions).data == data
 
-scf_input     = read_qe_input(joinpath(@__DIR__,"../assets/inputs/qe/scf.in"),Float64)
+scf_input     = read_qe_input(joinpath(@__DIR__,"../assets/inputs/qe/scf.in"))[1]
 t_l = length(df_job.calculations)
 add_calculation!(df_job, scf_input)
 @test length(df_job.calculations)==t_l+1
-change_flags!(df_job,Dict(:dis_win_min => 9.2f0))
-@test get_flag(df_job,"wan.win",:dis_win_min)==9.2f0
-change_flags!(df_job,["nscf"],Dict(:calculation => "'scf'"))
+change_flags!(df_job, :dis_win_min => 9.2)
+@test get_flag(df_job, "wan.win", :dis_win_min) == 9.2
+change_flags!(df_job, "nscf", :calculation => "'scf'")
 @test get_flag(df_job,"nscf",:calculation)== "'scf'"
 
-add_flags!(df_job,:control,Dict(:test => "test"))
-@test get_flag(df_job,"nscf",:test) == "test"
+set_flags!(df_job, :Hubbard_J => 1.0)
+@test get_flag(df_job, "nscf", :Hubbard_J) == 1.0
 
-add_flags!(df_job,Dict(:test=>"test"))
-@test get_flag(df_job,"wan.win",:test)=="test"
-remove_flags!(df_job,"wan.win",[:test,:dis_win_max])
-remove_flags!(df_job,:test)
-@test get_flag(df_job,:test)==nothing
-@test get_flag(df_job,:dis_win_max)==nothing
+set_flags!(df_job, :dis_win_min => 24.0)
+@test get_flag(df_job, "wan.win", :dis_win_min) == 24.0
+remove_flags!(df_job,"wan.win", :dis_win_min, :dis_win_max)
 
-set_flow!(df_job,[false for i=1:length(df_job.calculations)])
+set_flow!(df_job, [false for i=1:length(df_job.calculations)])
 @test df_job.calculations[1].run == false
-change_flow!(df_job,[(1,true)])
-@test df_job.calculations[1].run
-change_flow!(df_job,["nscf","bands"],true)
+change_flow!(df_job, "nscf" => true, "bands" => true)
 @test df_job.calculations[2].run
-change_flow!(df_job,[("pw2wan",true)])
-@test df_job.calculations[end-2].run
+change_flow!(df_job, "pw2wan" => true)
+@test df_job.calculations[end-1].run
 
 change_run_command!(df_job,"nscf","test")
 @test get_run_command(df_job,"nscf") == "test"
@@ -84,7 +75,7 @@ print_flow(df_job)
 print_info(df_job)
 print_flags(df_job)
 @test print_flags(df_job,"nscf") == print_flags(df_job,["nscf"])
-@test print_flags(df_job,[:dis_win_min]) == print_flag(df_job,:dis_win_min) 
+@test print_flags(df_job,[:dis_win_min]) == print_flag(df_job,:dis_win_min)
 @test get_inputs(df_job,["nscf"]) == get_inputs(df_job,"nscf")
 
 

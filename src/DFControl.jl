@@ -113,11 +113,11 @@ module DFControl
     #no extra functionality, for faster scripting
     include("shortnames.jl")
 
+    if Pkg.installed("Atom") != nothing
+        include("display/printing_juno.jl")
+    end
+    dfprintln(s::String) = println(s)
     function __init__()
-        if Pkg.installed("Atom") != nothing
-            include("display/printing_juno.jl")
-        end
-        dfprintln(s::String) = println(s)
         init_defaults(default_file)
     end
 

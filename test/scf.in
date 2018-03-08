@@ -1,0 +1,11 @@
+&control
+  prefix = 'pwo'
+  verbosity = 'high'
+  calculation = 'scf'
+  outdir = './'
+  pseudo_dir = './'
+  disk_io = 'low'
+  restart_mode = 'from_scratch'
+/
+
+&system

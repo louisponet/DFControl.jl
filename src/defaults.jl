@@ -132,7 +132,7 @@ function configure_default_pseudos(server = get_default_server(), pseudo_dirs=ge
     end
 
     if pseudo_dirs == nothing
-        error("Either supply valid pseudo directories or setup a default pseudo dir through 'add_default_pseudo_dir()'.")
+        error("Either supply valid pseudo directories or setup a default pseudo dir through 'set_default_pseudo_dir()'.")
     end
 
     outputs = Dict{Symbol, String}()
@@ -208,11 +208,11 @@ function set_default_job_header(lines)
 end
 
 """
-    set_default_input(calculation::Symbol, input::DFInput)
+    set_default_input(input::dfinput, calculation::Symbol)
 
 Adds the input to the default inputs, writes it to a file in user_defaults folder to be read every time on load.
 """
-function set_default_input(calculation::Symbol, input::DFInput)
+function set_default_input(input::DFInput, structure, calculation::Symbol)
     if !isdefined(:default_inputs)
         expr = :(default_inputs = Dict{Symbol, Tuple{DFInput, Union{AbstractStructure, Void}}}())
         expr2file(default_file,expr)
@@ -220,10 +220,10 @@ function set_default_input(calculation::Symbol, input::DFInput)
     end
     filename = dirname(default_file) * "/" * String(calculation)
     if typeof(input) == WannierInput
-        write_input(input, filename * ".win")
+        write_input(input, structure, filename * ".win")
         expr2file(default_file, :(default_inputs[$(QuoteNode(calculation))] = read_wannier_input($filename * ".win", run_command = $(input.run_command))))
     elseif typeof(input) == QEInput
-        write_input(input,filename * ".in")
+        write_input(input, structure, filename * ".in")
         expr2file(default_file, :(default_inputs[$(QuoteNode(calculation))] = read_qe_input($filename * ".in", run_command = $(input.run_command), exec=$(input.exec))))
     end
     load_defaults(default_file)
@@ -236,7 +236,7 @@ Remove the default input specified by the Symbol. Also removes the stored input 
 """
 function remove_default_input(input::Symbol)
     if haskey(DFControl.default_inputs, input)
-        input_t = pop!(DFControl.default_inputs, input)
+        input_t = pop!(DFControl.default_inputs, input)[1]
         rm_expr_lhs(default_file, :(default_inputs[$(QuoteNode(input))]))
         if isempty(DFControl.default_inputs)
             rm_expr_lhs(default_file, :default_inputs)

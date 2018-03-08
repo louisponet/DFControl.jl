@@ -323,7 +323,6 @@ function add_calculation!(job::DFJob, input::DFInput, index::Int=length(job.calc
 
     UNDO_JOBS[job.id] = deepcopy(job)
 
-    input.structure = job.structure
     input.filename = filename
     input.run_command = run_command
     insert!(job.calculations, index, input)
@@ -421,7 +420,7 @@ function get_flag(job::DFJob, calc_filenames, flag_name::Symbol)
             return flag
         end
     end
-    error("Flag $flag not found in any input files.")
+    error("Flag $flag_name not found in any input files.")
 end
 
 """
@@ -436,7 +435,7 @@ function get_flag(job::DFJob, flag_name::Symbol)
             return flag
         end
     end
-    error("Flag $flag not found in any input files.")
+    error("Flag $flag_name not found in any input files.")
 end
 
 #TODO Change so calculations also have a name.
