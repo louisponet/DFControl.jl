@@ -10,4 +10,4 @@ configure_default_pseudos()
 
 #We also allow for other defaults to be defined upon loading the package, this can be anything in the form of `var = expr`.
 
-@add_default phd_dir = "/Users/ponet/Documents/Fysica/PhD/"
+@add_default phd_dir = "/Users/user/Documents/physics/PhD/"

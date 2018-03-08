@@ -8,7 +8,6 @@ module DFControl
     export element
     export AbstractAtom
     export Atom
-    export Point3
     export AbstractStructure
     export Structure
 
@@ -16,29 +15,20 @@ module DFControl
     export DFBand
 
     include("utils.jl")
-    export print_qe_flags
-    export print_qe_namelists
-    export apply_fermi_level
-    export apply_fermi_level!
-    export gen_k_grid
 
     include("input.jl")
-    export ControlBlock
-    export QEControlBlock
-    export DataBlock
     export QEDataBlock
-    export DFInput
+    export WannierDataBlock
+    export AbinitDataBlock
     export QEInput
+    export AbinitInput
     export WannierInput
 
     include("job.jl")
     export DFJob
-    export create_job
     export load_job
-    export pull_job
     export load_server_job
     export save_job
-    export push_job
     export submit_job
 
     export change_flags!
@@ -58,15 +48,6 @@ module DFControl
     export get_inputs
     export get_input
     export change_filename!
-    export print_run_command
-    export print_flow
-    export print_block
-    export print_blocks
-    export print_data
-    export print_filename
-    export print_info
-    export print_flags
-    export print_flag
     export change_kpoints!
     export change_data_option!
     export change_header_word!
@@ -87,8 +68,6 @@ module DFControl
     export change_projections!
 
     include("constants.jl")
-    export AbinitFlags
-    export AbinitDatabase
 
     include("fileio.jl")
     export read_abi_input
@@ -107,7 +86,6 @@ module DFControl
     export read_wannier_input
     export write_input
     export write_job_files
-    export expr2file
 
     include("plotting.jl")
     export plot_qe_bands
@@ -135,16 +113,24 @@ module DFControl
     #no extra functionality, for faster scripting
     include("shortnames.jl")
 
-    if Pkg.installed("Atom") != nothing
-        include("display/printing_juno.jl")
-        dfprintln(s::String) = println(s)
-    else
-        dfprintln(s::String) = println(s)
-    end
     function __init__()
+        if Pkg.installed("Atom") != nothing
+            include("display/printing_juno.jl")
+        end
+        dfprintln(s::String) = println(s)
         init_defaults(default_file)
     end
+
     include("display/printing.jl")
+    export print_run_command
+    export print_flow
+    export print_block
+    export print_blocks
+    export print_data
+    export print_filename
+    export print_info
+    export print_flags
+    export print_flag
     export dfprintln
     const UNDO_JOBS = DFJob[]
 

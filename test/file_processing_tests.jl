@@ -52,8 +52,6 @@ remove_flags!(wan_test2,[:dis_win_max,:dis_win_min])
 @test get_flag(wan_test2,:dis_win_max)==get_flag(wan_test2,:dis_win_min)
 rm(test_filename)
 
-print_qe_flags(:electrons)
-print_qe_namelists()
 @test size(gen_k_grid(10,10,10,:wan))[1] == size(gen_k_grid(10,10,10,:nscf))[1]
 
 if isdefined(:default_pseudo_dirs)
