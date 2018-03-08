@@ -64,9 +64,9 @@ function extract_structure(cell_block::T, atoms_block::T, projections_block::T, 
 end
 
 """
-    read_wannier_input(filename::String, T=Float64)
+    read_wannier_input(filename::String, T=Float64; run_command="", run=true, exec="wannier90.x", structure_name="NoName")
 
-Reads a DFInput from a wannier90 input file.
+Reads a `WannierInput` and the included `Structure` from a WANNIER90 input file.
 """
 function read_wannier_input(filename::String, T=Float64; run_command="", run=true, exec="wannier90.x", structure_name="NoName")
     flags       = Dict{Symbol,Any}()
@@ -213,9 +213,10 @@ function read_wannier_input(filename::String, T=Float64; run_command="", run=tru
 end
 
 """
-    write_input(filename::String, input::DFInput)"
+    write_input(input::WannierInput, structure, filename::String=input.filename)
 
-Writes the input of a wannier90 input file.
+Writes the `WannierInput` and `structure` to a file, that can be interpreted by WANNIER90.
+The atoms in the structure must have projections defined.
 """
 function write_input(input::WannierInput, structure, filename::String=input.filename)
     open(filename, "w") do f

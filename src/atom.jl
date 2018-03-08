@@ -48,7 +48,7 @@ mutable struct Atom{T<:AbstractFloat} <: AbstractAtom{T}
     element     ::Element
     position    ::Point3{T}
     pseudo      ::String
-    projections ::Vector{Projection}
+    projections ::Union{Symbol, Vector{Projection}}
     function Atom(id::Symbol, element::Element, position::Point3{T}, args...) where T <: AbstractFloat
         atom          = new{T}()
         atom.id       = id
@@ -75,8 +75,10 @@ mutable struct Atom{T<:AbstractFloat} <: AbstractAtom{T}
 end
 Atom(id::Symbol, el::Symbol, position::Point3, args...)  = Atom(id, element(el), position, args...)
 
+"Extracts all the positions of the atoms and puts them in a vector."
 positions(atoms::Vector{<:Atom}, id::Symbol) = [x.position for x in filter(y -> y.id == id, atoms)]
 
+"Takes a Vector of atoms and returns a Vector with all the unique atoms."
 function unique_atoms(atoms::Vector{<:AbstractAtom{T}}) where T <: AbstractFloat
     ids    = Symbol[]
     unique = AbstractAtom{T}[]

@@ -14,7 +14,20 @@ end
 """
     read_qe_output(filename::String, T=Float64)
 
-Reads a generic quantum espresso input, returning a OrderedDictionary with all found data in the file.
+Reads a generic quantum espresso input, returns a dictionary with all found data in the file.
+Possible keys:
+ - `:fermi`
+ - `:polarization`
+ - `:pol_mod`
+ - `:k_cryst`
+ - `:k_cart`
+ - `:alat`
+ - `:cell_parameters`
+ - `:pos_option`
+ - `:atomic_positions`
+ - `:total_force`
+ - `:colin_mag_moments`
+ - `:bands`
 """
 function read_qe_output(filename::String, T=Float64)
     out = Dict{Symbol,Any}()
@@ -143,7 +156,7 @@ function read_qe_output(filename::String, T=Float64)
 end
 
 """
-    read_qe_bands_file(filename::String, T=Float64)
+    read_qe_bands(filename::String, T=Float64)
 
 Reads the output file of a 'bands' calculation in Quantum Espresso.
 Returns an array of DFBands each with the same k_points and their respective energies.
@@ -151,23 +164,23 @@ Returns an array of DFBands each with the same k_points and their respective ene
 read_qe_bands_file(filename::String, T=Float64) = read_qe_output(filename, T)[:bands]
 
 """
-    read_ks_from_qe_bands_file(filename::String, T=Float64)
+    read_ks_from_qe_output(filename::String, T=Float64)
 
 Read k-points from a Quantum Espresso bands output file in cartesian (2pi/alat in Angstrom^-1!) and crystalline coordinates.
 Returns (k_points_cart,k_points_cryst).
 """
-function read_ks_from_qe_bands_file(filename::String, T=Float64)
+function read_ks_from_qe_output(filename::String, T=Float64)
     t = read_qe_output(filename, T)
     return t[:k_cart], t[:k_cryst]
 end
 
 """
-    read_fermi_from_qe_file(filename::String,T=Float64)
+    read_fermi_from_qe_output(filename::String,T=Float64)
 
 Reads the Fermi level from a Quantum Espresso scf calculation output file
 (if there is one).
 """
-read_fermi_from_qe_file(filename::String, T=Float64) = read_qe_output(filename, T)[:fermi]
+read_fermi_from_qe_output(filename::String, T=Float64) = read_qe_output(filename, T)[:fermi]
 
 """
     read_qe_kpdos(filename::String,column=1;fermi=0)
@@ -224,34 +237,18 @@ read_qe_vcrel(filename::String, T=Float64) = read_qe_output(filename, T) do x
                                                 return x[:cell_parameters], x[:alat], x[:atomic_positions], x[:pos_option]
                                             end
 
-function read_errors(filename::String)
-    out = String[]
-    open(filename, "r") do f
-        line = readline(f)
-        while !eof(f)
-            if contains(lowercase(line), "error")
-                push!(out, line)
-            end
-        end
-        return out
-    end
-end
-
-function alat(control_blocks, pop=false)
-    sysblock = block(control_blocks, :system)
-    if sysblock == nothing
-        error("Could not resolve the alat!")
-    end
-    if haskey(sysblock.flags, :A)
-        alat = pop ? pop!(sysblock.flags, :A) : sysblock.flags[:A]
-    elseif haskey(sysblock.flags, celldm_1)
-        alat = pop ? pop!(sysblock.flags, celldm_1) : sysblock.flags[celldm_1]
-        alat *= conversions[:bohr2ang]
-    else
-        error("So far alat can be specified only through A and celldm(1).")
-    end
-    return alat
-end
+# function read_errors(filename::String)
+#     out = String[]
+#     open(filename, "r") do f
+#         line = readline(f)
+#         while !eof(f)
+#             if contains(lowercase(line), "error")
+#                 push!(out, line)
+#             end
+#         end
+#         return out
+#     end
+# end
 
 #TODO handle more fancy cells
 function extract_cell!(control_blocks, cell_block)
@@ -306,7 +303,7 @@ end
     read_qe_input(filename, T=Float64; exec="pw.x",  run_command="", run=true, structure_name="NoName")
 
 Reads a Quantum Espresso input file. The exec get's used to find which flags are allowed in this input file, and convert the read values to the correct Types.
-Returns a DFInput.
+Returns a `QEInput` and the `Structure` that is found in the input.
 """
 function read_qe_input(filename, T=Float64::Type; exec="pw.x", run_command="", run=true, structure_name="NoName")
     control_blocks = Array{QEControlBlock,1}()
@@ -441,7 +438,7 @@ function write_block_data(f, data)
 end
 
 """
-    write_input(filename::String, df_input::DFInput)
+    write_input(input::QEInput, structure, filename::String=input.filename)
 
 Writes a Quantum Espresso input file.
 """

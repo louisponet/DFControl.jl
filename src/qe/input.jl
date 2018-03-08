@@ -18,6 +18,11 @@ mutable struct QEInput <: DFInput
     run            ::Bool
 end
 
+"""
+    QEInput(template::QEInput, filename, newflags...; run_command=template.run_command, run=true, new_data...)
+
+Creates a new `QEInput` from a template `QEInput`, setting the newflags in the new one.
+"""
 function QEInput(template::QEInput, filename, newflags...; run_command=template.run_command, run=true, new_data...)
     newflags = Dict(newflags...) # this should handle both OrderedDicts and pairs of flags
 
@@ -72,9 +77,9 @@ function change_flags!(input::QEInput, new_flag_data...)
 end
 
 """
-    set_flags!(input::DFInput, flags...)
+    set_flags!(input::QEInput, flags...)
 
-Sets the specified flags in the input. A controlblock will be added if necessary.
+Sets the specified flags in the input, if they are allowed. The flag values will be converted to the correct type according to the Documentation provided by QE. A ControlBlock will be added to the input if necessary.
 """
 function set_flags!(input::QEInput, flags...; print=true)
     found_keys = Symbol[]
@@ -163,6 +168,7 @@ end
     change_kpoints!(input::QEInput, k_grid::Union{NTuple{3, Int}, NTuple{6, Int}})
 
 Changes the data in the k point `DataBlock` inside the specified calculation.
+If the specified calculation is `'nscf'` the accepted format is `(nka, nkb, nkc)`, and the k_grid will be generated. If the calculation is `'scf'` the format is `(nka, nkb, nkc, sta, stb, stc)`.
 """
 function change_kpoints!(input::QEInput, k_grid::Union{NTuple{3, Int}, NTuple{6, Int}}; print=true)
     if length(k_grid) == 3
@@ -183,14 +189,19 @@ function change_kpoints!(input::QEInput, k_grid::Union{NTuple{3, Int}, NTuple{6,
 end
 
 """
-    change_kpoints!(input::QEInput, k_grid::Vector{Vector{<:AbstractFloat}})
+    change_kpoints!(input::QEInput, k_grid::Vector{NTuple{4, <:AbstractFloat}};
+    k_option=:crystal_b)
 
-Changes the data in the k point `DataBlock` inside the specified calculation.
+Changes the data in the k point `DataBlock` inside the specified calculation. The format is `[(ka, kb, kc, nk),...]`. This format is to be used with a `'bands'` calculation.
 """
-function change_kpoints!(input::QEInput, k_grid::Vector{Vector{<:AbstractFloat}}; print=true)
+function change_kpoints!(input::QEInput, k_grid::Vector{NTuple{4, <:AbstractFloat}}; print=true, k_option=:crystal_b)
     calc = get_flag(input, :calculation)
     @assert calc == "'bands'" warn("Expected calculation to be 'bands', got $calc.")
-    k_option = :crystal_b
+    @assert k_option in [:tpiba_b, :crystal_b, :tpiba_c, :crystal_c] error("Only $([:tpiba_b, :crystal_b, :tpiba_c, :crystal_c]...) are allowed as a k_option, got $k_option.")
+    if k_option in [:tpiba_c, :crystal_c]
+        @assert length(k_grid) == 3 error("If $([:tpiba_c, :crystal_c]...) is selected the length of the k_points needs to be 3, got length: $(length(k_grid)).")
+    end
+    k_option = k_option
     num_k = 0.0
     for k in k_grid
         num_k += k[4]
@@ -198,7 +209,7 @@ function change_kpoints!(input::QEInput, k_grid::Vector{Vector{<:AbstractFloat}}
     if num_k > 100.
         set_flags!(input, :verbosity => "'high'")
         if print
-            dfprintln("Set verbosity to high because num_kpoints > 100,\n
+            dfprintln("Verbosity is set to high because num_kpoints > 100,\n
                        otherwise bands won't get printed.")
         end
     end

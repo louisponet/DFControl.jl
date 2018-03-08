@@ -1,12 +1,11 @@
 using DFControl, Base.Test
 
-test_job_path = joinpath(@__DIR__, "../assets/inputs/test_job")
+test_job_path = joinpath(@__DIR__, "test_job")
 df_job = load_job(test_job_path);
-display(df_job)
-df_job2 = load_job(joinpath(@__DIR__,test_job_path),new_local_dir="blabla");
+df_job2 = load_job(joinpath(@__DIR__, test_job_path), new_local_dir="blabla");
 @test df_job2.local_dir    == "blabla/"
-@test length(df_job.calculations) == 6
-@test get_input(df_job,"nscf").run_command == get_run_command(df_job,"nscf")
+@test length(df_job.calculations) == 7
+@test get_input(df_job, "nscf").run_command == get_run_command(df_job, "nscf")
 @test df_job.local_dir     == test_job_path*"/"
 
 try mkdir(joinpath(test_job_path,"test_dir/")) end
@@ -41,7 +40,7 @@ rm(test_dir)
 # change_data = Dict(:sk1=>3,:sk2=>3.2,:prefix=>"'test'",:noncolin => false, :ecutwfc=> 35,:test => true, :ion_dynamics=>true , :trash=>'d')
 # change_data2 = Dict(:bleirgh => "'stuff'")
 
-scf_input     = read_qe_input(joinpath(@__DIR__,"../assets/inputs/qe/scf.in"))[1]
+scf_input     = read_qe_input(joinpath(test_job_path, "scf.in"))[1]
 t_l = length(df_job.calculations)
 add_calculation!(df_job, scf_input)
 @test length(df_job.calculations)==t_l+1
@@ -60,7 +59,7 @@ remove_flags!(df_job,"wan.win", :dis_win_min, :dis_win_max)
 set_flow!(df_job, [false for i=1:length(df_job.calculations)])
 @test df_job.calculations[1].run == false
 change_flow!(df_job, "nscf" => true, "bands" => true)
-@test df_job.calculations[2].run
+@test df_job.calculations[3].run
 change_flow!(df_job, "pw2wan" => true)
 @test df_job.calculations[end-1].run
 

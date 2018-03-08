@@ -8,7 +8,7 @@ test_bands = read_qe_bands_file(joinpath(@__DIR__,"../assets/outputs/bands.out")
 @test plot(test_bands[4],:relative_cryst) != nothing
 @test plot(test_bands)                    != nothing
 
-t_fermi = read_fermi_from_qe_file(joinpath(@__DIR__,"../assets/outputs/scf.out"))
+t_fermi = read_fermi_from_qe_output(joinpath(@__DIR__,"../assets/outputs/scf.out"))
 t_eigval = test_bands[1].eigvals[1]
 @test DFControl.apply_fermi_level.(test_bands, 3.2)[1].eigvals[1] == t_eigval - 3.2
 @test DFControl.apply_fermi_level.(test_bands, joinpath(@__DIR__,"../assets/outputs/scf.out"))[1].eigvals[1] == t_eigval - t_fermi

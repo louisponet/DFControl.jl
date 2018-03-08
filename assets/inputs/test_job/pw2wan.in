@@ -1,9 +1,0 @@
-&inputpp
-  outdir     =  '.'
-  prefix     =  'pwo'
-  seedname   =  'wan'
-  spin_component = 'up'
-  write_amn  =  .true.
-  write_mmn  =  .true.
-  write_unk  =  .true.
-/

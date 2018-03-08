@@ -76,8 +76,8 @@ module DFControl
     export read_abi_ebands
     export read_abi_eig
     export read_qe_bands_file
-    export read_ks_from_qe_bands_file
-    export read_fermi_from_qe_file
+    export read_ks_from_qe_output
+    export read_fermi_from_qe_output
     export read_qe_kpdos
     export read_qe_pdos
     export read_qe_polarization

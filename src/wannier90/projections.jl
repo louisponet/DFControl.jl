@@ -22,6 +22,8 @@ struct Projection
 end
 
 """
+    add_projections(projections, atoms)
+
 Takes an array of `Pair{Symbol, Orbital}` where Symbol signifies the atom symbol for the projections, and an Array of `Atom` and then assigns the correct `Projection` arrays to each atom.
 """
 function add_projections(projections, atoms)

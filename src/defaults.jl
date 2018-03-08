@@ -55,7 +55,7 @@ end
 """
     set_default_pseudo_dir(pseudo_symbol::Symbol, dir::String)
 
-Adds an entry inside the `default_pseudo_dirs` OrderedDictionary with flag `pseudo_symbol`.
+Adds an entry inside the `default_pseudo_dirs` with flag `pseudo_symbol`, and adds it to the `user_defaults.jl` file.
 """
 function set_default_pseudo_dir(pseudo_symbol::Symbol, dir::String)
     expr_ndef = :(default_pseudo_dirs = Dict{Symbol,String}($(Expr(:quote, pseudo_symbol)) => $dir))
@@ -66,7 +66,7 @@ end
 """
     remove_default_pseudo_dir(pseudo_symbol::Symbol)
 
-Removes entry with flag `pseudo_symbol` from the `default_pseudo_dirs` OrderedDictionary.
+Removes entry with flag `pseudo_symbol` from the `default_pseudo_dirs` and `user_defaults.jl` file.
 """
 function remove_default_pseudo_dir(pseudo_symbol::Symbol)
     if isdefined(:default_pseudo_dirs) && haskey(DFControl.default_pseudo_dirs, pseudo_symbol)
@@ -83,7 +83,7 @@ end
 """
     set_default_server(server::String)
 
-Sets the default server.
+Sets the default server variable, and also adds it to the `user_defaults.jl` file.
 """
 function set_default_server(server::String)
     expr_ndef = :(default_server = $server)
@@ -107,7 +107,7 @@ end
 """
     get_default_pseudo_dirs()
 
-Returns the default pseudo dirs OrderedDictionary if it's defined. If it is not defined return nothing.
+Returns the default pseudo dirs if it's defined. If it is not defined return nothing.
 """
 function get_default_pseudo_dirs()
     if isdefined(:default_pseudo_dirs)
@@ -124,7 +124,7 @@ end
 """
     configure_default_pseudos!(server = get_default_server(), pseudo_dirs=get_default_pseudo_dirs())
 
-Reads the specified `default_pseudo_dirs` on the `default_server` and sets up the `default_pseudo` OrderedDictionary.
+Reads the specified `default_pseudo_dirs` on the `default_server` and sets up the `default_pseudos` variable, and also adds all the entries to the `user_defaults.jl` file.
 """
 function configure_default_pseudos(server = get_default_server(), pseudo_dirs=get_default_pseudo_dirs())
     if server == ""
@@ -195,7 +195,7 @@ end
 """
     set_default_job_header(lines)
 
-Sets the header that will get added to each job.tt file.
+Sets the header that will get added to each job.tt file, if no other header was specified.
 """
 function set_default_job_header(lines)
     expr = :(default_job_header = $lines)
@@ -208,9 +208,9 @@ function set_default_job_header(lines)
 end
 
 """
-    set_default_input(input::dfinput, calculation::Symbol)
+    set_default_input(input::dfinput, structure, calculation::Symbol)
 
-Adds the input to the default inputs, writes it to a file in user_defaults folder to be read every time on load.
+Adds the input to the `default_inputs` variable, and writes it to a file in user_defaults folder to be read every time on load.
 """
 function set_default_input(input::DFInput, structure, calculation::Symbol)
     if !isdefined(:default_inputs)
@@ -232,7 +232,7 @@ end
 """
     remove_default_input(input::Symbol)
 
-Remove the default input specified by the Symbol. Also removes the stored input file.
+Remove input from the `default_inputs` variable. Also removes the stored input file.
 """
 function remove_default_input(input::Symbol)
     if haskey(DFControl.default_inputs, input)
