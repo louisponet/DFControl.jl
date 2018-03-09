@@ -1,6 +1,7 @@
 using Documenter, DFControl
 
 makedocs(modules = [DFControl],
+
          pages = Any["Home" => "index.md",
                      "Library" => Any["job.md",
                      "input.md",
