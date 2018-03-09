@@ -17,22 +17,6 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "index.html#Public-Interface-1",
-    "page": "Home",
-    "title": "Public Interface",
-    "category": "section",
-    "text": "Pages = [\"job.md\", \"input.md\", \"structure.md\", \"atom.md\", \"fileio.md\", \"defaults.md\", \"utils.md\"]\nDepth = 2"
-},
-
-{
-    "location": "index.html#Library-1",
-    "page": "Home",
-    "title": "Library",
-    "category": "section",
-    "text": ""
-},
-
-{
     "location": "job.html#",
     "page": "Job",
     "title": "Job",
