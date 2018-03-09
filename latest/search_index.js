@@ -725,7 +725,7 @@ var documenterSearchIndex = {"docs": [
     "page": "FileIO",
     "title": "DFControl.write_input",
     "category": "function",
-    "text": "write_input(input::QEInput, structure, filename::String=input.filename)\n\nWrites a Quantum Espresso input file.\n\n\n\n"
+    "text": "write_input(input::WannierInput, structure, filename::String=input.filename)\n\nWrites the WannierInput and structure to a file, that can be interpreted by WANNIER90. The atoms in the structure must have projections defined.\n\n\n\n"
 },
 
 {
@@ -733,7 +733,7 @@ var documenterSearchIndex = {"docs": [
     "page": "FileIO",
     "title": "DFControl.write_input",
     "category": "function",
-    "text": "write_input(input::WannierInput, structure, filename::String=input.filename)\n\nWrites the WannierInput and structure to a file, that can be interpreted by WANNIER90. The atoms in the structure must have projections defined.\n\n\n\n"
+    "text": "write_input(input::QEInput, structure, filename::String=input.filename)\n\nWrites a Quantum Espresso input file.\n\n\n\n"
 },
 
 {
