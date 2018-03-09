@@ -385,11 +385,83 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "input.html#Inputs-1",
+    "page": "Inputs",
+    "title": "Inputs",
+    "category": "section",
+    "text": ""
+},
+
+{
     "location": "input.html#DFControl.QEInput-Tuple{DFControl.QEInput,Any,Vararg{Any,N} where N}",
     "page": "Inputs",
     "title": "DFControl.QEInput",
     "category": "method",
     "text": "QEInput(template::QEInput, filename, newflags...; run_command=template.run_command, run=true, new_data...)\n\nCreates a new QEInput from a template QEInput, setting the newflags in the new one.\n\n\n\n"
+},
+
+{
+    "location": "input.html#DFControl.change_flags!-Tuple{DFControl.QEInput,Vararg{Any,N} where N}",
+    "page": "Inputs",
+    "title": "DFControl.change_flags!",
+    "category": "method",
+    "text": "change_flags!(input::QEInput, new_flag_data...)\n\nChanges the flags inside the input to the new ones if they are already defined and if the new ones have the same type.\n\n\n\n"
+},
+
+{
+    "location": "input.html#DFControl.change_kpoints!-Tuple{DFControl.QEInput,Array{NTuple{4,#s35} where #s35<:AbstractFloat,1}}",
+    "page": "Inputs",
+    "title": "DFControl.change_kpoints!",
+    "category": "method",
+    "text": "change_kpoints!(input::QEInput, k_grid::Vector{NTuple{4, <:AbstractFloat}};\nk_option=:crystal_b)\n\nChanges the data in the k point DataBlock inside the specified calculation. The format is [(ka, kb, kc, nk),...]. This format is to be used with a \'bands\' calculation.\n\n\n\n"
+},
+
+{
+    "location": "input.html#DFControl.change_kpoints!-Tuple{DFControl.QEInput,Union{NTuple{6,Int64}, Tuple{Int64,Int64,Int64}}}",
+    "page": "Inputs",
+    "title": "DFControl.change_kpoints!",
+    "category": "method",
+    "text": "change_kpoints!(input::QEInput, k_grid::Union{NTuple{3, Int}, NTuple{6, Int}})\n\nChanges the data in the k point DataBlock inside the specified calculation. If the specified calculation is \'nscf\' the accepted format is (nka, nkb, nkc), and the k_grid will be generated. If the calculation is \'scf\' the format is (nka, nkb, nkc, sta, stb, stc).\n\n\n\n"
+},
+
+{
+    "location": "input.html#DFControl.get_block-Tuple{DFControl.QEInput,Symbol}",
+    "page": "Inputs",
+    "title": "DFControl.get_block",
+    "category": "method",
+    "text": "get_block(input::QEInput, block_symbol::Symbol)\n\nReturns the block with name block_symbol.\n\n\n\n"
+},
+
+{
+    "location": "input.html#DFControl.get_flag-Tuple{DFControl.QEInput,Symbol}",
+    "page": "Inputs",
+    "title": "DFControl.get_flag",
+    "category": "method",
+    "text": "get_flag(input::QEInput, flag::Symbol)\n\nReturns the value of the flag.\n\n\n\n"
+},
+
+{
+    "location": "input.html#DFControl.remove_flags!-Tuple{DFControl.QEInput,Vararg{Any,N} where N}",
+    "page": "Inputs",
+    "title": "DFControl.remove_flags!",
+    "category": "method",
+    "text": "remove_flags!(input::QEInput, flags...)\n\nRemove the specified flags.\n\n\n\n"
+},
+
+{
+    "location": "input.html#DFControl.set_flags!-Tuple{DFControl.QEInput,Vararg{Any,N} where N}",
+    "page": "Inputs",
+    "title": "DFControl.set_flags!",
+    "category": "method",
+    "text": "set_flags!(input::QEInput, flags...)\n\nSets the specified flags in the input, if they are allowed. The flag values will be converted to the correct type according to the Documentation provided by QE. A ControlBlock will be added to the input if necessary.\n\n\n\n"
+},
+
+{
+    "location": "input.html#QEInput-1",
+    "page": "Inputs",
+    "title": "QEInput",
+    "category": "section",
+    "text": "Modules = [DFControl]\nPages   = [\"qe/input.jl\"]\nPrivate = false\nOrder   = [:type, :function]"
 },
 
 {
@@ -425,14 +497,6 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "input.html#DFControl.change_flags!-Tuple{DFControl.QEInput,Vararg{Any,N} where N}",
-    "page": "Inputs",
-    "title": "DFControl.change_flags!",
-    "category": "method",
-    "text": "change_flags!(input::QEInput, new_flag_data...)\n\nChanges the flags inside the input to the new ones if they are already defined and if the new ones have the same type.\n\n\n\n"
-},
-
-{
     "location": "input.html#DFControl.change_flags!-Tuple{Union{DFControl.AbinitInput, DFControl.WannierInput},Vararg{Any,N} where N}",
     "page": "Inputs",
     "title": "DFControl.change_flags!",
@@ -441,35 +505,11 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "input.html#DFControl.change_kpoints!-Tuple{DFControl.QEInput,Array{NTuple{4,#s35} where #s35<:AbstractFloat,1}}",
-    "page": "Inputs",
-    "title": "DFControl.change_kpoints!",
-    "category": "method",
-    "text": "change_kpoints!(input::QEInput, k_grid::Vector{NTuple{4, <:AbstractFloat}};\nk_option=:crystal_b)\n\nChanges the data in the k point DataBlock inside the specified calculation. The format is [(ka, kb, kc, nk),...]. This format is to be used with a \'bands\' calculation.\n\n\n\n"
-},
-
-{
-    "location": "input.html#DFControl.change_kpoints!-Tuple{DFControl.QEInput,Union{NTuple{6,Int64}, Tuple{Int64,Int64,Int64}}}",
-    "page": "Inputs",
-    "title": "DFControl.change_kpoints!",
-    "category": "method",
-    "text": "change_kpoints!(input::QEInput, k_grid::Union{NTuple{3, Int}, NTuple{6, Int}})\n\nChanges the data in the k point DataBlock inside the specified calculation. If the specified calculation is \'nscf\' the accepted format is (nka, nkb, nkc), and the k_grid will be generated. If the calculation is \'scf\' the format is (nka, nkb, nkc, sta, stb, stc).\n\n\n\n"
-},
-
-{
     "location": "input.html#DFControl.change_kpoints!-Tuple{DFControl.WannierInput,Tuple{Int64,Int64,Int64}}",
     "page": "Inputs",
     "title": "DFControl.change_kpoints!",
     "category": "method",
     "text": "change_kpoints!(input::WannierInput, k_grid::NTuple{3, Int}; print=true)\n\nChanges the data in the k point DataBlock inside the specified calculation.\n\n\n\n"
-},
-
-{
-    "location": "input.html#DFControl.get_block-Tuple{DFControl.QEInput,Symbol}",
-    "page": "Inputs",
-    "title": "DFControl.get_block",
-    "category": "method",
-    "text": "get_block(input::QEInput, block_symbol::Symbol)\n\nReturns the block with name block_symbol.\n\n\n\n"
 },
 
 {
@@ -489,27 +529,11 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "input.html#DFControl.get_flag-Tuple{DFControl.QEInput,Symbol}",
-    "page": "Inputs",
-    "title": "DFControl.get_flag",
-    "category": "method",
-    "text": "get_flag(input::QEInput, flag::Symbol)\n\nReturns the value of the flag.\n\n\n\n"
-},
-
-{
     "location": "input.html#DFControl.get_flag-Tuple{Union{DFControl.AbinitInput, DFControl.WannierInput},Symbol}",
     "page": "Inputs",
     "title": "DFControl.get_flag",
     "category": "method",
     "text": "get_flag(input::DFInput, flag::Symbol)\n\nReturns the value of the flag.\n\n\n\n"
-},
-
-{
-    "location": "input.html#DFControl.remove_flags!-Tuple{DFControl.QEInput,Vararg{Any,N} where N}",
-    "page": "Inputs",
-    "title": "DFControl.remove_flags!",
-    "category": "method",
-    "text": "remove_flags!(input::QEInput, flags...)\n\nRemove the specified flags.\n\n\n\n"
 },
 
 {
@@ -521,14 +545,6 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "input.html#DFControl.set_flags!-Tuple{DFControl.QEInput,Vararg{Any,N} where N}",
-    "page": "Inputs",
-    "title": "DFControl.set_flags!",
-    "category": "method",
-    "text": "set_flags!(input::QEInput, flags...)\n\nSets the specified flags in the input, if they are allowed. The flag values will be converted to the correct type according to the Documentation provided by QE. A ControlBlock will be added to the input if necessary.\n\n\n\n"
-},
-
-{
     "location": "input.html#DFControl.set_flags!-Tuple{Union{DFControl.AbinitInput, DFControl.WannierInput},Vararg{Any,N} where N}",
     "page": "Inputs",
     "title": "DFControl.set_flags!",
@@ -537,9 +553,9 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "input.html#Inputs-1",
+    "location": "input.html#WannierInput-and-AbinitInput-1",
     "page": "Inputs",
-    "title": "Inputs",
+    "title": "WannierInput & AbinitInput",
     "category": "section",
     "text": "Modules = [DFControl]\nPages   = [\"input.jl\"]\nPrivate = false\nOrder   = [:type, :function]"
 },
