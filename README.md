@@ -39,8 +39,9 @@ configure_default_pseudos()
 This will then connect to the server, look through all the defined pseudo sets inside the `default_pseudos` and tries to link for each element, for each set the correct filename.
 To find out the filename of a certain atom for a certain pseudo set, or to check whether your config worked, you can do:
 ```julia
-get_default_pseudo(:O, :pbesolrel) #again changes `pbesolrel` to the set you defined before
+get_default_pseudo(:O, :pbesolrel) #again change `pbesolrel` to the set you defined before
 ```
+This should return you the filename for the pseudo potential file of Oxygen, `:O`, the format for elements in general is e.g. `:Mn`.
 If multiple pseudos are defined for one set and element, you can specify keyword `pseudo_fuzzy = ...` to pull out the one you want to use.
 For more info on other default functionality please look in the documentation and examples.
 
