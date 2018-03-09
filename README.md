@@ -88,7 +88,7 @@ plot(bands)
 
 Calculations can be set to run or not by
 ```julia
-change_flow!(job, "" => false)0
+change_flow!(job, "" => false)
 change_flow!(job, "nscf" => true, "bands" => true) #args..., and they are matched fuzzily
 ```
 
