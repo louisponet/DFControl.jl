@@ -12,3 +12,13 @@ makedocs(modules = [DFControl],
          sitename = "DFControl.jl",
          format = :html
         )
+
+
+deploydocs(
+    repo = "github.com/louisponet/DFControl.jl.git",
+    target = "build",
+    osname = "linux",
+    julia  = "0.6",
+    deps = nothing,
+    make = nothing
+    )
