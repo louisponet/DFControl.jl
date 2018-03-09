@@ -5,7 +5,7 @@
 
 This package is a tool to interact with DFT, and related packages. Currently best support is for Quantum-Espresso and WANNIER90, Abinit is also support but limited.
 
-##Installation
+## Installation
 
 Since this package is not registered yet, the way to install it is by:
 ```julia
@@ -24,7 +24,8 @@ default server:
 set_default_server("blabla@server.com") #default server
 ```
 
-default pseudo potentials: this defines a directory on the server to look through for the pseudo potentials for each element. This will be used for certain options when changing atom properties etc.
+default pseudo potentials:
+this defines a directory on the server to look through for the pseudo potentials for each element. This will be used for certain options when changing atom properties etc.
 ```julia
 set_default_pseudo_dir(:pbesol,  "pseudos/pbesol/") #change to your pseudo_set_name and directory of choice
 set_default_pseudo_dir(:pbesolrel, "pseudos/pbesolrel/")
@@ -40,7 +41,7 @@ To find out the filename of a certain atom for a certain pseudo set, or to check
 ```julia
 get_default_pseudo(:O, :pbesolrel) #again changes `pbesolrel` to the set you defined before
 ```
-If multiple pseudos are defined for one set and element, you can specify `kwarg` `pseudo_fuzzy = ...` to pull out the one you want to use.
+If multiple pseudos are defined for one set and element, you can specify keyword `pseudo_fuzzy = ...` to pull out the one you want to use.
 For more info on other default functionality please look in the documentation and examples.
 
 ## General Usage
