@@ -15,6 +15,7 @@ module DFControl
     export DFBand
 
     include("utils.jl")
+    export getfirst
 
     include("input.jl")
     export QEDataBlock

@@ -238,19 +238,18 @@ pull_job(args...; kwargs...) = pull_job(get_default_server(), args..., kwargs...
 
 
 """
-    load_server_job(server::String, server_dir::String, local_dir::String; job_fuzzy="*job*", job_name=nothing)
+    load_server_job(server_dir::String, local_dir::String; server=get_default_server(), job_fuzzy="*job*", new_job_name="")
 
 Pulls a server job to local directory and then loads it. A fuzzy search for the job file will be performed and the found input files will be pulled.
 """
-function load_server_job(server::String, server_dir::String, local_dir::String;
+function load_server_job(server_dir::String, local_dir::String;
+                         server = get_default_server(),
                          job_fuzzy    = "*job*",
                          new_job_name = "")
 
-    pull_job(server,server_dir,local_dir)
+    pull_job(server, server_dir, local_dir)
     return load_job(local_dir, server=server, server_dir=server_dir, new_job_name=new_job_name)
 end
-
-load_server_job(args...; kwargs...) = load_server_job(get_default_server(), args..., kwargs...)
 
 """
     save_job(job::DFJob)
