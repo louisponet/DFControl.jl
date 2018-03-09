@@ -3,7 +3,7 @@
 [![Build status](https://ci.appveyor.com/api/projects/status/05vktbyj39u47usa?svg=true)](https://ci.appveyor.com/project/louisponet/dfcontrol-jl)
 [![Coverage Status](https://coveralls.io/repos/github/louisponet/DFControl.jl/badge.svg?branch=master)](https://coveralls.io/github/louisponet/DFControl.jl?branch=master)
 
-This package is a tool to interact with DFT, and related packages. Currently best support is for Quantum-Espresso and WANNIER90, Abinit is also supported but limited.
+This package is a tool to interact with DFT related packages. Currently best support is for Quantum-Espresso and WANNIER90, Abinit is also supported but limited.
 
 ## Installation
 
