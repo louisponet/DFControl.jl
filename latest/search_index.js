@@ -73,7 +73,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "job.html#DFControl.change_atoms!-Tuple{DFControl.DFJob,Dict{Symbol,#s36} where #s36<:(Array{#s35,1} where #s35<:(GeometryTypes.Point{3,T} where T))}",
+    "location": "job.html#DFControl.change_atoms!-Tuple{DFControl.DFJob,Dict{Symbol,#s35} where #s35<:(Array{#s34,1} where #s34<:(GeometryTypes.Point{3,T} where T))}",
     "page": "Job",
     "title": "DFControl.change_atoms!",
     "category": "method",
@@ -297,7 +297,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "job.html#DFControl.remove_flags!-Tuple{DFControl.DFJob,Array{#s52,1} where #s52<:AbstractString,Vararg{Any,N} where N}",
+    "location": "job.html#DFControl.remove_flags!-Tuple{DFControl.DFJob,Array{#s51,1} where #s51<:AbstractString,Vararg{Any,N} where N}",
     "page": "Job",
     "title": "DFControl.remove_flags!",
     "category": "method",
@@ -765,7 +765,15 @@ var documenterSearchIndex = {"docs": [
     "page": "Defaults",
     "title": "DFControl.configure_default_pseudos",
     "category": "function",
-    "text": "configure_default_pseudos!(server = get_default_server(), pseudo_dirs=get_default_pseudo_dirs())\n\nReads the specified default_pseudo_dirs on the default_server and sets up the default_pseudos variable, and also adds all the entries to the user_defaults.jl file.\n\n\n\n"
+    "text": "configure_default_pseudos(server = get_default_server(), pseudo_dirs=get_default_pseudo_dirs())\n\nReads the specified default_pseudo_dirs on the default_server and sets up the default_pseudos variable, and also adds all the entries to the user_defaults.jl file.\n\n\n\n"
+},
+
+{
+    "location": "defaults.html#DFControl.get_default_pseudo",
+    "page": "Defaults",
+    "title": "DFControl.get_default_pseudo",
+    "category": "function",
+    "text": "get_default_pseudo(atom::Symbol, pseudo_set_name=:default; pseudo_specifier=nothing)\n\nReturns the pseudo potential string linked to the atom.\n\n\n\n"
 },
 
 {
