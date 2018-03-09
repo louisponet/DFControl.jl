@@ -48,33 +48,40 @@ If multiple pseudos are defined for one set and element, you can specify keyword
 For more info on other default functionality please look in the documentation and examples.
 
 ## General Usage
+
 The main types in around which the package revolves are the `DFJob`, `QEInput`, `WannierInput` and `AbinitInput`.
 A `DFJob` is comprised of a `Structure`, representing the structure that is simulated in the job, and a collection of calculations to be done. Other fields in `DFJob` are auxiliary properties, such as name, directories, etc.
 
-At this point, the main way the package works is by reading slurm job scripts such as the `test/test_job/job.tt`.
-What is most important is the format used in the lines that do the actual calculations, i.e. `run_command exec <input_file.in> output_file.out`, for example: `mpirun -np 24 ~/bin/projwfc.x  <projwfc.in> projwfc.out`.
+At this point, the main way the package works is by reading slurm job scripts such as the `test/test_job/job.tt` one.
+What is most important for succesfully parsing these is the format used in the lines that do the actual calculations, i.e. `run_command exec <input_file.in> output_file.out`, for example: `mpirun -np 24 ~/bin/projwfc.x  <projwfc.in> projwfc.out`.
 The parsing is sort of robust but one should probably stick to this format.
 All other not recognized lines will be saved in the `header` field of the `DFJob`.
+The calculations in commented out lines will also be read and loaded, but they will have a field `QEInput.run=false`.
+When the `job.tt` file gets written upon saving of the `DFJob`, calculations which are marked to not run will be written in the `job.tt` file, but be commented out.
 
-As a quick start to see this in action you can do
+As a quick start to see this in action you can do (Juno is highly recommended, for reading clarity)
 ```julia
 job = load_job(joinpath(Pkg.dir("DFControl"), "test/test_job/"))
 ```
+
 It will automatically look through the directory for a file which matches the fuzzy `*job*`. This can be specified through kwargs, further info in the documentation and examples.
 
 To do something similar on a directory on a server, you can do
 ```julia
 job = load_server_job("path/to/job/starting_from_home", "local_dir", server=get_default_server())
 ```
+If the `local_dir` doesn't exist it will be first created before pulling the `job` script and the calculations that it read from this file.
 
 If you ran some calculations, you should be able to pull the outputs into the `local_dir` of the `job` by:
 ```julia
 outputs = pull_outputs(job)
 ```
 
-If one of the calculations that were performed was a `'bands'` calculations using Quantum-Espresso, you can do
+If one of the calculations that were performed was a `'bands'` calculation using Quantum-Espresso, you can do
 ```julia
 bands = read_qe_output(getfirst(x -> contains(x, "bands"), outputs))[:bands]
+#or
+bands = read_qe_bands_file(getfirst(x -> contains(x, "bands"), outputs))
 using Plots
 plot(bands)
 ```
@@ -90,4 +97,4 @@ A job can be submitted if the `job.server` and `job.server_dir` are defined by
 submit_job(job)
 ```
 
-This should get you started, but is just a very very small portion of the functionality, please look into the documentation and examples for more.
+This gave just a very very small overview of the functionality, please look into the documentation and examples for more.
