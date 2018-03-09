@@ -55,12 +55,6 @@ function parse_flag_val(val, T=Float64)
 end
 
 #---------------------------BEGINNING GENERAL SECTION-------------------#
-"""
-    write_input(df_input::DFInput, filename::String=df_input.filename)
-
-Writes the input file for a DFInput.Backend of DFInput decides what writing function is called.
-"""
-
 #Incomplete: only works with SBATCH right now
 function write_job_name(f, job::DFJob)
     write(f, "#SBATCH -J $(job.name) \n")

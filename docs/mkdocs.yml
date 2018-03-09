@@ -1,0 +1,25 @@
+site_name:        DFControl.jl
+repo_url:         https://github.com/louisponet/DFControl.jl
+site_description: Package for interaction with DFT related software
+site_author:      Louis Ponet
+
+theme: readthedocs
+
+extra_css:
+  - assets/Documenter.css
+
+extra_javascript:
+  - https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS_HTML
+  - assets/mathjaxhelper.js
+
+markdown_extensions:
+  - extra
+  - tables
+  - fenced_code
+  - math
+
+docs_dir: 'build'
+
+pages:
+  - Home: index.md
+  - DFJob: job.md

@@ -3,3 +3,5 @@
 *.jl.mem
 user_defaults/*
 .DS_Store
+docs/build/
+docs/site/

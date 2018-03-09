@@ -185,7 +185,7 @@ end
 """
     load_job(job_dir::String, T=Float64; job_fuzzy = "job", new_job_name=nothing, new_homedir=nothing, server=get_default_server(),server_dir="")
 
-Loads and returns a DFJob. If local_dir is not specified the job directory will ge registered as the local one.
+Loads and returns a DFJob. If local_dir is not specified the job directory will be registered as the local one.
 """
 function load_job(job_dir::String, T=Float64;
                   job_fuzzy     = "job",

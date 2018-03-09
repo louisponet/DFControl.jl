@@ -250,7 +250,7 @@ function add_block!(input::DFInput, block::Block)
 end
 
 """
-    change_data_option!(job::DFJob, block_symbol::Symbol, option::Symbol; print=true)
+    change_data_option!(input::DFInput, block_symbol::Symbol, option::Symbol;; print=true)
 
 Changes the option of specified data block.
 """
