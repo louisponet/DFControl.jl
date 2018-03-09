@@ -33,26 +33,23 @@ mutable struct DFJob
 end
 
 #TODO implement abinit
-# function DFJob(job_name, local_dir, calculations::Array{Pair{Union{Symbol, String}, Dict},1}, atoms, cell_parameters=eye(3);
-function DFJob(job_name, local_dir, calculations::Vector, structure::AbstractStructure;
+function DFJob(job_name, local_dir, structure::AbstractStructure, calculations::Vector, common_flags...;
                     server=get_default_server(),
                     server_dir="",
                     package=:qe,
                     bin_dir="~/bin/",
                     run_command="mpirun -np 24",
-                    common_flags=Dict{Symbol,Any}(),
                     pseudo_set=:default,
                     pseudo_specifier="",
                     header=get_default_job_header())
 
     @assert package==:qe "Only implemented for Quantum Espresso!"
     local_dir = form_directory(local_dir)
-    job_atoms = convert_2atoms(atoms,pseudo_set=pseudo_set, pseudo_specifier=pseudo_specifier)
     job_calcs = DFInput[]
     if typeof(common_flags) != Dict
         common_flags = Dict(common_flags)
     end
-
+    bin_dir = form_directory(bin_dir)
     req_flags = Dict(:prefix  => "'$job_name'",
                      :outdir => "'$server_dir'",
                      :ecutwfc => 25.)
@@ -60,14 +57,14 @@ function DFJob(job_name, local_dir, calculations::Vector, structure::AbstractStr
     for (calc, data) in calculations
         calc_ = typeof(calc) == String ? Symbol(calc) : calc
         if in(calc_, [Symbol("vc-relax"), :relax, :scf])
-            k_points = pop!(data, :k_points, [1, 1, 1, 0, 0, 0])
+            k_points = get(data, :k_points, [1, 1, 1, 0, 0, 0])
             k_option = :automatic
         elseif calc_ == :nscf
-            k_points = pop!(data, :k_points, (1, 1, 1))
+            k_points = get(data, :k_points, (1, 1, 1))
             k_grid   = gen_k_grid(k_points..., :nscf)
             k_option = :crystal
         elseif calc_ == :bands
-            k_points = pop!(data, :k_points, [0., 0., 0., 1.])
+            k_points = get(data, :k_points, [[0., 0., 0., 1.]])
             num_k = 0.0
             for point in k_points
                 num_k += point[4]
@@ -77,7 +74,7 @@ function DFJob(job_name, local_dir, calculations::Vector, structure::AbstractStr
             end
             k_option = :crystal_b
         end
-        flags  = pop!(data, :flags, Dict{Symbol, Any}())
+        flags  = get(data, :flags, Dict{Symbol, Any}())
         push!(flags, :calculation => "'$(string(calc_))'")
         input_ = QEInput(string(calc_) * ".in",
                          QEControlBlock[],
@@ -87,15 +84,16 @@ function DFJob(job_name, local_dir, calculations::Vector, structure::AbstractStr
                          true)
         set_flags!(input_, req_flags..., print=false)
         set_flags!(input_, flags..., print=false)
-        change_atoms!(input_, job_atoms, pseudo_set = pseudo_set, pseudo_specifier = pseudo_specifier, print=false)
         push!(job_calcs, input_)
     end
+    out = DFJob(job_name, structure, job_calcs, local_dir, server, server_dir, header)
+    change_atoms!(out, structure.atoms, pseudo_set = pseudo_set, pseudo_specifier= pseudo_specifier)
     return DFJob(job_name, structure, job_calcs, local_dir, server, server_dir, header)
 end
 
-function DFJob(job_name, local_dir, calculations::Vector, ciffile::String; kwargs...)
+function DFJob(job_name, local_dir, ciffile::String, calculations::Vector, args...; kwargs...)
     structure = Structure(ciffile, name=job_name)
-    return DFJob(job_name, local_dir, calculations, structure; kwargs...)
+    return DFJob(job_name, local_dir, structure, calculations, args... ; kwargs...)
 end
 
 function DFJob(job::DFJob, flagstoset...;
@@ -279,6 +277,12 @@ function push_job(job::DFJob, newfiles)
     if !ispath(job.local_dir)
         error("Please save the job locally first using save_job(job)!")
     else
+        try
+            run(`ssh -t $(job.server) touch $(job.server_dir * "tmp.in")`)
+            run(`ssh -t $(job.server) rm $(job.server_dir * "tmp.in")`)
+        catch
+            run(`ssh -t $(job.server) mkdir $(job.server_dir)`)
+        end
         for file in newfiles
             run(`scp $(job.local_dir * file) $(job.server * ":" * job.server_dir)`)
         end

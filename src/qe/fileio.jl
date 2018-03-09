@@ -52,9 +52,11 @@ function read_qe_output(filename::String, T=Float64)
                 #fermi energy
             elseif contains(line, "Fermi")
                 out[:fermi]        = parse(T, split(line)[5])
-            elseif contains(line, "lowest unoccupied") || contains(line, "highest occupied")
+            elseif contains(line, "lowest unoccupied") && contains(line, "highest occupied")
                 out[:fermi]        = parse(T, split(line)[7])
 
+            elseif contains(line, "lowest unoccupied") || contains(line, "highest occupied")
+                out[:fermi]        = parse(T, split(line)[5])
                 #setup for k_points
             elseif contains(line, "celldm(1)")
                 alat_bohr = parse(T, split(line)[2])
@@ -148,7 +150,7 @@ function read_qe_output(filename::String, T=Float64)
                 for i = 1:length(out[:k_cart])
                     push!(eig_band, k_eigvals[i][i1])
                 end
-                push!(out[:bands], DFBand(out[:k_cart], out[:k_cryst], eig_band))
+                push!(out[:bands], DFBand(get(out, :k_cart,[[0.0,0.0,0.0]]), get(out, :k_cryst, [[0.0,0.0,0.0]]), eig_band))
             end
         end
         return out
@@ -249,6 +251,21 @@ read_qe_vcrel(filename::String, T=Float64) = read_qe_output(filename, T) do x
 #         return out
 #     end
 # end
+function alat(control_blocks, pop=false)
+    sysblock = block(control_blocks, :system)
+    if sysblock == nothing
+        error("Could not resolve the alat!")
+    end
+    if haskey(sysblock.flags, :A)
+        alat = pop ? pop!(sysblock.flags, :A) : sysblock.flags[:A]
+    elseif haskey(sysblock.flags, celldm_1)
+        alat = pop ? pop!(sysblock.flags, celldm_1) : sysblock.flags[celldm_1]
+        alat *= conversions[:bohr2ang]
+    else
+        error("So far alat can be specified only through A and celldm(1).")
+    end
+    return alat
+end
 
 #TODO handle more fancy cells
 function extract_cell!(control_blocks, cell_block)
@@ -414,14 +431,14 @@ function read_qe_input(filename, T=Float64::Type; exec="pw.x", run_command="", r
 end
 
 function write_block_data(f, data)
-    if typeof(data) <: Array{Vector{Float64},1} || typeof(data) <: Array{Vector{Float64},1} #k_points
+    if typeof(data) <: Vector{Vector{Float64}} || typeof(data) <: Vector{NTuple{4, Float64}} #k_points
         for x in data
             for y in x
                 write(f, " $y")
             end
             write(f, "\n")
         end
-    elseif typeof(data) <: Array{Int,1}
+    elseif typeof(data) <: Vector{Int} || typeof(data) <: NTuple{6, Int}
         for x in data
             write(f, " $x")
         end
@@ -447,8 +464,18 @@ function write_input(input::QEInput, structure, filename::String=input.filename)
         write_flag(flag_data) = write_flag_line(f, flag_data[1], flag_data[2])
         write_block(data)     = write_block_data(f, data)
 
-
-        for block in input.control_blocks
+        blocks2file = QEControlBlock[]
+        c_block = getfirst(x -> x.name == :control, input.control_blocks)
+        s_block = getfirst(x -> x.name == :system, input.control_blocks)
+        if c_block != nothing
+            push!(blocks2file, c_block)
+            push!(blocks2file, s_block)
+        end
+        rest = filter(x -> x.name != :control && x.name != :system, input.control_blocks)
+        for r in rest
+            push!(blocks2file, r)
+        end
+        for block in blocks2file
             write(f, "&$(block.name)\n")
             if block.name == :system
                 nat   = length(structure.atoms)

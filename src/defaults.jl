@@ -122,7 +122,7 @@ function get_default_pseudo_dir(pseudo_set)
 end
 
 """
-    configure_default_pseudos!(server = get_default_server(), pseudo_dirs=get_default_pseudo_dirs())
+    configure_default_pseudos(server = get_default_server(), pseudo_dirs=get_default_pseudo_dirs())
 
 Reads the specified `default_pseudo_dirs` on the `default_server` and sets up the `default_pseudos` variable, and also adds all the entries to the `user_defaults.jl` file.
 """

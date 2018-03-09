@@ -1,4 +1,4 @@
-__precompile__(true)
+__precompile__()
 module DFControl
 # using Reexport
     using RecipesBase
@@ -105,6 +105,7 @@ module DFControl
     export set_default_server
     export configure_default_pseudos
     export remove_default_pseudo_dir
+    export get_default_pseudo
     export set_default_job_header
     export @add_default
     export load_defaults
