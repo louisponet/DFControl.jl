@@ -4,13 +4,18 @@ module DFControl
     using RecipesBase
     using StaticArrays
     using GeometryTypes
-    include("types.jl")
+
+    include("atom.jl")
     export element
     export AbstractAtom
     export Atom
+
+    include("structure.jl")
     export AbstractStructure
     export Structure
+    export cif2structure
 
+    include("types.jl")
     export Band
     export DFBand
 

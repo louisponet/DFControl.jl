@@ -930,7 +930,7 @@ function undo(job::DFJob)
 end
 
 """
-    add_bands_calculation!(job::DFJob, k_path::Array{Array{<:AbstractFloat,1},1})
+    add_bands_calculation!(job::DFJob, k_path::Vector{Vector{T}}; filename="bands.in", run=true) where T<:AbstractFloat
 
 Checks if there is an scf calculation in the job and takes it's inputs to generate a bands calculation along the given k-path.
 """

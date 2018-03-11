@@ -1,7 +1,5 @@
 Base.convert(::Type{Point3{T}}, x::Vector{T}) where T<:AbstractFloat = Point3{T}(x[1], x[2], x[3])
 
-include("atom.jl")
-include("structure.jl")
 
 abstract type Band end
 

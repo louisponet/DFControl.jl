@@ -1,4 +1,4 @@
 TODO:
     -> Implement error checking!
 
-TODO: pseudos 
+TODO:  

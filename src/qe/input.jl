@@ -194,7 +194,7 @@ end
 
 Changes the data in the k point `DataBlock` inside the specified calculation. The format is `[(ka, kb, kc, nk),...]`. This format is to be used with a `'bands'` calculation.
 """
-function change_kpoints!(input::QEInput, k_grid::Vector{NTuple{4, <:AbstractFloat}}; print=true, k_option=:crystal_b)
+function change_kpoints!(input::QEInput, k_grid::Vector{NTuple{4, T}}; print=true, k_option=:crystal_b) where T<:AbstractFloat
     calc = get_flag(input, :calculation)
     @assert calc == "'bands'" warn("Expected calculation to be 'bands', got $calc.")
     @assert k_option in [:tpiba_b, :crystal_b, :tpiba_c, :crystal_c] error("Only $([:tpiba_b, :crystal_b, :tpiba_c, :crystal_c]...) are allowed as a k_option, got $k_option.")
@@ -213,6 +213,6 @@ function change_kpoints!(input::QEInput, k_grid::Vector{NTuple{4, <:AbstractFloa
                        otherwise bands won't get printed.")
         end
     end
-    change_data!(input, :k_points, k_grid, option = k_option, print)
+    change_data!(input, :k_points, k_grid, option = k_option, print = print)
     return input
 end
