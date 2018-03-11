@@ -37,7 +37,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Job",
     "title": "DFControl.add_bands_calculation!",
     "category": "method",
-    "text": "add_bands_calculation!(job::DFJob, k_path::Array{Array{<:AbstractFloat,1},1})\n\nChecks if there is an scf calculation in the job and takes it\'s inputs to generate a bands calculation along the given k-path.\n\n\n\n"
+    "text": "add_bands_calculation!(job::DFJob, k_path::Vector{Vector{T}}; filename=\"bands.in\", run=true) where T<:AbstractFloat\n\nChecks if there is an scf calculation in the job and takes it\'s inputs to generate a bands calculation along the given k-path.\n\n\n\n"
 },
 
 {
@@ -409,19 +409,19 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "input.html#DFControl.change_kpoints!-Tuple{DFControl.QEInput,Array{NTuple{4,#s35} where #s35<:AbstractFloat,1}}",
-    "page": "Inputs",
-    "title": "DFControl.change_kpoints!",
-    "category": "method",
-    "text": "change_kpoints!(input::QEInput, k_grid::Vector{NTuple{4, <:AbstractFloat}};\nk_option=:crystal_b)\n\nChanges the data in the k point DataBlock inside the specified calculation. The format is [(ka, kb, kc, nk),...]. This format is to be used with a \'bands\' calculation.\n\n\n\n"
-},
-
-{
     "location": "input.html#DFControl.change_kpoints!-Tuple{DFControl.QEInput,Union{NTuple{6,Int64}, Tuple{Int64,Int64,Int64}}}",
     "page": "Inputs",
     "title": "DFControl.change_kpoints!",
     "category": "method",
     "text": "change_kpoints!(input::QEInput, k_grid::Union{NTuple{3, Int}, NTuple{6, Int}})\n\nChanges the data in the k point DataBlock inside the specified calculation. If the specified calculation is \'nscf\' the accepted format is (nka, nkb, nkc), and the k_grid will be generated. If the calculation is \'scf\' the format is (nka, nkb, nkc, sta, stb, stc).\n\n\n\n"
+},
+
+{
+    "location": "input.html#DFControl.change_kpoints!-Union{Tuple{DFControl.QEInput,Array{NTuple{4,T},1}}, Tuple{T}} where T<:AbstractFloat",
+    "page": "Inputs",
+    "title": "DFControl.change_kpoints!",
+    "category": "method",
+    "text": "change_kpoints!(input::QEInput, k_grid::Vector{NTuple{4, <:AbstractFloat}};\nk_option=:crystal_b)\n\nChanges the data in the k point DataBlock inside the specified calculation. The format is [(ka, kb, kc, nk),...]. This format is to be used with a \'bands\' calculation.\n\n\n\n"
 },
 
 {
@@ -574,6 +574,14 @@ var documenterSearchIndex = {"docs": [
     "title": "DFControl.change_projections!",
     "category": "method",
     "text": "Changes the projections of the specified atoms.\n\n\n\n"
+},
+
+{
+    "location": "structure.html#DFControl.cif2structure-Tuple{String}",
+    "page": "Structure",
+    "title": "DFControl.cif2structure",
+    "category": "method",
+    "text": "Uses cif2cell to parse a cif file, then returns the parsed structure. Requires cif2cell to be installed.\n\n\n\n"
 },
 
 {
