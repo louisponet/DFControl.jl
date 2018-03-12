@@ -9,13 +9,13 @@ function extract_atoms(atoms_block::T, proj_block::T, cell) where T <: WannierDa
     out_ats = Atom{Float64}[]
     if projections != nothing
         t_ats = Atom{Float64}[]
-        for (proj_at, projs) in projections
-            for proj in projs
-                for (pos_at, pos) in atoms
+        for (pos_at, pos) in atoms
+            for ps in pos
+                for (proj_at, projs) in projections
                     if proj_at != pos_at
                         continue
                     end
-                    for ps in pos
+                    for proj in projs
                         size = orbsize(proj)
                         push!(t_ats, Atom(pos_at, element(pos_at), cell' * ps, :projections => [Projection(Orbital(proj), t_start, size, t_start + size - 1)]))
                         t_start += size
