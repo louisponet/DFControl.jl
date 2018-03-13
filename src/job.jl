@@ -282,6 +282,7 @@ function push_job(job::DFJob, newfiles)
             run(`ssh -t $(job.server) rm $(job.server_dir * "tmp.in")`)
         catch
             run(`ssh -t $(job.server) mkdir $(job.server_dir)`)
+            info("$(job.server_dir) did not exist on $(job.server), it was created")
         end
         for file in newfiles
             run(`scp $(job.local_dir * file) $(job.server * ":" * job.server_dir)`)

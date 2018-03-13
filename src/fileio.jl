@@ -95,10 +95,18 @@ function writetojob(f, job, input::QEInput)
     should_run  = input.run
     write_input(input, job.structure, job.local_dir * filename)
     if !should_run
-        write(f, "#$run_command $exec <$filename> $(split(filename,".")[1]).out \n")
+        write(f, "#$(run_command[1])")
     else
-        write(f, "$run_command $exec <$filename> $(split(filename,".")[1]).out \n")
+        write(f, "$(run_command[1])")
     end
+    for (flag, value) in run_command[2]
+        write(f, "-$flag $value ")
+    end
+    write(f, "$(exec[1])")
+    for (flag, val) in exec[2]
+        write(f, "-$flag $value ")
+    end
+    write(f, "< $filename > $(split(filename,".")[1]).out\n")
     return 1
 end
 
@@ -117,18 +125,18 @@ function writetojob(f, job, input::WannierInput)
     stfls!(pw2wan, :seedname => "'$(splitext(input.filename)[1])'")
 
     if pw2wan.run
-        write(f, "$run_command -pp $(filename[1:end-4])\n")
+        write(f, "$run_command -pp $(filename[1:end-4]).win > $(filename[1:end-4]).wout\n")
     else
-        write(f, "#$run_command -pp $(filename[1:end-4])\n")
+        write(f, "#$run_command -pp $(filename[1:end-4]).win > $(filename[1:end-4]).wout\n")
     end
 
     write_input(input, job.structure, job.local_dir * filename)
     writetojob(f, job, pw2wan)
 
     if !should_run
-        write(f, "#$run_command $(filename[1:end-4])\n")
+        write(f, "#$run_command $(filename[1:end-4]).win > $(filename[1:end-4]).wout\n")
     else
-        write(f, "$run_command $(filename[1:end-4])\n")
+        write(f, "$run_command $(filename[1:end-4]).win > $(filename[1:end-4]).wout\n")
     end
 
     return 2
@@ -172,22 +180,39 @@ function read_job_line(line)
         run = true
     end
 
-    spl = strip_split(line)
+    spl          = strip_split(line)
+    run_commands = Pair{String, Dict{Symbol, Any}}[]
+    t_runcommand = ""
+    t_flags      = Dict{Symbol, Any}()
     i = 0
-    for (j, s) in enumerate(spl)
-        if contains(s, ".x")
-            i = j
-            break
-        # elseif contains(s, "abinit")
-        #     i = j
-        #     break
+    while i <= length(spl) - 2
+        ts = spl[i]
+        if ts[1] != '-'
+            if t_runcommand == ""
+                t_runcommand = ts
+            else
+                push!(run_commands, t_runcommand => t_flags)
+                t_runcommand = ""
+                empty!(t_flags)
+            end
+            i += 1
+        else
+            if ts == "-pp"
+                i += 1
+                continue
+            end
+            flag = Symbol(ts[2:end])
+            val  = parse(spl[i + 1])
+            t_flags[flag] = val
+            i += 2
         end
     end
 
-    run_command  = join(spl[1:i-1], " ")
-    exec         = spl[i]
-    input        = spl[i+1] == "-pp" ? spl[i+2] : spl[i+1]
-    return run_command, exec, input, run
+    run_command  = length(run_commands) == 1 ? "" : run_commands[1]
+    exec         = run_commands[end]
+    input        = spl[end-1]
+    output       = spl[end]
+    return run_command, exec, input, output, run
 end
 
 function read_job_filenames(job_file::String)
@@ -242,8 +267,8 @@ function read_job_inputs(job_file::String)
                 continue
             end
             if contains(line, ".x ")
-                run_command, exec, file, run = read_job_line(line)
-                only_exec = splitdir(exec)[2]
+                run_command, exec, input, output, run = read_job_line(line)
+                only_exec = splitdir(exec[1])[2]
                 if only_exec in parseable_qe_execs
                     input, structure = read_qe_input(joinpath(dir, file), run_command=run_command, run=run, exec=exec)
                 elseif only_exec == "wannier90.x"

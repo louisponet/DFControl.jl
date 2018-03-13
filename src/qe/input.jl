@@ -13,8 +13,8 @@ mutable struct QEInput <: DFInput
     filename       ::String
     control_blocks ::Vector{QEControlBlock}
     data_blocks    ::Vector{QEDataBlock}
-    run_command    ::String  #everything before < in the job file
-    exec           ::String
+    run_command    ::Pair{String, Dict{Symbol, Any}}
+    exec           ::Pair{String, Dict{Symbol, Any}}
     run            ::Bool
 end
 

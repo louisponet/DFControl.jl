@@ -1,3 +1,9 @@
+mutable struct ExecInfo
+    exec  ::String
+    dir   ::String
+    prefix::String
+    flags ::Dict
+end
 #these are all the control blocks, they hold the flags that guide the calculation
 abstract type Block end
 abstract type ControlBlock <: Block end
@@ -36,8 +42,8 @@ mutable struct WannierInput <: DFInput
     filename    ::String
     flags       ::Dict{Symbol,Any}
     data_blocks ::Vector{WannierDataBlock}
-    run_command ::String
-    exec        ::String
+    run_command ::Pair{String, Dict{Symbol, Any}} #run_command, flags
+    exec        ::Pair{String, Dict{Symbol, Any}} #exec, flags
     run         ::Bool
 end
 
