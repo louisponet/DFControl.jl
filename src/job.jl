@@ -571,31 +571,69 @@ function change_flow!(job::DFJob, should_runs::Union{Dict{String,Bool}, Vector{T
 end
 
 """
-    change_run_command!(job::DFJob, filenames, run_command)
+    change_run_command!(job::DFJob, inputnames, run_command)
 
-Goes through the calculation filenames and sets the run command of the calculation.
+Goes through the job calculations and if it contains one of the inputnames it sets the run command of the calculation.
+Since the `run_command` field has both the command and the flags, this function only changes the command.
+To change the run_command's flags use the function `set_runflags`.
 """
-function change_run_command!(job::DFJob, filenames, run_command)
+function change_run_command!(job::DFJob, inputnames, run_command::String)
     UNDO_JOBS[job.id] = deepcopy(job)
 
-    for calc in get_inputs(job, filenames)
-        calc.run_command = run_command
-        dfprintln("Run command of file '$(calc.filename)' is now: '$(calc.run_command)'")
+    for calc in get_inputs(job, inputnames)
+        calc.run_command = run_command => calc.run_command[2]
+        dfprintln("Run command of file '$(calc.filename)' is now: '$(calc.run_command[1])'")
     end
 
     return job
 end
 
 """
-    get_run_command(job::DFJob, filename)
+    get_run_command(job::DFJob, inputname)
 
-Returns the run command for the specified calculation.
+Returns the `run_command` string.
 """
-function get_run_command(job::DFJob, filename)
-    for calc in get_inputs(job, filename)
-        return calc.run_command
+function get_run_command(job::DFJob, inputname)
+    for calc in get_inputs(job, inputname)
+        return calc.run_command[1]
     end
 end
+
+"""
+    set_runflags!(job::DFJob, inputnames, flags...)
+
+Goes through the calculations of the job and if the name contains any of the `inputnames` it sets the run_command flags to the specified ones.
+"""
+function set_runflags!(job::DFJob, inputnames, flags...)
+    calcs = get_inputs(job, inputnames)
+    for calc in calcs
+        for (f,v) in flags
+            calc.run_command[2][f] = v
+        end
+        dfprintln("run flags of calculation $(calc.filename) are now $(calc.run_command[2]).")
+    end
+end
+
+"Returns the run_command flags."
+get_runflags(job::DFJob, inputname) = get_input(job, inputname).run_command[2]
+
+"""
+    set_execflags!(job::DFJob, inputnames, flags...)
+
+Goes through the calculations of the job and if the name contains any of the `inputnames` it sets the exec flags to the specified ones.
+"""
+function set_execflags!(job::DFJob, inputnames, flags...)
+    calcs = get_inputs(job, inputnames)
+    for calc in calcs
+        for (f,v) in flags
+            calc.exec[2][f] = v
+        end
+        dfprintln("run flags of calculation $(calc.filename) are now $(calc.exec[2]).")
+    end
+end
+
+"Returns the run_command flags."
+get_execflags(job::DFJob, inputname) = get_input(job, inputname).exec[2]
 
 """
     add_block!(job::DFJob, filenames, block::Block)
@@ -610,7 +648,6 @@ function add_block!(job::DFJob, filenames, block::Block)
     end
     return job
 end
-
 
 """
     add_data!(job::DFJob, filenames, block_symbol, data, option=:none)

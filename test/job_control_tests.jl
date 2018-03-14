@@ -5,7 +5,7 @@ df_job = load_job(test_job_path);
 df_job2 = load_job(joinpath(@__DIR__, test_job_path), new_local_dir="blabla");
 @test df_job2.local_dir    == "blabla/"
 @test length(df_job.calculations) == 7
-@test get_input(df_job, "nscf").run_command == get_run_command(df_job, "nscf")
+@test get_input(df_job, "nscf").run_command[1] == get_run_command(df_job, "nscf")
 @test df_job.local_dir     == test_job_path*"/"
 
 try mkdir(joinpath(test_job_path,"test_dir/")) end

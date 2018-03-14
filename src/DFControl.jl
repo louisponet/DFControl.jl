@@ -51,6 +51,10 @@ module DFControl
     export add_calculation!
     export get_run_command
     export change_run_command!
+    export set_runflags!
+    export get_runflags
+    export set_execflags!
+    export get_execflags
     export get_inputs
     export get_input
     export change_filename!

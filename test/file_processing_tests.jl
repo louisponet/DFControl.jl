@@ -4,7 +4,7 @@ using DFControl, Base.Test
 scf_input, qestructure = read_qe_input(joinpath(@__DIR__,"../assets/inputs/qe/scf.in"));
 
 bands_input   = read_qe_input(joinpath(@__DIR__,"../assets/inputs/qe/bands.in"))[1];
-projwfc_input = read_qe_input(joinpath(@__DIR__,"../assets/inputs/qe/projwfc.in"), exec="projwfc.x")[1];
+projwfc_input = read_qe_input(joinpath(@__DIR__,"../assets/inputs/qe/projwfc.in"), exec="projwfc.x"=>Dict{Symbol, Any}())[1];
 display(projwfc_input);
 @test get_flag(scf_input, :calculation) == "'scf'";
 @test get_block(scf_input,:k_points).option == :automatic;

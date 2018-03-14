@@ -58,50 +58,57 @@ function pull_file(filepath::String, local_dir::String; server=get_default_serve
     end
 end
 
+
+#TODO: doesn't work for abinit
 """
-    pull_outputs(df_job::DFJob, server="", server_dir="", local_dir=""; job_fuzzy="*job*", extras=String[])
+    pull_outputs(job::DFJob, server="", server_dir="", local_dir=""; job_fuzzy="*job*", extras=String[])
 
 First pulls the job file (specified by job_fuzzy), reads the possible output files and tries to pull them.
 Extra files to pull can be specified by the `extras` keyword, works with fuzzy filenames.
 """
-function pull_outputs(df_job::DFJob, server="", server_dir="", local_dir=""; job_fuzzy="*job*", extras=String[])
-    if df_job.server == "" && server == ""
+function pull_outputs(job::DFJob, server="", server_dir="", local_dir=""; job_fuzzy="*job*", extras=String[])
+    if job.server == "" && server == ""
         error("Error: No job server specified. Please specify it first.")
     elseif server != ""
-        df_job.server = server
+        job.server = server
     end
-    if df_job.server_dir == "" && server_dir == ""
+    if job.server_dir == "" && server_dir == ""
         error("Error: No job server_dir specified. Please specify it first.")
     elseif server_dir != ""
-        df_job.server_dir = server_dir
+        job.server_dir = server_dir
     end
-    if df_job.local_dir == "" && local_dir == ""
+    if job.local_dir == "" && local_dir == ""
         error("Error: No job local/home directory specified. Please specify it first.")
     elseif server != ""
-        df_job.local_dir = local_dir
+        job.local_dir = local_dir
     end
-    if !ispath(df_job.local_dir)
-        mkpath(df_job.local_dir)
+    if !ispath(job.local_dir)
+        mkpath(job.local_dir)
     end
-    pull_server_file(filename) = pull_file(df_job.server, df_job.server_dir, df_job.local_dir, filename)
+    pull_server_file(filename) = pull_file(job.server, job.server_dir, job.local_dir, filename)
 
-    pull_server_file(job_fuzzy)
+    # pull_server_file(job_fuzzy)
 
-    job_file = search_dir(df_job.local_dir, strip(job_fuzzy, '*'))[1]
-    inputs, outputs= read_job_filenames(df_job.local_dir * job_file)
+    # job_file = search_dir(job.local_dir, strip(job_fuzzy, '*'))[1]
+    # inputs, outputs= read_job_filenames(job.local_dir * job_file)
     pulled_outputs = String[]
-    for output in outputs
+    for calc in job.calculations
+        if typeof(calc) == QEInput
+            ofile = splitext(calc.filename)[1] * ".out"
+        elseif typeof(calc) == WannierInput
+            ofile = splitext(calc.filename)[1] * ".wout"
+        end
         try
-            pull_server_file(output)
-            push!(pulled_outputs, output)
+            pull_server_file(ofile)
+            push!(pulled_outputs, ofile)
         end
     end
 
     for fuzzy in extras
         pull_server_file(fuzzy)
-        push!(pulled_outputs, search_dir(df_job.local_dir, strip(fuzzy,'*'))...)
+        push!(pulled_outputs, search_dir(job.local_dir, strip(fuzzy,'*'))...)
     end
-    return df_job.local_dir .* pulled_outputs
+    return job.local_dir .* pulled_outputs
 end
 
 """

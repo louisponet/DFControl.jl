@@ -111,7 +111,6 @@ function writetojob(f, job, input::QEInput)
     return 1
 end
 
-#TODO: no exec runcommand flag support, is it necessary?
 function writetojob(f, job, input::WannierInput)
     run_command = input.run_command
     filename    = input.filename
@@ -219,37 +218,25 @@ function read_job_line(line)
     return run_command, exec, input, output, run
 end
 # TODO: make this work again
-# function read_job_filenames(job_file::String)
-#     input_files = String[]
-#     output_files = String[]
-#     open(job_file, "r") do f
-#         readline(f)
-#         while !eof(f)
-#             line = readline(f)
-#             if isempty(line)
-#                 continue
-#             end
-#             if contains(line, ".x")
-#                 spl = split(line)
-#                 i = find(x -> contains(x, ".x"), spl)[1] + 1
-#                 in_out = strip_split(prod(filter(x -> !contains(x, "-pp"), spl[i:end])), ">")
-#                 if length(in_out) == 2
-#                     push!(input_files,  strip(in_out[1], '<'))
-#                     push!(output_files, in_out[2])
-#                 else
-#                     input_file = strip(in_out[1], '<')
-#                     if contains(line, "wannier90.x") && !contains(line, "pw2wannier90")
-#                         input = splitext(input_file)[1] * ".win"
-#                         output =splitext(input_file)[1] * ".wout"
-#                         !in(output, output_files) && push!(output_files, output)
-#                         !in(input, input_files) && push!(input_files, input)
-#                     end
-#                 end
-#             end
-#         end
-#     end
-#     return input_files, output_files
-# end
+function read_job_filenames(job_file::String)
+    input_files = String[]
+    output_files = String[]
+    open(job_file, "r") do f
+        readline(f)
+        while !eof(f)
+            line = readline(f)
+            if isempty(line)
+                continue
+            end
+            if contains(line, ".x")
+                run_command, exec, input, output, run = read_job_line(line)
+                !in(input,  input_files)  && push!(input_files,  input)
+                !in(output, output_files) && push!(output_files, output)
+            end
+        end
+    end
+    return input_files, output_files
+end
 
 """
     read_job_file(job_file::String)
