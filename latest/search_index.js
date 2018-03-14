@@ -193,11 +193,11 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "job.html#DFControl.change_run_command!-Tuple{DFControl.DFJob,Any,String}",
+    "location": "job.html#DFControl.change_run_command!-Tuple{DFControl.DFJob,Any,DFControl.Exec}",
     "page": "Job",
     "title": "DFControl.change_run_command!",
     "category": "method",
-    "text": "change_run_command!(job::DFJob, inputnames, run_command)\n\nGoes through the job calculations and if it contains one of the inputnames it sets the run command of the calculation. Since the run_command field has both the command and the flags, this function only changes the command. To change the run_command\'s flags use the function set_runflags.\n\n\n\n"
+    "text": "change_run_command!(job::DFJob, inputnames, run_command::Exec)\n\nGoes through the job calculations and if it contains one of the inputnames it sets the run command of the calculation.\n\n\n\n"
 },
 
 {
@@ -285,7 +285,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Job",
     "title": "DFControl.get_run_command",
     "category": "method",
-    "text": "get_run_command(job::DFJob, inputname)\n\nReturns the run_command string.\n\n\n\n"
+    "text": "get_run_command(job::DFJob, inputname)\n\nReturns the run_command.\n\n\n\n"
 },
 
 {
@@ -757,7 +757,7 @@ var documenterSearchIndex = {"docs": [
     "page": "FileIO",
     "title": "DFControl.read_wannier_input",
     "category": "function",
-    "text": "read_wannier_input(filename::String, T=Float64; run_command=\"\", run=true, exec=\"wannier90.x\", structure_name=\"NoName\")\n\nReads a WannierInput and the included Structure from a WANNIER90 input file.\n\n\n\n"
+    "text": "read_wannier_input(filename::String, T=Float64; run_command= Exec(\"\"), run=true, exec=Exec(\"wannier90.x\"), structure_name=\"NoName\")\n\nReads a WannierInput and the included Structure from a WANNIER90 input file.\n\n\n\n"
 },
 
 {
