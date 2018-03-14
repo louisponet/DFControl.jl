@@ -322,7 +322,7 @@ end
 Reads a Quantum Espresso input file. The exec get's used to find which flags are allowed in this input file, and convert the read values to the correct Types.
 Returns a `QEInput` and the `Structure` that is found in the input.
 """
-function read_qe_input(filename, T=Float64::Type; exec="pw.x" => Dict{Symbol, Any}(), run_command=""=> Dict{Symbol, Any}(), run=true, structure_name="NoName")
+function read_qe_input(filename, T=Float64::Type; exec=Exec("pw.x"), run_command=Exec(""), run=true, structure_name="NoName")
     control_blocks = Array{QEControlBlock,1}()
     data_blocks    = Array{QEDataBlock,1}()
     atom_block     = nothing
@@ -335,7 +335,7 @@ function read_qe_input(filename, T=Float64::Type; exec="pw.x" => Dict{Symbol, An
             if contains(line, "&")
                 c_block_name    = Symbol(lowercase(strip(strip(line), '&')))
                 flag_dict       = Dict{Symbol,Any}()
-                def_block_flags = all_qe_block_flags(exec[1], c_block_name)
+                def_block_flags = all_qe_block_flags(exec.exec, c_block_name)
                 line            = readline(f)
                 while strip(line) != "/"
                     if contains(line, "!")

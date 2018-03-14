@@ -64,11 +64,11 @@ function extract_structure(cell_block::T, atoms_block::T, projections_block::T, 
 end
 
 """
-    read_wannier_input(filename::String, T=Float64; run_command="", run=true, exec="wannier90.x", structure_name="NoName")
+    read_wannier_input(filename::String, T=Float64; run_command= Exec(""), run=true, exec=Exec("wannier90.x"), structure_name="NoName")
 
 Reads a `WannierInput` and the included `Structure` from a WANNIER90 input file.
 """
-function read_wannier_input(filename::String, T=Float64; run_command= ""=> Dict{Symbol, Any}(), run=true, exec="wannier90.x" => Dict{Symbol, Any}(), structure_name="NoName")
+function read_wannier_input(filename::String, T=Float64; run_command= Exec(""), run=true, exec=Exec("wannier90.x"), structure_name="NoName")
     flags       = Dict{Symbol,Any}()
     data_blocks = Array{WannierDataBlock,1}()
     atoms_block = nothing

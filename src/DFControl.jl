@@ -18,6 +18,7 @@ module DFControl
     include("types.jl")
     export Band
     export DFBand
+    export Exec
 
     include("utils.jl")
     export getfirst

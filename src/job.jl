@@ -38,7 +38,7 @@ function DFJob(job_name, local_dir, structure::AbstractStructure, calculations::
                     server_dir="",
                     package=:qe,
                     bin_dir="~/bin/",
-                    run_command="mpirun"=>Dict(:np => 24),
+                    run_command=Exec("mpirun", bin_dir, Dict(:np => 24)),
                     pseudo_set=:default,
                     pseudo_specifier="",
                     header=get_default_job_header())
@@ -79,8 +79,7 @@ function DFJob(job_name, local_dir, structure::AbstractStructure, calculations::
         input_ = QEInput(string(calc_) * ".in",
                          QEControlBlock[],
                          [QEDataBlock(:k_points, k_option, k_points)],
-                         run_command,
-                         bin_dir * "pw.x" => Dict{Symbol, Any}(),
+                         run_command, Exec("pw.x", bin_dir),
                          true)
         set_flags!(input_, req_flags..., print=false)
         set_flags!(input_, flags..., print=false)
@@ -571,18 +570,16 @@ function change_flow!(job::DFJob, should_runs::Union{Dict{String,Bool}, Vector{T
 end
 
 """
-    change_run_command!(job::DFJob, inputnames, run_command)
+    change_run_command!(job::DFJob, inputnames, run_command::Exec)
 
 Goes through the job calculations and if it contains one of the inputnames it sets the run command of the calculation.
-Since the `run_command` field has both the command and the flags, this function only changes the command.
-To change the run_command's flags use the function `set_runflags`.
 """
-function change_run_command!(job::DFJob, inputnames, run_command::String)
+function change_run_command!(job::DFJob, inputnames, run_command::Exec)
     UNDO_JOBS[job.id] = deepcopy(job)
 
     for calc in get_inputs(job, inputnames)
-        calc.run_command = run_command => calc.run_command[2]
-        dfprintln("Run command of file '$(calc.filename)' is now: '$(calc.run_command[1])'")
+        calc.run_command = run_command
+        dfprintln("Run command of file '$(calc.filename)' is now: '$(calc.run_command)'")
     end
 
     return job
@@ -591,11 +588,11 @@ end
 """
     get_run_command(job::DFJob, inputname)
 
-Returns the `run_command` string.
+Returns the `run_command`.
 """
 function get_run_command(job::DFJob, inputname)
     for calc in get_inputs(job, inputname)
-        return calc.run_command[1]
+        return calc.run_command
     end
 end
 
@@ -608,9 +605,9 @@ function set_runflags!(job::DFJob, inputnames, flags...)
     calcs = get_inputs(job, inputnames)
     for calc in calcs
         for (f,v) in flags
-            calc.run_command[2][f] = v
+            calc.run_command.flags[f] = v
         end
-        dfprintln("run flags of calculation $(calc.filename) are now $(calc.run_command[2]).")
+        dfprintln("run flags of calculation $(calc.filename) are now $(calc.run_command.flags).")
     end
 end
 
@@ -626,14 +623,14 @@ function set_execflags!(job::DFJob, inputnames, flags...)
     calcs = get_inputs(job, inputnames)
     for calc in calcs
         for (f,v) in flags
-            calc.exec[2][f] = v
+            calc.exec.flags[f] = v
         end
-        dfprintln("run flags of calculation $(calc.filename) are now $(calc.exec[2]).")
+        dfprintln("run flags of calculation $(calc.filename) are now $(calc.exec.flags).")
     end
 end
 
 "Returns the run_command flags."
-get_execflags(job::DFJob, inputname) = get_input(job, inputname).exec[2]
+get_execflags(job::DFJob, inputname) = get_input(job, inputname).exec.flags
 
 """
     add_block!(job::DFJob, filenames, block::Block)

@@ -1,4 +1,3 @@
-#This example requires cif2cell to be installed, and have it set in your PATH.
 using DFControl
 
 #This example goes through how one would create a job from scratch, using a .cif file for the Structure.
@@ -14,8 +13,8 @@ using DFControl
 name = "Si" #this name will also be given to the Structure inside the DFJob
 local_dir = "/home/ponet/Documents/Si"
 server_dir = "/home/ponet/Si"
-run_command = "mpirun" => Dict{Symbol, Any}(:np => 24) #this is the run command before the executable of the calculation and it's flags
 bin_dir = "/usr/local/bin" #this is defaulted to the users bin dir = "~/bin/", it is the directory where pw.x etc will be called from
+run_command = Exec("mpirun", bin_dir, Dict{Symbol, Any}(:np => 24)) #this is the run command before the executable of the calculation and it's flags
 
 pseudo_set = :pbesol #nonrelativistic calculation ( assumes you set up the pseudos, as demonstrated in the README)
 pseudo_specifier = "paw" #this selects the correct pseudo if multiple belong to the pseudo_set. If you don't specify this, the first one in the set will be used.
