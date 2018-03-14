@@ -1,5 +1,5 @@
 TODO:
-    -> add flags to the input lines
     -> add possibility to add a julia script for postprocessing of DFJobs
+    -> spend some time on getting abinit to work again!
 TODO:
     -> Implement error checking!

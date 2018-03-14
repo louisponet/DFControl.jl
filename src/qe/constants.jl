@@ -267,4 +267,4 @@ function get_qe_block_variable(exec::AbstractString, flagname)
     return :error, QEVariableInfo()
 end
 
-get_qe_block_variable(input::DFInput, flagname) = get_qe_block_variable(input.exec, flagname)
+get_qe_block_variable(input::DFInput, flagname) = get_qe_block_variable(input.exec[1], flagname)
