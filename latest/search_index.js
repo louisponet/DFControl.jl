@@ -193,11 +193,11 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "job.html#DFControl.change_run_command!-Tuple{DFControl.DFJob,Any,Any}",
+    "location": "job.html#DFControl.change_run_command!-Tuple{DFControl.DFJob,Any,String}",
     "page": "Job",
     "title": "DFControl.change_run_command!",
     "category": "method",
-    "text": "change_run_command!(job::DFJob, filenames, run_command)\n\nGoes through the calculation filenames and sets the run command of the calculation.\n\n\n\n"
+    "text": "change_run_command!(job::DFJob, inputnames, run_command)\n\nGoes through the job calculations and if it contains one of the inputnames it sets the run command of the calculation. Since the run_command field has both the command and the flags, this function only changes the command. To change the run_command\'s flags use the function set_runflags.\n\n\n\n"
 },
 
 {
@@ -222,6 +222,14 @@ var documenterSearchIndex = {"docs": [
     "title": "DFControl.get_data",
     "category": "method",
     "text": "get_data(job::DFJob, calc_filenames, block_symbol::Symbol)\n\nLooks through the calculation filenames and returns the data with the specified symbol.\n\n\n\n"
+},
+
+{
+    "location": "job.html#DFControl.get_execflags-Tuple{DFControl.DFJob,Any}",
+    "page": "Job",
+    "title": "DFControl.get_execflags",
+    "category": "method",
+    "text": "Returns the run_command flags.\n\n\n\n"
 },
 
 {
@@ -277,7 +285,15 @@ var documenterSearchIndex = {"docs": [
     "page": "Job",
     "title": "DFControl.get_run_command",
     "category": "method",
-    "text": "get_run_command(job::DFJob, filename)\n\nReturns the run command for the specified calculation.\n\n\n\n"
+    "text": "get_run_command(job::DFJob, inputname)\n\nReturns the run_command string.\n\n\n\n"
+},
+
+{
+    "location": "job.html#DFControl.get_runflags-Tuple{DFControl.DFJob,Any}",
+    "page": "Job",
+    "title": "DFControl.get_runflags",
+    "category": "method",
+    "text": "Returns the run_command flags.\n\n\n\n"
 },
 
 {
@@ -321,6 +337,14 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "job.html#DFControl.set_execflags!-Tuple{DFControl.DFJob,Any,Vararg{Any,N} where N}",
+    "page": "Job",
+    "title": "DFControl.set_execflags!",
+    "category": "method",
+    "text": "set_execflags!(job::DFJob, inputnames, flags...)\n\nGoes through the calculations of the job and if the name contains any of the inputnames it sets the exec flags to the specified ones.\n\n\n\n"
+},
+
+{
     "location": "job.html#DFControl.set_flags!-Tuple{DFControl.DFJob,Array{String,1},Vararg{Any,N} where N}",
     "page": "Job",
     "title": "DFControl.set_flags!",
@@ -334,6 +358,14 @@ var documenterSearchIndex = {"docs": [
     "title": "DFControl.set_flow!",
     "category": "method",
     "text": "set_flow!(job::DFJob, should_runs::Vector{Bool})\n\nSets whether calculations should be ran or not. should_runs should have the same length as the amount of calculations in the job.\n\n\n\n"
+},
+
+{
+    "location": "job.html#DFControl.set_runflags!-Tuple{DFControl.DFJob,Any,Vararg{Any,N} where N}",
+    "page": "Job",
+    "title": "DFControl.set_runflags!",
+    "category": "method",
+    "text": "set_runflags!(job::DFJob, inputnames, flags...)\n\nGoes through the calculations of the job and if the name contains any of the inputnames it sets the run_command flags to the specified ones.\n\n\n\n"
 },
 
 {
