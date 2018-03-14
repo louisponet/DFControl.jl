@@ -70,11 +70,7 @@ function cif2structure(cif_file::String; structure_name="NoName")
     tmpdir = tempdir()
     tmpfile = joinpath(tmpdir, "tmp.in")
     @assert splitext(cif_file)[2] == ".cif" error("Please specify a valid cif input file")
-    try
-        run(`cif2cell $cif_file -p quantum-espresso -o $tmpfile`)
-    catch
-        error("Please install cif2cell to use this feature (https://sourceforge.net/projects/cif2cell/)")
-    end
+    run(`$cif2cellpath $cif_file -p quantum-espresso -o $tmpfile`)
 
     bla, structure = read_qe_input(tmpfile, structure_name = structure_name)
     rm(tmpfile)

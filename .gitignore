@@ -5,3 +5,5 @@ user_defaults/*
 .DS_Store
 docs/build/
 docs/site/
+deps/bin/
+deps/lib/

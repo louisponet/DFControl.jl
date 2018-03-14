@@ -145,4 +145,5 @@ module DFControl
     export dfprintln
     const UNDO_JOBS = DFJob[]
 
+    const cif2cellpath = joinpath(@__DIR__, "../deps/bin/cif2cell")
 end
