@@ -14,7 +14,7 @@ using DFControl
 name = "Si" #this name will also be given to the Structure inside the DFJob
 local_dir = "/home/ponet/Documents/Si"
 server_dir = "/home/ponet/Si"
-run_command = "mpirun -np 24"
+run_command = "mpirun" => Dict{Symbol, Any}(:np => 24) #this is the run command before the executable of the calculation and it's flags
 bin_dir = "/usr/local/bin" #this is defaulted to the users bin dir = "~/bin/", it is the directory where pw.x etc will be called from
 
 pseudo_set = :pbesol #nonrelativistic calculation ( assumes you set up the pseudos, as demonstrated in the README)

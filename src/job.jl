@@ -38,7 +38,7 @@ function DFJob(job_name, local_dir, structure::AbstractStructure, calculations::
                     server_dir="",
                     package=:qe,
                     bin_dir="~/bin/",
-                    run_command="mpirun -np 24",
+                    run_command="mpirun"=>Dict(:np => 24),
                     pseudo_set=:default,
                     pseudo_specifier="",
                     header=get_default_job_header())
@@ -80,7 +80,7 @@ function DFJob(job_name, local_dir, structure::AbstractStructure, calculations::
                          QEControlBlock[],
                          [QEDataBlock(:k_points, k_option, k_points)],
                          run_command,
-                         bin_dir * "pw.x",
+                         bin_dir * "pw.x" => Dict{Symbol, Any}(),
                          true)
         set_flags!(input_, req_flags..., print=false)
         set_flags!(input_, flags..., print=false)
