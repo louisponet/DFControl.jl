@@ -219,12 +219,14 @@ function set_default_input(input::DFInput, structure, calculation::Symbol)
         init_defaults(default_file)
     end
     filename = dirname(default_file) * "/" * String(calculation)
+    run_command = input.run_command
+    exec        = input.exec
     if typeof(input) == WannierInput
         write_input(input, structure, filename * ".win")
-        expr2file(default_file, :(default_inputs[$(QuoteNode(calculation))] = read_wannier_input($filename * ".win", run_command = $(input.run_command))))
+        expr2file(default_file, :(default_inputs[$(QuoteNode(calculation))] = read_wannier_input($filename * ".win", run_command = Exec($(run_command.exec), $(run_command.dir), Dict($(run_command.flags...))), exec = Exec($(exec.exec), $(exec.dir), Dict($(exec.flags...))))))
     elseif typeof(input) == QEInput
         write_input(input, structure, filename * ".in")
-        expr2file(default_file, :(default_inputs[$(QuoteNode(calculation))] = read_qe_input($filename * ".in", run_command = $(input.run_command), exec=$(input.exec))))
+        expr2file(default_file, :(default_inputs[$(QuoteNode(calculation))] = read_qe_input($filename * ".in", run_command = Exec($(run_command.exec), $(run_command.dir), Dict($(run_command.flags...))), exec = Exec($(exec.exec), $(exec.dir), Dict($(exec.flags...))))))
     end
     load_defaults(default_file)
 end

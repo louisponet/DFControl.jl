@@ -20,6 +20,9 @@ mutable struct Exec
     exec ::String
     dir  ::String
     flags::Dict{Symbol, Any}
+    function Exec(exec::String, dir::String, flags::Dict)
+        return new(exec, dir, convert(SymAnyDict, flags))
+    end
 end
 
 Exec(exec::String) = Exec(exec, "~/bin/", SymAnyDict())
