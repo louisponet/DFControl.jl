@@ -613,7 +613,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Structure",
     "title": "DFControl.cif2structure",
     "category": "method",
-    "text": "Uses cif2cell to parse a cif file, then returns the parsed structure. Requires cif2cell to be installed.\n\n\n\n"
+    "text": "Uses cif2cell to parse a cif file, then returns the parsed structure.\n\n\n\n"
 },
 
 {
