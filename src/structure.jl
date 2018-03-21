@@ -65,7 +65,7 @@ function merge_structures(structures::Vector{Union{<:AbstractStructure, Void}})
     return out_structure
 end
 
-"Uses cif2cell to parse a cif file, then returns the parsed structure. Requires cif2cell to be installed."
+"Uses cif2cell to parse a cif file, then returns the parsed structure."
 function cif2structure(cif_file::String; structure_name="NoName")
     tmpdir = tempdir()
     tmpfile = joinpath(tmpdir, "tmp.in")

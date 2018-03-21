@@ -1,5 +1,3 @@
-
-
 #came from input.jl
 """
     print_flag(input::DFInput, flag)
