@@ -62,7 +62,7 @@ function write_job_name(f, job::DFJob)
 end
 
 function write_job_header(f, job::DFJob)
-    job_header = job.header == "" ? get_default_job_header() : job.header
+    job_header = job.header == "" ? default_job_header() : job.header
     for line in job_header
         if contains(line, "\n")
             write(f, line)
@@ -76,10 +76,10 @@ function writetojob(f, job, inputs::Vector{AbinitInput})
     abinit_jobfiles   = write_abi_datasets(inputs, job.local_dir)
     abifiles = String[]
     num_abi = 0
-    for (filename, pseudos, run_command) in abinit_jobfiles
+    for (filename, pseudos, runcommand) in abinit_jobfiles
         push!(abifiles, filename)
         file, ext = splitext(filename)
-        write(f, "$run_command << !EOF\n$filename\n$(file * ".out")\n$(job.name * "_Xi$num_abi")\n$(job.name * "_Xo$num_abi")\n$(job.name * "_Xx$num_abi")\n")
+        write(f, "$runcommand << !EOF\n$filename\n$(file * ".out")\n$(job.name * "_Xi$num_abi")\n$(job.name * "_Xo$num_abi")\n$(job.name * "_Xx$num_abi")\n")
         for pp in pseudos
             write(f, "$pp\n")
         end
@@ -100,37 +100,37 @@ end
 
 function writetojob(f, job, input::QEInput)
     exec        = input.exec
-    run_command = input.run_command
+    runcommand = input.runcommand
     filename    = input.filename
     should_run  = input.run
     write_input(input, job.structure, job.local_dir * filename)
     if !should_run
         write(f, "#")
     end
-    writeexec(f, run_command)
+    writeexec(f, runcommand)
     writeexec(f, exec)
     write(f, "< $filename > $(split(filename,".")[1]).out\n")
     return 1
 end
 
 function writetojob(f, job, input::WannierInput)
-    run_command = input.run_command
+    runcommand = input.runcommand
     filename    = input.filename
     should_run  = input.run
     exec        = input.exec
-    # run_command = join([run_command[1], exec[1]], " ")
+    # runcommand = join([runcommand[1], exec[1]], " ")
     #cleanup ugly
     id = findfirst(job.calculations, input)
     seedname = splitext(filename)[1]
 
-    pw2wanid = findfirst(x -> x.control_blocks[1].name == :inputpp && contains(x.exec.exec, "pw2wannier90"), job.calculations[id+1:end])+id
+    pw2wanid = findfirst(x -> x.control[1].name == :inputpp && contains(x.exec.exec, "pw2wannier90"), job.calculations[id+1:end])+id
     pw2wan   = job.calculations[pw2wanid]
     stfls!(pw2wan, :seedname => "'$(splitext(input.filename)[1])'")
 
     if !pw2wan.run
         write(f, "#")
     end
-    writeexec(f, run_command)
+    writeexec(f, runcommand)
     writeexec(f, exec)
     write(f, "-pp $(filename[1:end-4]).win > $(filename[1:end-4]).wout\n")
 
@@ -140,7 +140,7 @@ function writetojob(f, job, input::WannierInput)
     if !should_run
         write(f, "#")
     end
-    writeexec(f, run_command)
+    writeexec(f, runcommand)
     writeexec(f, exec)
     write(f, "$(filename[1:end-4]).win > $(filename[1:end-4]).wout\n")
     return 2
@@ -215,11 +215,11 @@ function read_job_line(line)
     dir, file = splitdir(t_runcommand)
     push!(run_commands, Exec(file, dir, t_flags))
 
-    run_command  = length(run_commands) == 1 ? Exec("") : run_commands[1]
+    runcommand  = length(run_commands) == 1 ? Exec("") : run_commands[1]
     exec         = run_commands[end]
     input        = spl[end-1]
     output       = spl[end]
-    return run_command, exec, input, output, run
+    return runcommand, exec, input, output, run
 end
 # TODO: make this work again
 function read_job_filenames(job_file::String)
@@ -233,7 +233,7 @@ function read_job_filenames(job_file::String)
                 continue
             end
             if contains(line, ".x")
-                run_command, exec, input, output, run = read_job_line(line)
+                runcommand, exec, input, output, run = read_job_line(line)
                 !in(input,  input_files)  && push!(input_files,  input)
                 !in(output, output_files) && push!(output_files, output)
             end
@@ -262,12 +262,12 @@ function read_job_inputs(job_file::String)
                 continue
             end
             if contains(line, ".x ")
-                run_command, exec, inputfile, output, run = read_job_line(line)
+                runcommand, exec, inputfile, output, run = read_job_line(line)
                 only_exec = exec.exec
                 if only_exec in parseable_qe_execs
-                    input, structure = read_qe_input(joinpath(dir, inputfile), run_command=run_command, run=run, exec=exec)
+                    input, structure = read_qe_input(joinpath(dir, inputfile), runcommand=runcommand, run=run, exec=exec)
                 elseif only_exec == "wannier90.x"
-                    input, structure = read_wannier_input(joinpath(dir, splitext(inputfile)[1] * ".win"), run_command=run_command, run=run, exec=exec)
+                    input, structure = read_wannier_input(joinpath(dir, splitext(inputfile)[1] * ".win"), runcommand=runcommand, run=run, exec=exec)
                 end
                 id = find(x-> x == splitext(inputfile)[1], getindex.(splitext.(getfield.(inputs, :filename)),1))
                 if !isempty(id)
@@ -281,8 +281,8 @@ function read_job_inputs(job_file::String)
             # elseif contains(line, "abinit ")
             #     data[:abinit_pseudos] = Array{String,1}()
             #     s_line         = split(line)
-            #     i, run_command = read_job_line(s_line)
-            #     push!(data[:run_commands], strip(run_command, '#'))
+            #     i, runcommand = read_job_line(s_line)
+            #     push!(data[:run_commands], strip(runcommand, '#'))
             #     if contains(line, "!EOF")
             #         push!(data[:input_files],  strip(readline(f), '#'))
             #         push!(data[:output_files], strip(readline(f), '#'))

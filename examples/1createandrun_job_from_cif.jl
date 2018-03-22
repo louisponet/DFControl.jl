@@ -14,7 +14,7 @@ name = "Si" #this name will also be given to the Structure inside the DFJob
 local_dir = "/home/ponet/Documents/Si"
 server_dir = "/home/ponet/Si"
 bin_dir = "/usr/local/bin" #this is defaulted to the users bin dir = "~/bin/", it is the directory where pw.x etc will be called from
-run_command = Exec("mpirun", bin_dir, Dict{Symbol, Any}(:np => 24)) #this is the run command before the executable of the calculation and it's flags
+runcommand = Exec("mpirun", bin_dir, Dict{Symbol, Any}(:np => 24)) #this is the run command before the executable of the calculation and it's flags
 
 pseudo_set = :pbesol #nonrelativistic calculation ( assumes you set up the pseudos, as demonstrated in the README)
 pseudo_specifier = "paw" #this selects the correct pseudo if multiple belong to the pseudo_set. If you don't specify this, the first one in the set will be used.
@@ -48,16 +48,16 @@ job = DFJob(name, local_dir, "/home/ponet/Downloads/9011998.cif", calculations,
       #kwargs
       server_dir  = server_dir,
       bin_dir     = bin_dir,
-      run_command = run_command,
+      runcommand = runcommand,
       header      = header,
       pseudo_set  = :pbesol,
       pseudo_specifier = pseudo_specifier
      )
-# An additional kwarg is `server=get_default_server()`, which is set to the server you have defined while following the setup in README.
-# This can ofcourse be changed to a different server.
+# An additional kwarg is `server=default_server()`, which is set to the server you have defined while following the setup in README.
+# This can ofcourse be setd to a different server.
 
 #Now the job can be submitted to the server to run.
-submit_job(job)
+submit(job)
 #this first saves the job and it's input files to the `job.local_dir` then pushes the `job.tt` file and the inputs to the `job.server_dir` on `job.server`, and runs the `qsub job.tt` command.
 #You can check the job.local_dir to see the input files and `job.tt` script.
 

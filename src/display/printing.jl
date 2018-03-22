@@ -5,8 +5,8 @@
 Prints information of the flag inside the input.
 """
 function print_flag(input::DFInput, flag)
-    if (:control_blocks in fieldnames(input))
-        for block in input.control_blocks
+    if (:control in fieldnames(input))
+        for block in input.control
             if haskey(block.flags, flag)
                 s = """
                 Filename: $(input.filename)
@@ -38,7 +38,7 @@ Print the information of a 'Block' inside the input.
 """
 function print_block(input::DFInput, block_name::Symbol)
     found        = false
-    input_blocks = get_blocks(input)
+    input_blocks = blocks(input)
     for block in input_blocks
         if block.name == block_name
             print_filename(input)
@@ -56,7 +56,7 @@ Print the information on all Blocks inside the input.
 """
 function print_blocks(input::DFInput)
     print_filename(input)
-    get_blocks(input) |> display
+    blocks(input) |> display
     dfprintln("")
 end
 
@@ -76,17 +76,17 @@ Prints general info of the input.
 """
 function print_info(input::DFInput)
     dfprintln("Filename: $(input.filename)")
-    if (:control_blocks in fieldnames(input))
+    if (:control in fieldnames(input))
         dfprintln("  Control Blocks:")
-        for (i, block) in enumerate(input.control_blocks)
+        for (i, block) in enumerate(input.control)
             dfprintln("    $i: $(block.name)")
         end
     end
     dfprintln("  Data Blocks:")
-    for (i, block) in enumerate(input.data_blocks)
+    for (i, block) in enumerate(input.data)
         dfprintln("    $i: $(block.name)")
     end
-    dfprintln("  Run command: $(input.run_command)")
+    dfprintln("  Run command: $(input.runcommand)")
     dfprintln("  Runs: $(input.run)")
 end
 
@@ -98,8 +98,8 @@ Prints all the flags of the input.
 function print_flags(input::DFInput)
     dfprintln("#----------------#")
     dfprintln("Filename: $(input.filename)")
-    if (:control_blocks in fieldnames(input))
-        for block in input.control_blocks
+    if (:control in fieldnames(input))
+        for block in input.control
             dfprintln("  $(block.name):")
             for (flag, value) in block.flags
                 dfprintln("    $flag => $value")
@@ -121,7 +121,7 @@ end
 Prints the flags of the specified block.
 """
 function print_flags(input::QEInput, block_symbol::Symbol)
-    block = getfirst(x -> x.name == block_symbol, input.control_blocks)
+    block = getfirst(x -> x.name == block_symbol, input.control)
     dfprintln("  $(block.name):")
     for (flag, value) in block.flags
         dfprintln("    $flag => $value")
@@ -138,8 +138,8 @@ end
 Prints the run command of the specified calculations.
 """
 function print_run_command(job::DFJob, filenames)
-    for calc in get_inputs(job, filenames)
-        dfprintln("Run command of file '$(calc.filename)' is: '$(calc.run_command)'.")
+    for calc in inputs(job, filenames)
+        dfprintln("Run command of file '$(calc.filename)' is: '$(calc.runcommand)'.")
         dfprintln("")
     end
 end
@@ -172,7 +172,7 @@ end
 Prints the information of the block in a selected file of the job.
 """
 function print_block(job::DFJob, filenames, block_symbol::Symbol)
-    for calc in get_inputs(job, filenames)
+    for calc in inputs(job, filenames)
         print_block(calc, block_symbol)
     end
 end
@@ -183,7 +183,7 @@ end
 Prints information on all the blocks in the specified calculations.
 """
 function print_blocks(job::DFJob, calc_filenames)
-    for calc in get_inputs(job, calc_filenames)
+    for calc in inputs(job, calc_filenames)
         print_blocks(calc)
     end
 end
@@ -219,7 +219,7 @@ function print_info(job::DFJob, filenames::Array{String,1})
     """
     dfprintln(s)
 
-    for calc in get_inputs(job, filenames)
+    for calc in inputs(job, filenames)
         print_info(calc)
         dfprintln(" ")
     end
@@ -245,7 +245,7 @@ end
 Prints flags of the specified calculation.
 """
 function print_flags(job::DFJob, calc_filename::String)
-    for calc in get_inputs(job, calc_filename)
+    for calc in inputs(job, calc_filename)
         print_flags(calc)
     end
 end

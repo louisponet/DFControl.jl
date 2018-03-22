@@ -64,13 +64,13 @@ function extract_structure(cell_block::T, atoms_block::T, projections_block::T, 
 end
 
 """
-    read_wannier_input(filename::String, T=Float64; run_command= Exec(""), run=true, exec=Exec("wannier90.x"), structure_name="NoName")
+    read_wannier_input(filename::String, T=Float64; runcommand= Exec(""), run=true, exec=Exec("wannier90.x"), structure_name="NoName")
 
 Reads a `WannierInput` and the included `Structure` from a WANNIER90 input file.
 """
-function read_wannier_input(filename::String, T=Float64; run_command= Exec(""), run=true, exec=Exec("wannier90.x"), structure_name="NoName")
+function read_wannier_input(filename::String, T=Float64; runcommand= Exec(""), run=true, exec=Exec("wannier90.x"), structure_name="NoName")
     flags       = Dict{Symbol,Any}()
-    data_blocks = Array{WannierDataBlock,1}()
+    data = Array{WannierDataBlock,1}()
     atoms_block = nothing
     cell_block  = nothing
     proj_block  = nothing
@@ -123,7 +123,7 @@ function read_wannier_input(filename::String, T=Float64; run_command= Exec(""), 
                     push!(k_path_array, (Symbol(split_line[5]), parse_string_array(T, split_line[6:8])))
                     line = readline(f)
                 end
-                push!(data_blocks, WannierDataBlock(:kpoint_path, :none, k_path_array))
+                push!(data, WannierDataBlock(:kpoint_path, :none, k_path_array))
                 @goto start_label
 
                 elseif block_name == :unit_cell_cart
@@ -181,7 +181,7 @@ function read_wannier_input(filename::String, T=Float64; run_command= Exec(""), 
                         push!(k_points, parse_line(T, line))
                         line = readline(f)
                     end
-                    push!(data_blocks, WannierDataBlock(:kpoints, :none, k_points))
+                    push!(data, WannierDataBlock(:kpoints, :none, k_points))
                     @goto start_label
                 end
 
@@ -209,7 +209,7 @@ function read_wannier_input(filename::String, T=Float64; run_command= Exec(""), 
         end
     end
     structure = extract_structure(cell_block, atoms_block, proj_block, structure_name)
-    return WannierInput(splitdir(filename)[2], flags, data_blocks, run_command, exec, run), structure
+    return WannierInput(splitdir(filename)[2], flags, data, runcommand, exec, run), structure
 end
 
 """
@@ -255,7 +255,7 @@ function write_input(input::WannierInput, structure, filename::String=input.file
         write(f, "end atoms_cart\n")
         write(f, "\n")
 
-        for block in input.data_blocks
+        for block in input.data
             write(f, "begin $(block.name)\n")
             if block.name == :kpoint_path
                 for i = 1:2:length(block.data)

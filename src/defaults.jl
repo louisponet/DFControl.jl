@@ -53,11 +53,11 @@ function define_def(default, expr1, expr2)
 end
 
 """
-    set_default_pseudo_dir(pseudo_symbol::Symbol, dir::String)
+    setdefault_pseudo_dir(pseudo_symbol::Symbol, dir::String)
 
 Adds an entry inside the `default_pseudo_dirs` with flag `pseudo_symbol`, and adds it to the `user_defaults.jl` file.
 """
-function set_default_pseudo_dir(pseudo_symbol::Symbol, dir::String)
+function setdefault_pseudo_dir(pseudo_symbol::Symbol, dir::String)
     expr_ndef = :(default_pseudo_dirs = Dict{Symbol,String}($(Expr(:quote, pseudo_symbol)) => $dir))
     expr_def  = :(default_pseudo_dirs[$(QuoteNode(pseudo_symbol))] = $dir)
     define_def(:default_pseudo_dirs, expr_ndef, expr_def)
@@ -81,22 +81,22 @@ function remove_default_pseudo_dir(pseudo_symbol::Symbol)
 end
 
 """
-    set_default_server(server::String)
+    setdefault_server(server::String)
 
 Sets the default server variable, and also adds it to the `user_defaults.jl` file.
 """
-function set_default_server(server::String)
+function setdefault_server(server::String)
     expr_ndef = :(default_server = $server)
     expr_def  = expr_ndef
     define_def(:default_server, expr_ndef, expr_def)
 end
 
 """
-    get_default_server()
+    default_server()
 
 Returns the default server if it's defined. If it is not defined return "".
 """
-function get_default_server()
+function default_server()
     if isdefined(:default_server)
         return default_server
     else
@@ -105,11 +105,11 @@ function get_default_server()
 end
 
 """
-    get_default_pseudo_dirs()
+    default_pseudo_dirs()
 
 Returns the default pseudo dirs if it's defined. If it is not defined return nothing.
 """
-function get_default_pseudo_dirs()
+function default_pseudo_dirs()
     if isdefined(:default_pseudo_dirs)
         return default_pseudo_dirs
     else
@@ -117,22 +117,22 @@ function get_default_pseudo_dirs()
     end
 end
 
-function get_default_pseudo_dir(pseudo_set)
-    return get_default_pseudo_dirs()[pseudo_set]
+function default_pseudo_dir(pseudo_set)
+    return default_pseudo_dirs()[pseudo_set]
 end
 
 """
-    configure_default_pseudos(server = get_default_server(), pseudo_dirs=get_default_pseudo_dirs())
+    configure_default_pseudos(server = default_server(), pseudo_dirs=default_pseudo_dirs())
 
 Reads the specified `default_pseudo_dirs` on the `default_server` and sets up the `default_pseudos` variable, and also adds all the entries to the `user_defaults.jl` file.
 """
-function configure_default_pseudos(server = get_default_server(), pseudo_dirs=get_default_pseudo_dirs())
+function configure_default_pseudos(server = default_server(), pseudo_dirs=default_pseudo_dirs())
     if server == ""
-        error("Either supply a valid server string or setup a default server through 'set_default_server!()'.")
+        error("Either supply a valid server string or setup a default server through 'setdefault_server!()'.")
     end
 
     if pseudo_dirs == nothing
-        error("Either supply valid pseudo directories or setup a default pseudo dir through 'set_default_pseudo_dir()'.")
+        error("Either supply valid pseudo directories or setup a default pseudo dir through 'setdefault_pseudo_dir()'.")
     end
 
     outputs = Dict{Symbol, String}()
@@ -173,11 +173,11 @@ function configure_default_pseudos(server = get_default_server(), pseudo_dirs=ge
 end
 
 """
-    get_default_pseudo(atom::Symbol, pseudo_set_name=:default; pseudo_specifier=nothing)
+    default_pseudo(atom::Symbol, pseudo_setname=:default; pseudo_specifier=nothing)
 
 Returns the pseudo potential string linked to the atom.
 """
-function get_default_pseudo(atom::Symbol, pseudo_set_name=:default; pseudo_specifier="")
+function default_pseudo(atom::Symbol, pseudo_setname=:default; pseudo_specifier="")
     if !isnull(tryparse(Int, String(atom)[end:end]))
         pp_atom = Symbol(String(atom)[1:end-1])
     else
@@ -185,19 +185,19 @@ function get_default_pseudo(atom::Symbol, pseudo_set_name=:default; pseudo_speci
     end
     if isdefined(:default_pseudos)
         if pseudo_specifier != ""
-            return getfirst(x -> contains(x, pseudo_specifier), default_pseudos[pp_atom][pseudo_set_name])
+            return getfirst(x -> contains(x, pseudo_specifier), default_pseudos[pp_atom][pseudo_setname])
         else
-            return default_pseudos[pp_atom][pseudo_set_name][1]
+            return default_pseudos[pp_atom][pseudo_setname][1]
         end
     end
 end
 
 """
-    set_default_job_header(lines)
+    setdefault_job_header(lines)
 
 Sets the header that will get added to each job.tt file, if no other header was specified.
 """
-function set_default_job_header(lines)
+function setdefault_job_header(lines)
     expr = :(default_job_header = $lines)
     expr2file(default_file,expr)
     if !isdefined(:default_job_header)
@@ -208,25 +208,25 @@ function set_default_job_header(lines)
 end
 
 """
-    set_default_input(input::dfinput, structure, calculation::Symbol)
+    setdefault_input(input::dfinput, structure, calculation::Symbol)
 
 Adds the input to the `default_inputs` variable, and writes it to a file in user_defaults folder to be read every time on load.
 """
-function set_default_input(input::DFInput, structure, calculation::Symbol)
+function setdefault_input(input::DFInput, structure, calculation::Symbol)
     if !isdefined(:default_inputs)
         expr = :(default_inputs = Dict{Symbol, Tuple{DFInput, Union{AbstractStructure, Void}}}())
         expr2file(default_file,expr)
         init_defaults(default_file)
     end
     filename = dirname(default_file) * "/" * String(calculation)
-    run_command = input.run_command
+    runcommand = input.runcommand
     exec        = input.exec
     if typeof(input) == WannierInput
         write_input(input, structure, filename * ".win")
-        expr2file(default_file, :(default_inputs[$(QuoteNode(calculation))] = read_wannier_input($filename * ".win", run_command = Exec($(run_command.exec), $(run_command.dir), Dict($(run_command.flags...))), exec = Exec($(exec.exec), $(exec.dir), Dict($(exec.flags...))))))
+        expr2file(default_file, :(default_inputs[$(QuoteNode(calculation))] = read_wannier_input($filename * ".win", runcommand = Exec($(runcommand.exec), $(runcommand.dir), Dict($(runcommand.flags...))), exec = Exec($(exec.exec), $(exec.dir), Dict($(exec.flags...))))))
     elseif typeof(input) == QEInput
         write_input(input, structure, filename * ".in")
-        expr2file(default_file, :(default_inputs[$(QuoteNode(calculation))] = read_qe_input($filename * ".in", run_command = Exec($(run_command.exec), $(run_command.dir), Dict($(run_command.flags...))), exec = Exec($(exec.exec), $(exec.dir), Dict($(exec.flags...))))))
+        expr2file(default_file, :(default_inputs[$(QuoteNode(calculation))] = read_qe_input($filename * ".in", runcommand = Exec($(runcommand.exec), $(runcommand.dir), Dict($(runcommand.flags...))), exec = Exec($(exec.exec), $(exec.dir), Dict($(exec.flags...))))))
     end
     load_defaults(default_file)
 end
@@ -250,7 +250,7 @@ function remove_default_input(input::Symbol)
     end
 end
 
-function get_default_job_header()
+function default_job_header()
     if isdefined(:default_job_header)
         return default_job_header
     else

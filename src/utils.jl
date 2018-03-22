@@ -57,11 +57,11 @@ function form_directory(directory::String)
 end
 
 """
-    gen_k_grid(na, nb, nc, input, T=Float64)
+    kgrid(na, nb, nc, input, T=Float64)
 
 Returns an array of k-grid points that are equally spaced, input can be either `:wan` or `:nscf`, the returned grids are appropriate as inputs for wannier90 or an nscf calculation respectively.
 """
-function gen_k_grid(na, nb, nc, input, T=Float64)
+function kgrid(na, nb, nc, input, T=Float64)
     if input == :wan || typeof(input) == WannierInput
         return reshape([T[a, b, c] for a in collect(linspace(0, 1, na + 1))[1:end - 1], b in collect(linspace(0, 1, nb + 1))[1:end - 1], c in collect(linspace(0, 1, nc + 1))[1:end - 1]],(na * nb * nc))
     elseif input == :nscf || typeof(input) == QEInput
