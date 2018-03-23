@@ -11,9 +11,9 @@ mutable struct QEDataBlock <: DataBlock
 end
 mutable struct QEInput <: DFInput
     filename       ::String
-    control ::Vector{QEControlBlock}
-    data    ::Vector{QEDataBlock}
-    runcommand    ::Exec
+    control        ::Vector{QEControlBlock}
+    data           ::Vector{QEDataBlock}
+    runcommand     ::Exec
     exec           ::Exec
     run            ::Bool
 end

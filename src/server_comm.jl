@@ -12,11 +12,11 @@ function pull_file(server::String, server_dir::String, local_dir::String, filena
 end
 
 """
-    pull_file(server_dir::String, local_dir::String, filename::String; server=default_server())
+    pull_file(server_dir::String, local_dir::String, filename::String; server=getdefault_server())
 
 Pulls a file from the default server if the default server is specified.
 """
-function pull_file(server_dir::String, local_dir::String, filename::String; server=default_server())
+function pull_file(server_dir::String, local_dir::String, filename::String; server=getdefault_server())
     if server != ""
         run(`scp $(server * ":" * server_dir * filename) $local_dir`)
         pulled_files = search_dir(local_dir, filename)
@@ -29,7 +29,7 @@ function pull_file(server_dir::String, local_dir::String, filename::String; serv
     end
 end
 
-function pull_files(server_dir::String, local_dir::String, filenames::Vector{String}; server=default_server())
+function pull_files(server_dir::String, local_dir::String, filenames::Vector{String}; server=getdefault_server())
     pulled_files = String[]
     for file in filenames
        push!(pulled_files, pull_file(server_dir, local_dir, file; server))
@@ -38,11 +38,11 @@ function pull_files(server_dir::String, local_dir::String, filenames::Vector{Str
 end
 
 """
-    pull_file(filepath::String, local_dir::String; server=default_server(), local_filename=nothing)
+    pull_file(filepath::String, local_dir::String; server=getdefault_server(), local_filename=nothing)
 
 Pulls a file from the default server if the default server is specified.
 """
-function pull_file(filepath::String, local_dir::String; server=default_server(), local_filename=nothing)
+function pull_file(filepath::String, local_dir::String; server=getdefault_server(), local_filename=nothing)
     local_dir = form_directory(local_dir)
     if server != ""
         if local_filename != nothing
@@ -117,11 +117,11 @@ end
 If sbatch is running on server it will return the output of the `qstat` command.
 """
 qstat(server) = run(`ssh -t $server qstat`)
-qstat()       = qstat(default_server())
+qstat()       = qstat(getdefault_server())
 
 """
     watch_qstat(server)
 If sbatch is running on server it will return the output of the `watch qstat` command.
 """
 watch_qstat(server) = run(`ssh -t $server watch qstat`)
-watch_qstat()       = watch_qstat(default_server())
+watch_qstat()       = watch_qstat(getdefault_server())

@@ -62,7 +62,7 @@ function write_job_name(f, job::DFJob)
 end
 
 function write_job_header(f, job::DFJob)
-    job_header = job.header == "" ? default_job_header() : job.header
+    job_header = job.header == "" ? getdefault_jobheader() : job.header
     for line in job_header
         if contains(line, "\n")
             write(f, line)
@@ -125,7 +125,7 @@ function writetojob(f, job, input::WannierInput)
 
     pw2wanid = findfirst(x -> x.control[1].name == :inputpp && contains(x.exec.exec, "pw2wannier90"), job.calculations[id+1:end])+id
     pw2wan   = job.calculations[pw2wanid]
-    stfls!(pw2wan, :seedname => "'$(splitext(input.filename)[1])'")
+    setflags!(pw2wan, :seedname => "'$(splitext(input.filename)[1])'")
 
     if !pw2wan.run
         write(f, "#")

@@ -11,7 +11,7 @@ mutable struct DFJob
     server       ::String
     server_dir   ::String
     header       ::Vector{String}
-    function DFJob(name, structure, calculations, local_dir, server, server_dir, header = default_job_header())
+    function DFJob(name, structure, calculations, local_dir, server, server_dir, header = getdefault_jobheader())
         if local_dir != ""
             local_dir = form_directory(local_dir)
         end
@@ -34,14 +34,14 @@ end
 
 #TODO implement abinit
 function DFJob(job_name, local_dir, structure::AbstractStructure, calculations::Vector, common_flags...;
-                    server=default_server(),
+                    server=getdefault_server(),
                     server_dir="",
                     package=:qe,
                     bin_dir="~/bin/",
                     runcommand=Exec("mpirun", bin_dir, Dict(:np => 24)),
                     pseudo_set=:default,
                     pseudo_specifier="",
-                    header=default_job_header())
+                    header=getdefault_jobheader())
 
     @assert package==:qe "Only implemented for Quantum Espresso!"
     local_dir = form_directory(local_dir)
@@ -131,12 +131,12 @@ function DFJob(job::DFJob, flagstoset...;
         newjob.name = name
     end
 
-    stfls!(newjob, flagstoset...)
+    setflags!!(newjob, flagstoset...)
     return newjob
 end
 
 """
-    DFJob(job_dir::String, T=Float64; job_fuzzy = "job", new_job_name=nothing, new_local_dir=nothing, server=default_server(),server_dir="")
+    DFJob(job_dir::String, T=Float64; job_fuzzy = "job", new_job_name=nothing, new_local_dir=nothing, server=getdefault_server(),server_dir="")
 
 Loads and returns a local DFJob. If local_dir is not specified the job directory will be registered as the local one.
 """
@@ -144,7 +144,7 @@ function DFJob(job_dir::String, T=Float64;
                   job_fuzzy     = "job",
                   new_job_name  = "",
                   new_local_dir = nothing,
-                  server        = default_server(),
+                  server        = getdefault_server(),
                   server_dir    = "")
 
     job_dir = form_directory(job_dir)
@@ -162,11 +162,11 @@ function DFJob(job_dir::String, T=Float64;
 end
 
 """
-    DFJob(server_dir::String, local_dir::String, server=default_server(); job_fuzzy="*job*", new_job_name="")
+    DFJob(server_dir::String, local_dir::String, server=getdefault_server(); job_fuzzy="*job*", new_job_name="")
 
 Pulls a server job to local directory and then loads it. A fuzzy search for the job file will be performed and the found input files will be pulled.
 """
-function DFJob(server_dir::String, local_dir::String, server = default_server();
+function DFJob(server_dir::String, local_dir::String, server = getdefault_server();
                          job_fuzzy    = "*job*",
                          new_job_name = "")
 
@@ -242,7 +242,7 @@ function pulljob(server::String, server_dir::String, local_dir::String; job_fuzz
     end
 end
 
-pulljob(args...; kwargs...) = pulljob(default_server(), args..., kwargs...)
+pulljob(args...; kwargs...) = pulljob(getdefault_server(), args..., kwargs...)
 
 
 """
@@ -362,9 +362,9 @@ Looks through the calculation filenames and returns the value of the specified f
 """
 function flag(job::DFJob, calc_filenames, flag_name::Symbol)
     for calc in inputs(job, calc_filenames)
-        flag = flag(calc, flag_name)
-        if flag != nothing
-            return flag
+        flag_ = flag(calc, flag_name)
+        if flag_ != nothing
+            return flag_
         end
     end
     error("Flag $flag_name not found in any input files.")
@@ -377,9 +377,9 @@ Looks through all the calculations and returns the value of the specified flag.
 """
 function flag(job::DFJob, flag_name::Symbol)
     for calc in job.calculations
-        flag = flag(calc, flag_name)
-        if flag != nothing
-            return flag
+        flag_ = flag(calc, flag_name)
+        if flag_ != nothing
+            return flag_
         end
     end
     error("Flag $flag_name not found in any input files.")
@@ -455,7 +455,7 @@ function setflow!(job::DFJob, should_runs...)
     return job
 end
 
-setflow!(job::DFJob, should_runs::Vector{Bool}) = setflow!(job, [calc.filename => run for (calc, run) in zip(inputs(job), should_runs)]...)
+setflow!(job::DFJob, should_runs::Vector{Bool}) = setflow!(job, [calc.filename => run for (calc, run) in zip(job.calculations, should_runs)]...)
 
 """
     setflow!(job::DFJob, filenames::Array{String,1}, should_run)
@@ -898,9 +898,6 @@ function setlocaldir!(job, dir)
     job.local_dir = dir
     return job
 end
-
-setserverdir!(job, dir) = setserverdir!(job, dir)
-setlocaldir!(job, dir)  = setlocaldir!(job, dir)
 
 """
 sets the projections of the specified atoms inside the job structure.

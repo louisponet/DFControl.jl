@@ -166,9 +166,9 @@ end
 Returns the specified 'DataBlock'.
 """
 function data(input::DFInput, block_symbol::Symbol)
-    block = block(input, block_symbol)
-    if block != nothing && typeof(block) <: DataBlock
-        return block.data
+    block_ = block(input, block_symbol)
+    if block_ != nothing && typeof(block_) <: DataBlock
+        return block_.data
     else
         error("No `DataBlock` with name '$block_symbol' found. ")
     end
@@ -180,9 +180,9 @@ end
 Returns the block with name `block_symbol`.
 """
 function block(input::Union{AbinitInput, WannierInput}, block_symbol::Symbol)
-    for block in input.data
-        if block.name == block_symbol
-            return block
+    for block_ in input.data
+        if block_.name == block_symbol
+            return block_
         end
     end
     return nothing

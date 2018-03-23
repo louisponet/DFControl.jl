@@ -92,11 +92,11 @@ function setdefault_server(server::String)
 end
 
 """
-    default_server()
+    getdefault_server()
 
 Returns the default server if it's defined. If it is not defined return "".
 """
-function default_server()
+function getdefault_server()
     if isdefined(:default_server)
         return default_server
     else
@@ -105,11 +105,11 @@ function default_server()
 end
 
 """
-    default_pseudo_dirs()
+    getdefault_pseudo_dirs()
 
 Returns the default pseudo dirs if it's defined. If it is not defined return nothing.
 """
-function default_pseudo_dirs()
+function getdefault_pseudo_dirs()
     if isdefined(:default_pseudo_dirs)
         return default_pseudo_dirs
     else
@@ -122,11 +122,11 @@ function default_pseudo_dir(pseudo_set)
 end
 
 """
-    configure_default_pseudos(server = default_server(), pseudo_dirs=default_pseudo_dirs())
+    configure_default_pseudos(server = getdefault_server(), pseudo_dirs=getdefault_pseudo_dirs())
 
 Reads the specified `default_pseudo_dirs` on the `default_server` and sets up the `default_pseudos` variable, and also adds all the entries to the `user_defaults.jl` file.
 """
-function configure_default_pseudos(server = default_server(), pseudo_dirs=default_pseudo_dirs())
+function configure_default_pseudos(server = getdefault_server(), pseudo_dirs=getdefault_pseudo_dirs())
     if server == ""
         error("Either supply a valid server string or setup a default server through 'setdefault_server!()'.")
     end
@@ -173,11 +173,11 @@ function configure_default_pseudos(server = default_server(), pseudo_dirs=defaul
 end
 
 """
-    default_pseudo(atom::Symbol, pseudo_setname=:default; pseudo_specifier=nothing)
+    getdefault_pseudo(atom::Symbol, pseudo_setname=:default; pseudo_specifier=nothing)
 
 Returns the pseudo potential string linked to the atom.
 """
-function default_pseudo(atom::Symbol, pseudo_setname=:default; pseudo_specifier="")
+function getdefault_pseudo(atom::Symbol, pseudo_setname=:default; pseudo_specifier="")
     if !isnull(tryparse(Int, String(atom)[end:end]))
         pp_atom = Symbol(String(atom)[1:end-1])
     else
@@ -250,7 +250,7 @@ function remove_default_input(input::Symbol)
     end
 end
 
-function default_job_header()
+function getdefault_jobheader()
     if isdefined(:default_job_header)
         return default_job_header
     else

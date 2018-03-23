@@ -52,14 +52,14 @@ else
 end
 setdefault_pseudo_dir(:default, "/test/test/test");
 @test isdefined(:default_pseudo_dirs)
-@test DFControl.default_pseudo_dirs()[:default] == "/test/test/test"
+@test DFControl.getdefault_pseudo_dirs()[:default] == "/test/test/test"
 remove_default_pseudo_dir(:default);
 @test length(keys(default_pseudo_dirs))==pr_l
 
-pr_s = DFControl.default_server();
+pr_s = DFControl.getdefault_server();
 
 setdefault_server("test/default");
-@test DFControl.default_server() == "test/default"
+@test DFControl.getdefault_server() == "test/default"
 if pr_s != ""
   setdefault_server(pr_s)
 end

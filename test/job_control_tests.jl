@@ -1,8 +1,8 @@
 using DFControl, Base.Test
 
 test_job_path = joinpath(@__DIR__, "test_job")
-df_job = load_job(test_job_path);
-df_job2 = load_job(joinpath(@__DIR__, test_job_path), new_local_dir="blabla");
+df_job = DFJob(test_job_path);
+df_job2 = DFJob(joinpath(@__DIR__, test_job_path), new_local_dir="blabla");
 @test df_job2.local_dir    == "blabla/"
 @test length(df_job.calculations) == 7
 @test input(df_job, "nscf").runcommand.exec == runcommand(df_job, "nscf").exec
@@ -12,7 +12,7 @@ try mkdir(joinpath(test_job_path,"test_dir/")) end
 test_dir = joinpath(test_job_path,"test_dir/")
 df_job.local_dir = test_dir
 save(df_job)
-df_job2 = load_job(test_dir)
+df_job2 = DFJob(test_dir)
 @test begin
   for (i,calc) in enumerate(df_job.calculations)
     calc2 = df_job2.calculations[i]
@@ -63,7 +63,7 @@ setflow!(df_job, "nscf" => true, "bands" => true)
 setflow!(df_job, "pw2wan" => true)
 @test df_job.calculations[end-1].run
 
-runcommand!(df_job, "nscf", Exec("test"))
+setruncommand!(df_job, "nscf", Exec("test"))
 @test runcommand(df_job, "nscf").exec == Exec("test").exec
 
 print_run_command(df_job, "nscf")

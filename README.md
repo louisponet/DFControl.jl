@@ -44,7 +44,7 @@ configure_default_pseudos()
 This will then connect to the server, look through all the defined pseudo sets inside the `default_pseudos` and tries to link for each element, for each set the correct filename.
 To find out the filename of a certain atom for a certain pseudo set, or to check whether your config worked, you can do:
 ```julia
-default_pseudo(:O, :pbesolrel) #again change `pbesolrel` to the set you defined before
+getdefault_pseudo(:O, :pbesolrel) #again change `pbesolrel` to the set you defined before
 ```
 This should return you the filename for the pseudo potential file of Oxygen, `:O`, the format for elements in general is e.g. `:Mn`.
 If multiple pseudos are defined for one set and element, you can specify keyword `pseudo_fuzzy = ...` to pull out the one you want to use.
@@ -64,14 +64,14 @@ When the `job.tt` file gets written upon saving of the `DFJob`, calculations whi
 
 As a quick start to see this in action you can do (Juno is highly recommended, for reading clarity)
 ```julia
-job = load_job(joinpath(Pkg.dir("DFControl"), "test/test_job/"))
+job = DFJob(joinpath(Pkg.dir("DFControl"), "test/test_job/"))
 ```
 
 It will automatically look through the directory for a file which matches the fuzzy `*job*`. This can be specified through kwargs, further info in the documentation and examples.
 
 To do something similar on a directory on a server, you can do
 ```julia
-job = load_server_job("path/to/job/starting_from_home", "local_dir", server=default_server())
+job = load_server_job("path/to/job/starting_from_home", "local_dir", server=getdefault_server())
 ```
 If the `local_dir` doesn't exist it will be first created before pulling the `job` script and the calculations that it read from this file.
 

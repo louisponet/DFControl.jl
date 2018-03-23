@@ -49,7 +49,7 @@ module DFControl
     export setflow!
     export add!
     export runcommand
-    export runcommand!
+    export setruncommand!
     export setrunflags!
     export runflags
     export setexecflags!

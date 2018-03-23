@@ -18,7 +18,7 @@ setflags!(job, :ecutwfc => 25.0)  #more `Pair{Symbol, Any}`'s can be given as va
 setflags!(job, :ecut_rho => 80.) #won't work, it goes through the QE documentation to find the allowed flags for the input files in the job, and also tries to convert the given value to what it should be.
 
 setflags!(job, :ecutrho => 80., :diagonalization => "'david'")
-#shorthand: stfls!
+#shorthand: setflags!!
 
 #now we might not want to run all the calculations again.
 #one can set the job "flow":

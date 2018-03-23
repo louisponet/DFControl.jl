@@ -53,7 +53,7 @@ job = DFJob(name, local_dir, "/home/ponet/Downloads/9011998.cif", calculations,
       pseudo_set  = :pbesol,
       pseudo_specifier = pseudo_specifier
      )
-# An additional kwarg is `server=default_server()`, which is set to the server you have defined while following the setup in README.
+# An additional kwarg is `server=getdefault_server()`, which is set to the server you have defined while following the setup in README.
 # This can ofcourse be setd to a different server.
 
 #Now the job can be submitted to the server to run.
