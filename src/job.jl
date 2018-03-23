@@ -688,10 +688,10 @@ end
 Prints the possible error messages in outputs of the `DFJob`.
 """
 function errors(job::DFJob)
-    outputs = pull_outputs(job)
+    out = outputs(job)
     errors  = Dict{String, Vector{String}}()
-    for out in outputs
-        errors[out] = read_errors(out)
+    for o in out
+        errors[o] = read_errors(o)
     end
 
     for (filename, errs) in errors

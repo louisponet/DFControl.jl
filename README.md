@@ -77,7 +77,7 @@ If the `local_dir` doesn't exist it will be first created before pulling the `jo
 
 If you ran some calculations, you should be able to pull the outputs into the `local_dir` of the `job` by:
 ```julia
-outputs = pull_outputs(job)
+outputs = outputs(job)
 ```
 
 If one of the calculations that were performed was a `'bands'` calculation using Quantum-Espresso, you can do

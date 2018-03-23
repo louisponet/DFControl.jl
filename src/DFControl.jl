@@ -93,8 +93,6 @@ module DFControl
     export read_qe_input
     export read_qe_output
     export read_wannier_input
-    export write_input
-    export write_job_files
 
     include("plotting.jl")
     export plot_qe_bands
@@ -102,7 +100,7 @@ module DFControl
 
     include("server_comm.jl")
     export read_errors
-    export pull_outputs
+    export outputs
     export pull_file
     export pull_files
     export qstat

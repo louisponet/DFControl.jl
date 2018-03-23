@@ -60,13 +60,14 @@ end
 
 
 #TODO: doesn't work for abinit
+#TODO: local outputs!
 """
-    pull_outputs(job::DFJob, server="", server_dir="", local_dir=""; job_fuzzy="*job*", extras=String[])
+    outputs(job::DFJob, server="", server_dir="", local_dir=""; job_fuzzy="*job*", extras=String[])
 
 First pulls the job file (specified by job_fuzzy), reads the possible output files and tries to pull them.
 Extra files to pull can be specified by the `extras` keyword, works with fuzzy filenames.
 """
-function pull_outputs(job::DFJob, server="", server_dir="", local_dir=""; job_fuzzy="*job*", extras=String[])
+function outputs(job::DFJob, server="", server_dir="", local_dir=""; job_fuzzy="*job*", extras=String[])
     if job.server == "" && server == ""
         error("Error: No job server specified. Please specify it first.")
     elseif server != ""

@@ -34,7 +34,7 @@ wan_test, wanstructure = read_wannier_input(joinpath(@__DIR__,"../assets/inputs/
 @test flag(wan_test,:write_rmn)
 
 test_filename = joinpath(@__DIR__,"../assets/inputs/wannier/wan_test.win")
-write_input(wan_test, wanstructure, test_filename);
+save(wan_test, wanstructure, test_filename);
 @test wan_test.flags == read_wannier_input(test_filename)[1].flags
 wan_test2 = read_wannier_input(test_filename)[1]
 @test wan_test.data[1].data == wan_test2.data[1].data

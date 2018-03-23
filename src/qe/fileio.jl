@@ -455,11 +455,11 @@ function write_block_data(f, data)
 end
 
 """
-    write_input(input::QEInput, structure, filename::String=input.filename)
+    save(input::QEInput, structure, filename::String=input.filename)
 
 Writes a Quantum Espresso input file.
 """
-function write_input(input::QEInput, structure, filename::String=input.filename)
+function save(input::QEInput, structure, filename::String=input.filename)
     open(filename, "w") do f
         write_flag(flag_data) = write_flag_line(f, flag_data[1], flag_data[2])
         write_block(data)     = write_block_data(f, data)

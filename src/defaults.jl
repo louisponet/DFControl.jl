@@ -222,10 +222,10 @@ function setdefault_input(input::DFInput, structure, calculation::Symbol)
     runcommand = input.runcommand
     exec        = input.exec
     if typeof(input) == WannierInput
-        write_input(input, structure, filename * ".win")
+        save(input, structure, filename * ".win")
         expr2file(default_file, :(default_inputs[$(QuoteNode(calculation))] = read_wannier_input($filename * ".win", runcommand = Exec($(runcommand.exec), $(runcommand.dir), Dict($(runcommand.flags...))), exec = Exec($(exec.exec), $(exec.dir), Dict($(exec.flags...))))))
     elseif typeof(input) == QEInput
-        write_input(input, structure, filename * ".in")
+        save(input, structure, filename * ".in")
         expr2file(default_file, :(default_inputs[$(QuoteNode(calculation))] = read_qe_input($filename * ".in", runcommand = Exec($(runcommand.exec), $(runcommand.dir), Dict($(runcommand.flags...))), exec = Exec($(exec.exec), $(exec.dir), Dict($(exec.flags...))))))
     end
     load_defaults(default_file)

@@ -213,12 +213,12 @@ function read_wannier_input(filename::String, T=Float64; runcommand= Exec(""), r
 end
 
 """
-    write_input(input::WannierInput, structure, filename::String=input.filename)
+    save(input::WannierInput, structure, filename::String=input.filename)
 
 Writes the `WannierInput` and `structure` to a file, that can be interpreted by WANNIER90.
 The atoms in the structure must have projections defined.
 """
-function write_input(input::WannierInput, structure, filename::String=input.filename)
+function save(input::WannierInput, structure, filename::String=input.filename)
     open(filename, "w") do f
         for (flag, value) in input.flags
             write_flag_line(f, flag, value)

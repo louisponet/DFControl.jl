@@ -68,16 +68,16 @@ watch_qstat()
 #these default to run the commands on the default server
 
 #hopefully everything went according to plan and we can watch our outputs
-outputs = pull_outputs(job)
+out = outputs(job)
 
 #now the bandstructure can be plotted
-bands = read_qe_output(outputs[2])[:bands]
+bands = read_qe_output(out[2])[:bands]
 #alt:
-bands = read_qe_bands_file(outputs[2])
+bands = read_qe_bands_file(out[2])
 
-fermi = read_qe_output(outputs[1])[:fermi]
+fermi = read_qe_output(out[1])[:fermi]
 #alt:
-fermi = read_fermi_from_qe_output(outputs[1])
+fermi = read_fermi_from_qe_output(out[1])
 using Plots
 
 plot(bands, fermi=fermi)

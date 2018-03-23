@@ -103,7 +103,7 @@ function writetojob(f, job, input::QEInput)
     runcommand = input.runcommand
     filename    = input.filename
     should_run  = input.run
-    write_input(input, job.structure, job.local_dir * filename)
+    save(input, job.structure, job.local_dir * filename)
     if !should_run
         write(f, "#")
     end
@@ -134,7 +134,7 @@ function writetojob(f, job, input::WannierInput)
     writeexec(f, exec)
     write(f, "-pp $(filename[1:end-4]).win > $(filename[1:end-4]).wout\n")
 
-    write_input(input, job.structure, job.local_dir * filename)
+    save(input, job.structure, job.local_dir * filename)
     writetojob(f, job, pw2wan)
 
     if !should_run
