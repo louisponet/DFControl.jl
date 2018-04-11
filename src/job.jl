@@ -652,10 +652,10 @@ setoption!(job::DFJob, block_symbol::Symbol, option::Symbol) = setoption!(job, [
 "sets the pseudopotentials to the specified one in the default pseudo_set."
 function setpseudos!(job::DFJob, pseudo_set, pseudo_specifier="")
     for (i, atom) in enumerate(job.structure.atoms)
-        pseudo = default_pseudo(atom.id, pseudo_set, pseudo_specifier=pseudo_specifier)
+        pseudo = getdefault_pseudo(atom.id, pseudo_set, pseudo_specifier=pseudo_specifier)
         atom.pseudo = pseudo == nothing ? warning("Pseudo for $(atom.id) at index $i not found in set $pseudo_set.") : pseudo
     end
-    setflags!(job, :pseudo_dir => "'$(default_pseudo_dir(pseudo_set))'")
+    setflags!(job, :pseudo_dir => "'$(getdefault_pseudodir(pseudo_set))'")
     return job
 end
 

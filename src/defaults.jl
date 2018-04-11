@@ -109,7 +109,7 @@ end
 
 Returns the default pseudo dirs if it's defined. If it is not defined return nothing.
 """
-function getdefault_pseudo_dirs()
+function getdefault_pseudodirs()
     if isdefined(:default_pseudo_dirs)
         return default_pseudo_dirs
     else
@@ -117,8 +117,8 @@ function getdefault_pseudo_dirs()
     end
 end
 
-function default_pseudo_dir(pseudo_set)
-    return default_pseudo_dirs()[pseudo_set]
+function getdefault_pseudodir(pseudo_set)
+    return getdefault_pseudodirs()[pseudo_set]
 end
 
 """
