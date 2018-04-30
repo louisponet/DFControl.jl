@@ -149,8 +149,10 @@ function configure_default_pseudos(server = getdefault_server(), pseudo_dirs=get
         init_defaults(default_file)
     end
 
+    elsyms = Symbol[]
     for el in ELEMENTS
         expr2file(default_file,:(default_pseudos[$(QuoteNode(el.symbol))] = Dict{Symbol, Vector{String}}()))
+        push!(elnames, Symbol(titlecase(string(el.symbol))))
     end
 
     for (name, pseudo_string) in outputs
@@ -159,14 +161,18 @@ function configure_default_pseudos(server = getdefault_server(), pseudo_dirs=get
         while i <= length(pseudos)
             pseudo  = pseudos[i]
             element = Symbol(titlecase(String(split(split(pseudo, ".")[1], "_")[1])))
-            t_expr  = :(String[$pseudo])
-            j = 1
-            while j + i <= length(pseudos) && Symbol(split(pseudos[i + j],".")[1]) == element
-                push!(t_expr.args,pseudos[i + j])
-                j += 1
+            if element in elsyms
+                t_expr  = :(String[$pseudo])
+                j = 1
+                while j + i <= length(pseudos) && Symbol(split(pseudos[i + j],".")[1]) == element
+                    push!(t_expr.args,pseudos[i + j])
+                    j += 1
+                end
+                i += j
+                expr2file(default_file, :(default_pseudos[$(QuoteNode(element))][$(QuoteNode(name))] = $t_expr))
+            else
+                i+=1
             end
-            i += j
-            expr2file(default_file, :(default_pseudos[$(QuoteNode(element))][$(QuoteNode(name))] = $t_expr))
         end
     end
     load_defaults(default_file)
