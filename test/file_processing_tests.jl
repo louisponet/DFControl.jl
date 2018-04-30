@@ -50,10 +50,10 @@ if isdefined(:default_pseudo_dirs)
 else
   pr_l =0
 end
-setdefault_pseudo_dir(:default, "/test/test/test");
+setdefault_pseudodir(:default, "/test/test/test");
 @test isdefined(:default_pseudo_dirs)
 @test DFControl.getdefault_pseudo_dirs()[:default] == "/test/test/test"
-remove_default_pseudo_dir(:default);
+removedefault_pseudodir(:default);
 @test length(keys(default_pseudo_dirs))==pr_l
 
 pr_s = DFControl.getdefault_server();
@@ -66,11 +66,11 @@ end
 if isdefined(:default_job_header)
   pr_h = default_job_header
 end
-setdefault_job_header(["asdf","asdf"]);
-setdefault_job_header(["asdf","asdf"]);
+setdefault_jobheader(["asdf","asdf"]);
+setdefault_jobheader(["asdf","asdf"]);
 @test default_job_header ==["asdf","asdf"]
 if isdefined(:pr_h)
-  setdefault_job_header(pr_h)
+  setdefault_jobheader(pr_h)
 end
 
 setdefault_input(scf_input, qestructure, :scf);
@@ -78,5 +78,5 @@ setdefault_input(scf_input, qestructure, :scf);
 setdefault_input(bands_input, qestructure, :bands);
 
 @test default_inputs[:scf][1].runcommand.exec == scf_input.runcommand.exec
-remove_default_input(:scf)
-remove_default_input(:bands)
+remove_defaultinput(:scf)
+remove_defaultinput(:bands)

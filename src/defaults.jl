@@ -64,11 +64,11 @@ function setdefault_pseudo_dir(pseudo_symbol::Symbol, dir::String)
 end
 
 """
-    remove_default_pseudo_dir(pseudo_symbol::Symbol)
+    removedefault_pseudo_dir(pseudo_symbol::Symbol)
 
-Removes entry with flag `pseudo_symbol` from the `default_pseudo_dirs` and `user_defaults.jl` file.
+Removes entry with flag `pseudo_symbol` from the `default_pseudodirs` and `user_defaults.jl` file.
 """
-function remove_default_pseudo_dir(pseudo_symbol::Symbol)
+function removedefault_pseudo_dir(pseudo_symbol::Symbol)
     if isdefined(:default_pseudo_dirs) && haskey(DFControl.default_pseudo_dirs, pseudo_symbol)
         pop!(DFControl.default_pseudo_dirs, pseudo_symbol)
         rm_expr_lhs(default_file, :(default_pseudo_dirs[$(QuoteNode(pseudo_symbol))]))
@@ -122,17 +122,17 @@ function getdefault_pseudodir(pseudo_set)
 end
 
 """
-    configure_default_pseudos(server = getdefault_server(), pseudo_dirs=getdefault_pseudo_dirs())
+    configure_defaultpseudos(server = getdefault_server(), pseudo_dirs=getdefault_pseudodirs())
 
 Reads the specified `default_pseudo_dirs` on the `default_server` and sets up the `default_pseudos` variable, and also adds all the entries to the `user_defaults.jl` file.
 """
-function configure_default_pseudos(server = getdefault_server(), pseudo_dirs=getdefault_pseudo_dirs())
+function configure_defaultpseudos(server = getdefault_server(), pseudo_dirs=getdefault_pseudodirs())
     if server == ""
         error("Either supply a valid server string or setup a default server through 'setdefault_server!()'.")
     end
 
     if pseudo_dirs == nothing
-        error("Either supply valid pseudo directories or setup a default pseudo dir through 'setdefault_pseudo_dir()'.")
+        error("Either supply valid pseudo directories or setup a default pseudo dir through 'setdefault_pseudodir()'.")
     end
 
     outputs = Dict{Symbol, String}()
@@ -152,7 +152,7 @@ function configure_default_pseudos(server = getdefault_server(), pseudo_dirs=get
     elsyms = Symbol[]
     for el in ELEMENTS
         expr2file(default_file,:(default_pseudos[$(QuoteNode(el.symbol))] = Dict{Symbol, Vector{String}}()))
-        push!(elnames, Symbol(titlecase(string(el.symbol))))
+        push!(elsyms, Symbol(titlecase(string(el.symbol))))
     end
 
     for (name, pseudo_string) in outputs
@@ -199,11 +199,11 @@ function getdefault_pseudo(atom::Symbol, pseudo_setname=:default; pseudo_specifi
 end
 
 """
-    setdefault_job_header(lines)
+    setdefault_jobheader(lines)
 
 Sets the header that will get added to each job.tt file, if no other header was specified.
 """
-function setdefault_job_header(lines)
+function setdefault_jobheader(lines)
     expr = :(default_job_header = $lines)
     expr2file(default_file,expr)
     if !isdefined(:default_job_header)
@@ -238,11 +238,11 @@ function setdefault_input(input::DFInput, structure, calculation::Symbol)
 end
 
 """
-    remove_default_input(input::Symbol)
+    removedefault_input(input::Symbol)
 
 Remove input from the `default_inputs` variable. Also removes the stored input file.
 """
-function remove_default_input(input::Symbol)
+function removedefault_input(input::Symbol)
     if haskey(DFControl.default_inputs, input)
         input_t = pop!(DFControl.default_inputs, input)[1]
         rm_expr_lhs(default_file, :(default_inputs[$(QuoteNode(input))]))

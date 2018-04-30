@@ -107,16 +107,16 @@ module DFControl
     export watch_qstat
 
     include("defaults.jl")
-    export setdefault_pseudo_dir
+    export setdefault_pseudodir
     export setdefault_server
-    export configure_default_pseudos
-    export remove_default_pseudo_dir
+    export configure_defaultpseudos
+    export removedefault_pseudodir
     export default_pseudo
-    export setdefault_job_header
+    export setdefault_jobheader
     export @add_default
     export load_defaults
     export setdefault_input
-    export remove_default_input
+    export removedefault_input
 
     if Pkg.installed("Atom") != nothing
         include("display/printing_juno.jl")
