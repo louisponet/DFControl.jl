@@ -53,22 +53,22 @@ function define_def(default, expr1, expr2)
 end
 
 """
-    setdefault_pseudo_dir(pseudo_symbol::Symbol, dir::String)
+    setdefault_pseudodir(pseudo_symbol::Symbol, dir::String)
 
-Adds an entry inside the `default_pseudo_dirs` with flag `pseudo_symbol`, and adds it to the `user_defaults.jl` file.
+Adds an entry inside the `default_pseudodirs` with flag `pseudo_symbol`, and adds it to the `user_defaults.jl` file.
 """
-function setdefault_pseudo_dir(pseudo_symbol::Symbol, dir::String)
+function setdefault_pseudodir(pseudo_symbol::Symbol, dir::String)
     expr_ndef = :(default_pseudo_dirs = Dict{Symbol,String}($(Expr(:quote, pseudo_symbol)) => $dir))
     expr_def  = :(default_pseudo_dirs[$(QuoteNode(pseudo_symbol))] = $dir)
     define_def(:default_pseudo_dirs, expr_ndef, expr_def)
 end
 
 """
-    removedefault_pseudo_dir(pseudo_symbol::Symbol)
+    removedefault_pseudodir(pseudo_symbol::Symbol)
 
 Removes entry with flag `pseudo_symbol` from the `default_pseudodirs` and `user_defaults.jl` file.
 """
-function removedefault_pseudo_dir(pseudo_symbol::Symbol)
+function removedefault_pseudodir(pseudo_symbol::Symbol)
     if isdefined(:default_pseudo_dirs) && haskey(DFControl.default_pseudo_dirs, pseudo_symbol)
         pop!(DFControl.default_pseudo_dirs, pseudo_symbol)
         rm_expr_lhs(default_file, :(default_pseudo_dirs[$(QuoteNode(pseudo_symbol))]))
