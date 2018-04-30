@@ -12,11 +12,11 @@ function pull_file(server::String, server_dir::String, local_dir::String, filena
 end
 
 """
-    pull_file(server_dir::String, local_dir::String, filename::String; server=get_default_server())
+    pull_file(server_dir::String, local_dir::String, filename::String; server=getdefault_server())
 
 Pulls a file from the default server if the default server is specified.
 """
-function pull_file(server_dir::String, local_dir::String, filename::String; server=get_default_server())
+function pull_file(server_dir::String, local_dir::String, filename::String; server=getdefault_server())
     if server != ""
         run(`scp $(server * ":" * server_dir * filename) $local_dir`)
         pulled_files = search_dir(local_dir, filename)
@@ -24,12 +24,12 @@ function pull_file(server_dir::String, local_dir::String, filename::String; serv
             return pulled_files[1]
         end
     else
-        error("Define a default server first using 'set_default_server!(...)'.\n
+        error("Define a default server first using 'setdefault_server!(...)'.\n
         Or use function 'pull_file(server::String, server_dir::String, local_dir::String, filename::String)'.")
     end
 end
 
-function pull_files(server_dir::String, local_dir::String, filenames::Vector{String}; server=get_default_server())
+function pull_files(server_dir::String, local_dir::String, filenames::Vector{String}; server=getdefault_server())
     pulled_files = String[]
     for file in filenames
        push!(pulled_files, pull_file(server_dir, local_dir, file; server))
@@ -38,11 +38,11 @@ function pull_files(server_dir::String, local_dir::String, filenames::Vector{Str
 end
 
 """
-    pull_file(filepath::String, local_dir::String; server=get_default_server(), local_filename=nothing)
+    pull_file(filepath::String, local_dir::String; server=getdefault_server(), local_filename=nothing)
 
 Pulls a file from the default server if the default server is specified.
 """
-function pull_file(filepath::String, local_dir::String; server=get_default_server(), local_filename=nothing)
+function pull_file(filepath::String, local_dir::String; server=getdefault_server(), local_filename=nothing)
     local_dir = form_directory(local_dir)
     if server != ""
         if local_filename != nothing
@@ -53,20 +53,21 @@ function pull_file(filepath::String, local_dir::String; server=get_default_serve
             return search_dir(local_dir, splitdir(filepath)[2])[1]
         end
     else
-        error("Define a default server first using 'set_default_server!(...)'.\n
+        error("Define a default server first using 'setdefault_server!(...)'.\n
         Or use function 'pull_file(server::String, server_dir::String, local_dir::String, filename::String)'.")
     end
 end
 
 
 #TODO: doesn't work for abinit
+#TODO: local outputs!
 """
-    pull_outputs(job::DFJob, server="", server_dir="", local_dir=""; job_fuzzy="*job*", extras=String[])
+    outputs(job::DFJob, server="", server_dir="", local_dir=""; job_fuzzy="*job*", extras=String[])
 
 First pulls the job file (specified by job_fuzzy), reads the possible output files and tries to pull them.
 Extra files to pull can be specified by the `extras` keyword, works with fuzzy filenames.
 """
-function pull_outputs(job::DFJob, server="", server_dir="", local_dir=""; job_fuzzy="*job*", extras=String[])
+function outputs(job::DFJob, server="", server_dir="", local_dir=""; job_fuzzy="*job*", extras=String[])
     if job.server == "" && server == ""
         error("Error: No job server specified. Please specify it first.")
     elseif server != ""
@@ -117,11 +118,11 @@ end
 If sbatch is running on server it will return the output of the `qstat` command.
 """
 qstat(server) = run(`ssh -t $server qstat`)
-qstat()       = qstat(get_default_server())
+qstat()       = qstat(getdefault_server())
 
 """
     watch_qstat(server)
 If sbatch is running on server it will return the output of the `watch qstat` command.
 """
 watch_qstat(server) = run(`ssh -t $server watch qstat`)
-watch_qstat()       = watch_qstat(get_default_server())
+watch_qstat()       = watch_qstat(getdefault_server())

@@ -94,7 +94,7 @@ function QEControlBlockInfo(lines::Array{<:AbstractString, 1})
     return QEControlBlockInfo(name, flags)
 end
 
-function get_qe_variable(block::QEControlBlockInfo, variable_name::Symbol)
+function qe_variable(block::QEControlBlockInfo, variable_name::Symbol)
     for var in block.flags
         if var.name == variable_name
             return var
@@ -155,7 +155,7 @@ function QEDataBlockInfo(lines::Array{<:AbstractString, 1})
     return QEDataBlockInfo(name, description, options, options_description, variables)
 end
 
-function get_qe_variable(block::QEDataBlockInfo, variable_name::Symbol)
+function qe_variable(block::QEDataBlockInfo, variable_name::Symbol)
     for var in block.variables
         if var.name == variable_name
             return var
@@ -165,8 +165,8 @@ end
 
 struct QEInputInfo
     exec::String
-    control_blocks::Array{QEControlBlockInfo, 1}
-    data_blocks::Array{QEDataBlockInfo, 1}
+    control::Array{QEControlBlockInfo, 1}
+    data::Array{QEDataBlockInfo, 1}
 end
 
 function QEInputInfo(filename::String; exec_name = join([lowercase(splitext(split(filename, "_")[end])[1]),".x"],""))
@@ -205,30 +205,30 @@ const QEInputInfos = begin
     vcat(QEInputInfo.(file_paths), QEInputInfo("pw2wannier90.x", [pw2wannier90_block_info], QEDataBlockInfo[]))
 end
 
-get_qe_input_info(input::QEInput) = getfirst(x-> contains(input.exec, x.exec), QEInputInfos)
-get_qe_input_info(exec::AbstractString) = getfirst(x-> contains(exec, x.exec), QEInputInfos)
+qe_input_info(input::QEInput) = getfirst(x-> contains(input.exec, x.exec), QEInputInfos)
+qe_input_info(exec::AbstractString) = getfirst(x-> contains(exec, x.exec), QEInputInfos)
 
-function get_qe_variable(input_info::QEInputInfo, variable_name::Symbol)
-    for block in vcat(input_info.control_blocks, input_info.data_blocks)
-        var = get_qe_variable(block, variable_name)
+function qe_variable(input_info::QEInputInfo, variable_name::Symbol)
+    for block in vcat(input_info.control, input_info.data)
+        var = qe_variable(block, variable_name)
         if var != nothing
             return var
         end
     end
 end
 
-function get_qe_variable(variable_name::Symbol)
+function qe_variable(variable_name::Symbol)
     for info in QEInputInfos
-        var = get_qe_variable(info, variable_name)
+        var = qe_variable(info, variable_name)
         if var != nothing
             return var
         end
     end
 end
 
-function get_qe_block_variable(input_info::QEInputInfo, variable_name)
-    for block in vcat(input_info.control_blocks, input_info.data_blocks)
-        var = get_qe_variable(block, variable_name)
+function qe_block_variable(input_info::QEInputInfo, variable_name)
+    for block in vcat(input_info.control, input_info.data)
+        var = qe_variable(block, variable_name)
         if var != nothing
             return block, var
         end
@@ -236,17 +236,17 @@ function get_qe_block_variable(input_info::QEInputInfo, variable_name)
     return :error, QEVariableInfo()
 end
 
-function get_qe_variable_info(input::QEInput, varname)
+function qe_variable_info(input::QEInput, varname)
     for input_info in QEInputInfos
         if contains(input.exec,input_info.exec)
-            return get_qe_variable(input_info, varname)
+            return qe_variable(input_info, varname)
         end
     end
 end
 
-function get_qe_block_info(block_name::Symbol)
+function qe_block_info(block_name::Symbol)
     for input_info in QEInputInfos
-        for block in [input_info.control_blocks;input_info.data_blocks]
+        for block in [input_info.control;input_info.data]
             if block.name == block_name
                 return block
             end
@@ -255,16 +255,16 @@ function get_qe_block_info(block_name::Symbol)
 end
 
 
-all_qe_block_flags(input::QEInput, block_name) = getfirst(x -> x.name == block, get_qe_input_info(input).control_blocks).flags
-all_qe_block_flags(exec::AbstractString, block_name) = getfirst(x -> x.name == block_name, get_qe_input_info(exec).control_blocks).flags
+all_qe_block_flags(input::QEInput, block_name) = getfirst(x -> x.name == block, qe_input_info(input).control).flags
+all_qe_block_flags(exec::AbstractString, block_name) = getfirst(x -> x.name == block_name, qe_input_info(exec).control).flags
 
-function get_qe_block_variable(exec::AbstractString, flagname)
+function qe_block_variable(exec::AbstractString, flagname)
     for input_info in QEInputInfos
         if contains(exec, input_info.exec)
-            return get_qe_block_variable(input_info, flagname)
+            return qe_block_variable(input_info, flagname)
         end
     end
     return :error, QEVariableInfo()
 end
 
-get_qe_block_variable(input::DFInput, flagname) = get_qe_block_variable(input.exec.exec, flagname)
+qe_block_variable(input::DFInput, flagname) = qe_block_variable(input.exec.exec, flagname)

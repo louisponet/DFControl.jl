@@ -37,4 +37,4 @@ end
 
 const AbinitFlags    = construct_abi_flags()
 
-get_abi_flag_type(flag) = haskey(AbinitFlags, flag) ? AbinitFlags[flag] : Void
+abi_flag_type(flag) = haskey(AbinitFlags, flag) ? AbinitFlags[flag] : Void

@@ -33,50 +33,48 @@ module DFControl
 
     include("job.jl")
     export DFJob
-    export load_job
-    export load_server_job
-    export save_job
-    export submit_job
+    export save
+    export submit
 
-    export change_flags!
-    export get_flag
-    export change_data!
-    export get_data
-    export get_block
-    export add_block!
-    export add_data!
-    export set_flags!
-    export remove_flags!
-    export change_flow!
-    export set_flow!
-    export add_calculation!
-    export get_run_command
-    export change_run_command!
-    export set_runflags!
-    export get_runflags
-    export set_execflags!
-    export get_execflags
-    export get_inputs
-    export get_input
-    export change_filename!
-    export change_kpoints!
-    export change_data_option!
-    export change_header_word!
-    export change_pseudo_set!
-    export add_bands_calculation!
-    export get_path
+    export setflags!
+    export flag
+    export setdata!
+    export data
+    export block
+    export setblock!
+    export setdata!
+    export setflags!
+    export rmflags!
+    export setflow!
+    export setflow!
+    export add!
+    export runcommand
+    export setruncommand!
+    export setrunflags!
+    export runflags
+    export setexecflags!
+    export execflags
+    export inputs
+    export input
+    export setfilename!
+    export setkpoints!
+    export setoption!
+    export setheaderword!
+    export setpseudos!
+    export addbandscalculation!
+    export path
     export undo!
     export undo
-    export set_server_dir!
-    export get_atoms
-    export change_atoms!
-    export get_cell
-    export change_cell!
-    export get_path
-    export add_wan_calc!
-    export change_local_dir!
-    export change_server_dir!
-    export change_projections!
+    export setserverdir!
+    export atoms
+    export setatoms!
+    export cell
+    export setcell!
+    export path
+    export addwancalc!
+    export setlocaldir!
+    export setserverdir!
+    export setprojections!
 
     include("constants.jl")
 
@@ -95,8 +93,6 @@ module DFControl
     export read_qe_input
     export read_qe_output
     export read_wannier_input
-    export write_input
-    export write_job_files
 
     include("plotting.jl")
     export plot_qe_bands
@@ -104,26 +100,23 @@ module DFControl
 
     include("server_comm.jl")
     export read_errors
-    export pull_outputs
+    export outputs
     export pull_file
     export pull_files
     export qstat
     export watch_qstat
 
     include("defaults.jl")
-    export set_default_pseudo_dir
-    export set_default_server
+    export setdefault_pseudo_dir
+    export setdefault_server
     export configure_default_pseudos
     export remove_default_pseudo_dir
-    export get_default_pseudo
-    export set_default_job_header
+    export default_pseudo
+    export setdefault_job_header
     export @add_default
     export load_defaults
-    export set_default_input
+    export setdefault_input
     export remove_default_input
-
-    #no extra functionality, for faster scripting
-    include("shortnames.jl")
 
     if Pkg.installed("Atom") != nothing
         include("display/printing_juno.jl")

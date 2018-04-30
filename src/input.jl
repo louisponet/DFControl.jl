@@ -35,21 +35,21 @@ include("qe/input.jl")
 mutable struct WannierInput <: DFInput
     filename    ::String
     flags       ::Dict{Symbol,Any}
-    data_blocks ::Vector{WannierDataBlock}
-    run_command ::Exec #run_command, flags
+    data ::Vector{WannierDataBlock}
+    runcommand ::Exec #runcommand, flags
     exec        ::Exec #exec, flags
     run         ::Bool
 end
 
 """
-    change_kpoints!(input::WannierInput, k_grid::NTuple{3, Int}; print=true)
+    setkpoints!(input::WannierInput, k_grid::NTuple{3, Int}; print=true)
 
-Changes the data in the k point `DataBlock` inside the specified calculation.
+sets the data in the k point `DataBlock` inside the specified calculation.
 """
-function change_kpoints!(input::WannierInput, k_grid::NTuple{3, Int}; print=true)
-    change_flags!(input, :mp_grid => [k_grid...])
-    k_points = gen_k_grid(k_grid[1], k_grid[2], k_grid[3], :wan)
-    change_data!(input, :kpoints, k_points, print=print)
+function setkpoints!(input::WannierInput, k_grid::NTuple{3, Int}; print=true)
+    setflags!(input, :mp_grid => [k_grid...])
+    k_points = kgrid(k_grid[1], k_grid[2], k_grid[3], :wan)
+    setdata!(input, :kpoints, k_points, print=print)
     return input
 end
 
@@ -57,42 +57,31 @@ mutable struct AbinitInput <: DFInput
     filename    ::String
     structure   ::Union{Structure, Void}
     flags       ::Dict{Symbol,Any}
-    data_blocks ::Vector{AbinitDataBlock}
-    run_command ::Exec
+    data        ::Vector{AbinitDataBlock}
+    runcommand ::Exec
     exec        ::Exec
     run         ::Bool
 end
 
 """
-    change_flags!(input::DFInput, new_flag_data...)
+    flag(input::DFInput, flag::Symbol)
 
-Changes the flags inside the input to the new ones if they are already defined and if the new ones have the same type.
+Returns the value of the flag.
 """
-function change_flags!(input::Union{AbinitInput, WannierInput}, new_flag_data...)
-    found_keys = Symbol[]
-    for (flag, value) in new_flag_data
-        if haskey(input.flags, flag)
-            old_data = input.flags[flag]
-            if !(flag in found_keys) push!(found_keys, flag) end
-            if typeof(input.flags[flag]) == typeof(value)
-                input.flags[flag] = value
-                dfprintln("$(input.filename):\n -> $flag:\n      $old_data changed to: $value\n")
-            else
-                dfprintln("$(input.filename):\n -> $flag:\n     type mismatch old:$old_data ($(typeof(old_data))), new: $value ($(typeof(value)))\n    Change not applied.\n")
-            end
-        end
+function flag(input::Union{AbinitInput, WannierInput}, flag::Symbol)
+    if haskey(input.flags, flag)
+        return input.flags[flag]
     end
-    return found_keys, input
 end
 
 """
-    set_flags!(input::DFInput, flags...)
+    setflags!(input::Union{AbinitInput, WannierInput}, flags...; print=true)
 
-Sets the specified flags in the input. A controlblock will be added if necessary.
+Sets the specified flags in the input.
 """
-function set_flags!(input::Union{AbinitInput, WannierInput}, flags...; print=true)
+function setflags!(input::Union{AbinitInput, WannierInput}, flags...; print=true)
     found_keys = Symbol[]
-    flag_func(flag) = typeof(input) == WannierInput ? get_wan_flag_type(flag) : get_abi_flag_type(flag)
+    flag_func(flag) = typeof(input) == WannierInput ? wan_flag_type(flag) : abi_flag_type(flag)
     for (flag, value) in flags
         flag_type = flag_func(flag)
         if flag_type != Void
@@ -107,7 +96,7 @@ function set_flags!(input::Union{AbinitInput, WannierInput}, flags...; print=tru
             if haskey(input.flags, flag)
                 old_data = input.flags[flag]
                 input.flags[flag] = value
-                if print dfprintln("$(input.filename):\n  -> $flag:\n      $old_data changed to: $value\n") end
+                if print dfprintln("$(input.filename):\n  -> $flag:\n      $old_data setd to: $value\n") end
             else
                 input.flags[flag] = value
                 if print dfprintln("$(input.filename):\n  -> $flag:\n      set to: $value\n") end
@@ -117,15 +106,30 @@ function set_flags!(input::Union{AbinitInput, WannierInput}, flags...; print=tru
     return found_keys, input
 end
 
+"""
+    rmflags!(input::Union{AbinitInput, WannierInput}, flags...)
+
+Remove the specified flags.
+"""
+function rmflags!(input::Union{AbinitInput, WannierInput}, flags...)
+    for flag in flags
+        if haskey(input.flags, flag)
+            pop!(input.flags, flag, false)
+            dfprintln("Removed flag '$flag' from input '$(input.filename)'")
+        end
+    end
+    return input
+end
+
 
 """
-    change_data!(input::DFInput, block_name::Symbol, new_block_data; option=nothing, print=true)
+    setdata!(input::DFInput, block_name::Symbol, new_block_data; option=nothing, print=true)
 
-Changes the data of the specified 'DataBlock' to the new data. Optionally also changes the 'DataBlock' option.
+sets the data of the specified 'DataBlock' to the new data. Optionally also sets the 'DataBlock' option.
 """
-function change_data!(input::DFInput, block_name::Symbol, new_block_data; option=nothing, print=true)
-    changed = false
-    for data_block in input.data_blocks
+function setdata!(input::DFInput, block_name::Symbol, new_block_data; option=nothing, print=true)
+    setd = false
+    for data_block in input.data
         if data_block.name == block_name
             if typeof(data_block.data) != typeof(new_block_data)
                 if print warn("Overwritten data of type '$(typeof(data_block.data))' with type '$(typeof(new_block_data))'.") end
@@ -139,95 +143,57 @@ function change_data!(input::DFInput, block_name::Symbol, new_block_data; option
                 dfprintln("option: $(data_block.option)")
                 dfprintln("")
             end
-            changed = true
+            setd = true
         end
     end
-    return changed, input
-end
-
-"""
-    add_data!(input::DFInput, block_name::Symbol, block_data, block_option=:none)
-
-Adds a block with the given name data and option to the calculation.
-"""
-function add_data!(input::DFInput, block_name::Symbol, block_data, block_option=:none)
-    for block in input.data_blocks
-        if block_name == block.name
-            return change_data!(input, block_name, block_data, option=block_option)
+    if !setd
+        if typeof(input)==QEInput
+            block = QEDataBlock(block_name, block_option, block_data)
+        elseif typeof(input) == WannierInput
+            block = WannierDataBlock(block_name, block_option, block_data)
+        elseif typeof(input) == AbinitInput
+            block = AbinitDataBlock(block_name, block_option, block_data)
         end
+        setblock!(input, block)
+        setd = true
     end
-    if typeof(input)==QEInput
-        block = QEDataBlock(block_name, block_option, block_data)
-    elseif typeof(input) == WannierInput
-        block = WannierDataBlock(block_name, block_option, block_data)
-    elseif typeof(input) == AbinitInput
-        block = AbinitDataBlock(block_name, block_option, block_data)
-    end
-    add_block!(input, block)
-    return input
+    return setd, input
 end
 
 """
-    get_flag(input::DFInput, flag::Symbol)
-
-Returns the value of the flag.
-"""
-function get_flag(input::Union{AbinitInput, WannierInput}, flag::Symbol)
-    if haskey(input.flags, flag)
-        return input.flags[flag]
-    end
-end
-
-"""
-    get_data(input::DFInput, block_symbol::Symbol)
+    data(input::DFInput, block_symbol::Symbol)
 
 Returns the specified 'DataBlock'.
 """
-function get_data(input::DFInput, block_symbol::Symbol)
-    block = get_block(input, block_symbol)
-    if block != nothing && typeof(block) <: DataBlock
-        return block.data
+function data(input::DFInput, block_symbol::Symbol)
+    block_ = block(input, block_symbol)
+    if block_ != nothing && typeof(block_) <: DataBlock
+        return block_.data
     else
         error("No `DataBlock` with name '$block_symbol' found. ")
     end
 end
 
 """
-    get_block(input::DFInput, block_symbol::Symbol)
+    block(input::DFInput, block_symbol::Symbol)
 
 Returns the block with name `block_symbol`.
 """
-function get_block(input::Union{AbinitInput, WannierInput}, block_symbol::Symbol)
-    for block in input.data_blocks
-        if block.name == block_symbol
-            return block
+function block(input::Union{AbinitInput, WannierInput}, block_symbol::Symbol)
+    for block_ in input.data
+        if block_.name == block_symbol
+            return block_
         end
     end
     return nothing
 end
 
-#removes an input control flag, if you want to implement another input add a similar function here!
 """
-    remove_flags!(input::DFInput, flags...)
-
-Remove the specified flags.
-"""
-function remove_flags!(input::Union{AbinitInput, WannierInput}, flags...)
-    for flag in flags
-        if haskey(input.flags, flag)
-            pop!(input.flags, flag, false)
-            dfprintln("Removed flag '$flag' from input '$(input.filename)'")
-        end
-    end
-    return input
-end
-
-"""
-    get_blocks(input::DFInput)
+    blocks(input::DFInput)
 
 Returns all the blocks inside a calculation.
 """
-function get_blocks(input::DFInput)
+function blocks(input::DFInput)
     out = Block[]
     for block in getfield.(input, filter(x -> contains(String(x), "block"), fieldnames(input)))
         push!(out, block...)
@@ -235,27 +201,40 @@ function get_blocks(input::DFInput)
     return out
 end
 
+function setoradd!(blocks::Vector{<:Block}, block::Block)
+    found = false
+    for (i, d) in enumerate(blocks)
+        if d.name == block.name
+            blocks[i] = block
+            found = true
+            break
+        end
+    end
+    if !found
+        push!(blocks, block)
+    end
+end
+
 """
-    add_block(input::DFInput, block::Block)
+    setblock!(input::DFInput, block::Block)
 
 Adds the given block to the input. Should put it in the correct arrays.
 """
-function add_block!(input::DFInput, block::Block)
+function setblock!(input::DFInput, block::Block)
     if typeof(block) <: DataBlock
-        push!(input.data_blocks, block)
-    else
-        typeof(block) <: ControlBlock
-        push!(input.control_blocks, block)
+        setoradd!(input.data, block)
+    elseif typeof(block) <: ControlBlock
+        setoradd!(input.control, block)
     end
     return input
 end
 
 """
-    change_data_option!(input::DFInput, block_symbol::Symbol, option::Symbol;; print=true)
+    setoption!(input::DFInput, block_symbol::Symbol, option::Symbol;; print=true)
 
-Changes the option of specified data block.
+sets the option of specified data block.
 """
-function change_data_option!(input::DFInput, block_symbol::Symbol, option::Symbol; print=true)
+function setoption!(input::DFInput, block_symbol::Symbol, option::Symbol; print=true)
     for fieldname in fieldnames(input)
         field = getfield(input,fieldname)
         if typeof(field) <: Array{<:DataBlock,1}
@@ -263,7 +242,7 @@ function change_data_option!(input::DFInput, block_symbol::Symbol, option::Symbo
                 if block.name == block_symbol
                     old_option   = block.option
                     block.option = option
-                    if print dfprintln("Option of DataBlock '$(block.name)' in input '$(input.filename)' changed from '$old_option' to '$option'") end
+                    if print dfprintln("Option of DataBlock '$(block.name)' in input '$(input.filename)' setd from '$old_option' to '$option'") end
                 end
             end
         end

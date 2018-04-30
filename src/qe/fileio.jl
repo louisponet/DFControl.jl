@@ -1,7 +1,7 @@
 const parseable_qe_execs = ["pw.x", "projwfc.x", "pw2wannier90.x", "pp.x"]
 #this is all pretty hacky with regards to the new structure and atom api. can for sure be a lot better!
 "Quantum espresso card option parser"
-function get_card_option(line)
+function card_option(line)
     if contains(line, "{")
         return Symbol(strip(split(line, "{")[end], '}'))
     elseif contains(line, "(")
@@ -106,7 +106,7 @@ function read_qe_output(filename::String, T=Float64)
                         out[:alat]            = parse(T, split(line)[end][1:end-1])
                         out[:cell_parameters] = reshape(T[parse.(T, split(readline(f))); parse.(T, split(readline(f))); parse.(T, split(readline(f)))], (3,3))
                     elseif contains(line, "ATOMIC_POSITIONS")
-                        out[:pos_option]      = get_card_option(line)
+                        out[:pos_option]      = card_option(line)
                         line  = readline(f)
                         atoms = Dict{Symbol,Array{Point3{T},1}}()
                         while !contains(line, "End")
@@ -251,8 +251,8 @@ read_qe_vcrel(filename::String, T=Float64) = read_qe_output(filename, T) do x
 #         return out
 #     end
 # end
-function alat(control_blocks, pop=false)
-    sysblock = block(control_blocks, :system)
+function alat(control, pop=false)
+    sysblock = block(control, :system)
     if sysblock == nothing
         error("Could not resolve the alat!")
     end
@@ -268,12 +268,12 @@ function alat(control_blocks, pop=false)
 end
 
 #TODO handle more fancy cells
-function extract_cell!(control_blocks, cell_block)
+function extract_cell!(control, cell_block)
     if cell_block != nothing
         _alat = 1.0
         if cell_block.option == :alat
-            @assert pop!(block(control_blocks,:system).flags, :ibrav) == 0 "Only ibrav = 0 allowed for now."
-            _alat = alat(control_blocks)
+            @assert pop!(block(control,:system).flags, :ibrav) == 0 "Only ibrav = 0 allowed for now."
+            _alat = alat(control)
 
         elseif cell_block.option == :bohr
             _alat = conversions[:bohr2ang]
@@ -283,14 +283,14 @@ function extract_cell!(control_blocks, cell_block)
     end
 end
 
-function extract_atoms!(control_blocks, atom_block, pseudo_block, cell)
+function extract_atoms!(control, atom_block, pseudo_block, cell)
     atoms = Atom{Float64}[]
 
     option = atom_block.option
     if option == :crystal || option == :crystal_sg
         primv = cell
     elseif option == :alat
-        primv = alat(control_blocks, true) * Mat3(eye(3))
+        primv = alat(control, true) * Mat3(eye(3))
     elseif option == :bohr
         primv = conversions[:bohr2ang] * Mat3(eye(3))
     else
@@ -307,24 +307,24 @@ function extract_atoms!(control_blocks, atom_block, pseudo_block, cell)
     return atoms
 end
 
-function extract_structure!(name, control_blocks, cell_block, atom_block, pseudo_block)
+function extract_structure!(name, control, cell_block, atom_block, pseudo_block)
     if atom_block == nothing
         return nothing
     end
-    cell = extract_cell!(control_blocks, cell_block)
-    atoms = extract_atoms!(control_blocks, atom_block, pseudo_block, cell)
+    cell = extract_cell!(control, cell_block)
+    atoms = extract_atoms!(control, atom_block, pseudo_block, cell)
     return Structure(name, cell, atoms)
 end
 
 """
-    read_qe_input(filename, T=Float64; exec="pw.x",  run_command="", run=true, structure_name="NoName")
+    read_qe_input(filename, T=Float64; exec="pw.x",  runcommand="", run=true, structure_name="NoName")
 
 Reads a Quantum Espresso input file. The exec get's used to find which flags are allowed in this input file, and convert the read values to the correct Types.
 Returns a `QEInput` and the `Structure` that is found in the input.
 """
-function read_qe_input(filename, T=Float64::Type; exec=Exec("pw.x"), run_command=Exec(""), run=true, structure_name="NoName")
-    control_blocks = Array{QEControlBlock,1}()
-    data_blocks    = Array{QEDataBlock,1}()
+function read_qe_input(filename, T=Float64::Type; exec=Exec("pw.x"), runcommand=Exec(""), run=true, structure_name="NoName")
+    control = Array{QEControlBlock,1}()
+    data    = Array{QEDataBlock,1}()
     atom_block     = nothing
     cell_block     = nothing
     pseudo_block   = nothing
@@ -356,11 +356,11 @@ function read_qe_input(filename, T=Float64::Type; exec=Exec("pw.x"), run_command
                     end
                     line = readline(f)
                 end
-                push!(control_blocks, QEControlBlock(c_block_name, flag_dict))
+                push!(control, QEControlBlock(c_block_name, flag_dict))
                 @goto start_label
 
             elseif contains(line, "CELL_PARAMETERS") || contains(line, "cell_parameters")
-                cell_unit    = get_card_option(line)
+                cell_unit    = card_option(line)
                 cell         = MMatrix{3, 3, T}()
                 cell[1, 1:3] = parse.(T, split(readline(f)))
                 cell[2, 1:3] = parse.(T, split(readline(f)))
@@ -380,7 +380,7 @@ function read_qe_input(filename, T=Float64::Type; exec=Exec("pw.x"), run_command
                 @goto start_label
 
             elseif contains(line, "ATOMIC_POSITIONS") || contains(line, "atomic_positions")
-                option = get_card_option(line)
+                option = card_option(line)
                 atoms  = Dict{Symbol,Array{Point3{T},1}}()
                 line   = readline(f)
                 while length(split(line)) == 4
@@ -398,7 +398,7 @@ function read_qe_input(filename, T=Float64::Type; exec=Exec("pw.x"), run_command
                 @goto start_label
 
             elseif contains(line, "K_POINTS") || contains(line, "k_points")
-                k_option = get_card_option(line)
+                k_option = card_option(line)
                 line     = readline(f)
                 if k_option == :automatic
                     s_line = split(line)
@@ -410,15 +410,15 @@ function read_qe_input(filename, T=Float64::Type; exec=Exec("pw.x"), run_command
                         k_data[i] = parse.(T, split(readline(f)))
                     end
                 end
-                push!(data_blocks, QEDataBlock(:k_points, k_option, k_data))
+                push!(data, QEDataBlock(:k_points, k_option, k_data))
                 @goto start_label
             end
             line = readline(f)
         end
     end
 
-    structure = extract_structure!(structure_name, control_blocks, cell_block, atom_block, pseudo_block)
-    sysblock = block(control_blocks, :system)
+    structure = extract_structure!(structure_name, control, cell_block, atom_block, pseudo_block)
+    sysblock = block(control, :system)
     if sysblock != nothing
         pop!(sysblock.flags, :ibrav, nothing)
         pop!(sysblock.flags, :nat, nothing)
@@ -427,7 +427,7 @@ function read_qe_input(filename, T=Float64::Type; exec=Exec("pw.x"), run_command
         pop!(sysblock.flags, celldm_1, nothing)
         pop!(sysblock.flags, :celldm, nothing)
     end
-    return QEInput(splitdir(filename)[2], control_blocks, data_blocks, run_command, exec, run), structure
+    return QEInput(splitdir(filename)[2], control, data, runcommand, exec, run), structure
 end
 
 function write_block_data(f, data)
@@ -455,23 +455,23 @@ function write_block_data(f, data)
 end
 
 """
-    write_input(input::QEInput, structure, filename::String=input.filename)
+    save(input::QEInput, structure, filename::String=input.filename)
 
 Writes a Quantum Espresso input file.
 """
-function write_input(input::QEInput, structure, filename::String=input.filename)
+function save(input::QEInput, structure, filename::String=input.filename)
     open(filename, "w") do f
         write_flag(flag_data) = write_flag_line(f, flag_data[1], flag_data[2])
         write_block(data)     = write_block_data(f, data)
 
         blocks2file = QEControlBlock[]
-        c_block = getfirst(x -> x.name == :control, input.control_blocks)
-        s_block = getfirst(x -> x.name == :system, input.control_blocks)
+        c_block = getfirst(x -> x.name == :control, input.control)
+        s_block = getfirst(x -> x.name == :system, input.control)
         if c_block != nothing
             push!(blocks2file, c_block)
             push!(blocks2file, s_block)
         end
-        rest = filter(x -> x.name != :control && x.name != :system, input.control_blocks)
+        rest = filter(x -> x.name != :control && x.name != :system, input.control)
         for r in rest
             push!(blocks2file, r)
         end
@@ -492,7 +492,7 @@ function write_input(input::QEInput, structure, filename::String=input.filename)
         end
 
         write_structure(f, structure, input)
-        for block in input.data_blocks
+        for block in input.data
             if block.option != :none
                 write(f, "$(uppercase(String(block.name))) ($(block.option))\n")
             else

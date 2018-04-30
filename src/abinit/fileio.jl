@@ -104,7 +104,7 @@ function read_abi_datasets(filename::String, T=Float64)
     #make flags that are length one just be their value and that they are in the abivars
     for (d,data) in enumerate(datasets)
         for (flag, val) in data
-            flag_type = get_abi_flag_type(flag)
+            flag_type = abi_flag_type(flag)
             if flag_type == Void
                 error("Flag $flag in dataset $d not found in abinit variables.")
             elseif flag_type != typeof(val)
@@ -258,7 +258,7 @@ If # DATASET is supplied as first line, it will make sure that amount of dataset
 `ndtset` and `jdtset` will be taken into account to decide which calculations will be marked as 'should run'.
 Either all structures of the input are the same or all are different, otherwise there will be an error.
 """
-function read_abi_input(filename::String, T=Float64; run_command= "", pseudos=[""], structure_name = "NoName")
+function read_abi_input(filename::String, T=Float64; runcommand= "", pseudos=[""], structure_name = "NoName")
     datasets = read_abi_datasets(filename, T)
     structures = extract_structures!(datasets..., structure_name = structure_name)
     inputs = Array{AbinitInput,1}()
@@ -280,7 +280,7 @@ function read_abi_input(filename::String, T=Float64; run_command= "", pseudos=["
         if isempty(data)
             continue
         end
-        push!(inputs, AbinitInput(newfile, structure, data, [AbinitDataBlock(:pseudos, :pseudos, pseudos)], run_command, run))
+        push!(inputs, AbinitInput(newfile, structure, data, [AbinitDataBlock(:pseudos, :pseudos, pseudos)], runcommand, run))
     end
     return inputs
 end
@@ -354,8 +354,8 @@ function write_abi_datasets(inputs::Vector{AbinitInput}, directory)
         end
         file, ext = splitext(group[end].filename)
         push!(filenames, file[1:end-1] * ext)
-        push!(run_commands, group[end].run_command)
-        push!(pseudos, get_data(group[end], :pseudos))
+        push!(run_commands, group[end].runcommand)
+        push!(pseudos, data(group[end], :pseudos))
         open(directory * file[1:end-1] * ext, "w") do f
             write(f, "# DATASETS $(length(group))\n")
             write(f, "ndtset $ndtset\n")

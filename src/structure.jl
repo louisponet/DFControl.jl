@@ -16,7 +16,7 @@ Structure(cif_file::String; name="NoName") = cif2structure(cif_file, structure_n
 """
 Returns all the atoms inside the structure with the specified symbol
 """
-function get_atoms(str::AbstractStructure, atsym::Symbol)
+function atoms(str::AbstractStructure, atsym::Symbol)
     out = AbstractAtom[]
     for at in str.atoms
         at.id == atsym && push!(out, at)
@@ -25,9 +25,9 @@ function get_atoms(str::AbstractStructure, atsym::Symbol)
 end
 
 """
-Changes the projections of the specified atoms.
+sets the projections of the specified atoms.
 """
-function change_projections!(str::Structure, projections...)
+function setprojections!(str::Structure, projections...)
     projdict = Dict(projections)
     for at in unique_atoms(str.atoms)
         if !haskey(projdict, at.id)
