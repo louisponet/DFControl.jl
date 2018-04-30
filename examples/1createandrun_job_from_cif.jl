@@ -64,7 +64,6 @@ submit(job)
 #you can observe the slurm qstat by doing
 qstat()
 #or watch it by
-watch_qstat()
 #these default to run the commands on the default server
 
 #hopefully everything went according to plan and we can watch our outputs
