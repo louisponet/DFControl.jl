@@ -47,3 +47,4 @@ function add_projections(projections, atoms)
 end
 
 Base.zero(::Type{Projection}) = Projection(s, 0, 0, 0)
+Base.range(proj::Projection)  = proj.start:proj.last

@@ -1,15 +1,15 @@
 
 abstract type AbstractStructure{T} end
 
-mutable struct Structure{T <: AbstractFloat} <: AbstractStructure{T}
+mutable struct Structure{T <: AbstractFloat, AA<:AbstractAtom{T}} <: AbstractStructure{T}
     name ::AbstractString
     cell ::Mat3{T}
-    atoms::Vector{<:AbstractAtom{T}}
+    atoms::Vector{AA}
     data ::Dict{Symbol, Any}
 end
 
-Structure(name, cell::Mat3{T}, atoms::Vector{Atom{T}}) where T <: AbstractFloat = Structure{T}(name, cell, atoms, Dict{Symbol, Any}())
-Structure(cell::Matrix{T}, atoms::Vector{Atom{T}}) where T <: AbstractFloat = Structure{T}("NoName", cell, atoms, Dict{Symbol, Any}())
+Structure(name, cell::Mat3{T}, atoms::Vector{Atom{T}}) where T <: AbstractFloat = Structure{T, Atom{T}}(name, cell, atoms, Dict{Symbol, Any}())
+Structure(cell::Matrix{T}, atoms::Vector{Atom{T}}) where T <: AbstractFloat = Structure{T, Atom{T}}("NoName", cell, atoms, Dict{Symbol, Any}())
 Structure() = Structure("NoName", eye(3), Atom[], Dict{Symbol, Any}())
 Structure(cif_file::String; name="NoName") = cif2structure(cif_file, structure_name = name)
 

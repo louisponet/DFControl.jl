@@ -9,6 +9,7 @@ module DFControl
     export element
     export AbstractAtom
     export Atom
+    export orbital2atom
 
     include("structure.jl")
     export AbstractStructure

@@ -48,7 +48,7 @@ mutable struct Atom{T<:AbstractFloat} <: AbstractAtom{T}
     element     ::Element
     position    ::Point3{T}
     pseudo      ::String
-    projections ::Union{Symbol, Vector{Projection}}
+    projections ::Vector{Projection}
     function Atom(id::Symbol, element::Element, position::Point3{T}, args...) where T <: AbstractFloat
         atom          = new{T}()
         atom.id       = id
@@ -78,7 +78,7 @@ Atom(id::Symbol, el::Symbol, position::Point3, args...)  = Atom(id, element(el),
 "Extracts all the positions of the atoms and puts them in a vector."
 positions(atoms::Vector{<:Atom}, id::Symbol) = [x.position for x in filter(y -> y.id == id, atoms)]
 
-"Takes a Vector of atoms and returns a Vector with all the unique atoms."
+"Takes a Vector of atoms and returns a Vector with the atoms having unique symbols."
 function unique_atoms(atoms::Vector{<:AbstractAtom{T}}) where T <: AbstractFloat
     ids    = Symbol[]
     unique = AbstractAtom{T}[]
@@ -113,3 +113,14 @@ function convert_2atoms(atoms, T=Float64)
 end
 
 getpseudoset(at::AbstractAtom) = getpseudoset(at.element.symbol, at.pseudo)
+
+"Returns the atom to which a certain orbital index belongs."
+function orbital2atom(oid, atoms)
+    for at in atoms
+        for proj in at.projections
+            if proj.start <= oid <= proj.last
+                return at
+            end
+        end
+    end
+end
