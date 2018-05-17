@@ -54,7 +54,7 @@ function DFJob(job_name, local_dir, structure::AbstractStructure, calculations::
                      :outdir => "'$server_dir'",
                      :ecutwfc => 25.)
     merge!(req_flags, common_flags)
-    for (calc, data) in calculations
+    for (calc, (exec, data)) in calculations
         calc_ = typeof(calc) == String ? Symbol(calc) : calc
         if in(calc_, [Symbol("vc-relax"), :relax, :scf])
             k_points = get(data, :k_points, [1, 1, 1, 0, 0, 0])
@@ -79,7 +79,7 @@ function DFJob(job_name, local_dir, structure::AbstractStructure, calculations::
         input_ = QEInput(string(calc_) * ".in",
                          QEControlBlock[],
                          [QEDataBlock(:k_points, k_option, k_points)],
-                         runcommand, Exec("pw.x", bin_dir),
+                         runcommand, Exec(string(exec), bin_dir),
                          true)
         setflags!(input_, req_flags..., print=false)
         setflags!(input_, flags..., print=false)

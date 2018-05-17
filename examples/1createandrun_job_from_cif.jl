@@ -34,7 +34,7 @@ bands_data = Dict(:k_points => [(0.5, 0.5, 0.5, 100.),
                                 (0.0, 0.5, 0.0, 1.)],
                   :flags => [:verbosity => "'high'", :nbnd => 8])
 
-calculations = [:scf => scf_data, :bands => bands_data] #the order here is the order in which the calculations will run!
+calculations = [:scf => ("pw.x", scf_data), :bands => ("pw.x", bands_data)] #the order here is the order in which the calculations will run! The first string in the tuple is the executable name that will be ran, which should be in the bin dir.
 
 #Now we load the cif file and create a `DFJob` from it.
 
