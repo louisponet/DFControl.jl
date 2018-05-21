@@ -64,7 +64,7 @@ function read_qe_output(filename::String, T=Float64)
                 #k_cryst
 
             elseif contains(line, "cryst.") && length(split(line)) == 2
-                out[:k_cryst] = Array{Array{T,1},1}()
+                out[:k_cryst] = Vector{Vec3{T}}()
                 line = readline(f)
                 while line != "" && !contains(line, "--------")
                     push!(out[:k_cryst], parse_k_line(line, T))
@@ -73,7 +73,7 @@ function read_qe_output(filename::String, T=Float64)
 
                 #k_cart
             elseif contains(line, "cart.") && length(split(line)) == 5
-                out[:k_cart] = Array{Array{T,1},1}()
+                out[:k_cart] = Vector{Vec3{T}}()
                 line = readline(f)
                 while line != "" && !contains(line, "--------")
                     push!(out[:k_cart], prefac_k * parse_k_line(line, T))
