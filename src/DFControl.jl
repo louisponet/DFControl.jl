@@ -1,6 +1,7 @@
 __precompile__()
 module DFControl
 # using Reexport
+    import Base.Iterators.flatten
     using RecipesBase
     using StaticArrays
     using GeometryTypes
@@ -78,6 +79,7 @@ module DFControl
     export setprojections!
 
     include("constants.jl")
+    export qe_input_flags
 
     include("fileio.jl")
     export read_abi_input

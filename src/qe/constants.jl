@@ -74,35 +74,37 @@ function read_qe_variable(lines, i)
     end
 end
 
-struct QEControlBlockInfo
+abstract type AbstractBlockInfo end
+
+struct QEControlBlockInfo <: AbstractBlockInfo
     name::Symbol
-    flags::Array{<:QEVariableInfo, 1}
+    variables::Array{<:QEVariableInfo, 1}
 end
 function QEControlBlockInfo(lines::Array{<:AbstractString, 1})
     name  = Symbol(lowercase(strip_split(lines[1], "&")[2]))
-    flags = QEVariableInfo[]
+    varinfos = QEVariableInfo[]
     for i=1:length(lines)
         line = lines[i]
         if contains(line, "Variable")
             variables, _i = read_qe_variable(lines, i)
             i += _i
             for var in variables
-                push!(flags, var)
+                push!(varinfos, var)
             end
         end
     end
-    return QEControlBlockInfo(name, flags)
+    return QEControlBlockInfo(name, varinfos)
 end
 
 function qe_variable(block::QEControlBlockInfo, variable_name::Symbol)
-    for var in block.flags
+    for var in block.variables
         if var.name == variable_name
             return var
         end
     end
 end
 
-struct QEDataBlockInfo
+struct QEDataBlockInfo <: AbstractBlockInfo
     name                ::Symbol
     description         ::Array{String, 1}
     options             ::Array{Symbol, 1}
@@ -187,6 +189,8 @@ function QEInputInfo(filename::String; exec_name = join([lowercase(splitext(spli
     return QEInputInfo(exec_name, control_block_infos, data_block_infos)
 end
 
+allflags(info::QEInputInfo) = flatten([[i.variables for i in info.control]; [i.variables for i in info.data]])
+
 const QEInputInfos = begin
     input_files = search_dir(joinpath(@__DIR__, "../../assets/inputs/qe/"), "INPUT")
     file_paths  = joinpath(@__DIR__, "../../assets/inputs/qe/") .* input_files
@@ -207,6 +211,7 @@ end
 
 qe_input_info(input::QEInput) = getfirst(x-> contains(input.exec, x.exec), QEInputInfos)
 qe_input_info(exec::AbstractString) = getfirst(x-> contains(exec, x.exec), QEInputInfos)
+qe_input_flags(exec::AbstractString) = allflags(qe_input_info(exec))
 
 function qe_variable(input_info::QEInputInfo, variable_name::Symbol)
     for block in vcat(input_info.control, input_info.data)
@@ -255,8 +260,8 @@ function qe_block_info(block_name::Symbol)
 end
 
 
-all_qe_block_flags(input::QEInput, block_name) = getfirst(x -> x.name == block, qe_input_info(input).control).flags
-all_qe_block_flags(exec::AbstractString, block_name) = getfirst(x -> x.name == block_name, qe_input_info(exec).control).flags
+all_qe_block_flags(input::QEInput, block_name) = getfirst(x -> x.name == block, qe_input_info(input).control).variables
+all_qe_block_flags(exec::AbstractString, block_name) = getfirst(x -> x.name == block_name, qe_input_info(exec).control).variables
 
 function qe_block_variable(exec::AbstractString, flagname)
     for input_info in QEInputInfos

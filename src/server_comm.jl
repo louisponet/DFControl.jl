@@ -109,7 +109,7 @@ function outputs(job::DFJob, server="", server_dir="", local_dir=""; job_fuzzy="
         pull_server_file(fuzzy)
         push!(pulled_outputs, search_dir(job.local_dir, strip(fuzzy,'*'))...)
     end
-    return job.local_dir .* pulled_outputs
+    return joinpath.(job.local_dir, pulled_outputs)
 end
 
 """

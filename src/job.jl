@@ -55,6 +55,7 @@ function DFJob(job_name, local_dir, structure::AbstractStructure, calculations::
                      :ecutwfc => 25.)
     merge!(req_flags, common_flags)
     for (calc, (exec, data)) in calculations
+        exec = typeof(exec) == String ? exec : string(exec)
         calc_ = typeof(calc) == String ? Symbol(calc) : calc
         if in(calc_, [Symbol("vc-relax"), :relax, :scf])
             k_points = get(data, :k_points, [1, 1, 1, 0, 0, 0])
@@ -75,10 +76,15 @@ function DFJob(job_name, local_dir, structure::AbstractStructure, calculations::
             k_option = :crystal_b
         end
         flags  = get(data, :flags, Dict{Symbol, Any}())
-        push!(flags, :calculation => "'$(string(calc_))'")
+        if exec == "pw.x"
+            push!(flags, :calculation => "'$(string(calc_))'")
+            datablocks = [QEDataBlock(:k_points, k_option, k_points)]
+        else
+            datablocks =  QEDataBlock[]
+        end
         input_ = QEInput(string(calc_) * ".in",
                          QEControlBlock[],
-                         [QEDataBlock(:k_points, k_option, k_points)],
+                         datablocks,
                          runcommand, Exec(string(exec), bin_dir),
                          true)
         setflags!(input_, req_flags..., print=false)
