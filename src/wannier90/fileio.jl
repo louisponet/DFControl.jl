@@ -27,13 +27,13 @@ function extract_atoms(atoms_block::T, proj_block::T, cell) where T <: WannierDa
             for ps in pos
                 same_ats = Atom{Float64}[]
                 for at in t_ats
-                    if at.position == cell' * ps
+                    if position(at) == cell' * ps
                         push!(same_ats, at)
                     end
                 end
                 if length(same_ats) > 1
                     for at in same_ats[2:end]
-                        push!(same_ats[1].projections, at.projections[1])
+                        push!(projections(same_ats[1]), projections(at)[1])
                     end
                 end
                 push!(out_ats, same_ats[1])
@@ -233,13 +233,14 @@ function save(input::WannierInput, structure, filename::String=input.filename)
         end
         write(f, "begin projections\n")
         for at in unique_atoms(structure.atoms)
-            if at.projections == :random || !isdefined(at, :projections)
+            projs = projections(at)
+            if projs == :random || !isdefined(at, :projections)
                 write(f, "random\n")
                 break
             end
-            write(f, "$(at.id): $(at.projections[1].orb)")
-            if length(at.projections) > 1
-                for proj in at.projections[2:end]
+            write(f, "$(id(at)): $(projs[1].orb)")
+            if length(projs) > 1
+                for proj in projs[2:end]
                     write(f, ";$(proj.orb)")
                 end
             end
@@ -250,7 +251,8 @@ function save(input::WannierInput, structure, filename::String=input.filename)
         write(f, "\n")
         write(f, "begin atoms_cart\n")
         for at in structure.atoms
-            write(f, "$(at.id)  $(at.position[1]) $(at.position[2]) $(at.position[3])\n")
+            pos = position(at)
+            write(f, "$(id(at))  $(pos[1]) $(pos[2]) $(pos[3])\n")
         end
         write(f, "end atoms_cart\n")
         write(f, "\n")

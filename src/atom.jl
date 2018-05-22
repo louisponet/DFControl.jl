@@ -42,6 +42,32 @@ function element(z::Int)
 end
 
 abstract type AbstractAtom{T} end
+
+#Definition of the AbstractAtom interface, each AbstractAtom needs to provide:
+#   position(atom)
+#   element(atom)
+#   id(atom)
+#   pseudo(atom)
+#   setpseudo!(atom, pseudo)
+#   setprojections!(atom, projections)
+elsym(atom::AbstractAtom) = element(atom).symbol
+"Extracts all the positions of the atoms and puts them in a vector."
+positions(atoms::Vector{<:AbstractAtom}, id::Symbol) = [position(x) for x in filter(y -> id(y) == id, atoms)]
+getpseudoset(at::AbstractAtom) = getpseudoset(elsym(at), pseudo(at))
+
+"Takes a Vector of atoms and returns a Vector with the atoms having unique symbols."
+function unique_atoms(atoms::Vector{<:AbstractAtom{T}}) where T <: AbstractFloat
+    ids    = Symbol[]
+    unique = AbstractAtom{T}[]
+    for at in atoms
+        if !in(id(at), ids)
+            push!(ids, id(at))
+            push!(unique, at)
+        end
+    end
+    return unique
+end
+
 #We use angstrom everywhere
 mutable struct Atom{T<:AbstractFloat} <: AbstractAtom{T}
     id          ::Symbol
@@ -75,20 +101,18 @@ mutable struct Atom{T<:AbstractFloat} <: AbstractAtom{T}
 end
 Atom(id::Symbol, el::Symbol, position::Point3, args...)  = Atom(id, element(el), position, args...)
 
-"Extracts all the positions of the atoms and puts them in a vector."
-positions(atoms::Vector{<:Atom}, id::Symbol) = [x.position for x in filter(y -> y.id == id, atoms)]
+position(atom::Atom)    = atom.position
+element(atom::Atom)     = atom.element
+id(atom::Atom)          = atom.id
+pseudo(atom::Atom)      = atom.pseudo
+projections(atom::Atom) = atom.projections
 
-"Takes a Vector of atoms and returns a Vector with the atoms having unique symbols."
-function unique_atoms(atoms::Vector{<:AbstractAtom{T}}) where T <: AbstractFloat
-    ids    = Symbol[]
-    unique = AbstractAtom{T}[]
-    for at in atoms
-        if !in(at.id, ids)
-            push!(ids, at.id)
-            push!(unique, at)
-        end
-    end
-    return unique
+function setpseudo!(atom::Atom, pseudo)
+    atom.pseudo = pseudo
+end
+
+function setprojections!(atom::Atom, projections)
+    atom.projections = projections
 end
 
 function convert_2atoms(atoms::Vector{<:AbstractString}, T=Float64)
@@ -112,15 +136,16 @@ function convert_2atoms(atoms, T=Float64)
     return out_atoms
 end
 
-getpseudoset(at::AbstractAtom) = getpseudoset(at.element.symbol, at.pseudo)
 
 "Returns the atom to which a certain orbital index belongs."
 function orbital2atom(oid, atoms)
     for at in atoms
-        for proj in at.projections
+        for proj in projections(at)
             if proj.start <= oid <= proj.last
                 return at
             end
         end
     end
 end
+
+bondlength(at1::AbstractAtom{T}, at2::AbstractAtom{T}, R=T(0.0)) where T<:AbstractFloat = norm(position(at1) - position(at2) - R)

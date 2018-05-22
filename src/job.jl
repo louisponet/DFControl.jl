@@ -658,8 +658,12 @@ setoption!(job::DFJob, block_symbol::Symbol, option::Symbol) = setoption!(job, [
 "sets the pseudopotentials to the specified one in the default pseudo_set."
 function setpseudos!(job::DFJob, pseudo_set, pseudo_specifier="")
     for (i, atom) in enumerate(job.structure.atoms)
-        pseudo = getdefault_pseudo(atom.id, pseudo_set, pseudo_specifier=pseudo_specifier)
-        atom.pseudo = pseudo == nothing ? warning("Pseudo for $(atom.id) at index $i not found in set $pseudo_set.") : pseudo
+        pseudo = getdefault_pseudo(id(atom), pseudo_set, pseudo_specifier=pseudo_specifier)
+        if pseudo == nothing
+            warning("Pseudo for $(id(atom)) at index $i not found in set $pseudo_set.")
+        else
+            pseudo!(atom, pseudo)
+        end
     end
     setflags!(job, :pseudo_dir => "'$(getdefault_pseudodir(pseudo_set))'")
     return job
@@ -809,7 +813,7 @@ function addwancalc!(job::DFJob, k_grid;
 
     if isempty(projections)
         for atom in job.structure.atoms
-            atom.projections = :random
+            setprojections!(atom, :random)
         end
     else
         add_projections(projections, job.structure.atoms)

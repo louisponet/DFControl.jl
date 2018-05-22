@@ -511,15 +511,13 @@ function save(input::QEInput, structure, filename::String=input.filename)
 end
 
 function write_structure(f, structure, input::QEInput)
-    unique_atoms = Symbol[]
+    unique_at = unique_atoms(structure.atoms)
     pseudo_lines = String[]
     atom_lines   = String[]
-    for at in structure.atoms
-        if !in(at.id, unique_atoms)
-            push!(unique_atoms, at.id)
-            push!(pseudo_lines, "$(at.id) $(at.element.atomic_weight)   $(at.pseudo)\n")
-        end
-        push!(atom_lines, "$(at.id)  $(at.position[1]) $(at.position[2]) $(at.position[3])\n")
+    for at in unique_at
+        push!(pseudo_lines, "$(id(at)) $(element(at).atomic_weight)   $(pseudo(at))\n")
+        pos = position(at)
+        push!(atom_lines, "$(id(at))  $(pos[1]) $(pos[2]) $(pos[3])\n")
     end
 
     write(f, "ATOMIC_SPECIES\n")

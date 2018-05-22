@@ -31,13 +31,13 @@ function add_projections(projections, atoms)
     for (proj_at, projs) in projections
         for proj in projs
             for at in atoms
-                if at.id == proj_at
+                if id(at) == proj_at
                     size = orbsize(proj)
                     t_proj = Projection(Orbital(proj), t_start, size, t_start + size - 1)
                     if !isdefined(at, :projections)
-                        at.projections = [t_proj]
+                        setprojections!(at, [t_proj])
                     else
-                        push!(at.projections, t_proj)
+                        push!(projections(at), t_proj)
                     end
                     t_start += size
                 end

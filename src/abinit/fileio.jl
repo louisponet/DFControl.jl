@@ -289,7 +289,7 @@ function write_abi_structure(f, structure)
     write(f, "acell 1.0 1.0 1.0\n")
     write(f, "xangst\n")
     for at in structure.atoms
-        write(f, at.position)
+        write(f, position(at))
         write(f, "\n")
     end
     write(f, "rprim\n")
@@ -301,7 +301,7 @@ function write_abi_structure(f, structure)
     write(f, "typat\n")
     i = 1
     for at in structure.atoms
-        write(f, "$(findfirst(x->x.id == at.id, unique)) ")
+        write(f, "$(findfirst(x->id(x) == id(at), unique)) ")
         if i == 3
             i=0
             write(f,"\n")
@@ -311,7 +311,7 @@ function write_abi_structure(f, structure)
     write(f, "\n")
     write(f, "znucl ")
     for at in unique
-        write(f, "$(at.element.Z) ")
+        write(f, "$(element(at).Z) ")
     end
     write(f, "\n")
 end

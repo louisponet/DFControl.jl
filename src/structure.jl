@@ -19,7 +19,7 @@ Returns all the atoms inside the structure with the specified symbol
 function atoms(str::AbstractStructure, atsym::Symbol)
     out = AbstractAtom[]
     for at in str.atoms
-        at.id == atsym && push!(out, at)
+        id(at) == atsym && push!(out, at)
     end
     return out
 end
@@ -30,8 +30,8 @@ sets the projections of the specified atoms.
 function setprojections!(str::Structure, projections...)
     projdict = Dict(projections)
     for at in unique_atoms(str.atoms)
-        if !haskey(projdict, at.id)
-            projdict[at.id] = [proj.orb for proj in at.projections]
+        if !haskey(projdict, id(at))
+            projdict[id(at)] = [proj.orb for proj in projections(at)]
         end
     end
     empty_projections!(str)
@@ -40,7 +40,7 @@ end
 
 function empty_projections!(str::Structure)
     for at in str.atoms
-        empty!(at.projections)
+        empty!(projections(at))
     end
 end
 

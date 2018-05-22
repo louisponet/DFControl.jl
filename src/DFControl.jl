@@ -7,8 +7,6 @@ module DFControl
     using GeometryTypes
 
     include("atom.jl")
-    export element
-    export AbstractAtom
     export Atom
     export orbital2atom
 
