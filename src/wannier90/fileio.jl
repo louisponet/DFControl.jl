@@ -3,15 +3,15 @@ function extract_atoms(atoms_block::T, proj_block::T, cell) where T <: WannierDa
     if atoms_block.name == :atoms_cart
         cell = Mat3(eye(3))
     end
-    projections = proj_block.data
+    projections_ = proj_block.data
     atoms = atoms_block.data
     t_start = 1
     out_ats = Atom{Float64}[]
-    if projections != nothing
+    if projections_ != nothing
         t_ats = Atom{Float64}[]
         for (pos_at, pos) in atoms
             for ps in pos
-                for (proj_at, projs) in projections
+                for (proj_at, projs) in projections_
                     if proj_at != pos_at
                         continue
                     end

@@ -52,7 +52,7 @@ else
 end
 setdefault_pseudodir(:default, "/test/test/test");
 @test isdefined(:default_pseudo_dirs)
-@test DFControl.getdefault_pseudo_dirs()[:default] == "/test/test/test"
+@test DFControl.getdefault_pseudodirs()[:default] == "/test/test/test"
 removedefault_pseudodir(:default);
 @test length(keys(default_pseudo_dirs))==pr_l
 
@@ -78,5 +78,5 @@ setdefault_input(scf_input, qestructure, :scf);
 setdefault_input(bands_input, qestructure, :bands);
 
 @test default_inputs[:scf][1].runcommand.exec == scf_input.runcommand.exec
-remove_defaultinput(:scf)
-remove_defaultinput(:bands)
+removedefault_input(:scf)
+removedefault_input(:bands)
