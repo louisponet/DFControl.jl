@@ -116,12 +116,12 @@ function print_flags(input::DFInput)
 end
 
 """
-    print_flags(input::QEInput, block_symbol::Symbol)
+    print_flags(input::QEInput, name::Symbol)
 
 Prints the flags of the specified block.
 """
-function print_flags(input::QEInput, block_symbol::Symbol)
-    block = getfirst(x -> x.name == block_symbol, input.control)
+function print_flags(input::QEInput, name::Symbol)
+    block = getfirst(x -> x.name == name, input.control)
     dfprintln("  $(block.name):")
     for (flag, value) in block.flags
         dfprintln("    $flag => $value")
@@ -167,13 +167,13 @@ function print_block(job::DFJob, block_name::Symbol)
 end
 
 """
-    print_block(job::DFJob, filenames, block_symbol::Symbol)
+    print_block(job::DFJob, filenames, name::Symbol)
 
 Prints the information of the block in a selected file of the job.
 """
-function print_block(job::DFJob, filenames, block_symbol::Symbol)
+function print_block(job::DFJob, filenames, name::Symbol)
     for calc in inputs(job, filenames)
-        print_block(calc, block_symbol)
+        print_block(calc, name)
     end
 end
 

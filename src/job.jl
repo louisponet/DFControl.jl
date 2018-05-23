@@ -394,24 +394,24 @@ end
 #TODO set so calculations also have a name.
 #TODO set after implementing k_point set so you don't need to specify all this crap
 """
-    data(job::DFJob, calc_filenames, block_symbol::Symbol)
+    data(job::DFJob, calc_filenames, name::Symbol)
 
 Looks through the calculation filenames and returns the data with the specified symbol.
 """
-function data(job::DFJob, calc_filenames, block_symbol::Symbol)
+function data(job::DFJob, calc_filenames, name::Symbol)
     for calc in inputs(job, calc_filenames)
-        return data(calc, block_symbol)
+        return data(calc, name)
     end
 end
 
 """
-    block(job::DFJob, calc_filenames, block_symbol::Symbol)
+    block(job::DFJob, calc_filenames, name::Symbol)
 
 Looks through the calculation filenames and returns the block with the specified symbol.
 """
-function block(job::DFJob, calc_filenames, block_symbol::Symbol)
+function block(job::DFJob, calc_filenames, name::Symbol)
     for calc in inputs(job, calc_filenames)
-        return block(calc, block_symbol)
+        return block(calc, name)
     end
 end
 
@@ -541,29 +541,29 @@ end
 execflags(job::DFJob, inputname) = input(job, inputname).exec.flags
 
 """
-    setblock!(job::DFJob, filenames, block::Block)
+    setinputdata!(job::DFJob, filenames, block::Block)
 
 Adds a block to the specified filenames.
 """
-function setblock!(job::DFJob, filenames, block::Block)
+function setinputdata!(job::DFJob, filenames, block::Block)
     UNDO_JOBS[job.id] = deepcopy(job)
 
     for input in inputs(job, filenames)
-        setblock!(input, block)
+        setinputdata!(input, block)
     end
     return job
 end
 
 """
-    setdata!(job::DFJob, filenames, block_symbol, data, option=:none)
+    setdata!(job::DFJob, filenames, name, data, option=:none)
 
 Adds a block to the specified filenames.
 """
-function setdata!(job::DFJob, filenames, block_symbol, data, option=:none)
+function setdata!(job::DFJob, filenames, name, data, option=:none)
     UNDO_JOBS[job.id] = deepcopy(job)
 
     for input in inputs(job, filenames)
-        setdata!(input, block_symbol, data, option)
+        setdata!(input, name, data, option)
     end
     return job
 end
@@ -634,26 +634,26 @@ function setkpoints!(job::DFJob, calc_filenames, k_points)
 end
 
 """
-    setoption!(job::DFJob, filenames::Array{String,1}, block_symbol::Symbol, option::Symbol)
+    setdataoption!(job::DFJob, filenames::Array{String,1}, name::Symbol, option::Symbol)
 
 sets the option of specified data block in the specified calculations.
 """
-function setoption!(job::DFJob, filenames::Vector{String}, block_symbol::Symbol, option::Symbol)
+function setdataoption!(job::DFJob, filenames::Vector{String}, name::Symbol, option::Symbol)
     UNDO_JOBS[job.id] = deepcopy(job)
 
     for calc in inputs(job, filenames)
-        setoption!(calc, block_symbol, option)
+        setdataoption!(calc, name, option)
     end
     return job
 end
-setoption!(job::DFJob, filename::String, block_symbol::Symbol, option::Symbol) = setoption!(job, [filename], block_symbol, option)
+setdataoption!(job::DFJob, filename::String, name::Symbol, option::Symbol) = setdataoption!(job, [filename], name, option)
 
 """
-    setoption!(job::DFJob, block_symbol::Symbol, option::Symbol)
+    setdataoption!(job::DFJob, name::Symbol, option::Symbol)
 
 sets the option of specified data block in all calculations that have the block.
 """
-setoption!(job::DFJob, block_symbol::Symbol, option::Symbol) = setoption!(job, [i.filename for i in job.calculations], block_symbol, option)
+setdataoption!(job::DFJob, name::Symbol, option::Symbol) = setdataoption!(job, [i.filename for i in job.calculations], name, option)
 
 "sets the pseudopotentials to the specified one in the default pseudo_set."
 function setpseudos!(job::DFJob, pseudo_set, pseudo_specifier="")

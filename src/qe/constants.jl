@@ -241,9 +241,9 @@ function qe_block_variable(input_info::QEInputInfo, variable_name)
     return :error, QEVariableInfo()
 end
 
-function qe_variable_info(input::QEInput, varname)
+function qe_variable(input::QEInput, varname)
     for input_info in QEInputInfos
-        if contains(input.exec,input_info.exec)
+        if contains(input.exec, input_info.exec)
             return qe_variable(input_info, varname)
         end
     end
@@ -273,3 +273,5 @@ function qe_block_variable(exec::AbstractString, flagname)
 end
 
 qe_block_variable(input::DFInput, flagname) = qe_block_variable(input.exec.exec, flagname)
+
+flagtype(input::DFInput{QE}, flag) = qe_variable(input, flag).typ

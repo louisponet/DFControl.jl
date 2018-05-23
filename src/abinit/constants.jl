@@ -35,6 +35,6 @@ function construct_abi_flags()
     return out
 end
 
-const AbinitFlags    = construct_abi_flags()
+const AbinitFlags  = construct_abi_flags()
 
-abi_flag_type(flag) = haskey(AbinitFlags, flag) ? AbinitFlags[flag] : Void
+flagtype(input::DFInput{Abinit}, flag) = haskey(AbinitFlags, flag) ? AbinitFlags[flag] : Void

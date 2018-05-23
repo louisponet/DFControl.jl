@@ -6,6 +6,8 @@ module DFControl
     using StaticArrays
     using GeometryTypes
 
+    @enum Package Wannier90 QE Abinit
+
     include("atom.jl")
     export Atom
     export orbital2atom
@@ -41,7 +43,7 @@ module DFControl
     export setdata!
     export data
     export block
-    export setblock!
+    export setinputdata!
     export setdata!
     export setflags!
     export rmflags!
@@ -58,7 +60,7 @@ module DFControl
     export input
     export setfilename!
     export setkpoints!
-    export setoption!
+    export setdataoption!
     export setheaderword!
     export setpseudos!
     export addbandscalculation!
