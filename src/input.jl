@@ -35,7 +35,8 @@ function DFInput(template::DFInput, filename, newflags...; runcommand=template.r
     return input
 end
 
-inputdata(input, name) = getfirst(x-> x.name == name, input.data)
+inputdata(input::DFInput, name) = getfirst(x-> x.name == name, input.data)
+inputdata(input::Vector{InputData}, name) = getfirst(x-> x.name == name, input.data)
 data(input, name)      = inputdata(input, name).data
 
 """

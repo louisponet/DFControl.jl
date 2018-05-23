@@ -1,7 +1,7 @@
 const parseable_qe_execs = ["pw.x", "projwfc.x", "pw2wannier90.x", "pp.x"]
 #this is all pretty hacky with regards to the new structure and atom api. can for sure be a lot better!
 "Quantum espresso card option parser"
-cardoption(line) = Symbol(match(r"((?:[a-z][a-z0-9_]*))", line).match)
+cardoption(line) = Symbol(match(r"((?:[a-z][a-z0-9_]*))", split(line)[2]).match)
 
 """
     read_qe_output(filename::String, T=Float64)
@@ -257,12 +257,12 @@ function alat(flags, pop=false)
 end
 
 #TODO handle more fancy cells
-function extract_cell!(control, cell_block)
+function extract_cell!(flags, cell_block)
     if cell_block != nothing
         _alat = 1.0
         if cell_block.option == :alat
-            @assert pop!(block(control,:system).flags, :ibrav) == 0 "Only ibrav = 0 allowed for now."
-            _alat = alat(control)
+            @assert pop!(flags, :ibrav) == 0 "Only ibrav = 0 allowed for now."
+            _alat = alat(flags)
 
         elseif cell_block.option == :bohr
             _alat = conversions[:bohr2ang]
