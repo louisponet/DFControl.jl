@@ -38,7 +38,6 @@ module DFControl
     export setrunflags!
     export runflags
     export setexecflags!
-    export execflags
     export inputs
     export input
     export setfilename!

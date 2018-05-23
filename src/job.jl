@@ -137,7 +137,7 @@ function DFJob(job::DFJob, flagstoset...;
         newjob.name = name
     end
 
-    setflags!!(newjob, flagstoset...)
+    setflags!(newjob, flagstoset...)
     return newjob
 end
 
@@ -468,14 +468,7 @@ setflow!(job::DFJob, should_runs::Vector{Bool}) = setflow!(job, [calc.filename =
 
 Goes throug the calculation filenames and sets whether it should run or not.
 """
-function setflow!(job::DFJob, filenames::Vector{String}, should_run)
-    UNDO_JOBS[job.id] = deepcopy(job)
-
-    for calc in inputs(job, filenames)
-        calc.run = should_run
-    end
-    return job
-end
+setflow!(job::DFJob, filenames::Vector{String}, should_run) = setflow!.(inputs(job, filenames), should_run)
 
 """
     setruncommand!(job::DFJob, inputnames, runcommand::Exec)
@@ -519,26 +512,12 @@ function setrunflags!(job::DFJob, inputnames, flags...)
     end
 end
 
-"Returns the runcommand flags."
-runflags(job::DFJob, inputname) = input(job, inputname).runcommand[2]
-
 """
     setexecflags!(job::DFJob, inputnames, flags...)
 
 Goes through the calculations of the job and if the name contains any of the `inputnames` it sets the exec flags to the specified ones.
 """
-function setexecflags!(job::DFJob, inputnames, flags...)
-    calcs = inputs(job, inputnames)
-    for calc in calcs
-        for (f,v) in flags
-            calc.exec.flags[f] = v
-        end
-        dfprintln("run flags of calculation $(calc.filename) are now $(calc.exec.flags).")
-    end
-end
-
-"Returns the runcommand flags."
-execflags(job::DFJob, inputname) = input(job, inputname).exec.flags
+setexecflags!(job::DFJob, inputnames, flags...) = setexecflags!.(inputs(job, inputnames), flags...)
 
 """
     setinputinfo!(job::DFJob, filenames, block::Block)

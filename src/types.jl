@@ -28,3 +28,10 @@ end
 Exec(exec::String) = Exec(exec, "~/bin/", SymAnyDict())
 Exec(exec::String, dir::String) = Exec(exec, dir, SymAnyDict())
 Exec(exec::String, dir::String, flags...) = Exec(exec, dir, SymAnyDict(flags))
+
+function setflags!(exec::Exec, flags...)
+    for (f, val) in flags
+        exec.flags[f] = val
+    end
+    exec.flags
+end

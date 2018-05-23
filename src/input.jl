@@ -223,5 +223,11 @@ function setdataoption!(input::DFInput, name::Symbol, option::Symbol; print=true
     return input
 end
 
+execs(input::DFInput, exec::String) = filter(x -> contains(x.exec, exec), [input.exec, input.runcommand])
+execflags(input::DFInput, exec::String) = [x.flags for x in execs(input, exec)]
+setexecflags!(input::DFInput, exec::String, flags...) = setflags!.(execs(input, exec), flags...)
+
 outfile(input::DFInput{QE})        = splitext(input.filename)[1]*".out"
 outfile(input::DFInput{Wannier90}) = splitext(input.filename)[1]*".wout"
+
+setflow!(input::DFInput, run) = input.run = run
