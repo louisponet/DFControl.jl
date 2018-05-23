@@ -38,7 +38,7 @@ Print the information of a 'Block' inside the input.
 """
 function print_block(input::DFInput, block_name::Symbol)
     found        = false
-    input_blocks = blocks(input)
+    input_blocks = input.data
     for block in input_blocks
         if block.name == block_name
             print_filename(input)
@@ -56,7 +56,7 @@ Print the information on all Blocks inside the input.
 """
 function print_blocks(input::DFInput)
     print_filename(input)
-    blocks(input) |> display
+    input.data |> display
     dfprintln("")
 end
 
@@ -98,37 +98,11 @@ Prints all the flags of the input.
 function print_flags(input::DFInput)
     dfprintln("#----------------#")
     dfprintln("Filename: $(input.filename)")
-    if (:control in fieldnames(input))
-        for block in input.control
-            dfprintln("  $(block.name):")
-            for (flag, value) in block.flags
-                dfprintln("    $flag => $value")
-            end
-            dfprintln("")
-        end
-    end
-    if (:flags in fieldnames(input))
-        for (flag, value) in input.flags
-            dfprintln("  $flag => $value")
-        end
+    for (flag, value) in input.flags
+        dfprintln("  $flag => $value")
     end
     dfprintln("#----------------#\n")
 end
-
-"""
-    print_flags(input::QEInput, name::Symbol)
-
-Prints the flags of the specified block.
-"""
-function print_flags(input::QEInput, name::Symbol)
-    block = getfirst(x -> x.name == name, input.control)
-    dfprintln("  $(block.name):")
-    for (flag, value) in block.flags
-        dfprintln("    $flag => $value")
-    end
-    dfprintln("")
-end
-
 
 #---------------------------------------------------------
 #came from job_control
@@ -180,7 +154,7 @@ end
 """
     print_blocks(job::DFJob, calc_filenames)
 
-Prints information on all the blocks in the specified calculations.
+Prints information on all the data in the specified calculations.
 """
 function print_blocks(job::DFJob, calc_filenames)
     for calc in inputs(job, calc_filenames)
@@ -191,7 +165,7 @@ end
 """
     print_blocks(job::DFJob)
 
-Prints information of all the blocks of all the calculations in the job.
+Prints information of all the data of all the calculations in the job.
 """
 function print_blocks(job::DFJob)
     for calc in job.calculations

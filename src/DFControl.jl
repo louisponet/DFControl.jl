@@ -6,7 +6,10 @@ module DFControl
     using StaticArrays
     using GeometryTypes
 
-    @enum Package Wannier90 QE Abinit
+    abstract type Package end
+    struct Wannier90 <: Package end
+    struct QE <: Package end
+    struct Abinit <: Package end
 
     include("atom.jl")
     export Atom
@@ -22,16 +25,12 @@ module DFControl
     export DFBand
     export Exec
 
+    include("input.jl")
+    export InputData
+    export DFInput
+
     include("utils.jl")
     export getfirst
-
-    include("input.jl")
-    export QEDataBlock
-    export WannierDataBlock
-    export AbinitDataBlock
-    export QEInput
-    export AbinitInput
-    export WannierInput
 
     include("job.jl")
     export DFJob
@@ -42,7 +41,7 @@ module DFControl
     export flag
     export setdata!
     export data
-    export block
+    export inputdata
     export setinputdata!
     export setdata!
     export setflags!

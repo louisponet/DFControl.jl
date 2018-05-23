@@ -1,15 +1,7 @@
 const parseable_qe_execs = ["pw.x", "projwfc.x", "pw2wannier90.x", "pp.x"]
 #this is all pretty hacky with regards to the new structure and atom api. can for sure be a lot better!
 "Quantum espresso card option parser"
-function card_option(line)
-    if contains(line, "{")
-        return Symbol(strip(split(line, "{")[end], '}'))
-    elseif contains(line, "(")
-        return Symbol(strip(split(line, "(")[end], ')'))
-    else
-        return Symbol(split(line)[end])
-    end
-end
+cardoption(line) = Symbol(match(r"((?:[a-z][a-z0-9_]*))", line).match)
 
 """
     read_qe_output(filename::String, T=Float64)
@@ -106,7 +98,7 @@ function read_qe_output(filename::String, T=Float64)
                         out[:alat]            = parse(T, split(line)[end][1:end-1])
                         out[:cell_parameters] = reshape(T[parse.(T, split(readline(f))); parse.(T, split(readline(f))); parse.(T, split(readline(f)))], (3,3))
                     elseif contains(line, "ATOMIC_POSITIONS")
-                        out[:pos_option]      = card_option(line)
+                        out[:pos_option]      = cardoption(line)
                         line  = readline(f)
                         atoms = Dict{Symbol,Array{Point3{T},1}}()
                         while !contains(line, "End")
@@ -251,18 +243,15 @@ read_qe_vcrel(filename::String, T=Float64) = read_qe_output(filename, T) do x
 #         return out
 #     end
 # end
-function alat(control, pop=false)
-    sysblock = block(control, :system)
-    if sysblock == nothing
-        error("Could not resolve the alat!")
-    end
-    if haskey(sysblock.flags, :A)
-        alat = pop ? pop!(sysblock.flags, :A) : sysblock.flags[:A]
-    elseif haskey(sysblock.flags, celldm_1)
-        alat = pop ? pop!(sysblock.flags, celldm_1) : sysblock.flags[celldm_1]
+function alat(flags, pop=false)
+    if haskey(flags, :A)
+        alat = pop ? pop!(flags, :A) : flags[:A]
+    elseif haskey(flags, :celldm_1)
+        alat = pop ? pop!(flags, :celldm_1) : flags[:celldm_1]
         alat *= conversions[:bohr2ang]
     else
-        error("So far alat can be specified only through A and celldm(1).")
+        error("Cell option 'alat' was found, but no matching flag was set. \n
+               The 'alat' has to  be specified through 'A' and 'celldm(1)'.")
     end
     return alat
 end
@@ -320,11 +309,11 @@ end
     read_qe_input(filename, T=Float64; exec="pw.x",  runcommand="", run=true, structure_name="NoName")
 
 Reads a Quantum Espresso input file. The exec get's used to find which flags are allowed in this input file, and convert the read values to the correct Types.
-Returns a `QEInput` and the `Structure` that is found in the input.
+Returns a `DFInput{QE}` and the `Structure` that is found in the input.
 """
 function read_qe_input(filename, T=Float64::Type; exec=Exec("pw.x"), runcommand=Exec(""), run=true, structure_name="NoName")
-    control = Array{QEControlBlock,1}()
-    data    = Array{QEDataBlock,1}()
+    data    = Vector{InputData}()
+    flags   = Dict{Symbol, Any}()
     atom_block     = nothing
     cell_block     = nothing
     pseudo_block   = nothing
@@ -333,10 +322,7 @@ function read_qe_input(filename, T=Float64::Type; exec=Exec("pw.x"), runcommand=
         while !eof(f)
             @label start_label
             if contains(line, "&")
-                c_block_name    = Symbol(lowercase(strip(strip(line), '&')))
-                flag_dict       = Dict{Symbol,Any}()
-                def_block_flags = all_qe_block_flags(exec.exec, c_block_name)
-                line            = readline(f)
+                line = readline(f)
                 while strip(line) != "/"
                     if contains(line, "!")
                         line = readline(f)
@@ -345,28 +331,27 @@ function read_qe_input(filename, T=Float64::Type; exec=Exec("pw.x"), runcommand=
                     split_line = filter(x -> x != "", strip.(split(line, ",")))
                     for s in split_line
                         key, val = String.(strip.(split(s, "=")))
-                        qe_flag  = Symbol(split(key, "(")[1])
-                        flag_type = filter(x->x.name == qe_flag, def_block_flags)
-                        if length(flag_type) != 0
-                            t_val = parse_flag_val(val, flag_type[1].typ)
-                            flag_dict[Symbol(key)] = eltype(t_val) == flag_type[1].typ || flag_type[1].typ == String ? t_val : error("Couldn't parse the value of flag '$key' in file '$filename'!")
+                        qe_flag  = Symbol(replace(replace(key, "(", "_"), ")",""))
+                        flag_type = flagtype(QE, exec, qe_flag)
+                        if flag_type != Void
+                            t_val = parse_flag_val(val, flag_type)
+                            flags[qe_flag] = eltype(t_val) == flag_type || flag_type == String ? t_val : error("Couldn't parse the value of flag '$key' in file '$filename'!")
                         else
-                            error("Error reading $filename: flag '$key' not found in QE flag Dictionary for control block $c_block_name !")
+                            error("Error reading $filename: flag '$key' not found in QE flag Dictionary for input $(exec.exec)!")
                         end
                     end
                     line = readline(f)
                 end
-                push!(control, QEControlBlock(c_block_name, flag_dict))
                 @goto start_label
 
             elseif contains(line, "CELL_PARAMETERS") || contains(line, "cell_parameters")
-                cell_unit    = card_option(line)
+                cell_unit    = cardoption(line)
                 cell         = MMatrix{3, 3, T}()
                 cell[1, 1:3] = parse.(T, split(readline(f)))
                 cell[2, 1:3] = parse.(T, split(readline(f)))
                 cell[3, 1:3] = parse.(T, split(readline(f)))
                 line = readline(f)
-                cell_block = QEDataBlock(:cell_parameters, cell_unit, cell)
+                cell_block = InputData(:cell_parameters, cell_unit, cell)
                 @goto start_label
 
             elseif contains(line, "ATOMIC_SPECIES") || contains(line, "atomic_species")
@@ -376,11 +361,11 @@ function read_qe_input(filename, T=Float64::Type; exec=Exec("pw.x"), runcommand=
                     pseudos[Symbol(split(line)[1])] = split(line)[end]
                     line = readline(f)
                 end
-                pseudo_block = QEDataBlock(:atomic_species, :none, pseudos)
+                pseudo_block = InputData(:atomic_species, :none, pseudos)
                 @goto start_label
 
             elseif contains(line, "ATOMIC_POSITIONS") || contains(line, "atomic_positions")
-                option = card_option(line)
+                option = cardoption(line)
                 atoms  = Dict{Symbol,Array{Point3{T},1}}()
                 line   = readline(f)
                 while length(split(line)) == 4
@@ -394,90 +379,65 @@ function read_qe_input(filename, T=Float64::Type; exec=Exec("pw.x"), runcommand=
                     end
                     line = readline(f)
                 end
-                atom_block = QEDataBlock(:atomic_positions, option, atoms)
+                atom_block = InputData(:atomic_positions, option, atoms)
                 @goto start_label
 
             elseif contains(line, "K_POINTS") || contains(line, "k_points")
-                k_option = card_option(line)
+                k_option = cardoption(line)
                 line     = readline(f)
                 if k_option == :automatic
                     s_line = split(line)
                     k_data = parse.(Int, s_line)
                 else
                     nks    = parse(Int, line)
-                    k_data = Array{Array{T,1},1}(nks)
+                    k_data = Vector{Vector{T}}(nks)
                     for i = 1:nks
                         k_data[i] = parse.(T, split(readline(f)))
                     end
                 end
-                push!(data, QEDataBlock(:k_points, k_option, k_data))
+                push!(data, InputData(:k_points, k_option, k_data))
                 @goto start_label
             end
             line = readline(f)
         end
     end
 
-    structure = extract_structure!(structure_name, control, cell_block, atom_block, pseudo_block)
-    sysblock = block(control, :system)
-    if sysblock != nothing
-        pop!(sysblock.flags, :ibrav, nothing)
-        pop!(sysblock.flags, :nat, nothing)
-        pop!(sysblock.flags, :ntyp, nothing)
-        pop!(sysblock.flags, :A, nothing)
-        pop!(sysblock.flags, celldm_1, nothing)
-        pop!(sysblock.flags, :celldm, nothing)
-    end
-    return QEInput(splitdir(filename)[2], control, data, runcommand, exec, run), structure
-end
-
-function write_block_data(f, data)
-    if typeof(data) <: Vector{Vector{Float64}} || typeof(data) <: Vector{NTuple{4, Float64}} #k_points
-        for x in data
-            for y in x
-                write(f, " $y")
-            end
-            write(f, "\n")
-        end
-    elseif typeof(data) <: Vector{Int} || typeof(data) <: NTuple{6, Int}
-        for x in data
-            write(f, " $x")
-        end
-        write(f, "\n")
-    elseif typeof(data) <: Matrix
-        im, jm = size(data)
-        for i = 1:im
-            for j = 1:jm
-                write(f, " $(data[i, j])")
-            end
-            write(f, "\n")
-        end
-    end
+    structure = extract_structure!(structure_name, flags, cell_block, atom_block, pseudo_block)
+    pop!.(flags, [:ibrav, :nat, :ntyp, :A, :celldm_1, :celldm], nothing)
+    return DFInput{QE}(splitdir(filename)[2], flags, data, runcommand, exec, run), structure
 end
 
 """
-    save(input::QEInput, structure, filename::String=input.filename)
+    save(input::DFInput{QE}, structure, filename::String=input.filename)
 
 Writes a Quantum Espresso input file.
 """
-function save(input::QEInput, structure, filename::String=input.filename)
+function save(input::DFInput{QE}, structure, filename::String=input.filename)
     open(filename, "w") do f
         write_flag(flag_data) = write_flag_line(f, flag_data[1], flag_data[2])
-        write_block(data)     = write_block_data(f, data)
+        write_dat(data)       = write_data(f, data)
 
-        blocks2file = QEControlBlock[]
-        c_block = getfirst(x -> x.name == :control, input.control)
-        s_block = getfirst(x -> x.name == :system, input.control)
-        if c_block != nothing
-            push!(blocks2file, c_block)
-            push!(blocks2file, s_block)
+        controls = Dict{Symbol, Dict{Symbol, Any}}()
+
+        for (flag, val) in input.flags
+            block, variable = qe_block_variable(input, flag)
+            if !haskey(controls, block.name)
+                controls[block.name] = Dict{Symbol, Any}()
+            end
+            controls[block.name][flag] = val
         end
-        rest = filter(x -> x.name != :control && x.name != :system, input.control)
-        for r in rest
-            push!(blocks2file, r)
+
+        blocks2file = []
+        if haskey(controls, :control)
+            push!(blocks2file, :control => pop!(controls, :control, nothing))
+            push!(blocks2file, :system => pop!(controls,  :system, nothing))
         end
-        for block in blocks2file
-            write(f, "&$(block.name)\n")
-            if block.name == :system
+        for name in keys(controls)
+            push!(blocks2file, name => pop!(controls, name, nothing))
+        end
+        for (name, flags) in blocks2file
+            write(f, "&$name\n")
+            if name == :system
                 nat   = length(structure.atoms)
                 ntyp  = length(unique_atoms(structure.atoms))
                 # A     = 1.0
@@ -487,30 +447,29 @@ function save(input::QEInput, structure, filename::String=input.filename)
                 write(f,"  nat = $nat\n")
                 write(f,"  ntyp = $ntyp\n")
             end
-            map(write_flag, [(flag, data) for (flag, data) in block.flags])
+            map(write_flag, [(flag, data) for (flag, data) in flags])
             write(f, "/\n\n")
         end
 
-        write_structure(f, structure, input)
-        for block in input.data
-            if block.option != :none
-                write(f, "$(uppercase(String(block.name))) ($(block.option))\n")
+        write_structure(f, input, structure)
+        for dat in input.data
+            if dat.option != :none
+                write(f, "$(uppercase(String(dat.name))) ($(dat.option))\n")
             else
-                write(f, "$(uppercase(String(block.name)))\n")
+                write(f, "$(uppercase(String(dat.name)))\n")
             end
-            if block.name == :k_points && block.option != :automatic
-                write(f, "$(length(block.data))\n")
-                write_block(block.data)
+            if dat.name == :k_points && dat.option != :automatic
+                write(f, "$(length(dat.data))\n")
+                write_dat(dat.data)
             else
-                write_block(block.data)
+                write_dat(dat.data)
             end
             write(f, "\n")
-            #write the o_ther cards depending on whether or not they are there
         end
     end
 end
 
-function write_structure(f, structure, input::QEInput)
+function write_structure(f, input::DFInput{QE}, structure)
     unique_at = unique_atoms(structure.atoms)
     pseudo_lines = String[]
     atom_lines   = String[]

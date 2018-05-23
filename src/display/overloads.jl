@@ -25,8 +25,8 @@ function Base.display(block::DataBlock)
     dfprintln(string(block.data) * "\n\n")
 end
 
-function Base.display(blocks::Array{<:Block})
-    map(display, blocks)
+function Base.display(data::Array{<:Block})
+    map(display, data)
 end
 
 function Base.display(input::DFInput)

@@ -323,8 +323,8 @@ end
 Takes all the inputs, sees which ones have the same structure and constructs input files for each seperate sturcture.
 The filename of the first input of a certain structure is used as file for all the datasets.
 """
-function write_abi_datasets(inputs::Vector{AbinitInput}, directory)
-    input_groups = Vector{Vector{AbinitInput}}([[inputs[end]]])
+function write_abi_datasets(inputs::Vector{DFInput{Abinit}}, directory)
+    input_groups = Vector{Vector{DFInput{Abinit}}}([[inputs[end]]])
     for input in reverse(inputs)[2:end]
         for group in input_groups
             if group[1].structure == input.structure

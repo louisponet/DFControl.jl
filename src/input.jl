@@ -1,11 +1,11 @@
-#these are all the control blocks, they hold the flags that guide the calculation
+#these are all the control data, they hold the flags that guide the calculation
 struct InputData
     name   ::Symbol
     option ::Symbol
     data   ::Any
 end
 
-mutable struct DFInput{P <: Package}
+mutable struct DFInput{P}
     filename    ::String
     flags       ::Dict{Symbol, Any}
     data        ::Vector{InputData}
@@ -19,7 +19,7 @@ end
 
 Creates a new `DFInput` from a template `DFInput`, setting the newflags in the new one.
 """
-function DFInput(template::DFInput, filename, newflags...; runcommand=template.runcommand, run=true)
+function DFInput(template::DFInput, filename, newflags...; runcommand=template.runcommand, run=true,data=nothing)
     newflags = Dict(newflags...) # this should handle both OrderedDicts and pairs of flags
 
     input             = deepcopy(template)
@@ -27,6 +27,11 @@ function DFInput(template::DFInput, filename, newflags...; runcommand=template.r
     input.runcommand  = runcommand
     setflags!(input, newflags...)
 
+    if data != nothing
+        for (name, (option, data)) in data
+            setdata!(input, name, data, option=option)
+        end
+    end
     return input
 end
 
@@ -34,7 +39,7 @@ inputdata(input, name) = getfirst(x-> x.name == name, input.data)
 data(input, name)      = inputdata(input, name).data
 
 """
-    setkpoints!(input::DFInput{:Wannier90}, k_grid::NTuple{3, Int}; print=true)
+    setkpoints!(input::DFInput{Wannier90}, k_grid::NTuple{3, Int}; print=true)
 
 sets the data in the k point `InputData` inside the specified calculation.
 """
@@ -133,6 +138,7 @@ function setflags!(input::DFInput{T}, flags...; print=true) where T
                 print && dfprintln("Filename '$(input.filename)':\n  Could not convert '$value' into '$flag_type'.\n    Flag '$flag' not set.\n")
                 continue
             end
+            input.flags[flag] = value
             old_data = haskey(input.flags, flag) ? input.flags[flag] : ""
             print && dfprintln("$(input.filename):\n  -> $flag:\n      $old_data set to: $value\n")
         end
@@ -186,9 +192,6 @@ function setdata!(input::DFInput, block_name::Symbol, new_block_data; option=not
     return setd, input
 end
 
-#todo rename this
-blocks(input) = input.data
-
 function setoradd!(datas::Vector{InputData}, data::InputData)
     found = false
     for (i, d) in enumerate(datas)
@@ -228,3 +231,6 @@ function setdataoption!(input::DFInput, name::Symbol, option::Symbol; print=true
     end
     return input
 end
+
+outfile(input::DFInput{QE})        = splitext(input.filename)[1]*".out"
+outfile(input::DFInput{Wannier90}) = splitext(input.filename)[1]*".wout"

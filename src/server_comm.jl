@@ -94,11 +94,7 @@ function outputs(job::DFJob, server="", server_dir="", local_dir=""; job_fuzzy="
     # inputs, outputs= read_job_filenames(job.local_dir * job_file)
     pulled_outputs = String[]
     for calc in job.calculations
-        if typeof(calc) == QEInput
-            ofile = splitext(calc.filename)[1] * ".out"
-        elseif typeof(calc) == WannierInput
-            ofile = splitext(calc.filename)[1] * ".wout"
-        end
+        ofile = outfile(calc)
         try
             pull_server_file(ofile)
             push!(pulled_outputs, ofile)

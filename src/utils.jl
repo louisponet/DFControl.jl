@@ -57,17 +57,14 @@ function form_directory(directory::String)
 end
 
 """
-    kgrid(na, nb, nc, input, T=Float64)
+    kgrid(na, nb, nc, input)
 
 Returns an array of k-grid points that are equally spaced, input can be either `:wan` or `:nscf`, the returned grids are appropriate as inputs for wannier90 or an nscf calculation respectively.
 """
-function kgrid(na, nb, nc, input, T=Float64)
-    if input == :wan || typeof(input) == WannierInput
-        return reshape([T[a, b, c] for a in collect(linspace(0, 1, na + 1))[1:end - 1], b in collect(linspace(0, 1, nb + 1))[1:end - 1], c in collect(linspace(0, 1, nc + 1))[1:end - 1]],(na * nb * nc))
-    elseif input == :nscf || typeof(input) == QEInput
-        return reshape([T[a, b, c, 1 / (na * nb * nc)] for a in collect(linspace(0, 1, na + 1))[1:end - 1], b in collect(linspace(0, 1, nb + 1))[1:end - 1], c in collect(linspace(0, 1, nc + 1))[1:end - 1]], (na * nb * nc))
-    end
-end
+kgrid(na, nb, nc, ::Type{QE}) = reshape([[a, b, c, 1 / (na * nb * nc)] for a in collect(linspace(0, 1, na + 1))[1:end - 1], b in collect(linspace(0, 1, nb + 1))[1:end - 1], c in collect(linspace(0, 1, nc + 1))[1:end - 1]], (na * nb * nc))
+kgrid(na, nb, nc, ::Type{Wannier90}) = reshape([[a, b, c] for a in collect(linspace(0, 1, na + 1))[1:end - 1], b in collect(linspace(0, 1, nb + 1))[1:end - 1], c in collect(linspace(0, 1, nc + 1))[1:end - 1]],(na * nb * nc))
+kgrid(na, nb, nc, input::Symbol) = input==:wan ? kgrid(na, nb, nc, Wannier90) : kgrid(na, nb, nc, QE)
+kgrid(na, nb, nc, input::DFInput{T}) where T = kgrid(na, nb, nc, T)
 
 function fort2julia(f_type)
     f_type = lowercase(f_type)

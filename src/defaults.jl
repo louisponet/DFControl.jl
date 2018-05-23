@@ -218,7 +218,7 @@ end
 
 Adds the input to the `default_inputs` variable, and writes it to a file in user_defaults folder to be read every time on load.
 """
-function setdefault_input(input::DFInput, structure, calculation::Symbol)
+function setdefault_input(input::DFInput{T}, structure, calculation::Symbol) where T
     if !isdefined(:default_inputs)
         expr = :(default_inputs = Dict{Symbol, Tuple{DFInput, Union{AbstractStructure, Void}}}())
         expr2file(default_file,expr)
@@ -227,10 +227,10 @@ function setdefault_input(input::DFInput, structure, calculation::Symbol)
     filename = dirname(default_file) * "/" * String(calculation)
     runcommand = input.runcommand
     exec        = input.exec
-    if typeof(input) == WannierInput
+    if T == Wannier90
         save(input, structure, filename * ".win")
         expr2file(default_file, :(default_inputs[$(QuoteNode(calculation))] = read_wannier_input($filename * ".win", runcommand = Exec($(runcommand.exec), $(runcommand.dir), Dict($(runcommand.flags...))), exec = Exec($(exec.exec), $(exec.dir), Dict($(exec.flags...))))))
-    elseif typeof(input) == QEInput
+    elseif T == QE
         save(input, structure, filename * ".in")
         expr2file(default_file, :(default_inputs[$(QuoteNode(calculation))] = read_qe_input($filename * ".in", runcommand = Exec($(runcommand.exec), $(runcommand.dir), Dict($(runcommand.flags...))), exec = Exec($(exec.exec), $(exec.dir), Dict($(exec.flags...))))))
     end

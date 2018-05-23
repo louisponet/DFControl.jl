@@ -36,7 +36,7 @@ end
 function DFJob(job_name, local_dir, structure::AbstractStructure, calculations::Vector, common_flags...;
                     server=getdefault_server(),
                     server_dir="",
-                    package=:qe,
+                    package=QE,
                     bin_dir="~/bin/",
                     runcommand=Exec("mpirun", bin_dir, Dict(:np => 24)),
                     pseudo_set=:default,
@@ -78,12 +78,12 @@ function DFJob(job_name, local_dir, structure::AbstractStructure, calculations::
         flags  = get(data, :flags, Dict{Symbol, Any}())
         if exec == "pw.x"
             push!(flags, :calculation => "'$(string(calc_))'")
-            datablocks = [QEDataBlock(:k_points, k_option, k_points)]
+            datablocks = [InputData(:k_points, k_option, k_points)]
         else
-            datablocks =  QEDataBlock[]
+            datablocks =  InputData[]
         end
-        input_ = QEInput(string(calc_) * ".in",
-                         QEControlBlock[],
+        input_ = DFInput{package}(string(calc_) * ".in",
+                         Dict{Symbol, Any}(),
                          datablocks,
                          runcommand, Exec(string(exec), bin_dir),
                          true)
@@ -405,13 +405,13 @@ function data(job::DFJob, calc_filenames, name::Symbol)
 end
 
 """
-    block(job::DFJob, calc_filenames, name::Symbol)
+    inputdata(job::DFJob, calc_filenames, name::Symbol)
 
 Looks through the calculation filenames and returns the block with the specified symbol.
 """
-function block(job::DFJob, calc_filenames, name::Symbol)
+function inputdata(job::DFJob, calc_filenames, name::Symbol)
     for calc in inputs(job, calc_filenames)
-        return block(calc, name)
+        return inputdata(calc, name)
     end
 end
 
@@ -545,11 +545,11 @@ execflags(job::DFJob, inputname) = input(job, inputname).exec.flags
 
 Adds a block to the specified filenames.
 """
-function setinputdata!(job::DFJob, filenames, block::Block)
+function setinputdata!(job::DFJob, filenames, data::InputData)
     UNDO_JOBS[job.id] = deepcopy(job)
 
     for input in inputs(job, filenames)
-        setinputdata!(input, block)
+        setinputdata!(input, data)
     end
     return job
 end
@@ -585,7 +585,7 @@ end
 """
     setatoms!(job::DFJob, atoms::Dict{Symbol,<:Array{<:Point3,1}}, pseudo_setname=:default, pseudo_specifier=nothing, option=:angstrom)
 
-Sets the data blocks with atomic positions to the new one. This is done for all calculations in the job that have that data.
+Sets the data data with atomic positions to the new one. This is done for all calculations in the job that have that data.
 If default pseudopotentials are defined, a set can be specified, together with a fuzzy that distinguishes between the possible multiple pseudo strings in the pseudo set.
 These pseudospotentials are then set in all the calculations that need it.
 All flags which specify the number of atoms inside the calculation also gets set to the correct value.
@@ -756,7 +756,7 @@ function addwancalc!(job::DFJob, k_grid;
     scf_calc    = nothing
     pw2wan_calc = nothing
     for calc in job.calculations
-        if typeof(calc) == QEInput
+        if eltype(calc) == QE
             calculation = flag(calc, :calculation)
             if calculation == "'scf'"
                 scf_calc    = calc
@@ -769,12 +769,12 @@ function addwancalc!(job::DFJob, k_grid;
     end
 
     if nscf_calc != nothing
-        setdata!(nscf_calc, :k_points, kgrid(k_grid[1], k_grid[2], k_grid[3], :nscf), option=:crystal)
+        setdata!(nscf_calc, :k_points, kgrid(k_grid..., :nscf), option=:crystal)
     elseif scf_calc != nothing
         nscf_calc = deepcopy(scf_calc)
         nscf_calc.filename = nscf_file
         setflags!(nscf_calc,:calculation => "'nscf'")
-        setdata!(nscf_calc, :k_points, kgrid(k_grid[1], k_grid[2], k_grid[3], :nscf), option=:crystal)
+        setdata!(nscf_calc, :k_points, kgrid(k_grid..., :nscf), option=:crystal)
         setflags!(nscf_calc, :noinv=>true,:nosym=>true)
         if flag(scf_calc,:noinv) != true
             setflags!(scf_calc, :noinv =>true,:nosym=>true)
@@ -803,13 +803,13 @@ function addwancalc!(job::DFJob, k_grid;
 
     if pw2wan_calc != nothing
         setflags!(pw2wan_calc, pw2wan_flags)
-    elseif typeof(scf_calc) == QEInput
-        pw2wan_calc = QEInput(pw2wan_file,structure, [QEControlBlock(:inputpp, pw2wan_flags)], QEDataBlock[], pw2wan_run_command, pw2wan_exec, true)
+    elseif eltype(scf_calc) == QE
+        pw2wan_calc = DFInput{QE}(pw2wan_file, structure, pw2wan_flags, InputData[], pw2wan_run_command, pw2wan_exec, true)
     end
 
     wan_flags[:mp_grid] = typeof(k_grid) <: Array ? k_grid : convert(Array, k_grid)
 
-    data = [WannierDataBlock(:kpoints, :none, kgrid(k_grid[1], k_grid[2], k_grid[3], :wan))]
+    data = [InputData(:kpoints, :none, kgrid(k_grid..., :wan))]
 
     if isempty(projections)
         for atom in job.structure.atoms
@@ -819,7 +819,7 @@ function addwancalc!(job::DFJob, k_grid;
         add_projections(projections, job.structure.atoms)
     end
 
-    wan_calc1 = WannierInput(wan_file, structure, wan_flags, data, wan_run_command, true, true)
+    wan_calc1 = DFInput{Wannier90}(wan_file, structure, wan_flags, data, wan_run_command, true, true)
     if spin
         file, ext         = splitext(pw2wan_calc.filename)
         wan_file, wan_ext = splitext(wan_calc1.filename)
@@ -882,8 +882,8 @@ end
 Checks if there is an scf calculation in the job and takes it's inputs to generate a bands calculation along the given k-path.
 """
 function addbandscalculation!(job::DFJob, k_path::Vector{Vector{T}}; filename="bands.in", run=true) where T<:AbstractFloat
-    calc = getfirst(x -> typeof(x) == QEInput && flag(x, :calculation) == "'scf'", job.calculations)
-    bands_calc = QEInput(calc, filename, run=run, k_points=(:crystal_b, k_path))
+    calc = getfirst(x -> eltype(x) == QE && flag(x, :calculation) == "'scf'", job.calculations)
+    bands_calc = DFInput{QE}(calc, filename, run=run, data=[:k_points => (:crystal_b, k_path)])
     push!(job.calculations, bands_calc)
     return job
 end

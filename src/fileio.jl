@@ -13,7 +13,11 @@ function parse_k_line(line, T)
 end
 
 function write_flag_line(f, flag, data, seperator="=", i="")
-    write(f,"  $flag$i $seperator ")
+    flagstr = string(flag)
+    if flagstr[end-1] == "_" && !isnull(tryparse(Int, string(flagstr[end])))
+        flagstr = flagstr[1:end-2] * "($(flagstr[end]))"
+    end
+    write(f,"  $flagstr$i $seperator ")
 
     if typeof(data) <: Array
 
@@ -55,6 +59,29 @@ function parse_flag_val(val, T=Float64)
     length(t) == 1 ? t[1] : typeof(t) <: Vector{Real} ? convert.(T,t) : t
 end
 
+function write_data(f, data)
+    if typeof(data) <: Vector{Vector{Float64}} || typeof(data) <: Vector{NTuple{4, Float64}} #k_points
+        for x in data
+            for y in x
+                write(f, " $y")
+            end
+            write(f, "\n")
+        end
+    elseif typeof(data) <: Vector{Int} || typeof(data) <: NTuple{6, Int}
+        for x in data
+            write(f, " $x")
+        end
+        write(f, "\n")
+    elseif typeof(data) <: Matrix
+        im, jm = size(data)
+        for i = 1:im
+            for j = 1:jm
+                write(f, " $(data[i, j])")
+            end
+            write(f, "\n")
+        end
+    end
+end
 #---------------------------BEGINNING GENERAL SECTION-------------------#
 #Incomplete: only works with SBATCH right now
 function write_job_name(f, job::DFJob)
@@ -72,7 +99,7 @@ function write_job_header(f, job::DFJob)
     end
 end
 
-function writetojob(f, job, inputs::Vector{AbinitInput})
+function writetojob(f, job, inputs::Vector{DFInput{Abinit}})
     abinit_jobfiles   = write_abi_datasets(inputs, job.local_dir)
     abifiles = String[]
     num_abi = 0
@@ -98,7 +125,7 @@ function writeexec(f, exec::Exec)
     write(f, " ")
 end
 
-function writetojob(f, job, input::QEInput)
+function writetojob(f, job, input::DFInput)
     exec        = input.exec
     runcommand = input.runcommand
     filename    = input.filename
@@ -113,7 +140,7 @@ function writetojob(f, job, input::QEInput)
     return 1
 end
 
-function writetojob(f, job, input::WannierInput)
+function writetojob(f, job, input::DFInput{Wannier90})
     runcommand = input.runcommand
     filename    = input.filename
     should_run  = input.run
@@ -123,7 +150,7 @@ function writetojob(f, job, input::WannierInput)
     id = findfirst(job.calculations, input)
     seedname = splitext(filename)[1]
 
-    pw2wanid = findfirst(x -> x.control[1].name == :inputpp && contains(x.exec.exec, "pw2wannier90"), job.calculations[id+1:end])+id
+    pw2wanid = findfirst(x -> contains(x.exec.exec, "pw2wannier90.x"), job.calculations[id+1:end])+id
     pw2wan   = job.calculations[pw2wanid]
     setflags!(pw2wan, :seedname => "'$(splitext(input.filename)[1])'")
 
@@ -157,7 +184,7 @@ function write_job_files(job::DFJob)
         write(f, "#!/bin/bash\n")
         write_job_name(f, job)
         write_job_header(f, job)
-        abiinputs = Vector{AbinitInput}(filter(x -> typeof(x) == AbinitInput, job.calculations))
+        abiinputs = Vector{DFInput{Abinit}}(filter(x -> eltype(x) == Abinit, job.calculations))
         !isempty(abiinputs) && push!(new_filenames, writetojob(f, job, abiinputs)...)
         i = length(abiinputs) + 1
         while i <= length(job.calculations)
