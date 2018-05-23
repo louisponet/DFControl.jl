@@ -1,16 +1,8 @@
 #printing that is not needed in Atom
 
-function Base.display(block::ControlBlock)
-    dfprintln("Block name: $(block.name)\n  flags:")
-    for (flag, value) in block.flags
-        dfprintln("    $flag => $value")
-    end
-    dfprintln("")
-end
-
-function Base.show(io::IO, block::ControlBlock)
-    println("Block name: $(block.name)\n  flags:")
-    for (flag, value) in block.flags
+function Base.show(io::IO, info::InputData)
+    println("Info name: $(info.name)\n  flags:")
+    for (flag, value) in info.flags
         println("    $flag => $value")
     end
     println("")

@@ -126,39 +126,31 @@ function writeexec(f, exec::Exec)
 end
 
 function writetojob(f, job, input::DFInput)
-    exec        = input.exec
-    runcommand = input.runcommand
     filename    = input.filename
     should_run  = input.run
     save(input, job.structure, job.local_dir * filename)
     if !should_run
         write(f, "#")
     end
-    writeexec(f, runcommand)
-    writeexec(f, exec)
+    writeexec.(f, execs(input))
     write(f, "< $filename > $(split(filename,".")[1]).out\n")
     return 1
 end
 
 function writetojob(f, job, input::DFInput{Wannier90})
-    runcommand = input.runcommand
     filename    = input.filename
     should_run  = input.run
-    exec        = input.exec
-    # runcommand = join([runcommand[1], exec[1]], " ")
-    #cleanup ugly
     id = findfirst(job.calculations, input)
     seedname = splitext(filename)[1]
 
-    pw2wanid = findfirst(x -> contains(x.exec.exec, "pw2wannier90.x"), job.calculations[id+1:end])+id
+    pw2wanid = findfirst(x -> contains(x.execs[2].exec, "pw2wannier90.x"), job.calculations[id+1:end])+id
     pw2wan   = job.calculations[pw2wanid]
     setflags!(pw2wan, :seedname => "'$(splitext(input.filename)[1])'")
 
     if !pw2wan.run
         write(f, "#")
     end
-    writeexec(f, runcommand)
-    writeexec(f, exec)
+    writeexec.(f, execs(input))
     write(f, "-pp $(filename[1:end-4]).win > $(filename[1:end-4]).wout\n")
 
     save(input, job.structure, job.local_dir * filename)
@@ -167,8 +159,7 @@ function writetojob(f, job, input::DFInput{Wannier90})
     if !should_run
         write(f, "#")
     end
-    writeexec(f, runcommand)
-    writeexec(f, exec)
+    writeexec.(f, execs(input))
     write(f, "$(filename[1:end-4]).win > $(filename[1:end-4]).wout\n")
     return 2
 end

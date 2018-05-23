@@ -114,9 +114,6 @@ module DFControl
     include("display/printing.jl")
     export print_run_command
     export print_flow
-    export print_block
-    export print_blocks
-    export print_data
     export print_filename
     export print_info
     export print_flags

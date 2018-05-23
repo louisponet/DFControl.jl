@@ -5,7 +5,6 @@ df_job = DFJob(test_job_path);
 df_job2 = DFJob(joinpath(@__DIR__, test_job_path), new_local_dir="blabla");
 @test df_job2.local_dir    == "blabla/"
 @test length(df_job.calculations) == 7
-@test input(df_job, "nscf").runcommand.exec == runcommand(df_job, "nscf").exec
 @test df_job.local_dir     == test_job_path*"/"
 
 try mkdir(joinpath(test_job_path,"test_dir/")) end
@@ -63,18 +62,8 @@ setflow!(df_job, "nscf" => true, "bands" => true)
 setflow!(df_job, "pw2wan" => true)
 @test df_job.calculations[end-1].run
 
-setruncommand!(df_job, "nscf", Exec("test"))
-@test runcommand(df_job, "nscf").exec == Exec("test").exec
-
-print_run_command(df_job, "nscf")
-print_flow(df_job)
-@test print_block(df_job,:atomic_positions) == print_block(df_job,"nscf",:atomic_positions)
-@test print_blocks(df_job) == print_data(df_job)
-@test print_blocks(df_job,"bands") == print_data(df_job,"bands")
 print_info(df_job)
 print_flags(df_job)
-@test print_flags(df_job,"nscf") == print_flags(df_job,["nscf"])
-@test print_flags(df_job,[:dis_win_min]) == print_flag(df_job,:dis_win_min)
 @test inputs(df_job,["nscf"]) == inputs(df_job,"nscf")
 
 

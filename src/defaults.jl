@@ -225,8 +225,8 @@ function setdefault_input(input::DFInput{T}, structure, calculation::Symbol) whe
         init_defaults(default_file)
     end
     filename = dirname(default_file) * "/" * String(calculation)
-    runcommand = input.runcommand
-    exec        = input.exec
+    runcommand = execs(input)[1]
+    exec       = execs(input)[2]
     if T == Wannier90
         save(input, structure, filename * ".win")
         expr2file(default_file, :(default_inputs[$(QuoteNode(calculation))] = read_wannier_input($filename * ".win", runcommand = Exec($(runcommand.exec), $(runcommand.dir), Dict($(runcommand.flags...))), exec = Exec($(exec.exec), $(exec.dir), Dict($(exec.flags...))))))

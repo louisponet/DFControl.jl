@@ -1,17 +1,16 @@
 #these are all the control data, they hold the flags that guide the calculation
-struct InputInfo
+struct InputData
     name   ::Symbol
     option ::Symbol
     data   ::Any
 end
 
-mutable struct DFInput{P}
-    filename    ::String
-    flags       ::Dict{Symbol, Any}
-    data        ::Vector{InputInfo}
-    runcommand  ::Exec
-    exec        ::Exec
-    run         ::Bool
+mutable struct DFInput{P <: Package}
+    filename ::String
+    flags    ::Dict{Symbol, Any}
+    data     ::Vector{InputData}
+    execs    ::Vector{Exec}
+    run      ::Bool
 end
 
 """
@@ -35,14 +34,14 @@ function DFInput(template::DFInput, filename, newflags...; runcommand=template.r
     return input
 end
 
-inputinfo(input::DFInput, name) = getfirst(x-> x.name == name, input.data)
-inputinfo(input::Vector{InputInfo}, name) = getfirst(x-> x.name == name, input.data)
-data(input, name)      = inputinfo(input, name).data
+data(input::DFInput, name) = getfirst(x-> x.name == name, input.data)
+data(input::Vector{InputData}, name) = getfirst(x-> x.name == name, input.data)
+data(input, name)      = data(input, name).data
 
 """
     setkpoints!(input::DFInput{Wannier90}, k_grid::NTuple{3, Int}; print=true)
 
-sets the data in the k point `InputInfo` inside the specified calculation.
+sets the data in the k point `InputData` inside the specified calculation.
 """
 function setkpoints!(input::DFInput{Wannier90}, k_grid::NTuple{3, Int}; print=true)
     setflags!(input, :mp_grid => [k_grid...])
@@ -53,7 +52,7 @@ end
 """
     setkpoints!(input::DFInput{QE}, k_grid::Union{NTuple{3, Int}, NTuple{6, Int}})
 
-sets the data in the k point `InputInfo` inside the specified calculation.
+sets the data in the k point `InputData` inside the specified calculation.
 If the specified calculation is `'nscf'` the accepted format is `(nka, nkb, nkc)`, and the k_grid will be generated. If the calculation is `'scf'` the format is `(nka, nkb, nkc, sta, stb, stc)`.
 """
 function setkpoints!(input::DFInput{QE}, k_grid::NTuple{3, Int}; print=true) #nscf
@@ -155,7 +154,7 @@ end
 """
     setdata!(input::DFInput, block_name::Symbol, new_block_data; option=nothing, print=true)
 
-sets the data of the specified 'InputInfo' to the new data. Optionally also sets the 'InputInfo' option.
+sets the data of the specified 'InputData' to the new data. Optionally also sets the 'InputData' option.
 """
 function setdata!(input::DFInput, block_name::Symbol, new_block_data; option=nothing, print=true)
     setd = false
@@ -177,13 +176,13 @@ function setdata!(input::DFInput, block_name::Symbol, new_block_data; option=not
         end
     end
     if !setd
-        setinputinfo!(input, InputInfo(block_name, block_option, block_data))
+        setdata!(input, InputData(block_name, block_option, block_data))
         setd = true
     end
     return setd, input
 end
 
-function setoradd!(datas::Vector{InputInfo}, data::InputInfo)
+function setoradd!(datas::Vector{InputData}, data::InputData)
     found = false
     for (i, d) in enumerate(datas)
         if d.name == data.name
@@ -198,11 +197,11 @@ function setoradd!(datas::Vector{InputInfo}, data::InputInfo)
 end
 
 """
-    setinputinfo!(input::DFInput, data::InputInfo)
+    setdata!(input::DFInput, data::InputData)
 
 Adds the given data to the input. Should put it in the correct arrays.
 """
-function setinputinfo!(input::DFInput, data::InputInfo)
+function setdata!(input::DFInput, data::InputData)
     setoradd!(input.data, data)
     return input
 end
@@ -210,22 +209,26 @@ end
 """
     setdataoption!(input::DFInput, name::Symbol, option::Symbol;; print=true)
 
-Sets the option of specified inputinfo.
+Sets the option of specified data.
 """
 function setdataoption!(input::DFInput, name::Symbol, option::Symbol; print=true)
     for data in input.data
         if data.name == name
             old_option  = data.option
             data.option = option
-            if print dfprintln("Option of InputInfo '$(data.name)' in input '$(input.filename)' set from '$old_option' to '$option'") end
+            if print dfprintln("Option of InputData '$(data.name)' in input '$(input.filename)' set from '$old_option' to '$option'") end
         end
     end
     return input
 end
 
-execs(input::DFInput, exec::String) = filter(x -> contains(x.exec, exec), [input.exec, input.runcommand])
+exec(input::DFInput, exec::String) = getfirst(x -> contains(x.exec, exec), input.execs)
+execs(input::DFInput) = input.execs
+execs(input::DFInput, exec::String) = filter(x -> contains(x.exec, exec), input.execs)
 execflags(input::DFInput, exec::String) = [x.flags for x in execs(input, exec)]
 setexecflags!(input::DFInput, exec::String, flags...) = setflags!.(execs(input, exec), flags...)
+
+runcommand(input::DFInput) = input.execs[1]
 
 outfile(input::DFInput{QE})        = splitext(input.filename)[1]*".out"
 outfile(input::DFInput{Wannier90}) = splitext(input.filename)[1]*".wout"

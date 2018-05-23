@@ -312,7 +312,7 @@ Reads a Quantum Espresso input file. The exec get's used to find which flags are
 Returns a `DFInput{QE}` and the `Structure` that is found in the input.
 """
 function read_qe_input(filename, T=Float64::Type; exec=Exec("pw.x"), runcommand=Exec(""), run=true, structure_name="NoName")
-    data    = Vector{InputInfo}()
+    data    = Vector{InputData}()
     flags   = Dict{Symbol, Any}()
     atom_block     = nothing
     cell_block     = nothing
@@ -351,7 +351,7 @@ function read_qe_input(filename, T=Float64::Type; exec=Exec("pw.x"), runcommand=
                 cell[2, 1:3] = parse.(T, split(readline(f)))
                 cell[3, 1:3] = parse.(T, split(readline(f)))
                 line = readline(f)
-                cell_block = InputInfo(:cell_parameters, cell_unit, cell)
+                cell_block = InputData(:cell_parameters, cell_unit, cell)
                 @goto start_label
 
             elseif contains(line, "ATOMIC_SPECIES") || contains(line, "atomic_species")
@@ -361,7 +361,7 @@ function read_qe_input(filename, T=Float64::Type; exec=Exec("pw.x"), runcommand=
                     pseudos[Symbol(split(line)[1])] = split(line)[end]
                     line = readline(f)
                 end
-                pseudo_block = InputInfo(:atomic_species, :none, pseudos)
+                pseudo_block = InputData(:atomic_species, :none, pseudos)
                 @goto start_label
 
             elseif contains(line, "ATOMIC_POSITIONS") || contains(line, "atomic_positions")
@@ -379,7 +379,7 @@ function read_qe_input(filename, T=Float64::Type; exec=Exec("pw.x"), runcommand=
                     end
                     line = readline(f)
                 end
-                atom_block = InputInfo(:atomic_positions, option, atoms)
+                atom_block = InputData(:atomic_positions, option, atoms)
                 @goto start_label
 
             elseif contains(line, "K_POINTS") || contains(line, "k_points")
@@ -395,7 +395,7 @@ function read_qe_input(filename, T=Float64::Type; exec=Exec("pw.x"), runcommand=
                         k_data[i] = parse.(T, split(readline(f)))
                     end
                 end
-                push!(data, InputInfo(:k_points, k_option, k_data))
+                push!(data, InputData(:k_points, k_option, k_data))
                 @goto start_label
             end
             line = readline(f)
@@ -404,7 +404,7 @@ function read_qe_input(filename, T=Float64::Type; exec=Exec("pw.x"), runcommand=
 
     structure = extract_structure!(structure_name, flags, cell_block, atom_block, pseudo_block)
     pop!.(flags, [:ibrav, :nat, :ntyp, :A, :celldm_1, :celldm], nothing)
-    return DFInput{QE}(splitdir(filename)[2], flags, data, runcommand, exec, run), structure
+    return DFInput{QE}(splitdir(filename)[2], flags, data, [runcommand, exec], run), structure
 end
 
 """

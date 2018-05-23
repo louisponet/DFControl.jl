@@ -78,9 +78,9 @@ function DFJob(job_name, local_dir, structure::AbstractStructure, calculations::
         flags  = get(data, :flags, Dict{Symbol, Any}())
         if exec == "pw.x"
             push!(flags, :calculation => "'$(string(calc_))'")
-            datablocks = [InputInfo(:k_points, k_option, k_points)]
+            datablocks = [InputData(:k_points, k_option, k_points)]
         else
-            datablocks =  InputInfo[]
+            datablocks =  InputData[]
         end
         input_ = DFInput{package}(string(calc_) * ".in",
                          Dict{Symbol, Any}(),
@@ -314,13 +314,11 @@ end
 Adds a calculation to the job, at the specified index.
 """
 function add!(job::DFJob, input::DFInput, index::Int=length(job.calculations)+1;
-                          runcommand = input.runcommand,
-                          filename    = input.filename)
+                          filename = input.filename)
 
     UNDO_JOBS[job.id] = deepcopy(job)
 
     input.filename = filename
-    input.runcommand = runcommand
     insert!(job.calculations, index, input)
     return job
 end
@@ -405,17 +403,6 @@ function data(job::DFJob, calc_filenames, name::Symbol)
 end
 
 """
-    inputinfo(job::DFJob, calc_filenames, name::Symbol)
-
-Looks through the calculation filenames and returns the block with the specified symbol.
-"""
-function inputinfo(job::DFJob, calc_filenames, name::Symbol)
-    for calc in inputs(job, calc_filenames)
-        return inputinfo(calc, name)
-    end
-end
-
-"""
     setdata!(job::DFJob, calc_filenames, data_block_name::Symbol, new_block_data; option=nothing)
 
 Looks through the calculation filenames and sets the data of the datablock with `data_block_name` to `new_block_data`.
@@ -471,48 +458,6 @@ Goes throug the calculation filenames and sets whether it should run or not.
 setflow!(job::DFJob, filenames::Vector{String}, should_run) = setflow!.(inputs(job, filenames), should_run)
 
 """
-    setruncommand!(job::DFJob, inputnames, runcommand::Exec)
-
-Goes through the job calculations and if it contains one of the inputnames it sets the run command of the calculation.
-"""
-function setruncommand!(job::DFJob, inputnames, runcommand::Exec)
-    UNDO_JOBS[job.id] = deepcopy(job)
-
-    for calc in inputs(job, inputnames)
-        calc.runcommand = runcommand
-        dfprintln("Run command of file '$(calc.filename)' is now: '$(calc.runcommand)'")
-    end
-
-    return job
-end
-
-"""
-    runcommand(job::DFJob, inputname)
-
-Returns the `runcommand`.
-"""
-function runcommand(job::DFJob, inputname)
-    for calc in inputs(job, inputname)
-        return calc.runcommand
-    end
-end
-
-"""
-    setrunflags!(job::DFJob, inputnames, flags...)
-
-Goes through the calculations of the job and if the name contains any of the `inputnames` it sets the runcommand flags to the specified ones.
-"""
-function setrunflags!(job::DFJob, inputnames, flags...)
-    calcs = inputs(job, inputnames)
-    for calc in calcs
-        for (f,v) in flags
-            calc.runcommand.flags[f] = v
-        end
-        dfprintln("run flags of calculation $(calc.filename) are now $(calc.runcommand.flags).")
-    end
-end
-
-"""
     setexecflags!(job::DFJob, inputnames, flags...)
 
 Goes through the calculations of the job and if the name contains any of the `inputnames` it sets the exec flags to the specified ones.
@@ -520,15 +465,15 @@ Goes through the calculations of the job and if the name contains any of the `in
 setexecflags!(job::DFJob, inputnames, flags...) = setexecflags!.(inputs(job, inputnames), flags...)
 
 """
-    setinputinfo!(job::DFJob, filenames, block::Block)
+    setdata!(job::DFJob, filenames, block::Block)
 
 Adds a block to the specified filenames.
 """
-function setinputinfo!(job::DFJob, filenames, data::InputInfo)
+function setdata!(job::DFJob, filenames, data::InputData)
     UNDO_JOBS[job.id] = deepcopy(job)
 
     for input in inputs(job, filenames)
-        setinputinfo!(input, data)
+        setdata!(input, data)
     end
     return job
 end
@@ -783,12 +728,12 @@ function addwancalc!(job::DFJob, k_grid;
     if pw2wan_calc != nothing
         setflags!(pw2wan_calc, pw2wan_flags)
     elseif eltype(scf_calc) == QE
-        pw2wan_calc = DFInput{QE}(pw2wan_file, structure, pw2wan_flags, InputInfo[], pw2wan_run_command, pw2wan_exec, true)
+        pw2wan_calc = DFInput{QE}(pw2wan_file, structure, pw2wan_flags, InputData[], pw2wan_run_command, pw2wan_exec, true)
     end
 
     wan_flags[:mp_grid] = typeof(k_grid) <: Array ? k_grid : convert(Array, k_grid)
 
-    data = [InputInfo(:kpoints, :none, kgrid(k_grid..., :wan))]
+    data = [InputData(:kpoints, :none, kgrid(k_grid..., :wan))]
 
     if isempty(projections)
         for atom in job.structure.atoms

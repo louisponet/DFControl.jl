@@ -279,7 +279,7 @@ function qe_block_variable(exec::AbstractString, flagname)
     return :error, QEVariableInfo()
 end
 
-qe_block_variable(input::DFInput, flagname) = qe_block_variable(input.exec.exec, flagname)
+qe_block_variable(input::DFInput, flagname) = qe_block_variable(execs(input)[2].exec, flagname)
 
-flagtype(input::DFInput{QE}, flag) = qe_variable(input.exec, flag).typ
+flagtype(input::DFInput{QE}, flag) = qe_variable(execs(input)[2], flag).typ
 flagtype(::Type{QE}, exec, flag) = qe_variable(exec, flag).typ
