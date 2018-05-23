@@ -7,10 +7,10 @@ bands_input   = read_qe_input(joinpath(@__DIR__,"../assets/inputs/qe/bands.in"))
 projwfc_input = read_qe_input(joinpath(@__DIR__,"../assets/inputs/qe/projwfc.in"), exec=Exec("projwfc.x","",Dict{Symbol, Any}()))[1];
 display(projwfc_input);
 @test flag(scf_input, :calculation) == "'scf'";
-@test inputdata(scf_input,:k_points).option == :automatic;
-@test inputdata(scf_input,:k_points).data[3] == 10;
+@test inputinfo(scf_input,:k_points).option == :automatic;
+@test inputinfo(scf_input,:k_points).data[3] == 10;
 
-@test inputdata(bands_input, :k_points).option == :crystal_b;
+@test inputinfo(bands_input, :k_points).option == :crystal_b;
 
 @test flag(projwfc_input,:kresolveddos) == true
 

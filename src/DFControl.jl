@@ -5,6 +5,7 @@ module DFControl
     using RecipesBase
     using StaticArrays
     using GeometryTypes
+    using Parameters
 
     abstract type Package end
     struct Wannier90 <: Package end
@@ -12,45 +13,28 @@ module DFControl
     struct Abinit <: Package end
 
     include("atom.jl")
-    export Atom
-    export orbital2atom
-
     include("structure.jl")
-    export AbstractStructure
-    export Structure
-    export cif2structure
-
     include("types.jl")
-    export Band
-    export DFBand
-    export Exec
-
     include("input.jl")
-    export InputData
-    export DFInput
-
     include("utils.jl")
-    export getfirst
-
     include("job.jl")
+
     export DFJob
     export save
     export submit
 
-    export setflags!
     export flag
-    export setdata!
-    export data
-    export inputdata
-    export setinputdata!
-    export setdata!
     export setflags!
     export rmflags!
+
+    export data
+    export setdata!
+
     export setflow!
-    export setflow!
-    export add!
+
     export runcommand
     export setruncommand!
+
     export setrunflags!
     export runflags
     export setexecflags!
@@ -64,8 +48,8 @@ module DFControl
     export setpseudos!
     export addbandscalculation!
     export path
-    export undo!
     export undo
+    export undo!
     export setserverdir!
     export atoms
     export setatoms!

@@ -1,5 +1,5 @@
 #THIS IS THE MOST HORRIBLE FUNCTION I HAVE EVER CREATED!!!
-function extract_atoms(atoms_block::T, proj_block::T, cell) where T <: InputData
+function extract_atoms(atoms_block::T, proj_block::T, cell) where T <: InputInfo
     if atoms_block.name == :atoms_cart
         cell = Mat3(eye(3))
     end
@@ -17,7 +17,7 @@ function extract_atoms(atoms_block::T, proj_block::T, cell) where T <: InputData
                     end
                     for proj in projs
                         size = orbsize(proj)
-                        push!(t_ats, Atom(pos_at, element(pos_at), cell' * ps, :projections => [Projection(Orbital(proj), t_start, size, t_start + size - 1)]))
+                        push!(t_ats, Atom(pos_at, element(pos_at), cell' * ps, projections=[Projection(Orbital(proj), t_start, size, t_start + size - 1)]))
                         t_start += size
                     end
                 end
@@ -42,14 +42,14 @@ function extract_atoms(atoms_block::T, proj_block::T, cell) where T <: InputData
     else
         for (pos_at, pos) in atoms
             for p in pos
-                push!(out_ats, Atom(pos_at, element(pos_at), cell' * p, :projections => :random))
+                push!(out_ats, Atom(pos_at, element(pos_at), cell' * p, projections=:random))
             end
         end
     end
     return out_ats
 end
 
-function extract_structure(name, cell_block::T, atoms_block::T, projections_block::T) where T <: Union{InputData, Void}
+function extract_structure(name, cell_block::T, atoms_block::T, projections_block::T) where T <: Union{InputInfo, Void}
     if atoms_block == nothing || cell_block == nothing
         return nothing
     end
@@ -70,7 +70,7 @@ Reads a `DFInput{Wannier90}` and the included `Structure` from a WANNIER90 input
 """
 function read_wannier_input(filename::String, T=Float64; runcommand= Exec(""), run=true, exec=Exec("wannier90.x"), structure_name="NoName")
     flags = Dict{Symbol,Any}()
-    data  = Vector{InputData}()
+    data  = Vector{InputInfo}()
     atoms_block = nothing
     cell_block  = nothing
     proj_block  = nothing
@@ -96,7 +96,7 @@ function read_wannier_input(filename::String, T=Float64; runcommand= Exec(""), r
                             continue
                         end
                         if contains(line, "random")
-                            proj_block = InputData(:projections, :random, nothing)
+                            proj_block = InputInfo(:projections, :random, nothing)
                             line = readline(f)
                             break
                         else
@@ -107,7 +107,7 @@ function read_wannier_input(filename::String, T=Float64; runcommand= Exec(""), r
                             line = readline(f)
                         end
                     end
-                    proj_block = InputData(:projections, :none, proj_dict)
+                    proj_block = InputInfo(:projections, :none, proj_dict)
                     @goto start_label
 
                 elseif block_name == :kpoint_path
@@ -123,7 +123,7 @@ function read_wannier_input(filename::String, T=Float64; runcommand= Exec(""), r
                     push!(k_path_array, (Symbol(split_line[5]), parse_string_array(T, split_line[6:8])))
                     line = readline(f)
                 end
-                push!(data, InputData(:kpoint_path, :none, k_path_array))
+                push!(data, InputInfo(:kpoint_path, :none, k_path_array))
                 @goto start_label
 
                 elseif block_name == :unit_cell_cart
@@ -139,7 +139,7 @@ function read_wannier_input(filename::String, T=Float64; runcommand= Exec(""), r
                         cell_param[i, :] = parse_line(T, line)
                         line = readline(f)
                     end
-                    cell_block = InputData(:unit_cell_cart, option, Mat3(cell_param))
+                    cell_block = InputInfo(:unit_cell_cart, option, Mat3(cell_param))
                     # line = readline(f)
                     @goto start_label
 
@@ -167,7 +167,7 @@ function read_wannier_input(filename::String, T=Float64; runcommand= Exec(""), r
                         end
                         line = readline(f)
                     end
-                    atoms_block = InputData(block_name, option, atoms)
+                    atoms_block = InputInfo(block_name, option, atoms)
                     @goto start_label
 
                 elseif block_name == :kpoints
@@ -181,7 +181,7 @@ function read_wannier_input(filename::String, T=Float64; runcommand= Exec(""), r
                         push!(k_points, parse_line(T, line))
                         line = readline(f)
                     end
-                    push!(data, InputData(:kpoints, :none, k_points))
+                    push!(data, InputInfo(:kpoints, :none, k_points))
                     @goto start_label
                 end
 

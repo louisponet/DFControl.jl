@@ -33,13 +33,7 @@ function element(sym::Symbol)
     return found[1]
 end
 
-function element(z::Int)
-    found = filter(x->x.Z == z, ELEMENTS)
-    if isempty(found)
-        error("No element found with Z '$z'.")
-    end
-    return found[1]
-end
+element(z::Int) = getfirst(x->x.Z == z, ELEMENTS)
 
 abstract type AbstractAtom{T} end
 
@@ -69,37 +63,16 @@ function unique_atoms(atoms::Vector{<:AbstractAtom{T}}) where T <: AbstractFloat
 end
 
 #We use angstrom everywhere
-mutable struct Atom{T<:AbstractFloat} <: AbstractAtom{T}
+@with_kw mutable struct Atom{T<:AbstractFloat} <: AbstractAtom{T}
     id          ::Symbol
     element     ::Element
     position    ::Point3{T}
-    pseudo      ::String
-    projections ::Vector{Projection}
-    function Atom(id::Symbol, element::Element, position::Point3{T}, args...) where T <: AbstractFloat
-        atom          = new{T}()
-        atom.id       = id
-        atom.element  = element
-        atom.position = position
-        names = fieldnames(Atom)
-        types = fieldtype.(Atom, names)
-        for (name, typ) in zip(names[4:end], types[4:end])
-            found = false
-            for (field, value) in args
-                if field == name
-                    setfield!(atom, field, convert(typ, value))
-                    found = true
-                end
-            end
-            if !found
-                try
-                    setfield!(atom, field, zero(typ))
-                end
-            end
-        end
-        return atom
-    end
+    pseudo      ::String = ""
+    projections ::Vector{Projection} = [Projection()]
 end
-Atom(id::Symbol, el::Symbol, position::Point3, args...)  = Atom(id, element(el), position, args...)
+
+Atom(id::Symbol, el::Element, pos::Point3; kwargs...)  = Atom(id=id, element=el, position=pos; kwargs...)
+Atom(id::Symbol, el::Symbol, pos::Point3; kwargs...)  = Atom(id=id, element=element(el), position=pos; kwargs...)
 
 position(atom::Atom)    = atom.position
 element(atom::Atom)     = atom.element

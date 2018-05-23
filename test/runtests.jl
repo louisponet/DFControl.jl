@@ -1,6 +1,6 @@
 using DFControl
 using Base.Test
-
+import DFControl: Exec, inputinfo, add!
 
 
 

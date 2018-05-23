@@ -78,9 +78,9 @@ function DFJob(job_name, local_dir, structure::AbstractStructure, calculations::
         flags  = get(data, :flags, Dict{Symbol, Any}())
         if exec == "pw.x"
             push!(flags, :calculation => "'$(string(calc_))'")
-            datablocks = [InputData(:k_points, k_option, k_points)]
+            datablocks = [InputInfo(:k_points, k_option, k_points)]
         else
-            datablocks =  InputData[]
+            datablocks =  InputInfo[]
         end
         input_ = DFInput{package}(string(calc_) * ".in",
                          Dict{Symbol, Any}(),
@@ -405,13 +405,13 @@ function data(job::DFJob, calc_filenames, name::Symbol)
 end
 
 """
-    inputdata(job::DFJob, calc_filenames, name::Symbol)
+    inputinfo(job::DFJob, calc_filenames, name::Symbol)
 
 Looks through the calculation filenames and returns the block with the specified symbol.
 """
-function inputdata(job::DFJob, calc_filenames, name::Symbol)
+function inputinfo(job::DFJob, calc_filenames, name::Symbol)
     for calc in inputs(job, calc_filenames)
-        return inputdata(calc, name)
+        return inputinfo(calc, name)
     end
 end
 
@@ -541,15 +541,15 @@ end
 execflags(job::DFJob, inputname) = input(job, inputname).exec.flags
 
 """
-    setinputdata!(job::DFJob, filenames, block::Block)
+    setinputinfo!(job::DFJob, filenames, block::Block)
 
 Adds a block to the specified filenames.
 """
-function setinputdata!(job::DFJob, filenames, data::InputData)
+function setinputinfo!(job::DFJob, filenames, data::InputInfo)
     UNDO_JOBS[job.id] = deepcopy(job)
 
     for input in inputs(job, filenames)
-        setinputdata!(input, data)
+        setinputinfo!(input, data)
     end
     return job
 end
@@ -804,12 +804,12 @@ function addwancalc!(job::DFJob, k_grid;
     if pw2wan_calc != nothing
         setflags!(pw2wan_calc, pw2wan_flags)
     elseif eltype(scf_calc) == QE
-        pw2wan_calc = DFInput{QE}(pw2wan_file, structure, pw2wan_flags, InputData[], pw2wan_run_command, pw2wan_exec, true)
+        pw2wan_calc = DFInput{QE}(pw2wan_file, structure, pw2wan_flags, InputInfo[], pw2wan_run_command, pw2wan_exec, true)
     end
 
     wan_flags[:mp_grid] = typeof(k_grid) <: Array ? k_grid : convert(Array, k_grid)
 
-    data = [InputData(:kpoints, :none, kgrid(k_grid..., :wan))]
+    data = [InputInfo(:kpoints, :none, kgrid(k_grid..., :wan))]
 
     if isempty(projections)
         for atom in job.structure.atoms
@@ -870,7 +870,7 @@ end
 """
     undo(job::DFJob)
 
-Undos the last set to the calculations of the job and returns as a new one.
+Returns the previous state of the job.
 """
 function undo(job::DFJob)
     return deepcopy(UNDO_JOBS[job.id])
