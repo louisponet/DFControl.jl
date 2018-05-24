@@ -1,5 +1,5 @@
 #these are all the control data, they hold the flags that guide the calculation
-struct InputData
+mutable struct InputData
     name   ::Symbol
     option ::Symbol
     data   ::Any
@@ -128,8 +128,8 @@ function setflags!(input::DFInput{T}, flags...; print=true) where T
                 print && dfprintln("Filename '$(input.filename)':\n  Could not convert '$value' into '$flag_type'.\n    Flag '$flag' not set.\n")
                 continue
             end
-            input.flags[flag] = value
             old_data = haskey(input.flags, flag) ? input.flags[flag] : ""
+            input.flags[flag] = value
             print && dfprintln("$(input.filename):\n  -> $flag:\n      $old_data set to: $value\n")
         end
     end

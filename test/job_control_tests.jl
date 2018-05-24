@@ -1,6 +1,6 @@
 using DFControl, Base.Test
 
-test_job_path = joinpath(@__DIR__, "test_job")
+test_job_path = joinpath(@__DIR__, "testassets/test_job")
 df_job = DFJob(test_job_path);
 df_job2 = DFJob(joinpath(@__DIR__, test_job_path), new_local_dir="blabla");
 @test df_job2.local_dir    == "blabla/"

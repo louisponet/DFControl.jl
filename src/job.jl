@@ -336,7 +336,8 @@ function setflags!(job::DFJob, calculations::Vector{String}, flags...; print=tru
     UNDO_JOBS[job.id] = deepcopy(job)
 
     found_keys = Symbol[]
-    for calc in inputs(job, calculations)
+
+    for calc in input.(job, calculations)
         t_found_keys, = setflags!(calc, flags..., print=print)
         for key in t_found_keys
             if !(key in found_keys) push!(found_keys, key) end
@@ -837,3 +838,23 @@ end
 sets the projections of the specified atoms inside the job structure.
 """
 setprojections!(job::DFJob, projections...) = setprojections!(job.structure, projections...)
+
+
+"""
+    print_info(job::DFJob, filenames::Vector{String})
+
+Prints general info of the job.
+"""
+function print_info(job::DFJob, filenames::Vector{String})
+    s = """--------------------
+    DFJob:      $(job.name)
+    Local_dir:  $(job.local_dir)
+    Server:     $(job.server)
+    Server_dir: $(job.server_dir)
+    $(length(job.calculations)) calculations
+    --------------------
+    """
+    dfprintln(s)
+end
+print_info(job::DFJob)                   = print_info(job, [calc.filename for calc in job.calculations])
+print_info(job::DFJob, filename::String) = print_info(job, [filename])
