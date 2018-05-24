@@ -97,12 +97,16 @@ module DFControl
     export setdefault_server
     export configure_defaultpseudos
     export removedefault_pseudodir
-    export default_pseudo
+    export removedefault_pseudos
     export setdefault_jobheader
     export @add_default
-    export load_defaults
     export setdefault_input
     export removedefault_input
+    export getdefault_pseudo
+    export getdefault_server
+    export getdefault_jobheader
+    export getdefault_pseudodir
+    export getdefault_pseudodirs
 
     if Pkg.installed("Atom") != nothing
         include("display/printing_juno.jl")

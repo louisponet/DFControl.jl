@@ -76,8 +76,37 @@ function removedefault_pseudodir(pseudo_symbol::Symbol)
             rm_expr_lhs(default_file, :default_pseudo_dirs)
             default_pseudo_dirs = nothing
         end
+        removedefault_pseudos(pseudo_symbol)
+    else
+        load_defaults(default_file)
     end
-    load_defaults(default_file)
+end
+
+"""
+    removedefault_pseudos(pseudo_symbol::Symbol)
+
+Removes all pseudo entries with flag `pseudo_symbol` from the `default_pseudos`.
+"""
+function removedefault_pseudos(pseudo_symbol::Symbol)
+    found = false
+    if isdefined(:default_pseudos)
+        for (at, pseudos) in DFControl.default_pseudos
+            if haskey(pseudos, pseudo_symbol)
+                pop!(pseudos, pseudo_symbol)
+                rm_expr_lhs(default_file, :(default_pseudos[$(QuoteNode(at))][$(QuoteNode(pseudo_symbol))]))
+                found = true
+            end
+        end
+        if isempty(DFControl.default_pseudos)
+            rm_expr_lhs(default_file, :default_pseudos)
+            default_pseudos = nothing
+        end
+    end
+    if found
+        removedefault_pseudodir(pseudo_symbol)
+    else
+        load_defaults(default_file)
+    end
 end
 
 """
@@ -126,7 +155,7 @@ end
 
 Reads the specified `default_pseudo_dirs` on the `default_server` and sets up the `default_pseudos` variable, and also adds all the entries to the `user_defaults.jl` file.
 """
-function configure_defaultpseudos(server = getdefault_server(), pseudo_dirs=getdefault_pseudodirs())
+function configure_defaultpseudos(;server = getdefault_server(), pseudo_dirs=getdefault_pseudodirs())
     if server == ""
         error("Either supply a valid server string or setup a default server through 'setdefault_server!()'.")
     end
@@ -138,7 +167,7 @@ function configure_defaultpseudos(server = getdefault_server(), pseudo_dirs=getd
     outputs = Dict{Symbol, String}()
     for (name, directory) in pseudo_dirs
         outputs[name] = server == "localhost" ? readstring(`ls $directory`) : readstring(`ssh -t $server ls $directory`)
-    end 
+    end
 
     if !isdefined(:default_pseudos)
         expr2file(default_file, :(default_pseudos = Dict{Symbol, Dict{Symbol, Vector{String}}}()))
@@ -185,7 +214,7 @@ function getdefault_pseudo(atom::Symbol, pseudo_setname=:default; pseudo_specifi
     else
         pp_atom = atom
     end
-    if isdefined(:default_pseudos)
+    if isdefined(:default_pseudos) && haskey(DFControl.default_pseudos[pp_atom], pseudo_setname)
         if pseudo_specifier != ""
             return getfirst(x -> contains(x, pseudo_specifier), default_pseudos[pp_atom][pseudo_setname])
         else

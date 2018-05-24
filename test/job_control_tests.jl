@@ -63,7 +63,6 @@ setflow!(df_job, "pw2wan" => true)
 @test df_job.calculations[end-1].run
 
 print_info(df_job)
-print_flags(df_job)
 @test inputs(df_job,["nscf"]) == inputs(df_job,"nscf")
 
 
