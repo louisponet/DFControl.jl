@@ -37,13 +37,12 @@ function DFJob(job_name, local_dir, structure::AbstractStructure, calculations::
                     server=getdefault_server(),
                     server_dir="",
                     package=QE,
-                    bin_dir="~/bin/",
-                    runcommand=Exec("mpirun", bin_dir, Dict(:np => 24)),
+                    bin_dir="/usr/local/bin/",
                     pseudo_set=:default,
                     pseudo_specifier="",
                     header=getdefault_jobheader())
 
-    @assert package==:qe "Only implemented for Quantum Espresso!"
+    @assert package==QE "Only implemented for Quantum Espresso!"
     local_dir = form_directory(local_dir)
     job_calcs = DFInput[]
     if typeof(common_flags) != Dict
@@ -54,15 +53,13 @@ function DFJob(job_name, local_dir, structure::AbstractStructure, calculations::
                      :outdir => "'$server_dir'",
                      :ecutwfc => 25.)
     merge!(req_flags, common_flags)
-    for (calc, (exec, data)) in calculations
-        exec = typeof(exec) == String ? exec : string(exec)
+    for (calc, (execs, data)) in calculations
         calc_ = typeof(calc) == String ? Symbol(calc) : calc
         if in(calc_, [Symbol("vc-relax"), :relax, :scf])
             k_points = get(data, :k_points, [1, 1, 1, 0, 0, 0])
             k_option = :automatic
         elseif calc_ == :nscf
-            k_points = get(data, :k_points, (1, 1, 1))
-            k_grid   = kgrid(k_points..., :nscf)
+            k_points = kgrid(get(data, :k_points, [1, 1, 1])..., :nscf)
             k_option = :crystal
         elseif calc_ == :bands
             k_points = get(data, :k_points, [[0., 0., 0., 1.]])
@@ -76,7 +73,7 @@ function DFJob(job_name, local_dir, structure::AbstractStructure, calculations::
             k_option = :crystal_b
         end
         flags  = get(data, :flags, Dict{Symbol, Any}())
-        if exec == "pw.x"
+        if execs[2].exec == "pw.x"
             push!(flags, :calculation => "'$(string(calc_))'")
             datablocks = [InputData(:k_points, k_option, k_points)]
         else
@@ -84,9 +81,7 @@ function DFJob(job_name, local_dir, structure::AbstractStructure, calculations::
         end
         input_ = DFInput{package}(string(calc_) * ".in",
                          Dict{Symbol, Any}(),
-                         datablocks,
-                         runcommand, Exec(string(exec), bin_dir),
-                         true)
+                         datablocks, execs, true)
         setflags!(input_, req_flags..., print=false)
         setflags!(input_, flags..., print=false)
         push!(job_calcs, input_)
@@ -209,9 +204,7 @@ end
 
 Returns the input that matches the filename.
 """
-function input(job::DFJob, filename::String)
-    return getfirst(x -> contains(x.filename, filename), job.calculations)
-end
+input(job::DFJob, filename::String) = getfirst(x -> contains(x.filename, filename), job.calculations)
 
 """
     input(job::DFJob, filenames::Array)
@@ -309,12 +302,11 @@ function submit(job::DFJob; server=job.server, server_dir=job.server_dir)
 end
 
 """
-    add!(job::DFJob, input::DFInput, index::Int=length(job.calculations)+1; runcommand=input.runcommand, filename=input.filename)
+    add!(job::DFJob, input::DFInput, index::Int=length(job.calculations)+1; filename=input.filename)
 
 Adds a calculation to the job, at the specified index.
 """
-function add!(job::DFJob, input::DFInput, index::Int=length(job.calculations)+1;
-                          filename = input.filename)
+function add!(job::DFJob, input::DFInput, index::Int=length(job.calculations)+1; filename = input.filename)
 
     UNDO_JOBS[job.id] = deepcopy(job)
 
@@ -334,7 +326,6 @@ The values that are supplied will be checked whether they are valid.
 """
 function setflags!(job::DFJob, calculations::Vector{String}, flags...; print=true)
     UNDO_JOBS[job.id] = deepcopy(job)
-
     found_keys = Symbol[]
 
     for calc in input.(job, calculations)
@@ -357,22 +348,22 @@ function setflags!(job::DFJob, calculations::Vector{String}, flags...; print=tru
     end
     return job
 end
-setflags!(job::DFJob, flags...)                   = setflags!(job, [calc.filename for calc in job.calculations], flags...)
-setflags!(job::DFJob, filename::String, flags...) = setflags!(job, [filename], flags...)
+setflags!(job::DFJob, flags...;kwargs...)                   = setflags!(job, [calc.filename for calc in job.calculations], flags...;kwargs...)
+setflags!(job::DFJob, filename::String, flags...;kwargs...) = setflags!(job, [filename], flags...;kwargs...)
 
 """
     flag(job::DFJob, calc_filenames, flag_name::Symbol)
 
 Looks through the calculation filenames and returns the value of the specified flag.
 """
-function flag(job::DFJob, calc_filenames, flag_name::Symbol)
+function flag(job::DFJob, calc_filenames, fl::Symbol)
     for calc in inputs(job, calc_filenames)
-        flag_ = flag(calc, flag_name)
+        flag_ = flag(calc, fl)
         if flag_ != nothing
             return flag_
         end
     end
-    error("Flag $flag_name not found in any input files.")
+    error("Flag $flag not found in any input files.")
 end
 
 """
@@ -585,12 +576,13 @@ function setpseudos!(job::DFJob, pseudo_set, pseudo_specifier="")
     for (i, atom) in enumerate(job.structure.atoms)
         pseudo = getdefault_pseudo(id(atom), pseudo_set, pseudo_specifier=pseudo_specifier)
         if pseudo == nothing
-            warning("Pseudo for $(id(atom)) at index $i not found in set $pseudo_set.")
+            warn("Pseudo for $(id(atom)) at index $i not found in set $pseudo_set.\n Setting pseudo_dir to './', this should be changed before trying to run the job!")
+            setflags!(job, :pseudo_dir => "'./'")
         else
-            pseudo!(atom, pseudo)
+            setpseudo!(atom, pseudo)
+            setflags!(job, :pseudo_dir => "'$(getdefault_pseudodir(pseudo_set))'")
         end
     end
-    setflags!(job, :pseudo_dir => "'$(getdefault_pseudodir(pseudo_set))'")
     return job
 end
 
@@ -641,143 +633,108 @@ function errors(job::DFJob)
     end
 end
 
+"Returns the full path of the input"
+path(job::DFJob, inp::DFInput) =
+    joinpath(job.local_dir, inp.filename)
+path(job::DFJob, inp::String) = path(job::DFJob, input(job, inp))
+
+"Provides the path of the output to the given input, provided that it is pulled already"
+function outpath(job::DFJob, input::DFInput{QE})
+    opath = splitext(path(job, input))[1] * ".out"
+    ispath(opath) ? opath : error("No output file found at $opath,\n please pull the outputs of the job first.")
+end
+outpath(job::DFJob, inp::String) = outpath(job, input(job, inp))
+
 """
-    addwancalc!(job::DFJob, k_grid;
-                       nscf_file          = "nscf.in",
-                       wan_file           = "wan.win",
-                       pw2wan_file        = "pw2wan.in",
-                       wan_run_command    = "~/bin/wannier90.x ",
-                       pw2wan_run_command = "mpirun -np 24 ~/bin/pw2wannier90.x",
-                       wan_flags          = nothing,
-                       pw2wan_flags       = nothing)
+    addwancalc!(job::DFJob, nscf::DFInput{QE}, projections;
+                     Emin=-5.0,
+                     Epad=5.0,
+                     wanflags=SymAnyDict(),
+                     pw2wanexec=Exec("pw2wannier90.x", nscf.execs[2].dir, nscf.execs[2].flags),
+                     wanexec=Exec("wannier90.x", nscf.execs[2].dir),
+                     bands=read_qe_bands_file(outpath(job, nscf)))
 
 Adds a wannier calculation to a job. For now only works with QE.
 """
-function addwancalc!(job::DFJob, k_grid;
-                       nscf_file          = "nscf.in",
-                       wan_file           = "wan.win",
-                       pw2wan_file        = "pw2wan.in",
-                       wan_run_command    = Exec("wannier90.x", "~/bin/"),
-                       pw2wan_run_command = Exec("mpirun", "", Dict(:np => 24)),
-                       pw2wan_exec        = Exec("pw2wannier90.x","~/bin/"),
-                       inner_window       = (0., 0.), #no window given
-                       outer_window       = (0., 0.), #no outer window given
-                       wan_flags          = Dict{Symbol, Any}(),
-                       pw2wan_flags       = Dict{Symbol, Any}(),
-                       projections        = nothing,
-                       spin               = false)
-
-    UNDO_JOBS[job.id] = deepcopy(job)
+function addwancalc!(job::DFJob, nscf::DFInput{QE}, projections;
+                     Emin=-5.0,
+                     Epad=5.0,
+                     wanflags=SymAnyDict(),
+                     pw2wanexec=Exec("pw2wannier90.x", nscf.execs[2].dir),
+                     wanexec=Exec("wannier90.x", nscf.execs[2].dir),
+                     bands=read_qe_bands_file(outpath(job, nscf)))
 
 
-    if inner_window != (0., 0.)
-        wan_flags = merge!(wan_flags, Dict(:dis_froz_min => inner_window[1], :dis_froz_max => inner_window[2]))
-    end
-    if outer_window != (0., 0.)
-        wan_flags = merge!(wan_flags, Dict(:dis_win_min => outer_window[1], :dis_win_max => outer_window[2]))
-    end
-
-    nscf_calc   = nothing
-    scf_calc    = nothing
-    pw2wan_calc = nothing
-    for calc in job.calculations
-        if eltype(calc) == QE
-            calculation = flag(calc, :calculation)
-            if calculation == "'scf'"
-                scf_calc    = calc
-            elseif calculation == "'nscf'"
-                nscf_calc   = calc
-            elseif calc.control[1].name == :inputpp
-                pw2wan_calc = calc
-            end
-        end
-    end
-
-    if nscf_calc != nothing
-        setdata!(nscf_calc, :k_points, kgrid(k_grid..., :nscf), option=:crystal)
-    elseif scf_calc != nothing
-        nscf_calc = deepcopy(scf_calc)
-        nscf_calc.filename = nscf_file
-        setflags!(nscf_calc,:calculation => "'nscf'")
-        setdata!(nscf_calc, :k_points, kgrid(k_grid..., :nscf), option=:crystal)
-        setflags!(nscf_calc, :noinv=>true,:nosym=>true)
-        if flag(scf_calc,:noinv) != true
-            setflags!(scf_calc, :noinv =>true,:nosym=>true)
-            warning("Rerun scf because noinv was not set to true, and k-points will rsult in pw2wan error.")
-        end
-        push!(job.calculations, nscf_calc)
-    else
-        error("Job needs to have at least an scf calculation.")
-    end
-    nscf_calc.run = true
-    structure = job.structure
-    std_pw2wan_flags = Dict(:prefix    => flag(scf_calc, :prefix),
-                           :write_amn => true,
-                           :write_mmn => true,
-                           :outdir    => "'./'",
-                           :seedname  => "'$(splitext(wan_file)[1])'")
-    if pw2wan_flags == nothing
-        pw2wan_flags = std_pw2wan_flags
-    else
-        pw2wan_flags = merge(std_pw2wan_flags, pw2wan_flags)
-    end
-
-    if :wannier_plot in keys(wan_flags) && wan_flags[:wannier_plot]
-        pw2wan_flags[:write_unk] = true
-    end
-
-    if pw2wan_calc != nothing
-        setflags!(pw2wan_calc, pw2wan_flags)
-    elseif eltype(scf_calc) == QE
-        pw2wan_calc = DFInput{QE}(pw2wan_file, structure, pw2wan_flags, InputData[], pw2wan_run_command, pw2wan_exec, true)
-    end
-
-    wan_flags[:mp_grid] = typeof(k_grid) <: Array ? k_grid : convert(Array, k_grid)
-
-    data = [InputData(:kpoints, :none, kgrid(k_grid..., :wan))]
-
-    if isempty(projections)
-        for atom in job.structure.atoms
-            setprojections!(atom, :random)
-        end
-    else
-        add_projections(projections, job.structure.atoms)
-    end
-
-    wan_calc1 = DFInput{Wannier90}(wan_file, structure, wan_flags, data, wan_run_command, true, true)
+    spin = spincalc(nscf)
     if spin
-        file, ext         = splitext(pw2wan_calc.filename)
-        wan_file, wan_ext = splitext(wan_calc1.filename)
-
-        pw2wan_calc_dn = deepcopy(pw2wan_calc)
-        pw2wan_calc.control[:inputpp].flags[:spin_component]    = "'up'"
-        pw2wan_calc.control[:inputpp].flags[:seedname]          = "'$(wan_file * "_up")'"
-        pw2wan_calc_dn.control[:inputpp].flags[:spin_component] = "'down'"
-        pw2wan_calc_dn.control[:inputpp].flags[:seedname]       = "'$(wan_file * "_dn")'"
-
-        pw2wan_calc.filename    = file * "_up" * ext
-        pw2wan_calc_dn.filename = file * "_dn" * ext
-
-        wan_calc_dn1 = deepcopy(wan_calc1)
-        wan_calc1.filename    = wan_file * "_up" * wan_ext
-        wan_calc_dn1.filename = wan_file * "_dn" * wan_ext
-
-        wan_calc2 = deepcopy(wan_calc1)
-        push!(job.calculations, wan_calc1)
-        push!(job.calculations, pw2wan_calc)
-        push!(job.calculations, wan_calc2)
-
-        wan_calc_dn2 = deepcopy(wan_calc_dn1)
-        push!(job.calculations, wan_calc_dn1)
-        push!(job.calculations, pw2wan_calc_dn)
-        push!(job.calculations, wan_calc_dn2)
-
+        pw2wanfiles = ["pw2wan_up.in", "pw2wan_dn.in"]
+        wanfiles = ["wan_up.win", "wan_dn.win"]
+        info("Spin polarized calculation found (inferred from nscf input).")
     else
-        wan_calc2 = deepcopy(wan_calc1)
-        push!(job.calculations, wan_calc1)
-        push!(job.calculations, pw2wan_calc)
-        push!(job.calculations, wan_calc2)
+        pw2wanfiles = ["pw2wan.in"]
+        wanfiles = ["wan.win"]
     end
+
+    @assert flag(nscf, :calculation) == "'nscf'" error("Please provide a valid 'nscf' calculation.")
+    if flag(nscf, :nosym) != true
+        info("'nosym' flag was not set in the nscf calculation.\nIf this was not intended please set it and rerun the nscf calculation.\nThis generally gives errors because of omitted kpoints, needed for pw2wannier90.x")
+    end
+
+    ats = atoms(job)
+    projections = Dict(projections)
+    ids   = [id(at) for at in ats]
+    @assert all(haskey.(projections, unique(ids))) error("Please supply a set of projections for each unique atom: $(join(unids," ")).")
+
+    nbnd = sum(sum.([[orbsize(orb) for orb in projections[id]] for id in ids]))
+    info("num_bands=$nbnd (inferred from provided projections).")
+
+    nbndfound = 0
+    max = 0
+    for b in bands
+        if minimum(b.eigvals) >= Emin
+            nbndfound += 1
+            max = maximum(b.eigvals)
+        end
+    end
+
+    nbndfound < nbnd && error("num_bands ($nbnd) starting from Emin=$Emin exceeds the number of bands in 'nscf' calculation ($nbndfound).\n Please rerun QE with higher nbnd.")
+    wanflags = SymAnyDict(wanflags)
+    wanflags[:dis_win_min] = Emin - Epad
+    wanflags[:dis_win_max] = max + Epad
+    wanflags[:dis_froz_min] = Emin
+    wanflags[:dis_froz_max] = max
+
+    wanflags[:num_bands] = length(bands)
+    wanflags[:num_wann]  = nbnd
+
+    wanflags[:mp_grid] = kakbkc(data(nscf, :k_points).data)
+    info("mp_grid=$(join(wanflags[:mp_grid]," ")) (inferred from nscf input).")
+
+    pw2wanflags = SymAnyDict(:prefix => flag(nscf, :prefix), :outdir => flag(nscf, :outdir) == nothing ? "'./'" : flag(nscf, :outdir))
+    if haskey(wanflags, :write_hr)
+        pw2wanflags[:write_amn] = true
+        pw2wanflags[:write_mmn] = true
+    end
+    if haskey(wanflags, :wannier_plot)
+        pw2wanflags[:write_unk] = true
+    end
+
+    kdata = InputData(:kpoints, :none, kgrid(wanflags[:mp_grid]..., :wan))
+
+    for (pw2wanfil, wanfil) in zip(pw2wanfiles, wanfiles)
+        add!(job, DFInput{Wannier90}(wanfil, copy(wanflags), [kdata], [Exec(), wanexec], true))
+        add!(job, DFInput{QE}(pw2wanfil, copy(pw2wanflags), InputData[], [nscf.execs[1], pw2wanexec], true))
+    end
+
+    setfls!(job, name, flags...) = setflags!(job, name, flags...;print=false)
+    if spin
+        setfls!(job, "pw2wan_up", :spin_component => "'up'")
+        setfls!(job, "pw2wan_dn", :spin_component => "'down'")
+        setfls!(job, "wan_up.win", :spin => "'up'")
+        setfls!(job, "wan_dn.win", :spin => "'down'")
+    end
+    addprojections!(projections, ats)
+
     return job
 end
 
@@ -813,8 +770,6 @@ function addbandscalculation!(job::DFJob, k_path::Vector{Vector{T}}; filename="b
     return job
 end
 
-path(job::DFJob, calc_filename::String) =
-    joinpath(job.local_dir, input(job, calc_filename).filename)
 
 """
 Sets the server dir of the job.

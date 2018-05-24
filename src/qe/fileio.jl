@@ -136,13 +136,13 @@ function read_qe_output(filename::String, T=Float64)
 
         #process bands
         if !isempty(k_eigvals)
-            out[:bands] = Array{DFBand{T},1}()
+            out[:bands] = Vector{DFBand{T}}()
             for i1=1:length(k_eigvals[1])
                 eig_band = T[]
                 for i = 1:length(out[:k_cart])
                     push!(eig_band, k_eigvals[i][i1])
                 end
-                push!(out[:bands], DFBand(get(out, :k_cart,[[0.0,0.0,0.0]]), get(out, :k_cryst, [[0.0,0.0,0.0]]), eig_band))
+                push!(out[:bands], DFBand(get(out, :k_cart,[zero(Vec3)]), get(out, :k_cryst, [zero(Vec3)]), eig_band))
             end
         end
         return out

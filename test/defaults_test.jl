@@ -9,13 +9,5 @@ configure_defaultpseudos(pseudo_dirs=Dict(:test => getdefault_pseudodirs()[:test
 @add_default testdefaultstring = "test"
 
 @test testdefaultstring == "test"
-@test DFControl.getdefault_pseudo(:Si, :test) == "Si.UPF"
+@test DFControl.getdefault_pseudo(:Pt, :test) == "Pt.UPF"
 @test DFControl.getdefault_server() == "localhost"
-
-DFControl.removedefault_pseudos(:test)
-
-@test DFControl.getdefault_pseudo(:Si, :test) == nothing
-
-removedefault(:testdefaultstring)
-@test testdefaultstring == nothing
-setdefault_server(prevdefault)

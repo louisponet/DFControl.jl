@@ -68,7 +68,7 @@ end
     element     ::Element
     position    ::Point3{T}
     pseudo      ::String = ""
-    projections ::Vector{Projection} = [Projection()]
+    projections ::Vector{Projection} = Projection[]
 end
 
 Atom(id::Symbol, el::Element, pos::Point3; kwargs...)  = Atom(id=id, element=el, position=pos; kwargs...)

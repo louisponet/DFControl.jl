@@ -17,7 +17,7 @@ function extract_atoms(atoms_block::T, proj_block::T, cell) where T <: InputData
                     end
                     for proj in projs
                         size = orbsize(proj)
-                        push!(t_ats, Atom(pos_at, element(pos_at), cell' * ps, projections=[Projection(Orbital(proj), t_start, size, t_start + size - 1)]))
+                        push!(t_ats, Atom(pos_at, element(pos_at), cell' * ps, projections=[Projection(orbital(proj), t_start, size, t_start + size - 1)]))
                         t_start += size
                     end
                 end

@@ -14,7 +14,10 @@ name = "Si" #this name will also be given to the Structure inside the DFJob
 local_dir = "/home/ponet/Documents/Si"
 server_dir = "/home/ponet/Si"
 bin_dir = "/usr/local/bin" #this is defaulted to the users bin dir = "~/bin/", it is the directory where pw.x etc will be called from
-runcommand = Exec("mpirun", bin_dir, Dict{Symbol, Any}(:np => 24)) #this is the run command before the executable of the calculation and it's flags
+
+execs = [Exec("mpirun", bin_dir, Dict{Symbol, Any}(:np => 24)), Exec("pw.x", bin_dir, Dict{Symbol, Any}(:nk => 2))]
+ #These execs are what will ultimately run the input, namely they will get pasted one after the other in the line of the job file.
+ #If you don't want to use mpirun, just insert an Exec().
 
 pseudo_set = :pbesol #nonrelativistic calculation ( assumes you set up the pseudos, as demonstrated in the README)
 pseudo_specifier = "paw" #this selects the correct pseudo if multiple belong to the pseudo_set. If you don't specify this, the first one in the set will be used.
@@ -28,18 +31,20 @@ header = ["#SBATCH -N 1", "#SBATCH --ntasks-per-node=24",
 #The various calculations we want to run and the flags and data to pass to them are defined in two ways:
 #   - calculation specific flags and data are associated with the calculation they belong to
 #   - common flags can be defined as Pair{Symbol, Any} varargs at the end of the constructor call.
-scf_data = Dict(:k_points => (6, 6, 6, 1, 1, 1), :flags => [:verbosity => "'low'"])
-bands_data = Dict(:k_points => [(0.5, 0.5, 0.5, 100.),
-                                (0.0, 0.0, 0.0, 100.),
-                                (0.0, 0.5, 0.0, 1.)],
+
+scf_data = Dict(:k_points => [6, 6, 6, 1, 1, 1], :flags => [:verbosity => "'low'"])
+bands_data = Dict(:k_points => [[0.5, 0.5, 0.5, 100.],
+                                [0.0, 0.0, 0.0, 100.],
+                                [0.0, 0.5, 0.0, 1.]],
                   :flags => [:verbosity => "'high'", :nbnd => 8])
 
-calculations = [:scf => ("pw.x", scf_data), :bands => ("pw.x", bands_data)] #the order here is the order in which the calculations will run! The first string in the tuple is the executable name that will be ran, which should be in the bin dir.
+nscf_data = merge(bands_data, Dict(:k_points => (10, 10, 10)))
+ #the order here is the order in which the calculations will run! The first string in the tuple is the executable name that will be ran, which should be in the bin dir.
 
 #Now we load the cif file and create a `DFJob` from it.
 
 job = DFJob(name, local_dir, "/home/ponet/Downloads/9011998.cif", calculations,
-      :prefix       => "'silicon'",
+      :prefix       => "'$name'",
       :restart_mode => "'from_scratch'",
       :ecutwfc      => 18.0,
       :mixing_mode  => "'plain'",
@@ -48,7 +53,6 @@ job = DFJob(name, local_dir, "/home/ponet/Downloads/9011998.cif", calculations,
       #kwargs
       server_dir  = server_dir,
       bin_dir     = bin_dir,
-      runcommand = runcommand,
       header      = header,
       pseudo_set  = :pbesol,
       pseudo_specifier = pseudo_specifier

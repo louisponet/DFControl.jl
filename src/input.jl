@@ -234,3 +234,5 @@ outfile(input::DFInput{QE})        = splitext(input.filename)[1]*".out"
 outfile(input::DFInput{Wannier90}) = splitext(input.filename)[1]*".wout"
 
 setflow!(input::DFInput, run) = input.run = run
+
+spincalc(input::DFInput) = all(flag(input, :nspin) .!= [nothing, 1])

@@ -25,7 +25,8 @@ mutable struct Exec
     end
 end
 
-Exec(exec::String) = Exec(exec, "~/bin/", SymAnyDict())
+Exec() = Exec("")
+Exec(exec::String) = Exec(exec, "")
 Exec(exec::String, dir::String) = Exec(exec, dir, SymAnyDict())
 Exec(exec::String, dir::String, flags...) = Exec(exec, dir, SymAnyDict(flags))
 

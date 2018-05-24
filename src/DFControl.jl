@@ -17,49 +17,24 @@ module DFControl
     include("types.jl")
     include("input.jl")
     include("utils.jl")
+    export kgrid
     include("job.jl")
 
-    export DFJob
-    export save
-    export submit
+    export DFJob, Exec, DFInput
+    export flag, setflags!, rmflags!,
+           data, setdata!,
+           cell, setcell!,
+           setflow!,
+           setexecflags!,
+           input, inputs,
+           path, outpath, setfilename!, setkpoints!, setdataoption!, setpseudos!,
+           atoms, setatoms!, setprojections!,
+           addwancalc!, addbandscalc!,
 
-    export flag
-    export setflags!
-    export rmflags!
-
-    export data
-    export setdata!
-
-    export setflow!
-
-    export runcommand
-    export setruncommand!
-
-    export setrunflags!
-    export runflags
-    export setexecflags!
-    export inputs
-    export input
-    export setfilename!
-    export setkpoints!
-    export setdataoption!
-    export setheaderword!
-    export setpseudos!
-    export addbandscalculation!
-    export path
-    export undo
-    export undo!
-    export setserverdir!
-    export atoms
-    export setatoms!
-    export cell
-    export setcell!
-    export path
-    export addwancalc!
-    export setlocaldir!
-    export setserverdir!
-    export setprojections!
-    export print_info
+           setheaderword!, setserverdir!, setlocaldir!,
+           save, submit,
+           undo, undo!,
+           print_info
 
     include("constants.jl")
     export qe_input_flags

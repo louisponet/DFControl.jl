@@ -1,6 +1,6 @@
 
 @enum Orbital s p d f
-function Orbital(s::Symbol)
+function orbital(s::Symbol)
     t = 0
     while Symbol(Orbital(t)) != s
         t += 1
@@ -11,8 +11,8 @@ function Orbital(s::Symbol)
     return t
 end
 Base.convert(::Type{Symbol}, x::Orbital) = Symbol(x)
-orbsize(orbital::Orbital) = Int(orbital) * 2 + 1
-orbsize(orbital::Symbol)  = Orbital(orbital) * 2 + 1
+orbsize(orb::Orbital) = Int(orb) * 2 + 1
+orbsize(orb::Symbol)  = orbital(orb) * 2 + 1
 
 @with_kw struct Projection
     orb   ::Orbital = s
@@ -22,23 +22,20 @@ orbsize(orbital::Symbol)  = Orbital(orbital) * 2 + 1
 end
 
 """
-    add_projections(projections, atoms)
-
-Takes an array of `Pair{Symbol, Orbital}` where Symbol signifies the atom symbol for the projections, and an Array of `Atom` and then assigns the correct `Projection` arrays to each atom.
+Adds projections to atoms.
 """
-function add_projections(projections, atoms)
+function addprojections!(projections_, atoms)
     t_start = 1
-    for (proj_at, projs) in projections
-        for proj in projs
-            for at in atoms
+    for (proj_at, projs) in projections_
+        for at in atoms
+            if length(projs) <= length(projections(at))
+                continue
+            end
+            for proj in projs
                 if id(at) == proj_at
                     size = orbsize(proj)
-                    t_proj = Projection(Orbital(proj), t_start, size, t_start + size - 1)
-                    if !isdefined(at, :projections)
-                        setprojections!(at, [t_proj])
-                    else
-                        push!(projections(at), t_proj)
-                    end
+                    t_proj = Projection(orbital(proj), t_start, size, t_start + size - 1)
+                    push!(projections(at), t_proj)
                     t_start += size
                 end
             end

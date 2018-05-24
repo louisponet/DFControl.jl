@@ -66,6 +66,8 @@ kgrid(na, nb, nc, ::Type{Wannier90}) = reshape([[a, b, c] for a in collect(linsp
 kgrid(na, nb, nc, input::Symbol) = input==:wan ? kgrid(na, nb, nc, Wannier90) : kgrid(na, nb, nc, QE)
 kgrid(na, nb, nc, input::DFInput{T}) where T = kgrid(na, nb, nc, T)
 
+kakbkc(kgrid) = length.(unique.([[n[i] for n in kgrid] for i=1:3]))
+
 function fort2julia(f_type)
     f_type = lowercase(f_type)
     if f_type == "real"

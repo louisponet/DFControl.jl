@@ -35,7 +35,7 @@ function setprojections!(str::Structure, projections...)
         end
     end
     empty_projections!(str)
-    add_projections(projdict, str.atoms)
+    addprojections!(projdict, str.atoms)
 end
 
 function empty_projections!(str::Structure)
