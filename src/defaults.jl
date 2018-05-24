@@ -136,13 +136,9 @@ function configure_defaultpseudos(server = getdefault_server(), pseudo_dirs=getd
     end
 
     outputs = Dict{Symbol, String}()
-    if typeof(pseudo_dirs) == String
-        outputs[:default] = readstring(`ssh -t $server ls $pseudo_dirs`)
-    elseif typeof(pseudo_dirs) <: Dict
-        for (name, directory) in pseudo_dirs
-            outputs[name] = readstring(`ssh -t $server ls $directory`)
-        end
-    end
+    for (name, directory) in pseudo_dirs
+        outputs[name] = server == "localhost" ? readstring(`ls $directory`) : readstring(`ssh -t $server ls $directory`)
+    end 
 
     if !isdefined(:default_pseudos)
         expr2file(default_file, :(default_pseudos = Dict{Symbol, Dict{Symbol, Vector{String}}}()))
