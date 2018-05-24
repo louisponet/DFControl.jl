@@ -42,6 +42,11 @@ macro add_default(expr)
     load_defaults()
 end
 
+function removedefault(lhs)
+    rm_expr_lhs(default_file, :($lhs))
+    eval(Main, :($lhs = nothing))
+end
+
 function define_def(default, expr1, expr2)
     if !isdefined(default)
         expr2file(default_file, expr1)
@@ -74,7 +79,7 @@ function removedefault_pseudodir(pseudo_symbol::Symbol)
         rm_expr_lhs(default_file, :(default_pseudo_dirs[$(QuoteNode(pseudo_symbol))]))
         if isempty(DFControl.default_pseudo_dirs)
             rm_expr_lhs(default_file, :default_pseudo_dirs)
-            default_pseudo_dirs = nothing
+            eval(:(default_pseudo_dirs = nothing))
         end
         removedefault_pseudos(pseudo_symbol)
     else
@@ -99,7 +104,7 @@ function removedefault_pseudos(pseudo_symbol::Symbol)
         end
         if isempty(DFControl.default_pseudos)
             rm_expr_lhs(default_file, :default_pseudos)
-            default_pseudos = nothing
+            eval(:(default_pseudos = nothing))
         end
     end
     if found

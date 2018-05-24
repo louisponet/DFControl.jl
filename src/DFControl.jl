@@ -107,6 +107,7 @@ module DFControl
     export getdefault_jobheader
     export getdefault_pseudodir
     export getdefault_pseudodirs
+    export removedefault
 
     if Pkg.installed("Atom") != nothing
         include("display/printing_juno.jl")

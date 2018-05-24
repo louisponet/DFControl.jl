@@ -1,13 +1,10 @@
 
 using DFControl
 
-
 prevdefault = getdefault_server()
 setdefault_server("localhost")
 setdefault_pseudodir(:test, joinpath(Pkg.dir("DFControl"), "test/testassets/pseudos"))
 configure_defaultpseudos(pseudo_dirs=Dict(:test => getdefault_pseudodirs()[:test]))
-
-
 
 @add_default testdefaultstring = "test"
 
@@ -19,5 +16,6 @@ DFControl.removedefault_pseudos(:test)
 
 @test DFControl.getdefault_pseudo(:Si, :test) == nothing
 
-DFControl.rm_expr_lhs(DFControl.default_file, :(testdefaultstring))
+removedefault(:testdefaultstring)
+@test testdefaultstring == nothing
 setdefault_server(prevdefault)
