@@ -49,19 +49,11 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "job.html#DFControl.addbandscalculation!-Union{Tuple{DFControl.DFJob,Array{Array{T,1},1}}, Tuple{T}} where T<:AbstractFloat",
-    "page": "Job",
-    "title": "DFControl.addbandscalculation!",
-    "category": "method",
-    "text": "addbandscalculation!(job::DFJob, k_path::Vector{Vector{T}}; filename=\"bands.in\", run=true) where T<:AbstractFloat\n\nChecks if there is an scf calculation in the job and takes it\'s inputs to generate a bands calculation along the given k-path.\n\n\n\n"
-},
-
-{
-    "location": "job.html#DFControl.addwancalc!-Tuple{DFControl.DFJob,Any}",
+    "location": "job.html#DFControl.addwancalc!-Tuple{DFControl.DFJob,DFControl.DFInput{DFControl.QE},Any}",
     "page": "Job",
     "title": "DFControl.addwancalc!",
     "category": "method",
-    "text": "addwancalc!(job::DFJob, k_grid;\n                   nscf_file          = \"nscf.in\",\n                   wan_file           = \"wan.win\",\n                   pw2wan_file        = \"pw2wan.in\",\n                   wan_run_command    = \"~/bin/wannier90.x \",\n                   pw2wan_run_command = \"mpirun -np 24 ~/bin/pw2wannier90.x\",\n                   wan_flags          = nothing,\n                   pw2wan_flags       = nothing)\n\nAdds a wannier calculation to a job. For now only works with QE.\n\n\n\n"
+    "text": "addwancalc!(job::DFJob, nscf::DFInput{QE}, projections;\n                 Emin=-5.0,\n                 Epad=5.0,\n                 wanflags=SymAnyDict(),\n                 pw2wanexec=Exec(\"pw2wannier90.x\", nscf.execs[2].dir, nscf.execs[2].flags),\n                 wanexec=Exec(\"wannier90.x\", nscf.execs[2].dir),\n                 bands=read_qe_bands_file(outpath(job, nscf)))\n\nAdds a wannier calculation to a job. For now only works with QE.\n\n\n\n"
 },
 
 {
@@ -126,6 +118,22 @@ var documenterSearchIndex = {"docs": [
     "title": "DFControl.inputs",
     "category": "method",
     "text": "inputs(job::DFJob, filename::String)\n\nReturns an array of the input that matches the filename.\n\n\n\n"
+},
+
+{
+    "location": "job.html#DFControl.outpath-Tuple{DFControl.DFJob,DFControl.DFInput{DFControl.QE}}",
+    "page": "Job",
+    "title": "DFControl.outpath",
+    "category": "method",
+    "text": "Provides the path of the output to the given input, provided that it is pulled already\n\n\n\n"
+},
+
+{
+    "location": "job.html#DFControl.path-Tuple{DFControl.DFJob,DFControl.DFInput}",
+    "page": "Job",
+    "title": "DFControl.path",
+    "category": "method",
+    "text": "Returns the full path of the input\n\n\n\n"
 },
 
 {
@@ -345,6 +353,14 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "input.html#DFControl.DFInput-Tuple{DFControl.DFInput,Any,Vararg{Any,N} where N}",
+    "page": "Inputs",
+    "title": "DFControl.DFInput",
+    "category": "method",
+    "text": "DFInput(template::DFInput, filename, newflags...; runcommand=template.runcommand, run=true)\n\nCreates a new DFInput from a template DFInput, setting the newflags in the new one.\n\n\n\n"
+},
+
+{
     "location": "input.html#DFControl.flag-Tuple{DFControl.DFInput,Symbol}",
     "page": "Inputs",
     "title": "DFControl.flag",
@@ -557,7 +573,7 @@ var documenterSearchIndex = {"docs": [
     "page": "FileIO",
     "title": "DFControl.save",
     "category": "function",
-    "text": "save(input::DFInput{QE}, structure, filename::String=input.filename)\n\nWrites a Quantum Espresso input file.\n\n\n\n"
+    "text": "save(input::DFInput{Wannier90}, structure, filename::String=input.filename)\n\nWrites the DFInput{Wannier90} and structure to a file, that can be interpreted by WANNIER90. The atoms in the structure must have projections defined.\n\n\n\n"
 },
 
 {
@@ -565,7 +581,7 @@ var documenterSearchIndex = {"docs": [
     "page": "FileIO",
     "title": "DFControl.save",
     "category": "function",
-    "text": "save(input::DFInput{Wannier90}, structure, filename::String=input.filename)\n\nWrites the DFInput{Wannier90} and structure to a file, that can be interpreted by WANNIER90. The atoms in the structure must have projections defined.\n\n\n\n"
+    "text": "save(input::DFInput{QE}, structure, filename::String=input.filename)\n\nWrites a Quantum Espresso input file.\n\n\n\n"
 },
 
 {
@@ -686,6 +702,14 @@ var documenterSearchIndex = {"docs": [
     "title": "Utils",
     "category": "page",
     "text": ""
+},
+
+{
+    "location": "utils.html#DFControl.kgrid-Tuple{Any,Any,Any,Type{DFControl.QE}}",
+    "page": "Utils",
+    "title": "DFControl.kgrid",
+    "category": "method",
+    "text": "kgrid(na, nb, nc, input)\n\nReturns an array of k-grid points that are equally spaced, input can be either :wan or :nscf, the returned grids are appropriate as inputs for wannier90 or an nscf calculation respectively.\n\n\n\n"
 },
 
 {
