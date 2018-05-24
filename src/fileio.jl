@@ -145,7 +145,7 @@ function writetojob(f, job, input::DFInput{Wannier90})
 
     pw2wanid = findfirst(x -> contains(x.execs[2].exec, "pw2wannier90.x"), job.calculations[id+1:end])+id
     pw2wan   = job.calculations[pw2wanid]
-    setflags!(pw2wan, :seedname => "'$(splitext(input.filename)[1])'")
+    setflags!(pw2wan, :seedname => "'$(splitext(input.filename)[1])'",print=false)
 
     if !pw2wan.run
         write(f, "#")

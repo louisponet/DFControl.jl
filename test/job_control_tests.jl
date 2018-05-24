@@ -16,7 +16,7 @@ addwancalc!(job, nscf,[:Pt => [:s, :p, :d]], Emin=fermi-7.0, Epad=5.0, wanflags=
 
 job.calculations = job.calculations[1:3]
 
-setflags!(job, :nspin => 2)
+setflags!(job, :nspin => 2, print=false)
 @test flag(job, "nscf", :nspin) == 2
 
 addwancalc!(job, nscf,[:Pt => [:s, :p, :d]], Emin=fermi-7.0, Epad=5.0, wanflags=wanflags)

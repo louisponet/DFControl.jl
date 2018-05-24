@@ -132,7 +132,7 @@ function DFJob(job::DFJob, flagstoset...;
         newjob.name = name
     end
 
-    setflags!(newjob, flagstoset...)
+    setflags!(newjob, flagstoset..., print=false)
     return newjob
 end
 
@@ -577,10 +577,10 @@ function setpseudos!(job::DFJob, pseudo_set, pseudo_specifier="")
         pseudo = getdefault_pseudo(id(atom), pseudo_set, pseudo_specifier=pseudo_specifier)
         if pseudo == nothing
             warn("Pseudo for $(id(atom)) at index $i not found in set $pseudo_set.\n Setting pseudo_dir to './', this should be changed before trying to run the job!")
-            setflags!(job, :pseudo_dir => "'./'")
+            setflags!(job, :pseudo_dir => "'./'", print=false)
         else
             setpseudo!(atom, pseudo)
-            setflags!(job, :pseudo_dir => "'$(getdefault_pseudodir(pseudo_set))'")
+            setflags!(job, :pseudo_dir => "'$(getdefault_pseudodir(pseudo_set))'", print=false)
         end
     end
     return job
@@ -726,7 +726,7 @@ function addwancalc!(job::DFJob, nscf::DFInput{QE}, projections;
         add!(job, DFInput{QE}(pw2wanfil, copy(pw2wanflags), InputData[], [nscf.execs[1], pw2wanexec], true))
     end
 
-    setfls!(job, name, flags...) = setflags!(job, name, flags...;print=false)
+    setfls!(job, name, flags...) = setflags!(job, name, flags..., print=false)
     if spin
         setfls!(job, "pw2wan_up", :spin_component => "'up'")
         setfls!(job, "pw2wan_dn", :spin_component => "'down'")

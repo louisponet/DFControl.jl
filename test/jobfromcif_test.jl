@@ -46,7 +46,7 @@ job
 @test flag(job, "scf", :prefix) == flag(job, "nscf", :prefix) == "'$name'"
 @test flag(job, "bands", :verbosity) == "'high'"
 
-setflags!(job, :prefix => "blabla")
+setflags!(job, :prefix => "blabla", print=false)
 @test flag(job, "scf", :prefix) == flag(job, "nscf", :prefix) == "blabla"
-setflags!(job, :Hubbard_U => [4, 4 ,0])
+setflags!(job, :Hubbard_U => [4, 4 ,0],print=false)
 @test flag(job, "scf", :Hubbard_U) == flag(job, "nscf", :Hubbard_U) == [4.0, 4.0 ,0.0]
