@@ -3,7 +3,6 @@ module DFControl
 # using Reexport
     import Base.Iterators.flatten
     using RecipesBase
-    using StaticArrays
     using GeometryTypes
     using Parameters
 

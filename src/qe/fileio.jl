@@ -346,10 +346,11 @@ function read_qe_input(filename, T=Float64::Type; exec=Exec("pw.x"), runcommand=
 
             elseif contains(line, "CELL_PARAMETERS") || contains(line, "cell_parameters")
                 cell_unit    = cardoption(line)
-                cell         = MMatrix{3, 3, T}()
-                cell[1, 1:3] = parse.(T, split(readline(f)))
-                cell[2, 1:3] = parse.(T, split(readline(f)))
-                cell[3, 1:3] = parse.(T, split(readline(f)))
+                cell_        = Matrix{T}(3, 3)
+                cell_[1, 1:3] = parse.(T, split(readline(f)))
+                cell_[2, 1:3] = parse.(T, split(readline(f)))
+                cell_[3, 1:3] = parse.(T, split(readline(f)))
+                cell = Mat3(cell_)
                 line = readline(f)
                 cell_block = InputData(:cell_parameters, cell_unit, cell)
                 @goto start_label
@@ -366,7 +367,7 @@ function read_qe_input(filename, T=Float64::Type; exec=Exec("pw.x"), runcommand=
 
             elseif contains(line, "ATOMIC_POSITIONS") || contains(line, "atomic_positions")
                 option = cardoption(line)
-                atoms  = Dict{Symbol,Array{Point3{T},1}}()
+                atoms  = Dict{Symbol, Vector{Point3{T}}}()
                 line   = readline(f)
                 while length(split(line)) == 4
                     s_line   = split(line)
