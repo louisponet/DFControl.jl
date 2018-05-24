@@ -18,7 +18,5 @@ end
 
 const WannierControlFlags = read_wan_control_flags(joinpath(@__DIR__, "../../assets/inputs/wannier/input_flags.txt"))
 
-wan_flag_type(flag) = haskey(WannierControlFlags, flag) ? WannierControlFlags[flag] : Void
-
-
-
+flagtype(::Type{Wannier90}, flag) = haskey(WannierControlFlags, flag) ? WannierControlFlags[flag] : Void
+flagtype(::DFInput{Wannier90}, flag) = flagtype(Wannier90, flag) 

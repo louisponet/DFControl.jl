@@ -7,10 +7,10 @@ bands_input   = read_qe_input(joinpath(@__DIR__,"../assets/inputs/qe/bands.in"))
 projwfc_input = read_qe_input(joinpath(@__DIR__,"../assets/inputs/qe/projwfc.in"), exec=Exec("projwfc.x","",Dict{Symbol, Any}()))[1];
 display(projwfc_input);
 @test flag(scf_input, :calculation) == "'scf'";
-@test block(scf_input,:k_points).option == :automatic;
-@test block(scf_input,:k_points).data[3] == 10;
+@test data(scf_input,:k_points).option == :automatic;
+@test data(scf_input,:k_points).data[3] == 10;
 
-@test block(bands_input, :k_points).option == :crystal_b;
+@test data(bands_input, :k_points).option == :crystal_b;
 
 @test flag(projwfc_input,:kresolveddos) == true
 
@@ -30,7 +30,7 @@ test_ks_cart,test_ks_cryst = read_ks_from_qe_output(joinpath(@__DIR__,"../assets
 @test read_fermi_from_qe_output(joinpath(@__DIR__,"../assets/outputs/scf.out")) == 5.1371
 
 wan_test, wanstructure = read_wannier_input(joinpath(@__DIR__,"../assets/inputs/wannier/wan.win"));
-@test length(data(wan_test,:kpoints)) == prod(flag(wan_test,:mp_grid))
+@test length(data(wan_test, :kpoints).data) == prod(flag(wan_test, :mp_grid))
 @test flag(wan_test,:write_rmn)
 
 test_filename = joinpath(@__DIR__,"../assets/inputs/wannier/wan_test.win")
@@ -38,7 +38,6 @@ save(wan_test, wanstructure, test_filename);
 @test wan_test.flags == read_wannier_input(test_filename)[1].flags
 wan_test2 = read_wannier_input(test_filename)[1]
 @test wan_test.data[1].data == wan_test2.data[1].data
-@test print_flag(scf_input,:pseudo_dir) == print_flag(bands_input,:pseudo_dir)
 rmflags!(wan_test2, :dis_win_max, :dis_win_min)
 @test flag(wan_test2,:dis_win_max) == flag(wan_test2,:dis_win_min)
 rm(test_filename);
@@ -77,6 +76,6 @@ setdefault_input(scf_input, qestructure, :scf);
 setdefault_input(scf_input, qestructure, :scf);
 setdefault_input(bands_input, qestructure, :bands);
 
-@test default_inputs[:scf][1].runcommand.exec == scf_input.runcommand.exec
+@test execs(default_inputs[:scf][1])[1].exec == execs(scf_input)[1].exec
 removedefault_input(:scf)
 removedefault_input(:bands)

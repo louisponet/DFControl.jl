@@ -36,7 +36,7 @@ end
 function DFJob(job_name, local_dir, structure::AbstractStructure, calculations::Vector, common_flags...;
                     server=getdefault_server(),
                     server_dir="",
-                    package=:qe,
+                    package=QE,
                     bin_dir="~/bin/",
                     runcommand=Exec("mpirun", bin_dir, Dict(:np => 24)),
                     pseudo_set=:default,
@@ -78,12 +78,12 @@ function DFJob(job_name, local_dir, structure::AbstractStructure, calculations::
         flags  = get(data, :flags, Dict{Symbol, Any}())
         if exec == "pw.x"
             push!(flags, :calculation => "'$(string(calc_))'")
-            datablocks = [QEDataBlock(:k_points, k_option, k_points)]
+            datablocks = [InputData(:k_points, k_option, k_points)]
         else
-            datablocks =  QEDataBlock[]
+            datablocks =  InputData[]
         end
-        input_ = QEInput(string(calc_) * ".in",
-                         QEControlBlock[],
+        input_ = DFInput{package}(string(calc_) * ".in",
+                         Dict{Symbol, Any}(),
                          datablocks,
                          runcommand, Exec(string(exec), bin_dir),
                          true)
@@ -137,7 +137,7 @@ function DFJob(job::DFJob, flagstoset...;
         newjob.name = name
     end
 
-    setflags!!(newjob, flagstoset...)
+    setflags!(newjob, flagstoset...)
     return newjob
 end
 
@@ -314,13 +314,11 @@ end
 Adds a calculation to the job, at the specified index.
 """
 function add!(job::DFJob, input::DFInput, index::Int=length(job.calculations)+1;
-                          runcommand = input.runcommand,
-                          filename    = input.filename)
+                          filename = input.filename)
 
     UNDO_JOBS[job.id] = deepcopy(job)
 
     input.filename = filename
-    input.runcommand = runcommand
     insert!(job.calculations, index, input)
     return job
 end
@@ -338,7 +336,8 @@ function setflags!(job::DFJob, calculations::Vector{String}, flags...; print=tru
     UNDO_JOBS[job.id] = deepcopy(job)
 
     found_keys = Symbol[]
-    for calc in inputs(job, calculations)
+
+    for calc in input.(job, calculations)
         t_found_keys, = setflags!(calc, flags..., print=print)
         for key in t_found_keys
             if !(key in found_keys) push!(found_keys, key) end
@@ -394,24 +393,13 @@ end
 #TODO set so calculations also have a name.
 #TODO set after implementing k_point set so you don't need to specify all this crap
 """
-    data(job::DFJob, calc_filenames, block_symbol::Symbol)
+    data(job::DFJob, calc_filenames, name::Symbol)
 
 Looks through the calculation filenames and returns the data with the specified symbol.
 """
-function data(job::DFJob, calc_filenames, block_symbol::Symbol)
+function data(job::DFJob, calc_filenames, name::Symbol)
     for calc in inputs(job, calc_filenames)
-        return data(calc, block_symbol)
-    end
-end
-
-"""
-    block(job::DFJob, calc_filenames, block_symbol::Symbol)
-
-Looks through the calculation filenames and returns the block with the specified symbol.
-"""
-function block(job::DFJob, calc_filenames, block_symbol::Symbol)
-    for calc in inputs(job, calc_filenames)
-        return block(calc, block_symbol)
+        return data(calc, name)
     end
 end
 
@@ -468,102 +456,39 @@ setflow!(job::DFJob, should_runs::Vector{Bool}) = setflow!(job, [calc.filename =
 
 Goes throug the calculation filenames and sets whether it should run or not.
 """
-function setflow!(job::DFJob, filenames::Vector{String}, should_run)
-    UNDO_JOBS[job.id] = deepcopy(job)
-
-    for calc in inputs(job, filenames)
-        calc.run = should_run
-    end
-    return job
-end
-
-"""
-    setruncommand!(job::DFJob, inputnames, runcommand::Exec)
-
-Goes through the job calculations and if it contains one of the inputnames it sets the run command of the calculation.
-"""
-function setruncommand!(job::DFJob, inputnames, runcommand::Exec)
-    UNDO_JOBS[job.id] = deepcopy(job)
-
-    for calc in inputs(job, inputnames)
-        calc.runcommand = runcommand
-        dfprintln("Run command of file '$(calc.filename)' is now: '$(calc.runcommand)'")
-    end
-
-    return job
-end
-
-"""
-    runcommand(job::DFJob, inputname)
-
-Returns the `runcommand`.
-"""
-function runcommand(job::DFJob, inputname)
-    for calc in inputs(job, inputname)
-        return calc.runcommand
-    end
-end
-
-"""
-    setrunflags!(job::DFJob, inputnames, flags...)
-
-Goes through the calculations of the job and if the name contains any of the `inputnames` it sets the runcommand flags to the specified ones.
-"""
-function setrunflags!(job::DFJob, inputnames, flags...)
-    calcs = inputs(job, inputnames)
-    for calc in calcs
-        for (f,v) in flags
-            calc.runcommand.flags[f] = v
-        end
-        dfprintln("run flags of calculation $(calc.filename) are now $(calc.runcommand.flags).")
-    end
-end
-
-"Returns the runcommand flags."
-runflags(job::DFJob, inputname) = input(job, inputname).runcommand[2]
+setflow!(job::DFJob, filenames::Vector{String}, should_run) = setflow!.(inputs(job, filenames), should_run)
 
 """
     setexecflags!(job::DFJob, inputnames, flags...)
 
 Goes through the calculations of the job and if the name contains any of the `inputnames` it sets the exec flags to the specified ones.
 """
-function setexecflags!(job::DFJob, inputnames, flags...)
-    calcs = inputs(job, inputnames)
-    for calc in calcs
-        for (f,v) in flags
-            calc.exec.flags[f] = v
-        end
-        dfprintln("run flags of calculation $(calc.filename) are now $(calc.exec.flags).")
-    end
-end
-
-"Returns the runcommand flags."
-execflags(job::DFJob, inputname) = input(job, inputname).exec.flags
+setexecflags!(job::DFJob, inputnames, flags...) = setexecflags!.(inputs(job, inputnames), flags...)
 
 """
-    setblock!(job::DFJob, filenames, block::Block)
+    setdata!(job::DFJob, filenames, block::Block)
 
 Adds a block to the specified filenames.
 """
-function setblock!(job::DFJob, filenames, block::Block)
+function setdata!(job::DFJob, filenames, data::InputData)
     UNDO_JOBS[job.id] = deepcopy(job)
 
     for input in inputs(job, filenames)
-        setblock!(input, block)
+        setdata!(input, data)
     end
     return job
 end
 
 """
-    setdata!(job::DFJob, filenames, block_symbol, data, option=:none)
+    setdata!(job::DFJob, filenames, name, data, option=:none)
 
 Adds a block to the specified filenames.
 """
-function setdata!(job::DFJob, filenames, block_symbol, data, option=:none)
+function setdata!(job::DFJob, filenames, name, data, option=:none)
     UNDO_JOBS[job.id] = deepcopy(job)
 
     for input in inputs(job, filenames)
-        setdata!(input, block_symbol, data, option)
+        setdata!(input, name, data, option)
     end
     return job
 end
@@ -585,7 +510,7 @@ end
 """
     setatoms!(job::DFJob, atoms::Dict{Symbol,<:Array{<:Point3,1}}, pseudo_setname=:default, pseudo_specifier=nothing, option=:angstrom)
 
-Sets the data blocks with atomic positions to the new one. This is done for all calculations in the job that have that data.
+Sets the data data with atomic positions to the new one. This is done for all calculations in the job that have that data.
 If default pseudopotentials are defined, a set can be specified, together with a fuzzy that distinguishes between the possible multiple pseudo strings in the pseudo set.
 These pseudospotentials are then set in all the calculations that need it.
 All flags which specify the number of atoms inside the calculation also gets set to the correct value.
@@ -634,26 +559,26 @@ function setkpoints!(job::DFJob, calc_filenames, k_points)
 end
 
 """
-    setoption!(job::DFJob, filenames::Array{String,1}, block_symbol::Symbol, option::Symbol)
+    setdataoption!(job::DFJob, filenames::Array{String,1}, name::Symbol, option::Symbol)
 
 sets the option of specified data block in the specified calculations.
 """
-function setoption!(job::DFJob, filenames::Vector{String}, block_symbol::Symbol, option::Symbol)
+function setdataoption!(job::DFJob, filenames::Vector{String}, name::Symbol, option::Symbol)
     UNDO_JOBS[job.id] = deepcopy(job)
 
     for calc in inputs(job, filenames)
-        setoption!(calc, block_symbol, option)
+        setdataoption!(calc, name, option)
     end
     return job
 end
-setoption!(job::DFJob, filename::String, block_symbol::Symbol, option::Symbol) = setoption!(job, [filename], block_symbol, option)
+setdataoption!(job::DFJob, filename::String, name::Symbol, option::Symbol) = setdataoption!(job, [filename], name, option)
 
 """
-    setoption!(job::DFJob, block_symbol::Symbol, option::Symbol)
+    setdataoption!(job::DFJob, name::Symbol, option::Symbol)
 
 sets the option of specified data block in all calculations that have the block.
 """
-setoption!(job::DFJob, block_symbol::Symbol, option::Symbol) = setoption!(job, [i.filename for i in job.calculations], block_symbol, option)
+setdataoption!(job::DFJob, name::Symbol, option::Symbol) = setdataoption!(job, [i.filename for i in job.calculations], name, option)
 
 "sets the pseudopotentials to the specified one in the default pseudo_set."
 function setpseudos!(job::DFJob, pseudo_set, pseudo_specifier="")
@@ -756,7 +681,7 @@ function addwancalc!(job::DFJob, k_grid;
     scf_calc    = nothing
     pw2wan_calc = nothing
     for calc in job.calculations
-        if typeof(calc) == QEInput
+        if eltype(calc) == QE
             calculation = flag(calc, :calculation)
             if calculation == "'scf'"
                 scf_calc    = calc
@@ -769,12 +694,12 @@ function addwancalc!(job::DFJob, k_grid;
     end
 
     if nscf_calc != nothing
-        setdata!(nscf_calc, :k_points, kgrid(k_grid[1], k_grid[2], k_grid[3], :nscf), option=:crystal)
+        setdata!(nscf_calc, :k_points, kgrid(k_grid..., :nscf), option=:crystal)
     elseif scf_calc != nothing
         nscf_calc = deepcopy(scf_calc)
         nscf_calc.filename = nscf_file
         setflags!(nscf_calc,:calculation => "'nscf'")
-        setdata!(nscf_calc, :k_points, kgrid(k_grid[1], k_grid[2], k_grid[3], :nscf), option=:crystal)
+        setdata!(nscf_calc, :k_points, kgrid(k_grid..., :nscf), option=:crystal)
         setflags!(nscf_calc, :noinv=>true,:nosym=>true)
         if flag(scf_calc,:noinv) != true
             setflags!(scf_calc, :noinv =>true,:nosym=>true)
@@ -803,13 +728,13 @@ function addwancalc!(job::DFJob, k_grid;
 
     if pw2wan_calc != nothing
         setflags!(pw2wan_calc, pw2wan_flags)
-    elseif typeof(scf_calc) == QEInput
-        pw2wan_calc = QEInput(pw2wan_file,structure, [QEControlBlock(:inputpp, pw2wan_flags)], QEDataBlock[], pw2wan_run_command, pw2wan_exec, true)
+    elseif eltype(scf_calc) == QE
+        pw2wan_calc = DFInput{QE}(pw2wan_file, structure, pw2wan_flags, InputData[], pw2wan_run_command, pw2wan_exec, true)
     end
 
     wan_flags[:mp_grid] = typeof(k_grid) <: Array ? k_grid : convert(Array, k_grid)
 
-    data = [WannierDataBlock(:kpoints, :none, kgrid(k_grid[1], k_grid[2], k_grid[3], :wan))]
+    data = [InputData(:kpoints, :none, kgrid(k_grid..., :wan))]
 
     if isempty(projections)
         for atom in job.structure.atoms
@@ -819,7 +744,7 @@ function addwancalc!(job::DFJob, k_grid;
         add_projections(projections, job.structure.atoms)
     end
 
-    wan_calc1 = WannierInput(wan_file, structure, wan_flags, data, wan_run_command, true, true)
+    wan_calc1 = DFInput{Wannier90}(wan_file, structure, wan_flags, data, wan_run_command, true, true)
     if spin
         file, ext         = splitext(pw2wan_calc.filename)
         wan_file, wan_ext = splitext(wan_calc1.filename)
@@ -870,7 +795,7 @@ end
 """
     undo(job::DFJob)
 
-Undos the last set to the calculations of the job and returns as a new one.
+Returns the previous state of the job.
 """
 function undo(job::DFJob)
     return deepcopy(UNDO_JOBS[job.id])
@@ -882,8 +807,8 @@ end
 Checks if there is an scf calculation in the job and takes it's inputs to generate a bands calculation along the given k-path.
 """
 function addbandscalculation!(job::DFJob, k_path::Vector{Vector{T}}; filename="bands.in", run=true) where T<:AbstractFloat
-    calc = getfirst(x -> typeof(x) == QEInput && flag(x, :calculation) == "'scf'", job.calculations)
-    bands_calc = QEInput(calc, filename, run=run, k_points=(:crystal_b, k_path))
+    calc = getfirst(x -> eltype(x) == QE && flag(x, :calculation) == "'scf'", job.calculations)
+    bands_calc = DFInput{QE}(calc, filename, run=run, data=[:k_points => (:crystal_b, k_path)])
     push!(job.calculations, bands_calc)
     return job
 end
@@ -913,3 +838,23 @@ end
 sets the projections of the specified atoms inside the job structure.
 """
 setprojections!(job::DFJob, projections...) = setprojections!(job.structure, projections...)
+
+
+"""
+    print_info(job::DFJob, filenames::Vector{String})
+
+Prints general info of the job.
+"""
+function print_info(job::DFJob, filenames::Vector{String})
+    s = """--------------------
+    DFJob:      $(job.name)
+    Local_dir:  $(job.local_dir)
+    Server:     $(job.server)
+    Server_dir: $(job.server_dir)
+    $(length(job.calculations)) calculations
+    --------------------
+    """
+    dfprintln(s)
+end
+print_info(job::DFJob)                   = print_info(job, [calc.filename for calc in job.calculations])
+print_info(job::DFJob, filename::String) = print_info(job, [filename])

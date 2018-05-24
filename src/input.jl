@@ -1,66 +1,103 @@
-#these are all the control blocks, they hold the flags that guide the calculation
-abstract type Block end
-abstract type ControlBlock <: Block end
-
-#these are all the data blocks, they hold the specific data for the calculation
-abstract type DataBlock <: Block end
-
-mutable struct WannierDataBlock <: DataBlock
-    name::Symbol
-    option::Symbol
-    data::Any
+#these are all the control data, they hold the flags that guide the calculation
+mutable struct InputData
+    name   ::Symbol
+    option ::Symbol
+    data   ::Any
 end
 
-mutable struct AbinitDataBlock <: DataBlock
-    name::Symbol
-    option::Symbol
-    data::Any
+mutable struct DFInput{P <: Package}
+    filename ::String
+    flags    ::Dict{Symbol, Any}
+    data     ::Vector{InputData}
+    execs    ::Vector{Exec}
+    run      ::Bool
 end
 
-function block(blocks::Vector{<:Block}, name::Symbol)
-    found_blocks = filter(x-> x.name == name, blocks)
-    if isempty(found_blocks)
-        return nothing
-    else
-        return found_blocks[1]
+"""
+    DFInput(template::DFInput, filename, newflags...; runcommand=template.runcommand, run=true)
+
+Creates a new `DFInput` from a template `DFInput`, setting the newflags in the new one.
+"""
+function DFInput(template::DFInput, filename, newflags...; runcommand=template.runcommand, run=true,data=nothing)
+    newflags = Dict(newflags...) # this should handle both OrderedDicts and pairs of flags
+
+    input             = deepcopy(template)
+    input.filename    = filename
+    input.runcommand  = runcommand
+    setflags!(input, newflags...)
+
+    if data != nothing
+        for (name, (option, data)) in data
+            setdata!(input, name, data, option=option)
+        end
     end
-end
-"""
-Represents an input for DFT calculation.
-"""
-abstract type DFInput end
-
-include("qe/input.jl")
-
-mutable struct WannierInput <: DFInput
-    filename    ::String
-    flags       ::Dict{Symbol,Any}
-    data        ::Vector{WannierDataBlock}
-    runcommand  ::Exec #runcommand, flags
-    exec        ::Exec #exec, flags
-    run         ::Bool
-end
-
-"""
-    setkpoints!(input::WannierInput, k_grid::NTuple{3, Int}; print=true)
-
-sets the data in the k point `DataBlock` inside the specified calculation.
-"""
-function setkpoints!(input::WannierInput, k_grid::NTuple{3, Int}; print=true)
-    setflags!(input, :mp_grid => [k_grid...])
-    k_points = kgrid(k_grid[1], k_grid[2], k_grid[3], :wan)
-    setdata!(input, :kpoints, k_points, print=print)
     return input
 end
 
-mutable struct AbinitInput <: DFInput
-    filename    ::String
-    structure   ::Union{Structure, Void}
-    flags       ::Dict{Symbol,Any}
-    data        ::Vector{AbinitDataBlock}
-    runcommand ::Exec
-    exec        ::Exec
-    run         ::Bool
+data(input::DFInput, name) = getfirst(x-> x.name == name, input.data)
+data(input::Vector{InputData}, name) = getfirst(x-> x.name == name, input.data)
+data(input, name)      = data(input, name).data
+
+"""
+    setkpoints!(input::DFInput{Wannier90}, k_grid::NTuple{3, Int}; print=true)
+
+sets the data in the k point `InputData` inside the specified calculation.
+"""
+function setkpoints!(input::DFInput{Wannier90}, k_grid::NTuple{3, Int}; print=true)
+    setflags!(input, :mp_grid => [k_grid...])
+    setdata!(input, :kpoints, kgrid(k_grid..., :wan), print=print)
+    return input
+end
+
+"""
+    setkpoints!(input::DFInput{QE}, k_grid::Union{NTuple{3, Int}, NTuple{6, Int}})
+
+sets the data in the k point `InputData` inside the specified calculation.
+If the specified calculation is `'nscf'` the accepted format is `(nka, nkb, nkc)`, and the k_grid will be generated. If the calculation is `'scf'` the format is `(nka, nkb, nkc, sta, stb, stc)`.
+"""
+function setkpoints!(input::DFInput{QE}, k_grid::NTuple{3, Int}; print=true) #nscf
+
+    calc = flag(input, :calculation)
+    @assert calc == "'nscf'" warn("Expected calculation to be 'nscf'.\nGot $calc.")
+    setdata!(input, :k_points, kgrid(k_grid..., :nscf), option = :crystal, print=print)
+    return input
+end
+
+function setkpoints!(input::DFInput{QE}, k_grid::NTuple{6, Int}; print=true) #scf
+    calc = flag(input, :calculation)
+    @assert calc == "'scf'" || contains(calc, "relax") warn("Expected calculation to be 'scf', 'vc-relax', 'relax'.\nGot $calc.")
+
+    setdata!(input, :k_points, [k_grid...], option = :automatic, print=print)
+    return input
+end
+
+"""
+    setkpoints!(input::DFInput{QE}, k_grid::Vector{NTuple{4, <:AbstractFloat}};
+    k_option=:crystal_b)
+
+sets the data in the k point `DataBlock` inside the specified calculation. The format is `[(ka, kb, kc, nk),...]`. This format is to be used with a `'bands'` calculation.
+"""
+function setkpoints!(input::DFInput{QE}, k_grid::Vector{NTuple{4, T}}; print=true, k_option=:crystal_b) where T<:AbstractFloat
+    calc = flag(input, :calculation)
+    @assert calc == "'bands'" warn("Expected calculation to be 'bands', got $calc.")
+    @assert k_option in [:tpiba_b, :crystal_b, :tpiba_c, :crystal_c] error("Only $([:tpiba_b, :crystal_b, :tpiba_c, :crystal_c]...) are allowed as a k_option, got $k_option.")
+    if k_option in [:tpiba_c, :crystal_c]
+        @assert length(k_grid) == 3 error("If $([:tpiba_c, :crystal_c]...) is selected the length of the k_points needs to be 3, got length: $(length(k_grid)).")
+    end
+    k_option = k_option
+    num_k = 0.0
+    for k in k_grid
+        num_k += k[4]
+    end
+    if num_k > 100.
+        setflags!(input, :verbosity => "'high'")
+        if print
+            dfprintln("Verbosity is set to high because num_kpoints > 100,\n
+                       otherwise bands won't get printed.")
+        end
+    end
+    setdata!(input, :k_points, k_grid, option = k_option, print = print)
+    return input
 end
 
 """
@@ -68,50 +105,43 @@ end
 
 Returns the value of the flag.
 """
-function flag(input::Union{AbinitInput, WannierInput}, flag::Symbol)
+function flag(input::DFInput, flag::Symbol)
     if haskey(input.flags, flag)
         return input.flags[flag]
     end
 end
 
 """
-    setflags!(input::Union{AbinitInput, WannierInput}, flags...; print=true)
+    setflags!(input::DFInput, flags...; print=true)
 
 Sets the specified flags in the input.
 """
-function setflags!(input::Union{AbinitInput, WannierInput}, flags...; print=true)
+function setflags!(input::DFInput{T}, flags...; print=true) where T
     found_keys = Symbol[]
-    flag_func(flag) = typeof(input) == WannierInput ? wan_flag_type(flag) : abi_flag_type(flag)
     for (flag, value) in flags
-        flag_type = flag_func(flag)
+        flag_type = flagtype(input, flag)
         if flag_type != Void
-            if !(flag in found_keys) push!(found_keys, flag) end
+            !(flag in found_keys) && push!(found_keys, flag)
             try
                 value = length(value) > 1 ? convert.(flag_type, value) : convert(flag_type, value)
             catch
-                if print dfprintln("Filename '$(input.filename)':\n  Could not convert '$value' into '$flag_type'.\n    Flag '$flag' not set.\n") end
+                print && dfprintln("Filename '$(input.filename)':\n  Could not convert '$value' into '$flag_type'.\n    Flag '$flag' not set.\n")
                 continue
             end
-
-            if haskey(input.flags, flag)
-                old_data = input.flags[flag]
-                input.flags[flag] = value
-                if print dfprintln("$(input.filename):\n  -> $flag:\n      $old_data setd to: $value\n") end
-            else
-                input.flags[flag] = value
-                if print dfprintln("$(input.filename):\n  -> $flag:\n      set to: $value\n") end
-            end
+            old_data = haskey(input.flags, flag) ? input.flags[flag] : ""
+            input.flags[flag] = value
+            print && dfprintln("$(input.filename):\n  -> $flag:\n      $old_data set to: $value\n")
         end
     end
     return found_keys, input
 end
 
 """
-    rmflags!(input::Union{AbinitInput, WannierInput}, flags...)
+    rmflags!(input::DFInput, flags...)
 
 Remove the specified flags.
 """
-function rmflags!(input::Union{AbinitInput, WannierInput}, flags...)
+function rmflags!(input::DFInput, flags...)
     for flag in flags
         if haskey(input.flags, flag)
             pop!(input.flags, flag, false)
@@ -121,11 +151,10 @@ function rmflags!(input::Union{AbinitInput, WannierInput}, flags...)
     return input
 end
 
-
 """
     setdata!(input::DFInput, block_name::Symbol, new_block_data; option=nothing, print=true)
 
-sets the data of the specified 'DataBlock' to the new data. Optionally also sets the 'DataBlock' option.
+sets the data of the specified 'InputData' to the new data. Optionally also sets the 'InputData' option.
 """
 function setdata!(input::DFInput, block_name::Symbol, new_block_data; option=nothing, print=true)
     setd = false
@@ -147,105 +176,61 @@ function setdata!(input::DFInput, block_name::Symbol, new_block_data; option=not
         end
     end
     if !setd
-        if typeof(input)==QEInput
-            block = QEDataBlock(block_name, block_option, block_data)
-        elseif typeof(input) == WannierInput
-            block = WannierDataBlock(block_name, block_option, block_data)
-        elseif typeof(input) == AbinitInput
-            block = AbinitDataBlock(block_name, block_option, block_data)
-        end
-        setblock!(input, block)
+        setdata!(input, InputData(block_name, block_option, block_data))
         setd = true
     end
     return setd, input
 end
 
-"""
-    data(input::DFInput, block_symbol::Symbol)
-
-Returns the specified 'DataBlock'.
-"""
-function data(input::DFInput, block_symbol::Symbol)
-    block_ = block(input, block_symbol)
-    if block_ != nothing && typeof(block_) <: DataBlock
-        return block_.data
-    else
-        error("No `DataBlock` with name '$block_symbol' found. ")
-    end
-end
-
-"""
-    block(input::DFInput, block_symbol::Symbol)
-
-Returns the block with name `block_symbol`.
-"""
-function block(input::Union{AbinitInput, WannierInput}, block_symbol::Symbol)
-    for block_ in input.data
-        if block_.name == block_symbol
-            return block_
-        end
-    end
-    return nothing
-end
-
-"""
-    blocks(input::DFInput)
-
-Returns all the blocks inside a calculation.
-"""
-function blocks(input::DFInput)
-    out = Block[]
-    for block in getfield.(input, filter(x -> contains(String(x), "block"), fieldnames(input)))
-        push!(out, block...)
-    end
-    return out
-end
-
-function setoradd!(blocks::Vector{<:Block}, block::Block)
+function setoradd!(datas::Vector{InputData}, data::InputData)
     found = false
-    for (i, d) in enumerate(blocks)
-        if d.name == block.name
-            blocks[i] = block
+    for (i, d) in enumerate(datas)
+        if d.name == data.name
+            datas[i] = data
             found = true
             break
         end
     end
     if !found
-        push!(blocks, block)
+        push!(datas, data)
     end
 end
 
 """
-    setblock!(input::DFInput, block::Block)
+    setdata!(input::DFInput, data::InputData)
 
-Adds the given block to the input. Should put it in the correct arrays.
+Adds the given data to the input. Should put it in the correct arrays.
 """
-function setblock!(input::DFInput, block::Block)
-    if typeof(block) <: DataBlock
-        setoradd!(input.data, block)
-    elseif typeof(block) <: ControlBlock
-        setoradd!(input.control, block)
-    end
+function setdata!(input::DFInput, data::InputData)
+    setoradd!(input.data, data)
     return input
 end
 
 """
-    setoption!(input::DFInput, block_symbol::Symbol, option::Symbol;; print=true)
+    setdataoption!(input::DFInput, name::Symbol, option::Symbol;; print=true)
 
-sets the option of specified data block.
+Sets the option of specified data.
 """
-function setoption!(input::DFInput, block_symbol::Symbol, option::Symbol; print=true)
-    for fieldname in fieldnames(input)
-        field = getfield(input,fieldname)
-        if typeof(field) <: Array{<:DataBlock,1}
-            for block in field
-                if block.name == block_symbol
-                    old_option   = block.option
-                    block.option = option
-                    if print dfprintln("Option of DataBlock '$(block.name)' in input '$(input.filename)' setd from '$old_option' to '$option'") end
-                end
-            end
+function setdataoption!(input::DFInput, name::Symbol, option::Symbol; print=true)
+    for data in input.data
+        if data.name == name
+            old_option  = data.option
+            data.option = option
+            if print dfprintln("Option of InputData '$(data.name)' in input '$(input.filename)' set from '$old_option' to '$option'") end
         end
     end
     return input
 end
+
+exec(input::DFInput, exec::String) = getfirst(x -> contains(x.exec, exec), input.execs)
+execs(input::DFInput) = input.execs
+execs(input::DFInput, exec::String) = filter(x -> contains(x.exec, exec), input.execs)
+execflags(input::DFInput, exec::String) = [x.flags for x in execs(input, exec)]
+setexecflags!(input::DFInput, exec::String, flags...) = setflags!.(execs(input, exec), flags...)
+
+runcommand(input::DFInput) = input.execs[1]
+
+outfile(input::DFInput{QE})        = splitext(input.filename)[1]*".out"
+outfile(input::DFInput{Wannier90}) = splitext(input.filename)[1]*".wout"
+
+setflow!(input::DFInput, run) = input.run = run

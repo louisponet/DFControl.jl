@@ -14,11 +14,11 @@ Base.convert(::Type{Symbol}, x::Orbital) = Symbol(x)
 orbsize(orbital::Orbital) = Int(orbital) * 2 + 1
 orbsize(orbital::Symbol)  = Orbital(orbital) * 2 + 1
 
-struct Projection
-    orb::Orbital
-    start::Int
-    size::Int
-    last::Int
+@with_kw struct Projection
+    orb   ::Orbital = s
+    start ::Int = 0
+    size  ::Int = 0
+    last  ::Int = 0
 end
 
 """

@@ -4,12 +4,7 @@ import Juno: @render, Tree, SubTree, Inline, Model,  render
 import Atom: span, c, UNDEF
 getfield_(x, f) = isdefined(x, f) ? getfield(x, f) : UNDEF
 
-@render i::Inline x::ControlBlock begin
-    Tree(x.name, [SubTree(span(c(render(i, key), " → ")), val) for (key,val) in x.flags])
-end
-
-
-@render i::Inline x::DataBlock begin
+@render i::Inline x::InputData begin
     Tree(x.name, [SubTree(Text("$f → "), getfield(x, f)) for f in fieldnames(x)[2:end]])
 end
 

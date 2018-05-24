@@ -3,7 +3,7 @@ using Plots
 # @test plot_qe_bands(joinpath(@__DIR__,"../assets/outputs/bands.out")) != nothing
 # @test plot_qe_kpdos(joinpath(@__DIR__,"../assets/outputs/kpdos.out")) != nothing
 test_bands = read_qe_bands_file(joinpath(@__DIR__,"../assets/outputs/bands.out"))
-@test plot(test_bands[1],fermi=3)         != nothing
+@test plot(test_bands[1], fermi=3)         != nothing
 @test plot(test_bands[3],:relative_cart)  != nothing
 @test plot(test_bands[4],:relative_cryst) != nothing
 @test plot(test_bands)                    != nothing
