@@ -29,10 +29,10 @@ function pull_file(server_dir::String, local_dir::String, filename::String; serv
     end
 end
 
-function pull_files(server_dir::String, local_dir::String, filenames::Vector{String}; server=getdefault_server())
+function pull_files(server_dir::String, local_dir::String, filenames::Vector{String}; serv=getdefault_server())
     pulled_files = String[]
     for file in filenames
-       push!(pulled_files, pull_file(server_dir, local_dir, file; server))
+       push!(pulled_files, pull_file(server_dir, local_dir, file, serv))
     end
     return pulled_files
 end

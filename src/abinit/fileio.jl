@@ -168,7 +168,7 @@ function extract_structures!(abi_datasets...; structure_name = "NoName")
                 rprim[3,1] = -0.5 * aa
                 rprim[3,2] = -sqrt(3.0) * 0.5 * aa
                 rprim[3,3] = cc
-            else:
+            else
                 # Treat all the other cases
                 rprim[1,1] = 1.0
                 rprim[2,1] = cos(pi * angdeg[3] / 180.)

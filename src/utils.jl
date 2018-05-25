@@ -86,6 +86,8 @@ function fort2julia(f_type)
         return Bool
     elseif contains(f_type,".D")
         return replace(f_type, "D", "e")
+    else
+        return Void
     end
 end
 

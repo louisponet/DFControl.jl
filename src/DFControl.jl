@@ -2,9 +2,7 @@ __precompile__()
 module DFControl
 # using Reexport
     import Base.Iterators.flatten
-    using RecipesBase
-    using GeometryTypes
-    using Parameters
+    using RecipesBase, GeometryTypes, Parameters, Nullables
 
     abstract type Package end
     struct Wannier90 <: Package end

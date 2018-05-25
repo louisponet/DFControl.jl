@@ -1,6 +1,7 @@
 using DFControl, Base.Test
 
-testjobpath = joinpath(Pkg.dir("DFControl"),"test/testassets/test_job/")
+# testjobpath = joinpath(Pkg.dir("DFControl"),"test/testassets/test_job/")
+testjobpath = joinpath(@__DIR__,"testassets/test_job/")
 
 name = "Pt"
 local_dir = testjobpath
