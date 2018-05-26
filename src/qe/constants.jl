@@ -99,7 +99,7 @@ function QEControlBlockInfo(lines::Array{<:AbstractString, 1})
 end
 
 #TODO rewrite this this is garbage
-function qe_variable(block::AbstractBlockInfo, variable_name::Symbol)
+function qevariable(block::AbstractBlockInfo, variable_name::Symbol)
     varstr1 = string(variable_name)
     for var in block.variables
         varstr2 = string(var.name)
@@ -211,9 +211,9 @@ qe_input_info(input::DFInput{QE}) = getfirst(x-> contains(input.exec, x.exec), Q
 qe_input_info(exec::AbstractString) = getfirst(x-> contains(exec, x.exec), QEInputInfos)
 qe_input_flags(exec::AbstractString) = allflags(qe_input_info(exec))
 
-function qe_variable(input_info::QEInputInfo, variable_name::Symbol)
+function qevariable(input_info::QEInputInfo, variable_name::Symbol)
     for block in vcat(input_info.control, input_info.data)
-        var = qe_variable(block, variable_name)
+        var = qevariable(block, variable_name)
         if var.typ != Void
             return var
         end
@@ -221,9 +221,9 @@ function qe_variable(input_info::QEInputInfo, variable_name::Symbol)
     return QEVariableInfo()
 end
 
-function qe_variable(variable_name::Symbol)
+function qevariable(variable_name::Symbol)
     for info in QEInputInfos
-        var = qe_variable(info, variable_name)
+        var = qevariable(info, variable_name)
         if var.typ != Void
             return var
         end
@@ -233,7 +233,7 @@ end
 
 function qe_block_variable(input_info::QEInputInfo, variable_name)
     for block in vcat(input_info.control, input_info.data)
-        var = qe_variable(block, variable_name)
+        var = qevariable(block, variable_name)
         if var.typ != Void
             return block, var
         end
@@ -241,10 +241,10 @@ function qe_block_variable(input_info::QEInputInfo, variable_name)
     return :error, QEVariableInfo()
 end
 
-function qe_variable(exec::Exec, varname)
+function qevariable(exec::Exec, varname)
     for input_info in QEInputInfos
         if contains(exec.exec, input_info.exec)
-            return qe_variable(input_info, varname)
+            return qevariable(input_info, varname)
         end
     end
     return QEVariableInfo()
@@ -276,5 +276,5 @@ end
 
 qe_block_variable(input::DFInput, flagname) = qe_block_variable(execs(input)[2].exec, flagname)
 
-flagtype(input::DFInput{QE}, flag) = qe_variable(execs(input)[2], flag).typ
-flagtype(::Type{QE}, exec, flag) = qe_variable(exec, flag).typ
+flagtype(input::DFInput{QE}, flag) = qevariable(execs(input)[2], flag).typ
+flagtype(::Type{QE}, exec, flag) = qevariable(exec, flag).typ
