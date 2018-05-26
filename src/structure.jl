@@ -44,8 +44,9 @@ function empty_projections!(str::Structure)
     end
 end
 
+#TODO extend base.merge
 "Takes a vector of structures and merges all the attributes of the atoms."
-function merge_structures(structures::Vector{Union{<:AbstractStructure, Void}})
+function mergestructures(structures::Vector{Union{<:AbstractStructure, Void}})
     nonvoid = filter(x -> x != nothing, structures)
     out_structure = nonvoid[1]
     for structure in nonvoid[2:end]
@@ -54,7 +55,8 @@ function merge_structures(structures::Vector{Union{<:AbstractStructure, Void}})
                 if name in [:id, :element, :position, :pseudo]
                     continue
                 end
-                if !isdefined(at2, name)
+                field = isdefined(at2, name) ? getfield(at2, name) : nothing
+                if field == nothing || isempty(field)
                     continue
                 else
                     setfield!(at1, name, getfield(at2,name))

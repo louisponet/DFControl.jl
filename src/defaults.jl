@@ -156,11 +156,11 @@ function getdefault_pseudodir(pseudo_set)
 end
 
 """
-    configure_defaultpseudos(server = getdefault_server(), pseudo_dirs=getdefault_pseudodirs())
+    configuredefault_pseudos(server = getdefault_server(), pseudo_dirs=getdefault_pseudodirs())
 
 Reads the specified `default_pseudo_dirs` on the `default_server` and sets up the `default_pseudos` variable, and also adds all the entries to the `user_defaults.jl` file.
 """
-function configure_defaultpseudos(;server = getdefault_server(), pseudo_dirs=getdefault_pseudodirs())
+function configuredefault_pseudos(;server = getdefault_server(), pseudo_dirs=getdefault_pseudodirs())
     if server == ""
         error("Either supply a valid server string or setup a default server through 'setdefault_server!()'.")
     end

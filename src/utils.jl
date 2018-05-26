@@ -1,7 +1,7 @@
 """
 Searches a directory for all files containing the key.
 """
-search_dir(path::String, key) = filter(x -> contains(x, key), readdir(path))
+searchdir(path::String, key) = filter(x -> contains(x, key), readdir(path))
 
 """
 Parse an array of strings into an array of a type.
@@ -28,6 +28,25 @@ function apply_fermi_level!(band::Band, fermi::Union{String,AbstractFloat})
     for i = 1:size(band.eigvals)[1]
         band.eigvals[i] -= fermi
     end
+end
+
+function Emax(Emin, nbnd, bands)
+    nbndfound = 0
+    max = 0
+    for b in bands
+        if minimum(b.eigvals) >= Emin && nbndfound < nbnd
+            nbndfound += 1
+            max = maximum(b.eigvals)
+        end
+    end
+
+    nbndfound < nbnd && error("num_bands ($nbnd) starting from Emin=$Emin exceeds the number of bands ($nbndfound).")
+    return max
+end
+
+function wanenergyranges(Emin, nbnd, bands, Epad=5)
+    max = Emax(Emin, nbnd, bands)
+    (Emin - Epad, Emin, max, max + Epad)
 end
 
 """

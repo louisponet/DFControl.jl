@@ -12,6 +12,8 @@ module DFControl
     include("atom.jl")
     include("structure.jl")
     include("types.jl")
+    export kpoints
+
     include("input.jl")
     include("utils.jl")
     export kgrid
@@ -25,8 +27,9 @@ module DFControl
            setexecflags!,
            input, inputs,
            path, outpath, setfilename!, setkpoints!, setdataoption!, setpseudos!,
-           atoms, setatoms!, setprojections!,
+           atoms, atom, setatoms!, setprojections!, projections,
            addwancalc!, addbandscalc!,
+           setwanenergies!,
 
            setheaderword!, setserverdir!, setlocaldir!,
            save, submit,
@@ -67,7 +70,7 @@ module DFControl
     include("defaults.jl")
     export setdefault_pseudodir
     export setdefault_server
-    export configure_defaultpseudos
+    export configuredefault_pseudos
     export removedefault_pseudodir
     export removedefault_pseudos
     export setdefault_jobheader

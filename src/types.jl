@@ -16,6 +16,8 @@ mutable struct DFBand{T<:AbstractFloat} <: Band
 end
 DFBand(k_points_cart, k_points_cryst, eigvals) = DFBand(k_points_cart, k_points_cryst, eigvals, Dict{Symbol,Any}())
 
+kpoints(band::DFBand, kind=:cryst) = kind == :cart ? band.k_points_cart : band.k_points_cryst
+
 mutable struct Exec
     exec ::String
     dir  ::String

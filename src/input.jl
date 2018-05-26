@@ -34,6 +34,7 @@ function DFInput(template::DFInput, filename, newflags...; runcommand=template.r
     return input
 end
 
+Base.eltype(::DFInput{P}) where P = P
 data(input::DFInput, name) = getfirst(x-> x.name == name, input.data)
 data(input::Vector{InputData}, name) = getfirst(x-> x.name == name, input.data)
 data(input, name)      = data(input, name).data

@@ -150,7 +150,7 @@ function DFJob(job_dir::String, T=Float64;
 
     job_dir = form_directory(job_dir)
 
-    name, header, inputs, structure = read_job_inputs(job_dir * search_dir(job_dir, job_fuzzy)[1])
+    name, header, inputs, structure = read_job_inputs(job_dir * searchdir(job_dir, job_fuzzy)[1])
     j_name = isempty(new_job_name) ? name : new_job_name
     structure_name = split(j_name, "_")[1]
     structure.name = structure_name
@@ -231,7 +231,7 @@ function pulljob(server::String, server_dir::String, local_dir::String; job_fuzz
 
     pull_server_file(filename) = pull_file(server, server_dir, local_dir, filename)
     pull_server_file(job_fuzzy)
-    job_file = search_dir(local_dir, strip(job_fuzzy, '*'))[1]
+    job_file = searchdir(local_dir, strip(job_fuzzy, '*'))[1]
 
     if job_file != nothing
         input_files, output_files = read_job_filenames(local_dir * job_file)
@@ -522,6 +522,9 @@ end
 Returns a list the atoms in the structure.
 """
 atoms(job::DFJob) = job.structure.atoms
+
+"Returns the ith atom with id `atsym`."
+atom(job::DFJob, atsym::Symbol, i=1) = filter(x -> x.id == atsym, atoms(job))[i]
 cell(job::DFJob)  = job.structure.cell
 #automatically sets the cell parameters for the entire job, implement others
 """
@@ -646,6 +649,16 @@ end
 outpath(job::DFJob, inp::String) = outpath(job, input(job, inp))
 
 """
+sets the projections of the specified atoms inside the job structure.
+"""
+setprojections!(job::DFJob, projections...) = setprojections!(job.structure, projections...)
+
+"Returns the projections inside the job for the specified `i`th atom in the job with id `atsym`."
+projections(job::DFJob, atsym::Symbol, i=1) = projections(atom(job, atsym, i))
+"Returns all the projections inside the job."
+projections(job::DFJob) = projections.(atoms(job))
+
+"""
     addwancalc!(job::DFJob, nscf::DFInput{QE}, projections;
                      Emin=-5.0,
                      Epad=5.0,
@@ -685,24 +698,13 @@ function addwancalc!(job::DFJob, nscf::DFInput{QE}, projections;
     ids   = [id(at) for at in ats]
     @assert all(haskey.(projections, unique(ids))) error("Please supply a set of projections for each unique atom: $(join(unids," ")).")
 
+
     nbnd = sum(sum.([[orbsize(orb) for orb in projections[id]] for id in ids]))
     info("num_bands=$nbnd (inferred from provided projections).")
 
-    nbndfound = 0
-    max = 0
-    for b in bands
-        if minimum(b.eigvals) >= Emin && nbndfound < nbnd
-            nbndfound += 1
-            max = maximum(b.eigvals)
-        end
-    end
 
-    nbndfound < nbnd && error("num_bands ($nbnd) starting from Emin=$Emin exceeds the number of bands in 'nscf' calculation ($nbndfound).\n Please rerun QE with higher nbnd.")
     wanflags = SymAnyDict(wanflags)
-    wanflags[:dis_win_min] = Emin - Epad
-    wanflags[:dis_win_max] = max + Epad
-    wanflags[:dis_froz_min] = Emin
-    wanflags[:dis_froz_max] = max
+    wanflags[:dis_win_min], wanflags[:dis_froz_min], wanflags[:dis_froz_max], wanflags[:dis_win_max] = wanenergyranges(Emin, nbnd, bands, Epad)
 
     wanflags[:num_bands] = length(bands)
     wanflags[:num_wann]  = nbnd
@@ -736,6 +738,17 @@ function addwancalc!(job::DFJob, nscf::DFInput{QE}, projections;
     addprojections!(projections, ats)
 
     return job
+end
+
+
+"Automatically calculates and sets the wannier energies. This uses the projections, `Emin` and the bands to infer the other limits.\n`Epad` allows one to specify the padding around the inner and outer energy windows"
+function setwanenergies!(job::DFJob, Emin, bands; Epad=5.0)
+    wancalcs = filter(x -> eltype(x) == Wannier90, job.calculations)
+    @assert length(wancalcs) != 0 error("Job ($(job.name)) has no Wannier90 calculations, nothing todo.")
+    nbnd = sum([sum(orbsize.(t)) for  t in projections(job)])
+    info("num_bands=$nbnd (inferred from provided projections).")
+    winmin, frozmin, frozmax, winmax = wanenergyranges(Emin, nbnd, bands, Epad)
+    setflags!.(wancalcs, :dis_win_min => winmin, :dis_froz_min => frozmin, :dis_froz_max => frozmax, :dis_win_max => winmax, print=false)
 end
 
 """
@@ -788,11 +801,6 @@ function setlocaldir!(job, dir)
     job.local_dir = dir
     return job
 end
-
-"""
-sets the projections of the specified atoms inside the job structure.
-"""
-setprojections!(job::DFJob, projections...) = setprojections!(job.structure, projections...)
 
 
 """

@@ -169,7 +169,7 @@ end
 Writes all the input files and job file that are linked to a DFJob.
 """
 function write_job_files(job::DFJob)
-    files_to_remove = search_dir(job.local_dir, ".in")
+    files_to_remove = searchdir(job.local_dir, ".in")
     new_filenames   = getfield.(job.calculations, :filename)
     open(job.local_dir * "job.tt", "w") do f
         write(f, "#!/bin/bash\n")
@@ -326,7 +326,7 @@ function read_job_inputs(job_file::String)
             end
         end
     end
-    outstruct = merge_structures(structures)
+    outstruct = mergestructures(structures)
     return name, header, inputs, outstruct
 end
 

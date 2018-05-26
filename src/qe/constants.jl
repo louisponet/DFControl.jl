@@ -22,6 +22,7 @@ struct QEVariableInfo{T}
 end
 QEVariableInfo{T}(name::Symbol, description) where T = QEVariableInfo{T}(name, T, description)
 QEVariableInfo() = QEVariableInfo(:error, Void, String[])
+
 function read_qe_variable(lines, i)
     name = gensym()
     var_i = i
@@ -97,9 +98,12 @@ function QEControlBlockInfo(lines::Array{<:AbstractString, 1})
     return QEControlBlockInfo(name, varinfos)
 end
 
-function qe_variable(block::QEControlBlockInfo, variable_name::Symbol)
+#TODO rewrite this this is garbage
+function qe_variable(block::AbstractBlockInfo, variable_name::Symbol)
+    varstr1 = string(variable_name)
     for var in block.variables
-        if contains(string(variable_name), string(var.name))
+        varstr2 = string(var.name)
+        if contains(varstr1, varstr2) && (length(varstr1) == length(varstr2) || length(varstr1) == length(varstr2) + 2)
             return var
         end
     end
@@ -159,15 +163,6 @@ function QEDataBlockInfo(lines::Array{<:AbstractString, 1})
     return QEDataBlockInfo(name, description, options, options_description, variables)
 end
 
-function qe_variable(block::QEDataBlockInfo, variable_name::Symbol)
-    for var in block.variables
-        if contains(string(variable_name), string(var.name))
-            return var
-        end
-    end
-    return QEVariableInfo()
-end
-
 struct QEInputInfo
     exec::String
     control::Vector{QEControlBlockInfo}
@@ -195,7 +190,7 @@ end
 allflags(info::QEInputInfo) = flatten([[i.variables for i in info.control]; [i.variables for i in info.data]])
 
 const QEInputInfos = begin
-    input_files = search_dir(joinpath(@__DIR__, "../../assets/inputs/qe/"), "INPUT")
+    input_files = searchdir(joinpath(@__DIR__, "../../assets/inputs/qe/"), "INPUT")
     file_paths  = joinpath(@__DIR__, "../../assets/inputs/qe/") .* input_files
     pw2wannier90_flags = [QEVariableInfo{String}(:outdir        , ["location of temporary output files"]),
                           QEVariableInfo{String}(:prefix        , ["pwscf filename prefix"]),

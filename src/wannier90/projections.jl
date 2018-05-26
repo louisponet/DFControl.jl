@@ -21,6 +21,8 @@ orbsize(orb::Symbol)  = orbital(orb) * 2 + 1
     last  ::Int = 0
 end
 
+orbsize(proj::Projection) = proj.size
+
 """
 Adds projections to atoms.
 """

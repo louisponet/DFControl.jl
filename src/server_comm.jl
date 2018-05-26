@@ -5,7 +5,7 @@ Pulls a file from the specified server and server dir to the local dir.
 """
 function pull_file(server::String, server_dir::String, local_dir::String, filename::String)
     run(`scp $(server * ":" * server_dir * filename) $local_dir`)
-    pulled_files = search_dir(local_dir, filename)
+    pulled_files = searchdir(local_dir, filename)
     if !isempty(pulled_files)
         return pulled_files[1]
     end
@@ -19,7 +19,7 @@ Pulls a file from the default server if the default server is specified.
 function pull_file(server_dir::String, local_dir::String, filename::String; server=getdefault_server())
     if server != ""
         run(`scp $(server * ":" * server_dir * filename) $local_dir`)
-        pulled_files = search_dir(local_dir, filename)
+        pulled_files = searchdir(local_dir, filename)
         if !isempty(pulled_files)
             return pulled_files[1]
         end
@@ -47,10 +47,10 @@ function pull_file(filepath::String, local_dir::String; server=getdefault_server
     if server != ""
         if local_filename != nothing
             run(`scp $(server * ":" * filepath) $(local_dir * local_filename)`)
-            return search_dir(local_dir, local_filename)[1]
+            return searchdir(local_dir, local_filename)[1]
         else
             run(`scp $(server * ":" * filepath) $(local_dir)`)
-            return search_dir(local_dir, splitdir(filepath)[2])[1]
+            return searchdir(local_dir, splitdir(filepath)[2])[1]
         end
     else
         error("Define a default server first using 'setdefault_server!(...)'.\n
@@ -90,7 +90,7 @@ function outputs(job::DFJob, server="", server_dir="", local_dir=""; job_fuzzy="
 
     # pull_server_file(job_fuzzy)
 
-    # job_file = search_dir(job.local_dir, strip(job_fuzzy, '*'))[1]
+    # job_file = searchdir(job.local_dir, strip(job_fuzzy, '*'))[1]
     # inputs, outputs= read_job_filenames(job.local_dir * job_file)
     pulled_outputs = String[]
     for calc in job.calculations
@@ -103,7 +103,7 @@ function outputs(job::DFJob, server="", server_dir="", local_dir=""; job_fuzzy="
 
     for fuzzy in extras
         pull_server_file(fuzzy)
-        push!(pulled_outputs, search_dir(job.local_dir, strip(fuzzy,'*'))...)
+        push!(pulled_outputs, searchdir(job.local_dir, strip(fuzzy,'*'))...)
     end
     return joinpath.(job.local_dir, pulled_outputs)
 end
