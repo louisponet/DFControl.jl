@@ -50,6 +50,21 @@ begin
     end
 end
 
+job3 = DFJob(job2, :lspinorb => true)
+@test flag(job3, :lspinorb)
+rmflags!(job3, :lspinorb)
+
+begin
+    for (calc, calc2) in zip(job.calculations, job3.calculations)
+        @test calc.flags == calc2.flags
+        for (b1, b2) in zip(calc.data, calc2.data)
+            for name in fieldnames(b1)
+                @test getfield(b1, name) == getfield(b2,name)
+            end
+        end
+    end
+end
+
 testorbs = [:s, :p]
 setprojections!(job, :Pt => testorbs)
 @test convert.(Symbol, [p.orb for p in projections(job, :Pt)]) == testorbs
