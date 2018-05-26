@@ -691,7 +691,7 @@ function addwancalc!(job::DFJob, nscf::DFInput{QE}, projections;
     nbndfound = 0
     max = 0
     for b in bands
-        if minimum(b.eigvals) >= Emin
+        if minimum(b.eigvals) >= Emin && nbndfound < nbnd
             nbndfound += 1
             max = maximum(b.eigvals)
         end
