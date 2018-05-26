@@ -31,16 +31,17 @@ function apply_fermi_level!(band::Band, fermi::Union{String,AbstractFloat})
 end
 
 function Emax(Emin, nbnd, bands)
-    nbndfound = 1
+    nbndfound = 0
     max = 0
     for b in bands
-        if minimum(b.eigvals) >= Emin && nbndfound < nbnd
+        if minimum(b.eigvals) >= Emin && nbndfound <= nbnd
             nbndfound += 1
-            max = maximum(b.eigvals)
+            #maximum of allowed frozen window is the minimum of the first band>nbnd
+            max = minimum(b.eigvals)
         end
     end
 
-    nbndfound < nbnd && error("num_bands ($nbnd) starting from Emin=$Emin exceeds the number of bands ($nbndfound).")
+    nbndfound <= nbnd && error("num_bands ($nbnd) starting from Emin=$Emin exceeds the number of bands ($nbndfound).")
     return max
 end
 
