@@ -142,11 +142,11 @@ end
 
 Remove the specified flags.
 """
-function rmflags!(input::DFInput, flags...)
+function rmflags!(input::DFInput, flags...; print=true)
     for flag in flags
         if haskey(input.flags, flag)
             pop!(input.flags, flag, false)
-            dfprintln("Removed flag '$flag' from input '$(input.filename)'")
+            print && dfprintln("Removed flag '$flag' from input '$(input.filename)'")
         end
     end
     return input

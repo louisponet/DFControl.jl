@@ -413,16 +413,16 @@ end
 
 Looks through the calculation filenames and removes the specified flags.
 """
-function rmflags!(job::DFJob, calc_filenames::Vector{<:AbstractString}, flags...)
+function rmflags!(job::DFJob, calc_filenames::Vector{<:AbstractString}, flags...; print=true)
     UNDO_JOBS[job.id] = deepcopy(job)
 
     for calc in inputs(job, calc_filenames)
-        rmflags!(calc, flags...)
+        rmflags!(calc, flags..., print=print)
     end
     return job
 end
-rmflags!(job::DFJob, filename::String, flags...) = rmflags!(job, [filename], flags...)
-rmflags!(job::DFJob, flags...) = rmflags!(job, [calc.filename for calc in job.calculations], flags...)
+rmflags!(job::DFJob, filename::String, flags...; kwargs...) = rmflags!(job, [filename], flags...; kwargs...)
+rmflags!(job::DFJob, flags...; kwargs...) = rmflags!(job, [calc.filename for calc in job.calculations], flags...; kwargs...)
 
 """
     setflow!(job::DFJob, should_runs...)
@@ -675,14 +675,15 @@ function addwancalc!(job::DFJob, nscf::DFInput{QE}, projections;
                      wanflags=SymAnyDict(),
                      pw2wanexec=Exec("pw2wannier90.x", nscf.execs[2].dir),
                      wanexec=Exec("wannier90.x", nscf.execs[2].dir),
-                     bands=read_qe_bands_file(outpath(job, nscf)))
+                     bands=read_qe_bands_file(outpath(job, nscf)),
+                     print=true)
 
 
     spin = spincalc(nscf)
     if spin
         pw2wanfiles = ["pw2wan_up.in", "pw2wan_dn.in"]
         wanfiles = ["wan_up.win", "wan_dn.win"]
-        info("Spin polarized calculation found (inferred from nscf input).")
+        print && info("Spin polarized calculation found (inferred from nscf input).")
     else
         pw2wanfiles = ["pw2wan.in"]
         wanfiles = ["wan.win"]
@@ -690,7 +691,7 @@ function addwancalc!(job::DFJob, nscf::DFInput{QE}, projections;
 
     @assert flag(nscf, :calculation) == "'nscf'" error("Please provide a valid 'nscf' calculation.")
     if flag(nscf, :nosym) != true
-        info("'nosym' flag was not set in the nscf calculation.\nIf this was not intended please set it and rerun the nscf calculation.\nThis generally gives errors because of omitted kpoints, needed for pw2wannier90.x")
+        print && info("'nosym' flag was not set in the nscf calculation.\nIf this was not intended please set it and rerun the nscf calculation.\nThis generally gives errors because of omitted kpoints, needed for pw2wannier90.x")
     end
 
     ats = atoms(job)
@@ -700,7 +701,7 @@ function addwancalc!(job::DFJob, nscf::DFInput{QE}, projections;
 
 
     nbnd = sum(sum.([[orbsize(orb) for orb in projections[id]] for id in ids]))
-    info("num_bands=$nbnd (inferred from provided projections).")
+    print && info("num_bands=$nbnd (inferred from provided projections).")
 
 
     wanflags = SymAnyDict(wanflags)
@@ -710,7 +711,7 @@ function addwancalc!(job::DFJob, nscf::DFInput{QE}, projections;
     wanflags[:num_wann]  = nbnd
 
     wanflags[:mp_grid] = kakbkc(data(nscf, :k_points).data)
-    info("mp_grid=$(join(wanflags[:mp_grid]," ")) (inferred from nscf input).")
+    print && info("mp_grid=$(join(wanflags[:mp_grid]," ")) (inferred from nscf input).")
 
     pw2wanflags = SymAnyDict(:prefix => flag(nscf, :prefix), :outdir => flag(nscf, :outdir) == nothing ? "'./'" : flag(nscf, :outdir))
     if haskey(wanflags, :write_hr)
@@ -742,11 +743,11 @@ end
 
 
 "Automatically calculates and sets the wannier energies. This uses the projections, `Emin` and the bands to infer the other limits.\n`Epad` allows one to specify the padding around the inner and outer energy windows"
-function setwanenergies!(job::DFJob, Emin, bands; Epad=5.0)
+function setwanenergies!(job::DFJob, Emin, bands; Epad=5.0, print=true)
     wancalcs = filter(x -> eltype(x) == Wannier90, job.calculations)
     @assert length(wancalcs) != 0 error("Job ($(job.name)) has no Wannier90 calculations, nothing todo.")
     nbnd = sum([sum(orbsize.(t)) for  t in projections(job)])
-    info("num_bands=$nbnd (inferred from provided projections).")
+    print && info("num_bands=$nbnd (inferred from provided projections).")
     winmin, frozmin, frozmax, winmax = wanenergyranges(Emin, nbnd, bands, Epad)
     setflags!.(wancalcs, :dis_win_min => winmin, :dis_froz_min => frozmin, :dis_froz_max => frozmax, :dis_win_max => winmax, print=false)
 end
@@ -756,9 +757,9 @@ end
 
 Undos the last set to the calculations of the job.
 """
-function undo!(job::DFJob)
+function undo!(job::DFJob; print=true)
     job.calculations[:] = UNDO_JOBS[job.id].calculations[:]
-    dfprintln("Restored the calculations of job '$(job.name)' to their previous state.")
+    print && dfprintln("Restored the calculations of job '$(job.name)' to their previous state.")
     return job
 end
 

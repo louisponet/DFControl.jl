@@ -10,7 +10,7 @@ fermi = read_qe_output(outpath(job, "nscf"))[:fermi]
 
 wanflags = [:write_hr => true, :wannier_plot => true]
 
-addwancalc!(job, nscf,[:Pt => [:s, :p, :d]], Emin=fermi-7.0, Epad=5.0, wanflags=wanflags)
+addwancalc!(job, nscf,[:Pt => [:s, :p, :d]], Emin=fermi-7.0, Epad=5.0, wanflags=wanflags, print=false)
 
 @test length(job.calculations) == 5
 @test flag(job, "wan.win", :write_hr) == flag(job, "wan.win", :wannier_plot) == true
@@ -20,7 +20,7 @@ job.calculations = job.calculations[1:3]
 setflags!(job, :nspin => 2, print=false)
 @test flag(job, "nscf", :nspin) == 2
 
-addwancalc!(job, nscf,[:Pt => [:s, :p, :d]], Emin=fermi-7.0, Epad=5.0, wanflags=wanflags)
+addwancalc!(job, nscf,[:Pt => [:s, :p, :d]], Emin=fermi-7.0, Epad=5.0, wanflags=wanflags, print=false)
 
 @test length(job.calculations) == 7
 
@@ -52,7 +52,7 @@ end
 
 job3 = DFJob(job2, :lspinorb => true)
 @test flag(job3, :lspinorb)
-rmflags!(job3, :lspinorb)
+rmflags!(job3, :lspinorb, print=false)
 
 begin
     for (calc, calc2) in zip(job.calculations, job3.calculations)
@@ -68,7 +68,7 @@ end
 testorbs = [:s, :p]
 setprojections!(job, :Pt => testorbs)
 @test convert.(Symbol, [p.orb for p in projections(job, :Pt)]) == testorbs
-setwanenergies!(job, fermi-7.0, read_qe_bands_file(outpath(job, nscf)), Epad=3.0)
+setwanenergies!(job, fermi-7.0, read_qe_bands_file(outpath(job, nscf)), Epad=3.0, print=false)
 
 @test flag(job, :dis_froz_max) == 17.3737
 @test flag(job, :dis_win_max) == 17.3737 + 3.0
