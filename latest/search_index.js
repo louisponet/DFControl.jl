@@ -169,7 +169,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "job.html#DFControl.rmflags!-Tuple{DFControl.DFJob,Array{#s52,1} where #s52<:AbstractString,Vararg{Any,N} where N}",
+    "location": "job.html#DFControl.rmflags!-Tuple{DFControl.DFJob,Array{#s44,1} where #s44<:AbstractString,Vararg{Any,N} where N}",
     "page": "Job",
     "title": "DFControl.rmflags!",
     "category": "method",
