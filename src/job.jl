@@ -53,7 +53,7 @@ function DFJob(job_name, local_dir, structure::AbstractStructure, calculations::
                      :outdir => "'$server_dir'",
                      :ecutwfc => 25.)
     merge!(req_flags, common_flags)
-    for (calc, (execs, data)) in calculations
+    for (calc, (excs, data)) in calculations
         calc_ = typeof(calc) == String ? Symbol(calc) : calc
         if in(calc_, [Symbol("vc-relax"), :relax, :scf])
             k_points = get(data, :k_points, [1, 1, 1, 0, 0, 0])
@@ -73,7 +73,7 @@ function DFJob(job_name, local_dir, structure::AbstractStructure, calculations::
             k_option = :crystal_b
         end
         flags  = get(data, :flags, Dict{Symbol, Any}())
-        if execs[2].exec == "pw.x"
+        if excs[2].exec == "pw.x"
             push!(flags, :calculation => "'$(string(calc_))'")
             datablocks = [InputData(:k_points, k_option, k_points)]
         else
@@ -81,7 +81,7 @@ function DFJob(job_name, local_dir, structure::AbstractStructure, calculations::
         end
         input_ = DFInput{package}(string(calc_) * ".in",
                          Dict{Symbol, Any}(),
-                         datablocks, execs, true)
+                         datablocks, excs, true)
         setflags!(input_, req_flags..., print=false)
         setflags!(input_, flags..., print=false)
         push!(job_calcs, input_)

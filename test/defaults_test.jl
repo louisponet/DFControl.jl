@@ -1,5 +1,6 @@
 
 using DFControl
+import DFControl: Exec, data, add!, execs
 
 prevdefault = getdefault_server()
 setdefault_server("localhost")

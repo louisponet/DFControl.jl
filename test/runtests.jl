@@ -1,6 +1,4 @@
-using DFControl
 using Base.Test
-import DFControl: Exec, data, add!, execs
 
 tic()
 @testset "New defaults"      begin include("defaults_test.jl") end

@@ -1,5 +1,6 @@
 using DFControl, Base.Test
 
+import DFControl:  data
 # testjobpath = joinpath(Pkg.dir("DFControl"), "test/testassets/test_job/")
 testjobpath = joinpath(@__DIR__, "testassets/test_job/")
 job = DFJob(testjobpath);

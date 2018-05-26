@@ -1,5 +1,6 @@
 using DFControl, Base.Test
 
+import DFControl: Exec, data, add!
 # testjobpath = joinpath(Pkg.dir("DFControl"),"test/testassets/test_job/")
 testjobpath = joinpath(@__DIR__,"testassets/test_job/")
 
@@ -7,7 +8,7 @@ name = "Pt"
 local_dir = testjobpath
 server_dir = testjobpath
 bin_dir = "/usr/local/bin"
-execs = [Exec("mpirun", bin_dir, Dict{Symbol, Any}(:np => 24)), Exec("pw.x", bin_dir, Dict{Symbol, Any}(:nk => 2))]
+excs = [Exec("mpirun", bin_dir, Dict{Symbol, Any}(:np => 24)), Exec("pw.x", bin_dir, Dict{Symbol, Any}(:nk => 2))]
 
 pseudo_set = :test
 
@@ -23,7 +24,7 @@ bands_data = Dict(:k_points => [[0.5, 0.5, 0.5, 100.],
                   :flags => [:verbosity => "'high'", :nbnd => 8])
 
 nscf_data = merge(bands_data, Dict(:k_points => [10, 10, 10]))
-calculations = [:scf => (execs, scf_data), :bands => (execs, bands_data), :nscf =>(execs, nscf_data)]
+calculations = [:scf => (excs, scf_data), :bands => (excs, bands_data), :nscf =>(excs, nscf_data)]
 
 job = DFJob(name, local_dir, testjobpath * "Pt.cif", calculations,
       :prefix       => "'$name'",
