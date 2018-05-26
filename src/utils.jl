@@ -31,7 +31,7 @@ function apply_fermi_level!(band::Band, fermi::Union{String,AbstractFloat})
 end
 
 function Emax(Emin, nbnd, bands)
-    nbndfound = 0
+    nbndfound = 1
     max = 0
     for b in bands
         if minimum(b.eigvals) >= Emin && nbndfound < nbnd
