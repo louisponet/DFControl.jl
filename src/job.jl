@@ -749,7 +749,7 @@ function setwanenergies!(job::DFJob, Emin, bands; Epad=5.0, print=true)
     nbnd = sum([sum(orbsize.(t)) for  t in projections(job)])
     print && info("num_bands=$nbnd (inferred from provided projections).")
     winmin, frozmin, frozmax, winmax = wanenergyranges(Emin, nbnd, bands, Epad)
-    setflags!.(wancalcs, :dis_win_min => winmin, :dis_froz_min => frozmin, :dis_froz_max => frozmax, :dis_win_max => winmax, :num_wann => nbnd, print=false)
+    setflags!.(wancalcs, :dis_win_min => winmin, :dis_froz_min => frozmin, :dis_froz_max => frozmax, :dis_win_max => winmax, :num_wann => nbnd, :num_bands=>length(bands), print=false)
     return job
 end
 

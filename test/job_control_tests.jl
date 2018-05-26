@@ -92,8 +92,8 @@ setprojections!(job, :Pt => testorbs)
 @test convert.(Symbol, [p.orb for p in projections(job, :Pt)]) == testorbs
 setwanenergies!(job, fermi-7.0, read_qe_bands_file(outpath(job, nscf)), Epad=3.0, print=false)
 
-@test flag(job, :dis_froz_max) == 17.3737
-@test flag(job, :dis_win_max) == 17.3737 + 3.0
+@test flag(job, :dis_froz_max) == 14.2907
+@test flag(job, :dis_win_max) == 14.2907 + 3.0
 
 rm.(path.(job, job.calculations))
 rm(job.local_dir * "job.tt")
