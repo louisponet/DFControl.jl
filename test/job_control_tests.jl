@@ -6,12 +6,26 @@ testjobpath = joinpath(@__DIR__, "testassets/test_job/")
 job = DFJob(testjobpath);
 
 nscf = DFControl.input(job, "nscf")
-nscf2 = DFInput(nscf, "nscf2.in", data=[:testdata => (:testoption, "test")])
+nscf2 = DFInput(nscf, "nscf2.in", data=[:testdata => (:testoption, "test"), :k_points => (:blabla, [1,1,1,1,1,1])])
 
 @test data(job, "nscf2", :testdata) == nothing
 @test data(nscf2, :testdata).option == :testoption
 @test data(nscf2, :testdata).data   == "test"
 @test data(nscf2, :testdata).name   == :testdata
+@test data(nscf2, :k_points).option == :blabla
+@test data(nscf2, :k_points).data   == [1,1,1,1,1,1]
+
+setkpoints!(nscf2, (3,3,3), print=false)
+@test data(nscf2, :k_points).data  == kgrid(3, 3, 3, :nscf)
+
+
+setkpoints!(nscf2, [(3.,3.,3.,1.), (3.,3.,3.,1.)], print=false)
+@test data(nscf2, :k_points).option  == :crystal_b
+@test data(nscf2, :k_points).data  == [(3.,3.,3.,1.), (3.,3.,3.,1.)]
+
+setkpoints!(nscf2, (3,3,3,0,0,1), print=false)
+@test data(nscf2, :k_points).option  == :automatic
+@test data(nscf2, :k_points).data  == [3,3,3,0,0,1]
 
 fermi = read_qe_output(outpath(job, "nscf"))[:fermi]
 @test fermi == read_fermi_from_qe_output(job.local_dir * "nscf.out")

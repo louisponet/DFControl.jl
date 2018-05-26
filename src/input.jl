@@ -24,11 +24,11 @@ function DFInput(template::DFInput, filename, newflags...; excs=execs(template),
     input             = deepcopy(template)
     input.filename    = filename
     input.execs = excs
-    setflags!(input, newflags...)
+    setflags!(input, newflags..., print=false)
 
     if data != nothing
         for (name, (option, data)) in data
-            setdata!(input, name, data, option=option)
+            setdata!(input, name, data, option=option, print=false)
         end
     end
     return input
@@ -66,8 +66,7 @@ end
 
 function setkpoints!(input::DFInput{QE}, k_grid::NTuple{6, Int}; print=true) #scf
     calc = flag(input, :calculation)
-    @assert calc == "'scf'" || contains(calc, "relax") warn("Expected calculation to be 'scf', 'vc-relax', 'relax'.\nGot $calc.")
-
+    (calc == "'scf'" || contains(calc, "relax")) && warn("Expected calculation to be 'scf', 'vc-relax', 'relax'.\nGot $calc.")
     setdata!(input, :k_points, [k_grid...], option = :automatic, print=print)
     return input
 end
@@ -80,8 +79,8 @@ sets the data in the k point `DataBlock` inside the specified calculation. The f
 """
 function setkpoints!(input::DFInput{QE}, k_grid::Vector{NTuple{4, T}}; print=true, k_option=:crystal_b) where T<:AbstractFloat
     calc = flag(input, :calculation)
-    @assert calc == "'bands'" warn("Expected calculation to be 'bands', got $calc.")
-    @assert k_option in [:tpiba_b, :crystal_b, :tpiba_c, :crystal_c] error("Only $([:tpiba_b, :crystal_b, :tpiba_c, :crystal_c]...) are allowed as a k_option, got $k_option.")
+    calc == "'bands'" && warn("Expected calculation to be 'bands', got $calc.")
+    @assert in(k_option, [:tpiba_b, :crystal_b, :tpiba_c, :crystal_c]) error("Only $([:tpiba_b, :crystal_b, :tpiba_c, :crystal_c]...) are allowed as a k_option, got $k_option.")
     if k_option in [:tpiba_c, :crystal_c]
         @assert length(k_grid) == 3 error("If $([:tpiba_c, :crystal_c]...) is selected the length of the k_points needs to be 3, got length: $(length(k_grid)).")
     end
@@ -91,13 +90,13 @@ function setkpoints!(input::DFInput{QE}, k_grid::Vector{NTuple{4, T}}; print=tru
         num_k += k[4]
     end
     if num_k > 100.
-        setflags!(input, :verbosity => "'high'")
+        setflags!(input, :verbosity => "'high'", print=print)
         if print
             dfprintln("Verbosity is set to high because num_kpoints > 100,\n
                        otherwise bands won't get printed.")
         end
     end
-    setdata!(input, :k_points, k_grid, option = k_option, print = print)
+    setdata!(input, :k_points, k_grid, option = k_option, print=print)
     return input
 end
 
