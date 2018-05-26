@@ -1,6 +1,9 @@
-julia 0.6
+julia
+Compat
+BinDeps
 RecipesBase
 GeometryTypes
 Parameters
 Conda
 Nullables
+Media

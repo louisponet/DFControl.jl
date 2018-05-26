@@ -1,8 +1,9 @@
 __precompile__()
 module DFControl
 # using Reexport
+    using Compat
     import Base.Iterators.flatten
-    using RecipesBase, GeometryTypes, Parameters, Nullables
+    using RecipesBase, GeometryTypes, Parameters, Nullables, Media
 
     abstract type Package end
     struct Wannier90 <: Package end
@@ -80,13 +81,12 @@ module DFControl
     export getdefault_pseudodir
     export getdefault_pseudodirs
     export removedefault
-    include("display/overloads.jl")
-    if Pkg.installed("Atom") != nothing
-        include("display/printing_juno.jl")
-    end
-    dfprintln(io::IO, s::String) = println(io, s)
+
     dfprintln(s::String) = println(s)
     function __init__()
+        # if haskey(Pkg.installed(), "Atom")
+        #     include("display/printing_juno.jl")
+        # end
         init_defaults(default_file)
     end
 

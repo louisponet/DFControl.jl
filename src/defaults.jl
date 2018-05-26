@@ -221,7 +221,7 @@ function getdefault_pseudo(atom::Symbol, pseudo_setname=:default; pseudospecifie
         if pseudospecifier != ""
             return getfirst(x -> contains(x, pseudospecifier), default_pseudos[pp_atom][pseudo_setname])
         else
-            return default_pseudos[pp_atom][pseudo_setname][1]
+            return DFControl.default_pseudos[pp_atom][pseudo_setname][1]
         end
     end
 end
