@@ -18,12 +18,12 @@ end
 
 Creates a new `DFInput` from a template `DFInput`, setting the newflags in the new one.
 """
-function DFInput(template::DFInput, filename, newflags...; runcommand=template.runcommand, run=true,data=nothing)
+function DFInput(template::DFInput, filename, newflags...; excs=execs(template), run=true,data=nothing)
     newflags = Dict(newflags...) # this should handle both OrderedDicts and pairs of flags
 
     input             = deepcopy(template)
     input.filename    = filename
-    input.runcommand  = runcommand
+    input.execs = excs
     setflags!(input, newflags...)
 
     if data != nothing
@@ -177,7 +177,7 @@ function setdata!(input::DFInput, block_name::Symbol, new_block_data; option=not
         end
     end
     if !setd
-        setdata!(input, InputData(block_name, block_option, block_data))
+        setdata!(input, InputData(block_name, option, new_block_data))
         setd = true
     end
     return setd, input

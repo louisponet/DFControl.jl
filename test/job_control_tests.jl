@@ -6,6 +6,13 @@ testjobpath = joinpath(@__DIR__, "testassets/test_job/")
 job = DFJob(testjobpath);
 
 nscf = DFControl.input(job, "nscf")
+nscf2 = DFInput(nscf, "nscf2.in", data=[:testdata => (:testoption, "test")])
+
+@test data(job, "nscf2", :testdata) == nothing
+@test data(nscf2, :testdata).option == :testoption
+@test data(nscf2, :testdata).data   == "test"
+@test data(nscf2, :testdata).name   == :testdata
+
 fermi = read_qe_output(outpath(job, "nscf"))[:fermi]
 @test fermi == read_fermi_from_qe_output(job.local_dir * "nscf.out")
 
