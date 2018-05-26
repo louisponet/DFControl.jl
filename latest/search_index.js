@@ -57,6 +57,14 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "job.html#DFControl.atom",
+    "page": "Job",
+    "title": "DFControl.atom",
+    "category": "function",
+    "text": "Returns the ith atom with id atsym.\n\n\n\n"
+},
+
+{
     "location": "job.html#DFControl.atoms-Tuple{DFControl.DFJob}",
     "page": "Job",
     "title": "DFControl.atoms",
@@ -142,6 +150,22 @@ var documenterSearchIndex = {"docs": [
     "title": "DFControl.print_info",
     "category": "method",
     "text": "print_info(job::DFJob, filenames::Vector{String})\n\nPrints general info of the job.\n\n\n\n"
+},
+
+{
+    "location": "job.html#DFControl.projections",
+    "page": "Job",
+    "title": "DFControl.projections",
+    "category": "function",
+    "text": "Returns the projections inside the job for the specified ith atom in the job with id atsym.\n\n\n\n"
+},
+
+{
+    "location": "job.html#DFControl.projections-Tuple{DFControl.DFJob}",
+    "page": "Job",
+    "title": "DFControl.projections",
+    "category": "method",
+    "text": "Returns all the projections inside the job.\n\n\n\n"
 },
 
 {
@@ -302,6 +326,14 @@ var documenterSearchIndex = {"docs": [
     "title": "DFControl.setserverdir!",
     "category": "method",
     "text": "Sets the server dir of the job.\n\n\n\n"
+},
+
+{
+    "location": "job.html#DFControl.setwanenergies!-Tuple{DFControl.DFJob,Any,Any}",
+    "page": "Job",
+    "title": "DFControl.setwanenergies!",
+    "category": "method",
+    "text": "Automatically calculates and sets the wannier energies. This uses the projections, Emin and the bands to infer the other limits. Epad allows one to specify the padding around the inner and outer energy windows\n\n\n\n"
 },
 
 {
@@ -573,7 +605,7 @@ var documenterSearchIndex = {"docs": [
     "page": "FileIO",
     "title": "DFControl.save",
     "category": "function",
-    "text": "save(input::DFInput{Wannier90}, structure, filename::String=input.filename)\n\nWrites the DFInput{Wannier90} and structure to a file, that can be interpreted by WANNIER90. The atoms in the structure must have projections defined.\n\n\n\n"
+    "text": "save(input::DFInput{QE}, structure, filename::String=input.filename)\n\nWrites a Quantum Espresso input file.\n\n\n\n"
 },
 
 {
@@ -581,7 +613,7 @@ var documenterSearchIndex = {"docs": [
     "page": "FileIO",
     "title": "DFControl.save",
     "category": "function",
-    "text": "save(input::DFInput{QE}, structure, filename::String=input.filename)\n\nWrites a Quantum Espresso input file.\n\n\n\n"
+    "text": "save(input::DFInput{Wannier90}, structure, filename::String=input.filename)\n\nWrites the DFInput{Wannier90} and structure to a file, that can be interpreted by WANNIER90. The atoms in the structure must have projections defined.\n\n\n\n"
 },
 
 {
@@ -601,11 +633,11 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "defaults.html#DFControl.configure_defaultpseudos-Tuple{}",
+    "location": "defaults.html#DFControl.configuredefault_pseudos-Tuple{}",
     "page": "Defaults",
-    "title": "DFControl.configure_defaultpseudos",
+    "title": "DFControl.configuredefault_pseudos",
     "category": "method",
-    "text": "configure_defaultpseudos(server = getdefault_server(), pseudo_dirs=getdefault_pseudodirs())\n\nReads the specified default_pseudo_dirs on the default_server and sets up the default_pseudos variable, and also adds all the entries to the user_defaults.jl file.\n\n\n\n"
+    "text": "configuredefault_pseudos(server = getdefault_server(), pseudo_dirs=getdefault_pseudodirs())\n\nReads the specified default_pseudo_dirs on the default_server and sets up the default_pseudos variable, and also adds all the entries to the user_defaults.jl file.\n\n\n\n"
 },
 
 {
