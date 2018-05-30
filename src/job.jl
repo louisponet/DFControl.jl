@@ -596,7 +596,7 @@ function setpseudos!(job::DFJob, pseudo_set, pseudo_specifier="")
 end
 
 """
-    replace_header_word!(job::DFJob, word::String, new_word::String)
+    setheaderword!(job::DFJob, word::String, new_word::String)
 
 
 Replaces the specified word in the header with the new word.
@@ -703,7 +703,7 @@ function addwancalc!(job::DFJob, nscf::DFInput{QE}, projections;
     ats = atoms(job)
     projections = Dict(projections)
     ids   = [id(at) for at in ats]
-    @assert all(haskey.(projections, unique(ids))) error("Please supply a set of projections for each unique atom: $(join(unids," ")).")
+    @assert all(haskey.(projections, unique(ids))) error("Please supply a set of projections for each unique atom: $(join(unique(ids)," ")).")
 
 
     nbnd = sum(sum.([[orbsize(orb) for orb in projections[id]] for id in ids]))
@@ -747,6 +747,8 @@ function addwancalc!(job::DFJob, nscf::DFInput{QE}, projections;
     return job
 end
 
+addwancalc!(job::DFJob, template::String="nscf", args...; kwargs...) =
+    addwancalc!(job, input(job, template), args...; kwargs...)
 
 "Automatically calculates and sets the wannier energies. This uses the projections, `Emin` and the bands to infer the other limits.\n`Epad` allows one to specify the padding around the inner and outer energy windows"
 function setwanenergies!(job::DFJob, Emin, bands; Epad=5.0, print=true)
@@ -779,19 +781,36 @@ function undo(job::DFJob)
     return deepcopy(UNDO_JOBS[job.id])
 end
 
-"""
-    addbandscalc!(job::DFJob, k_path::Vector{Vector{T}}; filename="bands.in", run=true) where T<:AbstractFloat
 
-Checks if there is an scf calculation in the job and takes it's inputs to generate a bands calculation along the given k-path.
+"Creates a new `DFInput` from the template with the new flags and new data, then adds it to the inputs of the job at the specified index."
+function addcalc!(job::DFJob, template::DFInput, filename, newflags...; index=length(job.inputs)+1, run=true, newdata=nothing)
+    newcalc = DFInput(template, filename, newflags..., data=newdata, run=run)
+    insert!(job.inputs, index, newcalc)
+    job
+end
+addcalc!(job::DFJob, template::String, args...; kwargs...) = addcalc!(job, input(job, template), args...; kwargs...)
+
 """
-function addbandscalc!(job::DFJob, k_path::Vector{Vector{T}}; filename="bands.in", run=true) where T<:AbstractFloat
-    calc = getfirst(x -> eltype(x) == QE && flag(x, :calculation) == "'scf'", job.inputs)
-    verbosity = sum([k[4] for k in k_path])>100 ? :verbosity => "'high'" : :verbosity => "'low'"
-    bands_calc = DFInput(calc, filename, :calculation => "'bands'", verbosity, run=run, data=[:k_points => (:crystal_b, k_path)])
-    push!(job.inputs, bands_calc)
-    return job
+    addcalc!(job::DFJob, kpoints::Vector{NTuple{4}}; filename="bands.in", run=true, template="scf")
+
+Searches for the given template and creates a bands calculation from it.
+"""
+function addcalc!(job::DFJob, kpoints::Vector{<:NTuple{4}}; filename="bands.in", template="scf", kwargs...)
+    addcalc!(job, template, filename, :calculation => "'bands'"; kwargs...)
+    setkpoints!(job, filename, kpoints, print=false)
+    job
 end
 
+"""
+    addcalc!(job::DFJob, kpoints::NTuple{3}; filename="nscf.in", run=true, template="scf")
+
+Searches for the given template and creates a bands calculation from it.
+"""
+function addcalc!(job::DFJob, kpoints::NTuple{3}; filename="nscf.in", template="scf", kwargs...)
+    addcalc!(job, template, filename, :calculation => "'nscf'"; kwargs...)
+    setkpoints!(job, filename, kpoints, print=false)
+    job
+end
 
 """
 Sets the server dir of the job.

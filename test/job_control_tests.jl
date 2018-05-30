@@ -30,13 +30,17 @@ setkpoints!(nscf2, (3,3,3,0,0,1), print=false)
 fermi = read_qe_output(outpath(job, "nscf"))[:fermi]
 @test fermi == read_fermi_from_qe_output(job.local_dir * "nscf.out")
 
-addbandscalc!(job, [[0.5,0.0,0.5,10.0],[0.0,0.0,0.0,10.0],[0.5,0.5,0.5,1.0]],filename="bands2")
+addcalc!(job, [(0.5,0.0,0.5,10.0),(0.0,0.0,0.0,10.0),(0.5,0.5,0.5,1.0)],filename="bands2")
 @test flag(job, "bands2", :calculation) == "'bands'"
-@test data(job, "bands2", :k_points).data == [[0.5,0.0,0.5,10.0],[0.0,0.0,0.0,10.0],[0.5,0.5,0.5,1.0]]
+@test data(job, "bands2", :k_points).data == [(0.5,0.0,0.5,10.0),(0.0,0.0,0.0,10.0),(0.5,0.5,0.5,1.0)]
+addcalc!(job, (10,10,10), filename="nscf2")
+@test flag(job, "nscf2", :calculation) == "'nscf'"
+
+
 
 wanflags = [:write_hr => true, :wannier_plot => true]
 
-addwancalc!(job, nscf,[:Pt => [:s, :p, :d]], Emin=fermi-7.0, Epad=5.0, wanflags=wanflags, print=false)
+addwancalc!(job, "nscf",[:Pt => [:s, :p, :d]], Emin=fermi-7.0, Epad=5.0, wanflags=wanflags, print=false)
 
 @test flag(job, "wan.win", :write_hr) == flag(job, "wan.win", :wannier_plot) == true
 

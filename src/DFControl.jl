@@ -28,7 +28,7 @@ module DFControl
            input, inputs,
            path, outpath, setfilename!, setkpoints!, setdataoption!, setpseudos!,
            atoms, atom, setatoms!, setprojections!, projections,
-           addwancalc!, addbandscalc!,
+           addwancalc!, addcalc!,
            setwanenergies!,
 
            setheaderword!, setserverdir!, setlocaldir!,
