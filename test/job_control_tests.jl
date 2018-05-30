@@ -30,28 +30,30 @@ setkpoints!(nscf2, (3,3,3,0,0,1), print=false)
 fermi = read_qe_output(outpath(job, "nscf"))[:fermi]
 @test fermi == read_fermi_from_qe_output(job.local_dir * "nscf.out")
 
+addbandscalc!(job, [[0.5,0.0,0.5,10.0],[0.0,0.0,0.0,10.0],[0.5,0.5,0.5,1.0]],filename="bands2")
+@test flag(job, "bands2", :calculation) == "'bands'"
+@test data(job, "bands2", :k_points).data == [[0.5,0.0,0.5,10.0],[0.0,0.0,0.0,10.0],[0.5,0.5,0.5,1.0]]
+
 wanflags = [:write_hr => true, :wannier_plot => true]
 
 addwancalc!(job, nscf,[:Pt => [:s, :p, :d]], Emin=fermi-7.0, Epad=5.0, wanflags=wanflags, print=false)
 
-@test length(job.calculations) == 5
 @test flag(job, "wan.win", :write_hr) == flag(job, "wan.win", :wannier_plot) == true
 
-job.calculations = job.calculations[1:3]
+job.inputs = job.inputs[1:3]
 
 setflags!(job, :nspin => 2, print=false)
 @test flag(job, "nscf", :nspin) == 2
 
 addwancalc!(job, nscf,[:Pt => [:s, :p, :d]], Emin=fermi-7.0, Epad=5.0, wanflags=wanflags, print=false)
 
-@test length(job.calculations) == 7
 
-setflow!(job, [false for i=1:length(job.calculations)])
-@test job.calculations[1].run == false
+setflow!(job, [false for i=1:length(job.inputs)])
+@test job.inputs[1].run == false
 setflow!(job, "nscf" => true, "bands" => true)
-@test job.calculations[3].run
+@test job.inputs[3].run
 setflow!(job, "pw2wan" => true)
-@test job.calculations[end].run
+@test job.inputs[end].run
 
 print_info(job)
 @test inputs(job,["nscf"]) == inputs(job, "nscf")
@@ -60,9 +62,8 @@ save(job)
 
 job2 = DFJob(local_dir)
 
-@test length(job2.calculations) == length(job.calculations) == 7
 begin
-    for (calc, calc2) in zip(job.calculations, job2.calculations)
+    for (calc, calc2) in zip(job.inputs, job2.inputs)
         @test calc.flags == calc2.flags
         for (b1, b2) in zip(calc.data, calc2.data)
             for name in fieldnames(b1)
@@ -77,7 +78,7 @@ job3 = DFJob(job2, :lspinorb => true)
 rmflags!(job3, :lspinorb, print=false)
 
 begin
-    for (calc, calc2) in zip(job.calculations, job3.calculations)
+    for (calc, calc2) in zip(job.inputs, job3.inputs)
         @test calc.flags == calc2.flags
         for (b1, b2) in zip(calc.data, calc2.data)
             for name in fieldnames(b1)
@@ -95,5 +96,12 @@ setwanenergies!(job, fermi-7.0, read_qe_bands_file(outpath(job, nscf)), Epad=3.0
 @test flag(job, :dis_froz_max) == 14.2907
 @test flag(job, :dis_win_max) == 14.2907 + 3.0
 
-rm.(path.(job, job.calculations))
+setexecflags!(job, "pw.x", :nk => 230)
+@test execs(job, "nscf")[2].flags[:nk] == 230
+
+setexecdir!(job, "pw.x", "~/bin/")
+@test execs(job, "nscf")[2].dir == "~/bin/"
+
+
+rm.(path.(job, job.inputs))
 rm(job.local_dir * "job.tt")

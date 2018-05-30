@@ -6,7 +6,7 @@ mutable struct DFJob
     id           ::Int
     name         ::String
     structure    ::AbstractStructure
-    calculations ::Vector{DFInput}
+    inputs       ::Vector{DFInput}
     local_dir    ::String
     server       ::String
     server_dir   ::String
@@ -185,7 +185,7 @@ Returns an array of the inputs that match one of the filenames.
 function inputs(job::DFJob, filenames::Vector)
     out = DFInput[]
     for name in filenames
-        push!(out, filter(x -> contains(x.filename, name), job.calculations)...)
+        push!(out, filter(x -> contains(x.filename, name), job.inputs)...)
     end
     return out
 end
@@ -196,7 +196,7 @@ end
 Returns an array of the input that matches the filename.
 """
 function inputs(job::DFJob, filename::String)
-    return filter(x -> contains(x.filename, filename), job.calculations)
+    return filter(x -> contains(x.filename, filename), job.inputs)
 end
 
 """
@@ -204,7 +204,7 @@ end
 
 Returns the input that matches the filename.
 """
-input(job::DFJob, filename::String) = getfirst(x -> contains(x.filename, filename), job.calculations)
+input(job::DFJob, filename::String) = getfirst(x -> contains(x.filename, filename), job.inputs)
 
 """
     input(job::DFJob, filenames::Array)
@@ -302,16 +302,16 @@ function submit(job::DFJob; server=job.server, server_dir=job.server_dir)
 end
 
 """
-    add!(job::DFJob, input::DFInput, index::Int=length(job.calculations)+1; filename=input.filename)
+    add!(job::DFJob, input::DFInput, index::Int=length(job.inputs)+1; filename=input.filename)
 
 Adds a calculation to the job, at the specified index.
 """
-function add!(job::DFJob, input::DFInput, index::Int=length(job.calculations)+1; filename = input.filename)
+function add!(job::DFJob, input::DFInput, index::Int=length(job.inputs)+1; filename = input.filename)
 
     UNDO_JOBS[job.id] = deepcopy(job)
 
     input.filename = filename
-    insert!(job.calculations, index, input)
+    insert!(job.inputs, index, input)
     return job
 end
 
@@ -348,7 +348,7 @@ function setflags!(job::DFJob, calculations::Vector{String}, flags...; print=tru
     end
     return job
 end
-setflags!(job::DFJob, flags...;kwargs...)                   = setflags!(job, [calc.filename for calc in job.calculations], flags...;kwargs...)
+setflags!(job::DFJob, flags...;kwargs...)                   = setflags!(job, [calc.filename for calc in job.inputs], flags...;kwargs...)
 setflags!(job::DFJob, filename::String, flags...;kwargs...) = setflags!(job, [filename], flags...;kwargs...)
 
 """
@@ -372,7 +372,7 @@ end
 Looks through all the calculations and returns the value of the specified flag.
 """
 function flag(job::DFJob, flag_name::Symbol)
-    for calc in job.calculations
+    for calc in job.inputs
         flag_ = flag(calc, flag_name)
         if flag_ != nothing
             return flag_
@@ -422,7 +422,7 @@ function rmflags!(job::DFJob, calc_filenames::Vector{<:AbstractString}, flags...
     return job
 end
 rmflags!(job::DFJob, filename::String, flags...; kwargs...) = rmflags!(job, [filename], flags...; kwargs...)
-rmflags!(job::DFJob, flags...; kwargs...) = rmflags!(job, [calc.filename for calc in job.calculations], flags...; kwargs...)
+rmflags!(job::DFJob, flags...; kwargs...) = rmflags!(job, [calc.filename for calc in job.inputs], flags...; kwargs...)
 
 """
     setflow!(job::DFJob, should_runs...)
@@ -440,7 +440,7 @@ function setflow!(job::DFJob, should_runs...)
     return job
 end
 
-setflow!(job::DFJob, should_runs::Vector{Bool}) = setflow!(job, [calc.filename => run for (calc, run) in zip(job.calculations, should_runs)]...)
+setflow!(job::DFJob, should_runs::Vector{Bool}) = setflow!(job, [calc.filename => run for (calc, run) in zip(job.inputs, should_runs)]...)
 
 """
     setflow!(job::DFJob, filenames::Array{String,1}, should_run)
@@ -449,12 +449,18 @@ Goes throug the calculation filenames and sets whether it should run or not.
 """
 setflow!(job::DFJob, filenames::Vector{String}, should_run) = setflow!.(inputs(job, filenames), should_run)
 
+
 """
-    setexecflags!(job::DFJob, inputnames, flags...)
+    setexecflags!(job::DFJob, exec, flags...)
 
 Goes through the calculations of the job and if the name contains any of the `inputnames` it sets the exec flags to the specified ones.
 """
-setexecflags!(job::DFJob, inputnames, flags...) = setexecflags!.(inputs(job, inputnames), flags...)
+setexecflags!(job::DFJob, exec, flags...) = setexecflags!.(job.inputs, exec, flags...)
+
+"Returns the executables attached to a given input."
+execs(job::DFJob, filename) = execs(input(job, filename))
+
+setexecdir!(job::DFJob, exec, dir) = setexecdir!.(job.inputs, exec, dir)
 
 """
     setdata!(job::DFJob, filenames, block::Block)
@@ -572,7 +578,7 @@ setdataoption!(job::DFJob, filename::String, name::Symbol, option::Symbol) = set
 
 sets the option of specified data block in all calculations that have the block.
 """
-setdataoption!(job::DFJob, name::Symbol, option::Symbol) = setdataoption!(job, [i.filename for i in job.calculations], name, option)
+setdataoption!(job::DFJob, name::Symbol, option::Symbol) = setdataoption!(job, [i.filename for i in job.inputs], name, option)
 
 "sets the pseudopotentials to the specified one in the default pseudo_set."
 function setpseudos!(job::DFJob, pseudo_set, pseudo_specifier="")
@@ -744,7 +750,7 @@ end
 
 "Automatically calculates and sets the wannier energies. This uses the projections, `Emin` and the bands to infer the other limits.\n`Epad` allows one to specify the padding around the inner and outer energy windows"
 function setwanenergies!(job::DFJob, Emin, bands; Epad=5.0, print=true)
-    wancalcs = filter(x -> eltype(x) == Wannier90, job.calculations)
+    wancalcs = filter(x -> eltype(x) == Wannier90, job.inputs)
     @assert length(wancalcs) != 0 error("Job ($(job.name)) has no Wannier90 calculations, nothing todo.")
     nbnd = sum([sum(orbsize.(t)) for  t in projections(job)])
     print && info("num_bands=$nbnd (inferred from provided projections).")
@@ -759,7 +765,7 @@ end
 Undos the last set to the calculations of the job.
 """
 function undo!(job::DFJob; print=true)
-    job.calculations[:] = UNDO_JOBS[job.id].calculations[:]
+    job.inputs[:] = UNDO_JOBS[job.id].calculations[:]
     print && dfprintln("Restored the calculations of job '$(job.name)' to their previous state.")
     return job
 end
@@ -774,14 +780,15 @@ function undo(job::DFJob)
 end
 
 """
-    addbandscalculation!(job::DFJob, k_path::Vector{Vector{T}}; filename="bands.in", run=true) where T<:AbstractFloat
+    addbandscalc!(job::DFJob, k_path::Vector{Vector{T}}; filename="bands.in", run=true) where T<:AbstractFloat
 
 Checks if there is an scf calculation in the job and takes it's inputs to generate a bands calculation along the given k-path.
 """
-function addbandscalculation!(job::DFJob, k_path::Vector{Vector{T}}; filename="bands.in", run=true) where T<:AbstractFloat
-    calc = getfirst(x -> eltype(x) == QE && flag(x, :calculation) == "'scf'", job.calculations)
-    bands_calc = DFInput{QE}(calc, filename, run=run, data=[:k_points => (:crystal_b, k_path)])
-    push!(job.calculations, bands_calc)
+function addbandscalc!(job::DFJob, k_path::Vector{Vector{T}}; filename="bands.in", run=true) where T<:AbstractFloat
+    calc = getfirst(x -> eltype(x) == QE && flag(x, :calculation) == "'scf'", job.inputs)
+    verbosity = sum([k[4] for k in k_path])>100 ? :verbosity => "'high'" : :verbosity => "'low'"
+    bands_calc = DFInput(calc, filename, :calculation => "'bands'", verbosity, run=run, data=[:k_points => (:crystal_b, k_path)])
+    push!(job.inputs, bands_calc)
     return job
 end
 
@@ -816,10 +823,10 @@ function print_info(job::DFJob, filenames::Vector{String})
     Local_dir:  $(job.local_dir)
     Server:     $(job.server)
     Server_dir: $(job.server_dir)
-    $(length(job.calculations)) calculations
+    $(length(job.inputs)) calculations
     --------------------
     """
     dfprintln(s)
 end
-print_info(job::DFJob)                   = print_info(job, [calc.filename for calc in job.calculations])
+print_info(job::DFJob)                   = print_info(job, [calc.filename for calc in job.inputs])
 print_info(job::DFJob, filename::String) = print_info(job, [filename])

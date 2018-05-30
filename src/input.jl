@@ -59,8 +59,9 @@ If the specified calculation is `'nscf'` the accepted format is `(nka, nkb, nkc)
 function setkpoints!(input::DFInput{QE}, k_grid::NTuple{3, Int}; print=true) #nscf
 
     calc = flag(input, :calculation)
-    @assert calc == "'nscf'" warn("Expected calculation to be 'nscf'.\nGot $calc.")
+    calc != "'nscf'" && warn("Expected calculation to be 'nscf'.\nGot $calc.")
     setdata!(input, :k_points, kgrid(k_grid..., :nscf), option = :crystal, print=print)
+    prod(k_grid) > 100 && setflags!(input, :verbosity => "'high'", print=print)
     return input
 end
 
@@ -68,6 +69,7 @@ function setkpoints!(input::DFInput{QE}, k_grid::NTuple{6, Int}; print=true) #sc
     calc = flag(input, :calculation)
     (calc == "'scf'" || contains(calc, "relax")) && warn("Expected calculation to be 'scf', 'vc-relax', 'relax'.\nGot $calc.")
     setdata!(input, :k_points, [k_grid...], option = :automatic, print=print)
+    prod(k_grid[1:3]) > 100 && setflags!(input, :verbosity => "'high'", print=print)
     return input
 end
 
@@ -227,6 +229,7 @@ execs(input::DFInput) = input.execs
 execs(input::DFInput, exec::String) = filter(x -> contains(x.exec, exec), input.execs)
 execflags(input::DFInput, exec::String) = [x.flags for x in execs(input, exec)]
 setexecflags!(input::DFInput, exec::String, flags...) = setflags!.(execs(input, exec), flags...)
+setexecdir!(input::DFInput, exec, dir) = setexecdir!.(execs(input, exec), dir)
 
 runcommand(input::DFInput) = input.execs[1]
 

@@ -27,8 +27,8 @@ end
 """
 sets the projections of the specified atoms.
 """
-function setprojections!(str::Structure, projections...)
-    projdict = Dict(projections)
+function setprojections!(str::Structure, projs...)
+    projdict = Dict(projs)
     for at in unique_atoms(str.atoms)
         if !haskey(projdict, id(at))
             projdict[id(at)] = [proj.orb for proj in projections(at)]

@@ -93,7 +93,7 @@ function outputs(job::DFJob, server="", server_dir="", local_dir=""; job_fuzzy="
     # job_file = searchdir(job.local_dir, strip(job_fuzzy, '*'))[1]
     # inputs, outputs= read_job_filenames(job.local_dir * job_file)
     pulled_outputs = String[]
-    for calc in job.calculations
+    for calc in job.inputs
         ofile = outfile(calc)
         try
             pull_server_file(ofile)

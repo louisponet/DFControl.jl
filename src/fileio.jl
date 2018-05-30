@@ -14,7 +14,7 @@ end
 
 function write_flag_line(f, flag, data, seperator="=", i="")
     flagstr = string(flag)
-    if flagstr[end-1] == "_" && !isnull(tryparse(Int, string(flagstr[end])))
+    if flagstr[end-1] == '_' && !isnull(tryparse(Int, string(flagstr[end])))
         flagstr = flagstr[1:end-2] * "($(flagstr[end]))"
     end
     write(f,"  $flagstr$i $seperator ")
@@ -140,11 +140,11 @@ end
 function writetojob(f, job, input::DFInput{Wannier90})
     filename    = input.filename
     should_run  = input.run
-    id = findfirst(job.calculations, input)
+    id = findfirst(job.inputs, input)
     seedname = splitext(filename)[1]
 
-    pw2wanid = findfirst(x -> contains(x.execs[2].exec, "pw2wannier90.x"), job.calculations[id+1:end])+id
-    pw2wan   = job.calculations[pw2wanid]
+    pw2wanid = findfirst(x -> contains(x.execs[2].exec, "pw2wannier90.x"), job.inputs[id+1:end])+id
+    pw2wan   = job.inputs[pw2wanid]
     setflags!(pw2wan, :seedname => "'$(splitext(input.filename)[1])'",print=false)
 
     if !pw2wan.run
@@ -170,16 +170,16 @@ Writes all the input files and job file that are linked to a DFJob.
 """
 function write_job_files(job::DFJob)
     files_to_remove = searchdir(job.local_dir, ".in")
-    new_filenames   = getfield.(job.calculations, :filename)
+    new_filenames   = getfield.(job.inputs, :filename)
     open(job.local_dir * "job.tt", "w") do f
         write(f, "#!/bin/bash\n")
         write_job_name(f, job)
         write_job_header(f, job)
-        abiinputs = Vector{DFInput{Abinit}}(filter(x -> eltype(x) == Abinit, job.calculations))
+        abiinputs = Vector{DFInput{Abinit}}(filter(x -> eltype(x) == Abinit, job.inputs))
         !isempty(abiinputs) && push!(new_filenames, writetojob(f, job, abiinputs)...)
         i = length(abiinputs) + 1
-        while i <= length(job.calculations)
-            i += writetojob(f, job, job.calculations[i])
+        while i <= length(job.inputs)
+            i += writetojob(f, job, job.inputs[i])
         end
     end
 
