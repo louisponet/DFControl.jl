@@ -49,6 +49,14 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "job.html#DFControl.addbandscalc!-Union{Tuple{DFControl.DFJob,Array{Array{T,1},1}}, Tuple{T}} where T<:AbstractFloat",
+    "page": "Job",
+    "title": "DFControl.addbandscalc!",
+    "category": "method",
+    "text": "addbandscalc!(job::DFJob, k_path::Vector{Vector{T}}; filename=\"bands.in\", run=true) where T<:AbstractFloat\n\nChecks if there is an scf calculation in the job and takes it\'s inputs to generate a bands calculation along the given k-path.\n\n\n\n"
+},
+
+{
     "location": "job.html#DFControl.addwancalc!-Tuple{DFControl.DFJob,DFControl.DFInput{DFControl.QE},Any}",
     "page": "Job",
     "title": "DFControl.addwancalc!",
@@ -78,6 +86,14 @@ var documenterSearchIndex = {"docs": [
     "title": "DFControl.data",
     "category": "method",
     "text": "data(job::DFJob, calc_filenames, name::Symbol)\n\nLooks through the calculation filenames and returns the data with the specified symbol.\n\n\n\n"
+},
+
+{
+    "location": "job.html#DFControl.execs-Tuple{DFControl.DFJob,Any}",
+    "page": "Job",
+    "title": "DFControl.execs",
+    "category": "method",
+    "text": "Returns the executables attached to a given input.\n\n\n\n"
 },
 
 {
@@ -245,7 +261,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Job",
     "title": "DFControl.setexecflags!",
     "category": "method",
-    "text": "setexecflags!(job::DFJob, inputnames, flags...)\n\nGoes through the calculations of the job and if the name contains any of the inputnames it sets the exec flags to the specified ones.\n\n\n\n"
+    "text": "setexecflags!(job::DFJob, exec, flags...)\n\nGoes through the calculations of the job and if the name contains any of the inputnames it sets the exec flags to the specified ones.\n\n\n\n"
 },
 
 {
@@ -605,7 +621,7 @@ var documenterSearchIndex = {"docs": [
     "page": "FileIO",
     "title": "DFControl.save",
     "category": "function",
-    "text": "save(input::DFInput{QE}, structure, filename::String=input.filename)\n\nWrites a Quantum Espresso input file.\n\n\n\n"
+    "text": "save(input::DFInput{Wannier90}, structure, filename::String=input.filename)\n\nWrites the DFInput{Wannier90} and structure to a file, that can be interpreted by WANNIER90. The atoms in the structure must have projections defined.\n\n\n\n"
 },
 
 {
@@ -613,7 +629,7 @@ var documenterSearchIndex = {"docs": [
     "page": "FileIO",
     "title": "DFControl.save",
     "category": "function",
-    "text": "save(input::DFInput{Wannier90}, structure, filename::String=input.filename)\n\nWrites the DFInput{Wannier90} and structure to a file, that can be interpreted by WANNIER90. The atoms in the structure must have projections defined.\n\n\n\n"
+    "text": "save(input::DFInput{QE}, structure, filename::String=input.filename)\n\nWrites a Quantum Espresso input file.\n\n\n\n"
 },
 
 {
