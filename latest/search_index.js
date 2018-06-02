@@ -49,15 +49,39 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "job.html#DFControl.addbandscalc!-Union{Tuple{DFControl.DFJob,Array{Array{T,1},1}}, Tuple{T}} where T<:AbstractFloat",
+    "location": "job.html#DFControl.addcalc!",
     "page": "Job",
-    "title": "DFControl.addbandscalc!",
-    "category": "method",
-    "text": "addbandscalc!(job::DFJob, k_path::Vector{Vector{T}}; filename=\"bands.in\", run=true) where T<:AbstractFloat\n\nChecks if there is an scf calculation in the job and takes it\'s inputs to generate a bands calculation along the given k-path.\n\n\n\n"
+    "title": "DFControl.addcalc!",
+    "category": "function",
+    "text": "Creates a new DFInput from the template with the new flags and new data, then adds it to the inputs of the job at the specified index.\n\n\n\n"
 },
 
 {
-    "location": "job.html#DFControl.addwancalc!-Tuple{DFControl.DFJob,DFControl.DFInput{DFControl.QE},Any}",
+    "location": "job.html#DFControl.addcalc!-Tuple{DFControl.DFJob,Array{#s44,1} where #s44<:(NTuple{4,T} where T),Vararg{Any,N} where N}",
+    "page": "Job",
+    "title": "DFControl.addcalc!",
+    "category": "method",
+    "text": "addcalc!(job::DFJob, kpoints::Vector{NTuple{4}}, newflags...; filename=\"bands.in\", run=true, template=\"scf\")\n\nSearches for the given template and creates a bands calculation from it.\n\n\n\n"
+},
+
+{
+    "location": "job.html#DFControl.addcalc!-Tuple{DFControl.DFJob,NTuple{6,T} where T,Vararg{Any,N} where N}",
+    "page": "Job",
+    "title": "DFControl.addcalc!",
+    "category": "method",
+    "text": "addcalc!(job::DFJob, kpoints::NTuple{6}, newflags...; filename=\"scf.in\", run=true, template=\"nscf\")\n\nSearches for the given template and creates a bands calculation from it.\n\n\n\n"
+},
+
+{
+    "location": "job.html#DFControl.addcalc!-Tuple{DFControl.DFJob,Tuple{T,T,T} where T,Vararg{Any,N} where N}",
+    "page": "Job",
+    "title": "DFControl.addcalc!",
+    "category": "method",
+    "text": "addcalc!(job::DFJob, kpoints::NTuple{3}, newflags...; filename=\"nscf.in\", run=true, template=\"scf\")\n\nSearches for the given template and creates a bands calculation from it.\n\n\n\n"
+},
+
+{
+    "location": "job.html#DFControl.addwancalc!-Tuple{DFControl.DFJob,DFControl.DFInput{DFControl.QE},Vararg{Any,N} where N}",
     "page": "Job",
     "title": "DFControl.addwancalc!",
     "category": "method",
@@ -301,7 +325,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Job",
     "title": "DFControl.setheaderword!",
     "category": "method",
-    "text": "replace_header_word!(job::DFJob, word::String, new_word::String)\n\nReplaces the specified word in the header with the new word.\n\n\n\n"
+    "text": "setheaderword!(job::DFJob, word::String, new_word::String)\n\nReplaces the specified word in the header with the new word.\n\n\n\n"
 },
 
 {
@@ -406,14 +430,6 @@ var documenterSearchIndex = {"docs": [
     "title": "DFControl.DFInput",
     "category": "method",
     "text": "DFInput(template::DFInput, filename, newflags...; runcommand=template.runcommand, run=true)\n\nCreates a new DFInput from a template DFInput, setting the newflags in the new one.\n\n\n\n"
-},
-
-{
-    "location": "input.html#DFControl.flag-Tuple{DFControl.DFInput,Symbol}",
-    "page": "Inputs",
-    "title": "DFControl.flag",
-    "category": "method",
-    "text": "flag(input::DFInput, flag::Symbol)\n\nReturns the value of the flag.\n\n\n\n"
 },
 
 {
