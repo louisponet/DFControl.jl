@@ -34,10 +34,35 @@ function DFInput(template::DFInput, filename, newflags...; excs=execs(template),
     return input
 end
 
+filename(input::DFInput) = input.filename
+data(input::DFInput)     = input.data
+flags(input::DFInput)    = input.flags
+function flag(input::DFInput, flag::Symbol)
+    if haskey(input.flags, flag)
+        return input.flags[flag]
+    end
+end
+
 Base.eltype(::DFInput{P}) where P = P
+package(::DFInput{P}) where P = P
 data(input::DFInput, name) = getfirst(x-> x.name == name, input.data)
 data(input::Vector{InputData}, name) = getfirst(x-> x.name == name, input.data)
 data(input, name)      = data(input, name).data
+
+exec(input::DFInput, exec::String) = getfirst(x -> contains(x.exec, exec), input.execs)
+execs(input::DFInput) = input.execs
+execs(input::DFInput, exec::String) = filter(x -> contains(x.exec, exec), input.execs)
+execflags(input::DFInput, exec::String) = [x.flags for x in execs(input, exec)]
+setexecflags!(input::DFInput, exec::String, flags...) = setflags!.(execs(input, exec), flags...)
+setexecdir!(input::DFInput, exec, dir) = setexecdir!.(execs(input, exec), dir)
+
+runcommand(input::DFInput) = input.execs[1]
+
+outfile(input::DFInput{QE})        = splitext(input.filename)[1]*".out"
+outfile(input::DFInput{Wannier90}) = splitext(input.filename)[1]*".wout"
+
+setflow!(input::DFInput, run) = input.run = run
+
 
 """
     setkpoints!(input::DFInput{Wannier90}, k_grid::NTuple{3, Int}; print=true)
@@ -45,7 +70,7 @@ data(input, name)      = data(input, name).data
 sets the data in the k point `InputData` inside the specified calculation.
 """
 function setkpoints!(input::DFInput{Wannier90}, k_grid::NTuple{3, Int}; print=true)
-    setflags!(input, :mp_grid => [k_grid...])
+    setflags!(input, :mp_grid => [k_grid...], print=print)
     setdata!(input, :kpoints, kgrid(k_grid..., :wan), print=print)
     return input
 end
@@ -59,7 +84,7 @@ If the specified calculation is `'nscf'` the accepted format is `(nka, nkb, nkc)
 function setkpoints!(input::DFInput{QE}, k_grid::NTuple{3, Int}; print=true) #nscf
 
     calc = flag(input, :calculation)
-    calc != "'nscf'" && warn("Expected calculation to be 'nscf'.\nGot $calc.")
+    print && calc != "'nscf'" && warn("Expected calculation to be 'nscf'.\nGot $calc.")
     setdata!(input, :k_points, kgrid(k_grid..., :nscf), option = :crystal, print=print)
     prod(k_grid) > 100 && setflags!(input, :verbosity => "'high'", print=print)
     return input
@@ -67,7 +92,7 @@ end
 
 function setkpoints!(input::DFInput{QE}, k_grid::NTuple{6, Int}; print=true) #scf
     calc = flag(input, :calculation)
-    (calc == "'scf'" || contains(calc, "relax")) && warn("Expected calculation to be 'scf', 'vc-relax', 'relax'.\nGot $calc.")
+    print && (calc != "'scf'" || !contains(calc, "relax")) && warn("Expected calculation to be 'scf', 'vc-relax', 'relax'.\nGot $calc.")
     setdata!(input, :k_points, [k_grid...], option = :automatic, print=print)
     prod(k_grid[1:3]) > 100 && setflags!(input, :verbosity => "'high'", print=print)
     return input
@@ -81,7 +106,7 @@ sets the data in the k point `DataBlock` inside the specified calculation. The f
 """
 function setkpoints!(input::DFInput{QE}, k_grid::Vector{NTuple{4, T}}; print=true, k_option=:crystal_b) where T<:AbstractFloat
     calc = flag(input, :calculation)
-    calc == "'bands'" && warn("Expected calculation to be 'bands', got $calc.")
+    print && calc != "'bands'" && warn("Expected calculation to be 'bands', got $calc.")
     @assert in(k_option, [:tpiba_b, :crystal_b, :tpiba_c, :crystal_c]) error("Only $([:tpiba_b, :crystal_b, :tpiba_c, :crystal_c]...) are allowed as a k_option, got $k_option.")
     if k_option in [:tpiba_c, :crystal_c]
         @assert length(k_grid) == 3 error("If $([:tpiba_c, :crystal_c]...) is selected the length of the k_points needs to be 3, got length: $(length(k_grid)).")
@@ -102,16 +127,6 @@ function setkpoints!(input::DFInput{QE}, k_grid::Vector{NTuple{4, T}}; print=tru
     return input
 end
 
-"""
-    flag(input::DFInput, flag::Symbol)
-
-Returns the value of the flag.
-"""
-function flag(input::DFInput, flag::Symbol)
-    if haskey(input.flags, flag)
-        return input.flags[flag]
-    end
-end
 
 """
     setflags!(input::DFInput, flags...; print=true)
@@ -125,7 +140,7 @@ function setflags!(input::DFInput{T}, flags...; print=true) where T
         if flag_type != Void
             !(flag in found_keys) && push!(found_keys, flag)
             try
-                value = length(value) > 1 ? convert.(flag_type, value) : convert(flag_type, value)
+                value = convertflag(flag_type, value)
             catch
                 print && dfprintln("Filename '$(input.filename)':\n  Could not convert '$value' into '$flag_type'.\n    Flag '$flag' not set.\n")
                 continue
@@ -137,6 +152,27 @@ function setflags!(input::DFInput{T}, flags...; print=true) where T
     end
     return found_keys, input
 end
+
+"Runs through all the set flags and checks if they are allowed and set to the correct value"
+function sanitizeflags!(input::DFInput)
+    for (flag, value) in flags(input)
+        flagtype_ = flagtype(input, flag)
+        if flagtype_ == Void
+            info("Flag $flag was not found in allowed flags for exec $(execs(input)[2]). Removing flag.")
+            rmflags!(input, flag)
+            continue
+        end
+        if !(typeof(value) <: flagtype_)
+            try
+                flags(input)[flag] = convertflag(flagtype_, value)
+            catch
+                error("Input $(filename(input)): Could not convert :$flag of value $value to the correct type ($flagtype_), please set it to the correct type.")
+            end
+        end
+    end
+end
+
+
 
 """
     rmflags!(input::DFInput, flags...)
@@ -223,19 +259,5 @@ function setdataoption!(input::DFInput, name::Symbol, option::Symbol; print=true
     end
     return input
 end
-
-exec(input::DFInput, exec::String) = getfirst(x -> contains(x.exec, exec), input.execs)
-execs(input::DFInput) = input.execs
-execs(input::DFInput, exec::String) = filter(x -> contains(x.exec, exec), input.execs)
-execflags(input::DFInput, exec::String) = [x.flags for x in execs(input, exec)]
-setexecflags!(input::DFInput, exec::String, flags...) = setflags!.(execs(input, exec), flags...)
-setexecdir!(input::DFInput, exec, dir) = setexecdir!.(execs(input, exec), dir)
-
-runcommand(input::DFInput) = input.execs[1]
-
-outfile(input::DFInput{QE})        = splitext(input.filename)[1]*".out"
-outfile(input::DFInput{Wannier90}) = splitext(input.filename)[1]*".wout"
-
-setflow!(input::DFInput, run) = input.run = run
 
 spincalc(input::DFInput) = all(flag(input, :nspin) .!= [nothing, 1])

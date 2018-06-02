@@ -177,6 +177,7 @@ end
 
 #-------------------BEGINNING GENERAL SECTION-------------#
 #all inputs return arrays, input returns the first element if multiple are found
+inputs(job::DFJob) = job.inputs
 """
     inputs(job::DFJob, filenames::Array)
 
@@ -254,9 +255,19 @@ function save(job::DFJob, local_dir=job.local_dir)
     if !ispath(local_dir)
         mkpath(local_dir)
     end
+    sanitizeflags!(job)
     job.local_dir = local_dir
     return write_job_files(job)
 end
+
+"Runs some checks on the set flags for the inputs in the job, and sets metadata (:prefix, :outdir etc) related flags to the correct ones. It also checks whether flags in the various inputs are allowed and set to the correct types."
+function sanitizeflags!(job::DFJob)
+    setflags!(job, :prefix => "'$(job.name)'", print=false)
+    setflags!(job, :outdir => "'$(job.server_dir)'", print=false)
+    sanitizeflags!.(inputs(job))
+end
+
+
 
 #Incomplete everything is hardcoded for now still!!!! make it configurable
 """
@@ -363,7 +374,7 @@ function flag(job::DFJob, calc_filenames, fl::Symbol)
             return flag_
         end
     end
-    error("Flag $flag not found in any input files.")
+    error("Flag $fl not found in any input files.")
 end
 
 """
@@ -371,15 +382,7 @@ end
 
 Looks through all the calculations and returns the value of the specified flag.
 """
-function flag(job::DFJob, flag_name::Symbol)
-    for calc in job.inputs
-        flag_ = flag(calc, flag_name)
-        if flag_ != nothing
-            return flag_
-        end
-    end
-    error("Flag $flag_name not found in any input files.")
-end
+flag(job::DFJob, flag_name::Symbol) = flag(job, [i.filename for i in inputs(job)], flag_name)
 
 #TODO set so calculations also have a name.
 #TODO set after implementing k_point set so you don't need to specify all this crap
@@ -550,10 +553,10 @@ end
 
 sets the data in the k point `DataBlock` inside the specified calculation.
 """
-function setkpoints!(job::DFJob, calc_filenames, k_points)
+function setkpoints!(job::DFJob, calc_filenames, k_points; print=true)
     UNDO_JOBS[job.id] = deepcopy(job)
     for calc in inputs(job, calc_filenames)
-        setkpoints!(calc, k_points)
+        setkpoints!(calc, k_points, print=print)
     end
     return job
 end
@@ -675,7 +678,7 @@ projections(job::DFJob) = projections.(atoms(job))
 
 Adds a wannier calculation to a job. For now only works with QE.
 """
-function addwancalc!(job::DFJob, nscf::DFInput{QE}, projections;
+function addwancalc!(job::DFJob, nscf::DFInput{QE}, projections...;
                      Emin=-5.0,
                      Epad=5.0,
                      wanflags=SymAnyDict(),
@@ -683,7 +686,6 @@ function addwancalc!(job::DFJob, nscf::DFInput{QE}, projections;
                      wanexec=Exec("wannier90.x", nscf.execs[2].dir),
                      bands=read_qe_bands_file(outpath(job, nscf)),
                      print=true)
-
 
     spin = spincalc(nscf)
     if spin
@@ -752,7 +754,7 @@ addwancalc!(job::DFJob, template::String="nscf", args...; kwargs...) =
 
 "Automatically calculates and sets the wannier energies. This uses the projections, `Emin` and the bands to infer the other limits.\n`Epad` allows one to specify the padding around the inner and outer energy windows"
 function setwanenergies!(job::DFJob, Emin, bands; Epad=5.0, print=true)
-    wancalcs = filter(x -> eltype(x) == Wannier90, job.inputs)
+    wancalcs = filter(x -> package(x) == Wannier90, job.inputs)
     @assert length(wancalcs) != 0 error("Job ($(job.name)) has no Wannier90 calculations, nothing todo.")
     nbnd = sum([sum(orbsize.(t)) for  t in projections(job)])
     print && info("num_bands=$nbnd (inferred from provided projections).")
@@ -783,31 +785,43 @@ end
 
 
 "Creates a new `DFInput` from the template with the new flags and new data, then adds it to the inputs of the job at the specified index."
+addcalc!(job::DFJob, input::DFInput, index=length(job.inputs)+1) = insert!(job.inputs, index, input)
+
 function addcalc!(job::DFJob, template::DFInput, filename, newflags...; index=length(job.inputs)+1, run=true, newdata=nothing)
     newcalc = DFInput(template, filename, newflags..., data=newdata, run=run)
-    insert!(job.inputs, index, newcalc)
+    addcalc!(job, newcalc, index)
     job
 end
 addcalc!(job::DFJob, template::String, args...; kwargs...) = addcalc!(job, input(job, template), args...; kwargs...)
 
 """
-    addcalc!(job::DFJob, kpoints::Vector{NTuple{4}}; filename="bands.in", run=true, template="scf")
+    addcalc!(job::DFJob, kpoints::Vector{NTuple{4}}, newflags...; filename="bands.in", run=true, template="scf")
 
 Searches for the given template and creates a bands calculation from it.
 """
-function addcalc!(job::DFJob, kpoints::Vector{<:NTuple{4}}; filename="bands.in", template="scf", kwargs...)
-    addcalc!(job, template, filename, :calculation => "'bands'"; kwargs...)
+function addcalc!(job::DFJob, kpoints::Vector{<:NTuple{4}},args...; filename="bands.in", template="scf", kwargs...)
+    addcalc!(job, template, filename, :calculation => "'bands'",args...; kwargs...)
     setkpoints!(job, filename, kpoints, print=false)
     job
 end
 
 """
-    addcalc!(job::DFJob, kpoints::NTuple{3}; filename="nscf.in", run=true, template="scf")
+    addcalc!(job::DFJob, kpoints::NTuple{3}, newflags...; filename="nscf.in", run=true, template="scf")
 
 Searches for the given template and creates a bands calculation from it.
 """
-function addcalc!(job::DFJob, kpoints::NTuple{3}; filename="nscf.in", template="scf", kwargs...)
-    addcalc!(job, template, filename, :calculation => "'nscf'"; kwargs...)
+function addcalc!(job::DFJob, kpoints::NTuple{3}, args...; filename="nscf.in", template="scf", kwargs...)
+    addcalc!(job, template, filename, :calculation => "'nscf'",args...; kwargs...)
+    setkpoints!(job, filename, kpoints, print=false)
+    job
+end
+"""
+    addcalc!(job::DFJob, kpoints::NTuple{6}, newflags...; filename="scf.in", run=true, template="nscf")
+
+Searches for the given template and creates a bands calculation from it.
+"""
+function addcalc!(job::DFJob, kpoints::NTuple{6}, args...; filename="scf.in", template="nscf", kwargs...)
+    addcalc!(job, template, filename, :calculation => "'scf'",args...; kwargs...)
     setkpoints!(job, filename, kpoints, print=false)
     job
 end

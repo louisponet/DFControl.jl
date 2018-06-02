@@ -37,7 +37,7 @@ function Emax(Emin, nbnd, bands)
         if minimum(b.eigvals) >= Emin && nbndfound <= nbnd
             nbndfound += 1
             #maximum of allowed frozen window is the minimum of the first band>nbnd
-            max = minimum(b.eigvals)
+            max = minimum(b.eigvals)-0.005
         end
     end
 
@@ -163,3 +163,5 @@ function parse_block(f, types...; to_strip=',')
     end
     return output
 end
+
+convertflag(flagtype, flagvalue) = length(flagvalue) > 1 ? convert.(flagtype, flagvalue) : convert(flagtype, flagvalue)

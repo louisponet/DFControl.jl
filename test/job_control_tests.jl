@@ -35,21 +35,23 @@ addcalc!(job, [(0.5,0.0,0.5,10.0),(0.0,0.0,0.0,10.0),(0.5,0.5,0.5,1.0)],filename
 @test data(job, "bands2", :k_points).data == [(0.5,0.0,0.5,10.0),(0.0,0.0,0.0,10.0),(0.5,0.5,0.5,1.0)]
 addcalc!(job, (10,10,10), filename="nscf2")
 @test flag(job, "nscf2", :calculation) == "'nscf'"
+addcalc!(job, (5,5,5,1,1,1),filename="1scf2")
+@test flag(job, "1scf2", :calculation) == "'scf'"
 
 
 
 wanflags = [:write_hr => true, :wannier_plot => true]
 
-addwancalc!(job, "nscf",[:Pt => [:s, :p, :d]], Emin=fermi-7.0, Epad=5.0, wanflags=wanflags, print=false)
-
+addwancalc!(job, "nscf",:Pt => [:s, :p, :d], Emin=fermi-7.0, Epad=5.0, wanflags=wanflags, print=false)
 @test flag(job, "wan.win", :write_hr) == flag(job, "wan.win", :wannier_plot) == true
+
 
 job.inputs = job.inputs[1:3]
 
 setflags!(job, :nspin => 2, print=false)
 @test flag(job, "nscf", :nspin) == 2
 
-addwancalc!(job, nscf,[:Pt => [:s, :p, :d]], Emin=fermi-7.0, Epad=5.0, wanflags=wanflags, print=false)
+addwancalc!(job, nscf,:Pt => [:s, :p, :d], Emin=fermi-7.0, Epad=5.0, wanflags=wanflags, print=false)
 
 
 setflow!(job, [false for i=1:length(job.inputs)])
@@ -97,8 +99,8 @@ setprojections!(job, :Pt => testorbs)
 @test convert.(Symbol, [p.orb for p in projections(job, :Pt)]) == testorbs
 setwanenergies!(job, fermi-7.0, read_qe_bands_file(outpath(job, nscf)), Epad=3.0, print=false)
 
-@test flag(job, :dis_froz_max) == 14.2907
-@test flag(job, :dis_win_max) == 14.2907 + 3.0
+@test flag(job, :dis_froz_max) == 14.285699999999999
+@test flag(job, :dis_win_max) == 14.285699999999999 + 3.0
 
 setexecflags!(job, "pw.x", :nk => 230)
 @test execs(job, "nscf")[2].flags[:nk] == 230
