@@ -173,7 +173,15 @@ var documenterSearchIndex = {"docs": [
     "page": "Job",
     "title": "DFControl.outpath",
     "category": "method",
-    "text": "Provides the path of the output to the given input, provided that it is pulled already\n\n\n\n"
+    "text": "Provides the path of the output to the given input.\n\n\n\n"
+},
+
+{
+    "location": "job.html#DFControl.outputdata-Tuple{DFControl.DFJob,Array{DFControl.DFInput,1}}",
+    "page": "Job",
+    "title": "DFControl.outputdata",
+    "category": "method",
+    "text": "Finds the output files for each of the inputs of a job, and groups all found data into a dictionary.\n\n\n\n"
 },
 
 {
@@ -473,27 +481,11 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "input.html#DFControl.setkpoints!-Tuple{DFControl.DFInput{DFControl.QE},Tuple{Int64,Int64,Int64}}",
-    "page": "Inputs",
-    "title": "DFControl.setkpoints!",
-    "category": "method",
-    "text": "setkpoints!(input::DFInput{QE}, k_grid::Union{NTuple{3, Int}, NTuple{6, Int}})\n\nsets the data in the k point InputData inside the specified calculation. If the specified calculation is \'nscf\' the accepted format is (nka, nkb, nkc), and the k_grid will be generated. If the calculation is \'scf\' the format is (nka, nkb, nkc, sta, stb, stc).\n\n\n\n"
-},
-
-{
     "location": "input.html#DFControl.setkpoints!-Tuple{DFControl.DFInput{DFControl.Wannier90},Tuple{Int64,Int64,Int64}}",
     "page": "Inputs",
     "title": "DFControl.setkpoints!",
     "category": "method",
-    "text": "setkpoints!(input::DFInput{Wannier90}, k_grid::NTuple{3, Int}; print=true)\n\nsets the data in the k point InputData inside the specified calculation.\n\n\n\n"
-},
-
-{
-    "location": "input.html#DFControl.setkpoints!-Union{Tuple{DFControl.DFInput{DFControl.QE},Array{NTuple{4,T},1}}, Tuple{T}} where T<:AbstractFloat",
-    "page": "Inputs",
-    "title": "DFControl.setkpoints!",
-    "category": "method",
-    "text": "setkpoints!(input::DFInput{QE}, k_grid::Vector{NTuple{4, <:AbstractFloat}};\nk_option=:crystal_b)\n\nsets the data in the k point DataBlock inside the specified calculation. The format is [(ka, kb, kc, nk),...]. This format is to be used with a \'bands\' calculation.\n\n\n\n"
+    "text": "setkpoints!(input::DFInput, k_grid)\n\nSets the kpoints of the input. Will automatically generate the kgrid values if necessary.\n\n\n\n"
 },
 
 {
