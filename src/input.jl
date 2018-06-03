@@ -19,11 +19,11 @@ end
 Creates a new `DFInput` from a template `DFInput`, setting the newflags in the new one.
 """
 function DFInput(template::DFInput, filename, newflags...; excs=execs(template), run=true, data=nothing)
-    newflags = Dict(newflags...) # this should handle both OrderedDicts and pairs of flags
+    newflags = Dict(newflags...)
 
-    input             = deepcopy(template)
-    input.filename    = filename
-    input.execs = excs
+    input          = deepcopy(template)
+    input.filename = filename
+    input.execs    = excs
     setflags!(input, newflags..., print=false)
 
     if data != nothing
@@ -65,9 +65,9 @@ setflow!(input::DFInput, run) = input.run = run
 
 
 """
-    setkpoints!(input::DFInput{Wannier90}, k_grid::NTuple{3, Int}; print=true)
+    setkpoints!(input::DFInput, k_grid)
 
-sets the data in the k point `InputData` inside the specified calculation.
+Sets the kpoints of the input. Will automatically generate the kgrid values if necessary.
 """
 function setkpoints!(input::DFInput{Wannier90}, k_grid::NTuple{3, Int}; print=true)
     setflags!(input, :mp_grid => [k_grid...], print=print)
@@ -75,12 +75,6 @@ function setkpoints!(input::DFInput{Wannier90}, k_grid::NTuple{3, Int}; print=tr
     return input
 end
 
-"""
-    setkpoints!(input::DFInput{QE}, k_grid::Union{NTuple{3, Int}, NTuple{6, Int}})
-
-sets the data in the k point `InputData` inside the specified calculation.
-If the specified calculation is `'nscf'` the accepted format is `(nka, nkb, nkc)`, and the k_grid will be generated. If the calculation is `'scf'` the format is `(nka, nkb, nkc, sta, stb, stc)`.
-"""
 function setkpoints!(input::DFInput{QE}, k_grid::NTuple{3, Int}; print=true) #nscf
 
     calc = flag(input, :calculation)
@@ -98,12 +92,6 @@ function setkpoints!(input::DFInput{QE}, k_grid::NTuple{6, Int}; print=true) #sc
     return input
 end
 
-"""
-    setkpoints!(input::DFInput{QE}, k_grid::Vector{NTuple{4, <:AbstractFloat}};
-    k_option=:crystal_b)
-
-sets the data in the k point `DataBlock` inside the specified calculation. The format is `[(ka, kb, kc, nk),...]`. This format is to be used with a `'bands'` calculation.
-"""
 function setkpoints!(input::DFInput{QE}, k_grid::Vector{NTuple{4, T}}; print=true, k_option=:crystal_b) where T<:AbstractFloat
     calc = flag(input, :calculation)
     print && calc != "'bands'" && warn("Expected calculation to be 'bands', got $calc.")
@@ -111,7 +99,6 @@ function setkpoints!(input::DFInput{QE}, k_grid::Vector{NTuple{4, T}}; print=tru
     if k_option in [:tpiba_c, :crystal_c]
         @assert length(k_grid) == 3 error("If $([:tpiba_c, :crystal_c]...) is selected the length of the k_points needs to be 3, got length: $(length(k_grid)).")
     end
-    k_option = k_option
     num_k = 0.0
     for k in k_grid
         num_k += k[4]
@@ -119,11 +106,11 @@ function setkpoints!(input::DFInput{QE}, k_grid::Vector{NTuple{4, T}}; print=tru
     if num_k > 100.
         setflags!(input, :verbosity => "'high'", print=print)
         if print
-            dfprintln("Verbosity is set to high because num_kpoints > 100,\n
+            info("Verbosity is set to high because num_kpoints > 100,\n
                        otherwise bands won't get printed.")
         end
     end
-    setdata!(input, :k_points, k_grid, option = k_option, print=print)
+    setdata!(input, :k_points, k_grid, option=k_option, print=print)
     return input
 end
 
@@ -142,12 +129,12 @@ function setflags!(input::DFInput{T}, flags...; print=true) where T
             try
                 value = convertflag(flag_type, value)
             catch
-                print && dfprintln("Filename '$(input.filename)':\n  Could not convert '$value' into '$flag_type'.\n    Flag '$flag' not set.\n")
+                print && warn("Filename '$(input.filename)':\n  Could not convert '$value' into '$flag_type'.\n    Flag '$flag' not set.\n")
                 continue
             end
             old_data = haskey(input.flags, flag) ? input.flags[flag] : ""
             input.flags[flag] = value
-            print && dfprintln("$(input.filename):\n  -> $flag:\n      $old_data set to: $value\n")
+            print && warn("$(input.filename):\n  -> $flag:\n      $old_data set to: $value\n")
         end
     end
     return found_keys, input
@@ -172,8 +159,6 @@ function sanitizeflags!(input::DFInput)
     end
 end
 
-
-
 """
     rmflags!(input::DFInput, flags...)
 
@@ -183,7 +168,7 @@ function rmflags!(input::DFInput, flags...; print=true)
     for flag in flags
         if haskey(input.flags, flag)
             pop!(input.flags, flag, false)
-            print && dfprintln("Removed flag '$flag' from input '$(input.filename)'")
+            print && info("Removed flag '$flag' from input '$(input.filename)'")
         end
     end
     return input
@@ -205,10 +190,7 @@ function setdata!(input::DFInput, block_name::Symbol, new_block_data; option=not
             data_block.data = new_block_data
             data_block.option = option == nothing ? data_block.option : option
             if print
-                dfprintln("Block data '$(data_block.name)' in input  '$(input.filename)' is now:")
-                dfprintln(string(data_block.data))
-                dfprintln("option: $(data_block.option)")
-                dfprintln("")
+                info("Block data '$(data_block.name)' in input  '$(input.filename)' is now:\n\t$(string(data_block.data)) \n\toption: $(data_block.option)\n")
             end
             setd = true
         end
@@ -254,10 +236,13 @@ function setdataoption!(input::DFInput, name::Symbol, option::Symbol; print=true
         if data.name == name
             old_option  = data.option
             data.option = option
-            if print dfprintln("Option of InputData '$(data.name)' in input '$(input.filename)' set from '$old_option' to '$option'") end
+            if print info("Option of InputData '$(data.name)' in input '$(input.filename)' set from '$old_option' to '$option'") end
         end
     end
     return input
 end
 
 spincalc(input::DFInput) = all(flag(input, :nspin) .!= [nothing, 1])
+
+readoutput(input::DFInput{QE}, filename) = read_qe_output(filename)
+readoutput(input::DFInput{Wannier90}, filename) = SymAnyDict()

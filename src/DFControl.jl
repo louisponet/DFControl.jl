@@ -30,6 +30,7 @@ module DFControl
            atoms, atom, setatoms!, setprojections!, projections,
            addwancalc!, addcalc!,
            setwanenergies!,
+           outputdata,
 
            setheaderword!, setserverdir!, setlocaldir!,
            save, submit,

@@ -164,18 +164,18 @@ function writetojob(f, job, input::DFInput{Wannier90})
     return 2
 end
 """
-    write_job_files(job::DFJob)
+    writejobfiles(job::DFJob)
 
 Writes all the input files and job file that are linked to a DFJob.
 """
-function write_job_files(job::DFJob)
+function writejobfiles(job::DFJob)
     files_to_remove = searchdir(job.local_dir, ".in")
     new_filenames   = getfield.(job.inputs, :filename)
     open(job.local_dir * "job.tt", "w") do f
         write(f, "#!/bin/bash\n")
         write_job_name(f, job)
         write_job_header(f, job)
-        abiinputs = Vector{DFInput{Abinit}}(filter(x -> eltype(x) == Abinit, job.inputs))
+        abiinputs = Vector{DFInput{Abinit}}(filter(x -> package(x) == Abinit, job.inputs))
         !isempty(abiinputs) && push!(new_filenames, writetojob(f, job, abiinputs)...)
         i = length(abiinputs) + 1
         while i <= length(job.inputs)

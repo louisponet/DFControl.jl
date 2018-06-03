@@ -257,7 +257,7 @@ function save(job::DFJob, local_dir=job.local_dir)
     end
     sanitizeflags!(job)
     job.local_dir = local_dir
-    return write_job_files(job)
+    return writejobfiles(job)
 end
 
 "Runs some checks on the set flags for the inputs in the job, and sets metadata (:prefix, :outdir etc) related flags to the correct ones. It also checks whether flags in the various inputs are allowed and set to the correct types."
@@ -650,11 +650,8 @@ path(job::DFJob, inp::DFInput) =
     joinpath(job.local_dir, inp.filename)
 path(job::DFJob, inp::String) = path(job::DFJob, input(job, inp))
 
-"Provides the path of the output to the given input, provided that it is pulled already"
-function outpath(job::DFJob, input::DFInput{QE})
-    opath = splitext(path(job, input))[1] * ".out"
-    ispath(opath) ? opath : error("No output file found at $opath,\n please pull the outputs of the job first.")
-end
+"Provides the path of the output to the given input."
+outpath(job::DFJob, input::DFInput{QE}) = splitext(path(job, input))[1] * ".out"
 outpath(job::DFJob, inp::String) = outpath(job, input(job, inp))
 
 """
@@ -863,3 +860,27 @@ function print_info(job::DFJob, filenames::Vector{String})
 end
 print_info(job::DFJob)                   = print_info(job, [calc.filename for calc in job.inputs])
 print_info(job::DFJob, filename::String) = print_info(job, [filename])
+
+hasoutput(job::DFJob, input) = ispath(outpath(job, input))
+
+function addorvectorize!(dict1, dict2)
+    for (key, val) in dict2
+        dict1[key] = haskey(dict1, key) ? [dict1[key]..., val] : val
+    end
+end
+
+"Finds the output files for each of the inputs of a job, and groups all found data into a dictionary."
+function outputdata(job::DFJob, inputs::Vector{DFInput}; print=true)
+    datadict = SymAnyDict()
+    for input in inputs
+        if hasoutput(job, input)
+            tdict = readoutput(input, outpath(job, input))
+            addorvectorize!(datadict, tdict)
+        else
+            print && warn("No output file found for input: $(input.filename).")
+        end
+    end
+    datadict
+end
+outputdata(job::DFJob; kwargs...) = outputdata(job, inputs(job); kwargs...)
+outputdata(job::DFJob, filenames...; kwargs...) = outputdata(job, inputs(job, filenames); kwargs...)

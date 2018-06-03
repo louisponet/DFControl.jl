@@ -5,6 +5,11 @@ import DFControl:  data
 testjobpath = joinpath(@__DIR__, "testassets/test_job/")
 job = DFJob(testjobpath);
 
+#output stuff
+out = outputdata(job);
+@test haskey(out, :bands)
+@test haskey(out, :fermi)
+
 nscf = DFControl.input(job, "nscf")
 nscf2 = DFInput(nscf, "nscf2.in", data=[:testdata => (:testoption, "test"), :k_points => (:blabla, [1,1,1,1,1,1])])
 
