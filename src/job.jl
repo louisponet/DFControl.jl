@@ -652,6 +652,7 @@ path(job::DFJob, inp::String) = path(job::DFJob, input(job, inp))
 
 "Provides the path of the output to the given input."
 outpath(job::DFJob, input::DFInput{QE}) = splitext(path(job, input))[1] * ".out"
+outpath(job::DFJob, input::DFInput{Wannier90}) = splitext(path(job, input))[1] * ".wout"
 outpath(job::DFJob, inp::String) = outpath(job, input(job, inp))
 
 """
@@ -865,7 +866,11 @@ hasoutput(job::DFJob, input) = ispath(outpath(job, input))
 
 function addorvectorize!(dict1, dict2)
     for (key, val) in dict2
-        dict1[key] = haskey(dict1, key) ? [dict1[key]..., val] : val
+        if haskey(dict1, key)
+            dict1[key] = eltype(dict1[key]) <: Vector ? [dict1[key]..., val] : [dict1[key], val]
+        else
+            dict1[key] = val
+        end
     end
 end
 
