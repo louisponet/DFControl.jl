@@ -38,5 +38,11 @@ function setflags!(exec::Exec, flags...)
     end
     exec.flags
 end
+function rmflags!(exec::Exec, flags...)
+    for f in flags
+        pop!(exec.flags, f)
+    end
+    exec.flags
+end
 
 setexecdir!(exec::Exec, dir) = exec.dir = dir

@@ -109,6 +109,8 @@ setwanenergies!(job, fermi-7.0, read_qe_bands_file(outpath(job, nscf)), Epad=3.0
 
 setexecflags!(job, "pw.x", :nk => 230)
 @test execs(job, "nscf")[2].flags[:nk] == 230
+rmexecflags!(job, "pw.x", :nk)
+@test !haskey(execs(job, "nscf")[2].flags,:nk)
 
 setexecdir!(job, "pw.x", "~/bin/")
 @test execs(job, "nscf")[2].dir == "~/bin/"

@@ -24,7 +24,7 @@ module DFControl
            data, setdata!,
            cell, setcell!,
            setflow!,
-           execs, setexecflags!, setexecdir!,
+           execs, setexecflags!, setexecdir!, rmexecflags!,
            input, inputs,
            path, outpath, setfilename!, setkpoints!, setdataoption!, setpseudos!,
            atoms, atom, setatoms!, setprojections!, projections,

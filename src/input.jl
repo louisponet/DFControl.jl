@@ -35,7 +35,7 @@ function DFInput(template::DFInput, filename, newflags...; excs=execs(template),
 end
 
 filename(input::DFInput) = input.filename
-data(input::DFInput)     = input.data
+
 flags(input::DFInput)    = input.flags
 function flag(input::DFInput, flag::Symbol)
     if haskey(input.flags, flag)
@@ -45,6 +45,8 @@ end
 
 Base.eltype(::DFInput{P}) where P = P
 package(::DFInput{P}) where P = P
+
+data(input::DFInput)     = input.data
 data(input::DFInput, name) = getfirst(x-> x.name == name, input.data)
 data(input::Vector{InputData}, name) = getfirst(x-> x.name == name, input.data)
 data(input, name)      = data(input, name).data
@@ -52,9 +54,11 @@ data(input, name)      = data(input, name).data
 exec(input::DFInput, exec::String) = getfirst(x -> contains(x.exec, exec), input.execs)
 execs(input::DFInput) = input.execs
 execs(input::DFInput, exec::String) = filter(x -> contains(x.exec, exec), input.execs)
+
 execflags(input::DFInput, exec::String) = [x.flags for x in execs(input, exec)]
 setexecflags!(input::DFInput, exec::String, flags...) = setflags!.(execs(input, exec), flags...)
 setexecdir!(input::DFInput, exec, dir) = setexecdir!.(execs(input, exec), dir)
+rmexecflags!(input::DFInput, exec::String, flags...) = rmflags!.(execs(input, exec), flags...)
 
 runcommand(input::DFInput) = input.execs[1]
 

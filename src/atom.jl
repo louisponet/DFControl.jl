@@ -37,13 +37,7 @@ element(z::Int) = getfirst(x->x.Z == z, ELEMENTS)
 
 abstract type AbstractAtom{T} end
 
-#Definition of the AbstractAtom interface, each AbstractAtom needs to provide:
-#   position(atom)
-#   element(atom)
-#   id(atom)
-#   pseudo(atom)
-#   setpseudo!(atom, pseudo)
-#   setprojections!(atom, projections)
+#Definition of the AbstractAtom interface, each AbstractAtom needs to provide a method `atom(...)` that returns a datastructure with the Atom fields.
 elsym(atom::AbstractAtom) = element(atom).symbol
 "Extracts all the positions of the atoms and puts them in a vector."
 positions(atoms::Vector{<:AbstractAtom}, id::Symbol) = [position(x) for x in filter(y -> id(y) == id, atoms)]
@@ -74,11 +68,12 @@ end
 Atom(id::Symbol, el::Element, pos::Point3; kwargs...)  = Atom(id=id, element=el, position=pos; kwargs...)
 Atom(id::Symbol, el::Symbol, pos::Point3; kwargs...)  = Atom(id=id, element=element(el), position=pos; kwargs...)
 
-position(atom::Atom)    = atom.position
-element(atom::Atom)     = atom.element
-id(atom::Atom)          = atom.id
-pseudo(atom::Atom)      = atom.pseudo
-projections(atom::Atom) = atom.projections
+atom(at::Atom) = at
+id(at::AbstractAtom)          = atom(at).id
+position(at::AbstractAtom)    = atom(at).position
+element(at::AbstractAtom)     = atom(at).element
+pseudo(at::AbstractAtom)      = atom(at).pseudo
+projections(at::AbstractAtom) = atom(at).projections
 
-setpseudo!(atom::Atom, pseudo) = atom.pseudo = pseudo
+setpseudo!(at::AbstractAtom, pseudo) = atom(at).pseudo = pseudo
 bondlength(at1::AbstractAtom{T}, at2::AbstractAtom{T}, R=T(0.0)) where T<:AbstractFloat = norm(position(at1) - position(at2) - R)

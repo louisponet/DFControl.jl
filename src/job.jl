@@ -263,7 +263,7 @@ end
 "Runs some checks on the set flags for the inputs in the job, and sets metadata (:prefix, :outdir etc) related flags to the correct ones. It also checks whether flags in the various inputs are allowed and set to the correct types."
 function sanitizeflags!(job::DFJob)
     setflags!(job, :prefix => "'$(job.name)'", print=false)
-    setflags!(job, :outdir => "'$(job.server_dir)'", print=false)
+    setflags!(job, :outdir => "'./'", print=false)
     sanitizeflags!.(inputs(job))
 end
 
@@ -459,7 +459,7 @@ setflow!(job::DFJob, filenames::Vector{String}, should_run) = setflow!.(inputs(j
 Goes through the calculations of the job and if the name contains any of the `inputnames` it sets the exec flags to the specified ones.
 """
 setexecflags!(job::DFJob, exec, flags...) = setexecflags!.(job.inputs, exec, flags...)
-
+rmexecflags!(job::DFJob, exec, flags...) = rmexecflags!.(job.inputs, exec, flags...)
 "Returns the executables attached to a given input."
 execs(job::DFJob, filename) = execs(input(job, filename))
 
