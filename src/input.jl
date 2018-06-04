@@ -134,7 +134,7 @@ function setflags!(input::DFInput{T}, flags...; print=true) where T
             end
             old_data = haskey(input.flags, flag) ? input.flags[flag] : ""
             input.flags[flag] = value
-            print && warn("$(input.filename):\n  -> $flag:\n      $old_data set to: $value\n")
+            print && info("$(input.filename):\n  -> $flag:\n      $old_data set to: $value\n")
         end
     end
     return found_keys, input
@@ -145,7 +145,7 @@ function sanitizeflags!(input::DFInput)
     for (flag, value) in flags(input)
         flagtype_ = flagtype(input, flag)
         if flagtype_ == Void
-            info("Flag $flag was not found in allowed flags for exec $(execs(input)[2]). Removing flag.")
+            warn("Flag $flag was not found in allowed flags for exec $(execs(input)[2]). Removing flag.")
             rmflags!(input, flag)
             continue
         end

@@ -6,7 +6,7 @@ testjobpath = joinpath(@__DIR__, "testassets/test_job/")
 job = DFJob(testjobpath);
 
 #output stuff
-out = outputdata(job);
+out = outputdata(job;print=false);
 @test haskey(out, :bands)
 @test haskey(out, :fermi)
 

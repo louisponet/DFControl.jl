@@ -80,45 +80,5 @@ id(atom::Atom)          = atom.id
 pseudo(atom::Atom)      = atom.pseudo
 projections(atom::Atom) = atom.projections
 
-function setpseudo!(atom::Atom, pseudo)
-    atom.pseudo = pseudo
-end
-
-function setprojections!(atom::Atom, projections)
-    atom.projections = projections
-end
-
-function convert_2atoms(atoms::Vector{<:AbstractString}, T=Float64)
-    out_atoms = Atom{T}[]
-    for line in atoms
-        atsym, x, y, z = parse.(split(line))
-        el = element(atsym)
-        push!(out_atoms, Atom(atsym, el, Point3{U}(x, y, z)))
-    end
-    return out_atoms
-end
-
-function convert_2atoms(atoms, T=Float64)
-    out_atoms = Atom{T}[]
-    for (atsym, at) in atoms
-        el = element(atsym)
-        for pos in at
-            push!(out_atoms, Atom(atsym, el, pos))
-        end
-    end
-    return out_atoms
-end
-
-
-"Returns the atom to which a certain orbital index belongs."
-function orbital2atom(oid, atoms)
-    for at in atoms
-        for proj in projections(at)
-            if proj.start <= oid <= proj.last
-                return at
-            end
-        end
-    end
-end
-
+setpseudo!(atom::Atom, pseudo) = atom.pseudo = pseudo
 bondlength(at1::AbstractAtom{T}, at2::AbstractAtom{T}, R=T(0.0)) where T<:AbstractFloat = norm(position(at1) - position(at2) - R)
