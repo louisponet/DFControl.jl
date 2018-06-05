@@ -50,23 +50,25 @@ end
 "Takes a vector of structures and merges all the attributes of the atoms."
 function mergestructures(structures::Vector{Union{<:AbstractStructure, Void}})
     nonvoid = filter(x -> x != nothing, structures)
-    out_structure = nonvoid[1]
+    out = nonvoid[1]
     for structure in nonvoid[2:end]
-        for (at1, at2) in zip(out_structure.atoms, structure.atoms)
-            for name in fieldnames(typeof(at1))
-                if name in [:id, :element, :position, :pseudo]
-                    continue
-                end
-                field = isdefined(at2, name) ? getfield(at2, name) : nothing
-                if field == nothing || isempty(field)
-                    continue
-                else
-                    setfield!(at1, name, getfield(at2,name))
+        for at1 in atoms(out), at2 in atoms(structure)
+            if at1==at2
+                for name in fieldnames(typeof(at1))
+                    if name in [:id, :element, :position]
+                        continue
+                    end
+                    field =getfield(at2, name)
+                    if field == nothing || isempty(field)
+                        continue
+                    else
+                        setfield!(at1, name, getfield(at2,name))
+                    end
                 end
             end
         end
     end
-    return out_structure
+    return out
 end
 
 "Uses cif2cell to parse a cif file, then returns the parsed structure."

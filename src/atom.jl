@@ -77,3 +77,7 @@ projections(at::AbstractAtom) = atom(at).projections
 
 setpseudo!(at::AbstractAtom, pseudo) = atom(at).pseudo = pseudo
 bondlength(at1::AbstractAtom{T}, at2::AbstractAtom{T}, R=T(0.0)) where T<:AbstractFloat = norm(position(at1) - position(at2) - R)
+
+import Base: ==
+==(at1::AbstractAtom, at2::AbstractAtom) =
+    id(at1)==id(at2) && position(at1)==position(at2)
