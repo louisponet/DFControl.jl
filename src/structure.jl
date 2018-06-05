@@ -13,6 +13,7 @@ Structure(cell::Matrix{T}, atoms::Vector{Atom{T}}) where T <: AbstractFloat = St
 Structure() = Structure("NoName", eye(3), Atom[], Dict{Symbol, Any}())
 Structure(cif_file::String; name="NoName") = cif2structure(cif_file, structure_name = name)
 
+structure(str::Structure) = str
 """
 Returns all the atoms inside the structure with the specified symbol
 """
@@ -23,6 +24,7 @@ function atoms(str::AbstractStructure, atsym::Symbol)
     end
     return out
 end
+atoms(str::AbstractStructure) = structure(str).atoms
 
 """
 sets the projections of the specified atoms.
@@ -77,4 +79,15 @@ function cif2structure(cif_file::String; structure_name="NoName")
     bla, structure = read_qe_input(tmpfile, structure_name = structure_name)
     rm(tmpfile)
     return structure
+end
+
+function setpseudos!(structure::AbstractStructure, pseudoset, pseudospecifier=nothing)
+    for (i, at) in enumerate(atoms(structure))
+        pseudo = getdefault_pseudo(id(at), pseudoset, pseudospecifier=pseudospecifier)
+        if pseudo == nothing
+            warn("Pseudo for $(id(at)) at index $i not found in set $pseudoset.")
+        else
+            setpseudo!(at, pseudo)
+        end
+    end
 end

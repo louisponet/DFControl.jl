@@ -19,8 +19,8 @@ execs = [Exec("mpirun", bin_dir, Dict{Symbol, Any}(:np => 24)), Exec("pw.x", bin
  #These execs are what will ultimately run the input, namely they will get pasted one after the other in the line of the job file.
  #If you don't want to use mpirun, just insert an Exec().
 
-pseudo_set = :pbesol #nonrelativistic calculation ( assumes you set up the pseudos, as demonstrated in the README)
-pseudo_specifier = "paw" #this selects the correct pseudo if multiple belong to the pseudo_set. If you don't specify this, the first one in the set will be used.
+pseudoset = :pbesol #nonrelativistic calculation ( assumes you set up the pseudos, as demonstrated in the README)
+pseudospecifier = "paw" #this selects the correct pseudo if multiple belong to the pseudoset. If you don't specify this, the first one in the set will be used.
 
 #The header holds all the other information inside a job scriptfile that is not recognized as input and output.
 header = ["#SBATCH -N 1", "#SBATCH --ntasks-per-node=24",
@@ -54,8 +54,8 @@ job = DFJob(name, local_dir, "/home/ponet/Downloads/9011998.cif", calculations,
       server_dir  = server_dir,
       bin_dir     = bin_dir,
       header      = header,
-      pseudo_set  = :pbesol,
-      pseudo_specifier = pseudo_specifier
+      pseudoset  = :pbesol,
+      pseudospecifier = pseudospecifier
      )
 # An additional kwarg is `server=getdefault_server()`, which is set to the server you have defined while following the setup in README.
 # This can ofcourse be setd to a different server.

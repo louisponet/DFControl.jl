@@ -38,8 +38,8 @@ function DFJob(job_name, local_dir, structure::AbstractStructure, calculations::
                     server_dir="",
                     package=QE,
                     bin_dir="/usr/local/bin/",
-                    pseudo_set=:default,
-                    pseudo_specifier="",
+                    pseudoset=:default,
+                    pseudospecifier="",
                     header=getdefault_jobheader())
 
     @assert package==QE "Only implemented for Quantum Espresso!"
@@ -87,7 +87,7 @@ function DFJob(job_name, local_dir, structure::AbstractStructure, calculations::
         push!(job_calcs, input_)
     end
     out = DFJob(job_name, structure, job_calcs, local_dir, server, server_dir, header)
-    setatoms!(out, structure.atoms, pseudo_set = pseudo_set, pseudo_specifier= pseudo_specifier)
+    setatoms!(out, structure.atoms, pseudoset = pseudoset, pseudospecifier= pseudospecifier)
     return DFJob(job_name, structure, job_calcs, local_dir, server, server_dir, header)
 end
 
@@ -99,8 +99,8 @@ end
 function DFJob(job::DFJob, flagstoset...;
                cell             = nothing,
                atoms            = nothing,
-               pseudo_set       = nothing,
-               pseudo_specifier = "",
+               pseudoset       = nothing,
+               pseudospecifier = "",
                server_dir       = nothing,
                local_dir        = nothing,
                name             = nothing)
@@ -111,16 +111,16 @@ function DFJob(job::DFJob, flagstoset...;
         setcell!(newjob, cell)
     end
     if atoms != nothing
-        if pseudo_set == nothing
-            pseudo_set, specifier = getpseudoset(job.structure.atoms[1])
-            specifier = pseudo_specifier == nothing ? specifier : pseudo_specifier
-            setatoms!(newjob, atoms, pseudo_set = pseudo_set, pseudo_specifier=specifier)
+        if pseudoset == nothing
+            pseudoset, specifier = getpseudoset(job.structure.atoms[1])
+            specifier = pseudospecifier == nothing ? specifier : pseudospecifier
+            setatoms!(newjob, atoms, pseudoset = pseudoset, pseudospecifier=specifier)
         else
-            setatoms!(newjob, atoms, pseudo_set = pseudo_set, pseudo_specifier= pseudo_specifier)
+            setatoms!(newjob, atoms, pseudoset = pseudoset, pseudospecifier= pseudospecifier)
         end
     end
-    if pseudo_set != nothing && atoms == nothing
-        setpseudos!(newjob, pseudo_set, pseudo_specifier)
+    if pseudoset != nothing && atoms == nothing
+        setpseudos!(newjob, pseudoset, pseudospecifier)
     end
     if server_dir != nothing
         setserverdir!(newjob, server_dir)
@@ -230,7 +230,7 @@ function pulljob(server::String, server_dir::String, local_dir::String; job_fuzz
         mkpath(local_dir)
     end
 
-    pull_server_file(filename) = pull_file(server, server_dir, local_dir, filename)
+    pull_server_file(filename) = pullfile(server, server_dir, local_dir, filename)
     pull_server_file(job_fuzzy)
     job_file = searchdir(local_dir, strip(job_fuzzy, '*'))[1]
 
@@ -260,10 +260,15 @@ function save(job::DFJob, local_dir=job.local_dir)
     return writejobfiles(job)
 end
 
+iswannierjob(job::DFJob) = any(x->package(x) == Wannier90, inputs(job)) && any(x->flag(x, :calculation) == "'nscf'", inputs(job))
+getnscfcalc(job::DFJob) = getfirst(x->flag(x, :calculation) == "'nscf'", inputs(job))
 "Runs some checks on the set flags for the inputs in the job, and sets metadata (:prefix, :outdir etc) related flags to the correct ones. It also checks whether flags in the various inputs are allowed and set to the correct types."
 function sanitizeflags!(job::DFJob)
     setflags!(job, :prefix => "'$(job.name)'", print=false)
     setflags!(job, :outdir => "'./'", print=false)
+    if iswannierjob(job)
+        setflags!(job, :num_bands => flag(getnscfcalc(job), :nbnd), print=false)
+    end
     sanitizeflags!.(inputs(job))
 end
 
@@ -508,7 +513,7 @@ end
 #---------------------------------END GENERAL SECTION ------------------#
 
 """
-    setatoms!(job::DFJob, atoms::Dict{Symbol,<:Array{<:Point3,1}}, pseudo_setname=:default, pseudo_specifier=nothing, option=:angstrom)
+    setatoms!(job::DFJob, atoms::Dict{Symbol,<:Array{<:Point3,1}}, pseudo_setname=:default, pseudospecifier=nothing, option=:angstrom)
 
 Sets the data data with atomic positions to the new one. This is done for all calculations in the job that have that data.
 If default pseudopotentials are defined, a set can be specified, together with a fuzzy that distinguishes between the possible multiple pseudo strings in the pseudo set.
@@ -517,11 +522,11 @@ All flags which specify the number of atoms inside the calculation also gets set
 """
 setatoms!(job::DFJob, atoms::Dict{Symbol,<:Vector{<:Point3}}; kwargs...) = setatoms(job, convert_2atoms(atoms); kwargs...)
 
-function setatoms!(job::DFJob, atoms::Vector{<:AbstractAtom}; pseudo_set = :default, pseudo_specifier="")
+function setatoms!(job::DFJob, atoms::Vector{<:AbstractAtom}; pseudoset = :default, pseudospecifier="")
     UNDO_JOBS[job.id] = deepcopy(job)
 
     job.structure.atoms = atoms
-    setpseudos!(job, pseudo_set, pseudo_specifier)
+    setpseudos!(job, pseudoset, pseudospecifier)
     return job
 end
 
@@ -583,18 +588,11 @@ sets the option of specified data block in all calculations that have the block.
 """
 setdataoption!(job::DFJob, name::Symbol, option::Symbol) = setdataoption!(job, [i.filename for i in job.inputs], name, option)
 
-"sets the pseudopotentials to the specified one in the default pseudo_set."
-function setpseudos!(job::DFJob, pseudo_set, pseudo_specifier="")
-    for (i, atom) in enumerate(job.structure.atoms)
-        pseudo = getdefault_pseudo(id(atom), pseudo_set, pseudo_specifier=pseudo_specifier)
-        if pseudo == nothing
-            warn("Pseudo for $(id(atom)) at index $i not found in set $pseudo_set.\n Setting pseudo_dir to './', this should be changed before trying to run the job!")
-            setflags!(job, :pseudo_dir => "'./'", print=false)
-        else
-            setpseudo!(atom, pseudo)
-            setflags!(job, :pseudo_dir => "'$(getdefault_pseudodir(pseudo_set))'", print=false)
-        end
-    end
+"sets the pseudopotentials to the specified one in the default pseudoset."
+function setpseudos!(job::DFJob, pseudoset, pseudospecifier="")
+    setpseudos!(job.structure, pseudoset, pseudospecifier)
+    dir = getdefault_pseudodir(pseudoset)
+    dir != nothing && setflags!(job, :pseudo_dir => "'$dir'", print=false)
     return job
 end
 
@@ -751,7 +749,7 @@ addwancalc!(job::DFJob, template::String="nscf", args...; kwargs...) =
     addwancalc!(job, input(job, template), args...; kwargs...)
 
 "Automatically calculates and sets the wannier energies. This uses the projections, `Emin` and the bands to infer the other limits.\n`Epad` allows one to specify the padding around the inner and outer energy windows"
-function setwanenergies!(job::DFJob, Emin, bands; Epad=5.0, print=true)
+function setwanenergies!(job::DFJob, Emin::AbstractFloat, bands; Epad=5.0, print=true)
     wancalcs = filter(x -> package(x) == Wannier90, job.inputs)
     @assert length(wancalcs) != 0 error("Job ($(job.name)) has no Wannier90 calculations, nothing todo.")
     nbnd = sum([sum(orbsize.(t)) for  t in projections(job)])

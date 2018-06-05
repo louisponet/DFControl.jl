@@ -139,7 +139,7 @@ function getdefault_server()
 end
 
 """
-    getdefault_pseudo_dirs()
+    getdefault_pseudodirs()
 
 Returns the default pseudo dirs if it's defined. If it is not defined return nothing.
 """
@@ -147,13 +147,11 @@ function getdefault_pseudodirs()
     if isdefined(:default_pseudo_dirs)
         return default_pseudo_dirs
     else
-        return nothing
+        return error("Please configure default pseudo directories first, using `setdefault_pseudodir` and `configuredefault_pseudos`.")
     end
 end
 
-function getdefault_pseudodir(pseudo_set)
-    return getdefault_pseudodirs()[pseudo_set]
-end
+getdefault_pseudodir(pseudoset) = haskey(getdefault_pseudodirs(), pseudoset) ? getdefault_pseudodirs()[pseudoset] : nothing
 
 """
     configuredefault_pseudos(server = getdefault_server(), pseudo_dirs=getdefault_pseudodirs())
@@ -209,19 +207,19 @@ function configuredefault_pseudos(;server = getdefault_server(), pseudo_dirs=get
 end
 
 """
-    getdefault_pseudo(atom::Symbol, pseudo_setname=:default; pseudo_specifier=nothing)
+    getdefault_pseudo(atom::Symbol, pseudo_setname=:default; pseudospecifier=nothing)
 
 Returns the pseudo potential string linked to the atom.
 """
-function getdefault_pseudo(atom::Symbol, pseudo_setname=:default; pseudo_specifier="")
+function getdefault_pseudo(atom::Symbol, pseudo_setname=:default; pseudospecifier="")
     if !isnull(tryparse(Int, String(atom)[end:end]))
         pp_atom = Symbol(String(atom)[1:end-1])
     else
         pp_atom = atom
     end
     if isdefined(:default_pseudos) && haskey(DFControl.default_pseudos[pp_atom], pseudo_setname)
-        if pseudo_specifier != ""
-            return getfirst(x -> contains(x, pseudo_specifier), default_pseudos[pp_atom][pseudo_setname])
+        if pseudospecifier != ""
+            return getfirst(x -> contains(x, pseudospecifier), default_pseudos[pp_atom][pseudo_setname])
         else
             return default_pseudos[pp_atom][pseudo_setname][1]
         end

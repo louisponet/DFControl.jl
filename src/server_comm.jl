@@ -1,9 +1,9 @@
 """
-    pull_file(server::String, server_dir::String, local_dir::String, filename::String)
+    pullfile(server::String, server_dir::String, local_dir::String, filename::String)
 
 Pulls a file from the specified server and server dir to the local dir.
 """
-function pull_file(server::String, server_dir::String, local_dir::String, filename::String)
+function pullfile(server::String, server_dir::String, local_dir::String, filename::String)
     run(`scp $(server * ":" * server_dir * filename) $local_dir`)
     pulled_files = searchdir(local_dir, filename)
     if !isempty(pulled_files)
@@ -12,11 +12,11 @@ function pull_file(server::String, server_dir::String, local_dir::String, filena
 end
 
 """
-    pull_file(server_dir::String, local_dir::String, filename::String; server=getdefault_server())
+    pullfile(server_dir::String, local_dir::String, filename::String; server=getdefault_server())
 
 Pulls a file from the default server if the default server is specified.
 """
-function pull_file(server_dir::String, local_dir::String, filename::String; server=getdefault_server())
+function pullfile(server_dir::String, local_dir::String, filename::String; server=getdefault_server())
     if server != ""
         run(`scp $(server * ":" * server_dir * filename) $local_dir`)
         pulled_files = searchdir(local_dir, filename)
@@ -25,24 +25,24 @@ function pull_file(server_dir::String, local_dir::String, filename::String; serv
         end
     else
         error("Define a default server first using 'setdefault_server!(...)'.\n
-        Or use function 'pull_file(server::String, server_dir::String, local_dir::String, filename::String)'.")
+        Or use function 'pullfile(server::String, server_dir::String, local_dir::String, filename::String)'.")
     end
 end
 
-function pull_files(server_dir::String, local_dir::String, filenames::Vector{String}; serv=getdefault_server())
+function pullfiles(server_dir::String, local_dir::String, filenames::Vector{String}; serv=getdefault_server())
     pulled_files = String[]
     for file in filenames
-       push!(pulled_files, pull_file(server_dir, local_dir, file, serv))
+       push!(pulled_files, pullfile(server_dir, local_dir, file, serv))
     end
     return pulled_files
 end
 
 """
-    pull_file(filepath::String, local_dir::String; server=getdefault_server(), local_filename=nothing)
+    pullfile(filepath::String, local_dir::String; server=getdefault_server(), local_filename=nothing)
 
 Pulls a file from the default server if the default server is specified.
 """
-function pull_file(filepath::String, local_dir::String; server=getdefault_server(), local_filename=nothing)
+function pullfile(filepath::String, local_dir::String; server=getdefault_server(), local_filename=nothing)
     local_dir = form_directory(local_dir)
     if server != ""
         if local_filename != nothing
@@ -54,7 +54,7 @@ function pull_file(filepath::String, local_dir::String; server=getdefault_server
         end
     else
         error("Define a default server first using 'setdefault_server!(...)'.\n
-        Or use function 'pull_file(server::String, server_dir::String, local_dir::String, filename::String)'.")
+        Or use function 'pullfile(server::String, server_dir::String, local_dir::String, filename::String)'.")
     end
 end
 
@@ -67,7 +67,7 @@ end
 First pulls the job file (specified by job_fuzzy), reads the possible output files and tries to pull them.
 Extra files to pull can be specified by the `extras` keyword, works with fuzzy filenames.
 """
-function outputs(job::DFJob, server="", server_dir="", local_dir=""; job_fuzzy="*job*", extras=String[])
+function outputs(job::DFJob, server="", server_dir="", local_dir=""; job_fuzzy="*job*", extras=String[], ignore=String[], overwrite=true)
     if job.server == "" && server == ""
         error("Error: No job server specified. Please specify it first.")
     elseif server != ""
@@ -86,7 +86,7 @@ function outputs(job::DFJob, server="", server_dir="", local_dir=""; job_fuzzy="
     if !ispath(job.local_dir)
         mkpath(job.local_dir)
     end
-    pull_server_file(filename) = pull_file(job.server, job.server_dir, job.local_dir, filename)
+    pull_server_file(filename) = pullfile(job.server, job.server_dir, job.local_dir, filename)
 
     # pull_server_file(job_fuzzy)
 
@@ -95,6 +95,9 @@ function outputs(job::DFJob, server="", server_dir="", local_dir=""; job_fuzzy="
     pulled_outputs = String[]
     for calc in job.inputs
         ofile = outfile(calc)
+        if any(contains.(ofile, ignore)) || (ispath(outpath(job,calc)) && !overwrite)
+            continue
+        end
         try
             pull_server_file(ofile)
             push!(pulled_outputs, ofile)

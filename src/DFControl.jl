@@ -63,8 +63,8 @@ module DFControl
     include("server_comm.jl")
     export read_errors
     export outputs
-    export pull_file
-    export pull_files
+    export pullfile
+    export pullfiles
     export qstat
     export watch_qstat
 

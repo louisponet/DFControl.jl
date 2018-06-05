@@ -10,7 +10,7 @@ server_dir = testjobpath
 bin_dir = "/usr/local/bin"
 excs = [Exec("mpirun", bin_dir, Dict{Symbol, Any}(:np => 24)), Exec("pw.x", bin_dir, Dict{Symbol, Any}(:nk => 2))]
 
-pseudo_set = :test
+pseudoset = :test
 
 header = ["#SBATCH -N 1", "#SBATCH --ntasks-per-node=24",
           "#SBATCH --time=24:00:00", "#SBATCH -p defpart",
@@ -37,7 +37,7 @@ job = DFJob(name, local_dir, testjobpath * "Pt.cif", calculations,
       server_dir  = server_dir,
       bin_dir     = bin_dir,
       header      = header,
-      pseudo_set  = :test,
+      pseudoset  = :test,
      )
 
 save(job)
