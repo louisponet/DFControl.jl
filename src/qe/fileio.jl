@@ -428,14 +428,16 @@ function save(input::DFInput{QE}, structure, filename::String=input.filename)
             controls[block.name][flag] = val
         end
 
+        #Here we try to figure out the correct order of the control blocks
+        # first we find the order of the pw.x inputs, the rest should follow.
         blocks2file = []
-        if haskey(controls, :control)
-            push!(blocks2file, :control => pop!(controls, :control, nothing))
-            push!(blocks2file, :system => pop!(controls,  :system, nothing))
+        for name in [:control, :system, :electrons, :ions, :cell]
+            push!(blocks2file, name => pop!(controls, name, nothing))
         end
         for name in keys(controls)
             push!(blocks2file, name => pop!(controls, name, nothing))
         end
+        filter!(x->x[2]!=nothing, blocks2file)
         for (name, flags) in blocks2file
             write(f, "&$name\n")
             if name == :system
