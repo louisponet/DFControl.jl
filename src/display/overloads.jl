@@ -40,4 +40,4 @@ function Base.show(io::IO, job::DFJob)
     end
 end
 
-Base.show(io::IO, at::Atom) = dfprintln(io, "$(id(at)): $(join(string.(position(at)...)," "))")
+Base.show(io::IO, at::Atom) = dfprintln(io, "$(id(at)): $(position(at)[1]) $(position(at)[2]) $(position(at)[3])")
