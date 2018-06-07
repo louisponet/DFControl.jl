@@ -81,7 +81,7 @@ module DFControl
     export getdefault_pseudodir
     export getdefault_pseudodirs
     export removedefault
-    if Pkg.installed("Atom") != nothing
+    if isdefined(:Juno) != nothing
         include("display/printing_juno.jl")
     else
         include("display/overloads.jl")
