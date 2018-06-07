@@ -112,7 +112,7 @@ function pulloutputs(job::DFJob, server="", server_dir="", local_dir=""; job_fuz
 end
 
 sshcmd(server, cmd) = run(`ssh -t $server $cmd`)
-
+sshreadstring(server, cmd) = readstring(`ssh -t $server $cmd`)
 """
     qstat(server)
 
