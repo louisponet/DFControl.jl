@@ -284,6 +284,7 @@ end
 Saves the job locally, and then either runs it locally using `qsub` (when `job.server == "localhost"`) or sends it to the specified `job.server` in `job.server_dir`, and submits it using `qsub` on the server.
 """
 function submit(job::DFJob; server=job.server, server_dir=job.server_dir)
+    save(job)
     job.server = server
     job.server_dir = server_dir == "" ? "" : form_directory(server_dir)
     job.metadata[:slurmid] = qsub(job)
