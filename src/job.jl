@@ -865,9 +865,9 @@ outputdata(job::DFJob, filenames...; kwargs...) = outputdata(job, inputs(job, fi
 
 function isrunning(job::DFJob)
     @assert haskey(job.metadata, :slurmid) error("No slurmid found for job $(job.name)")
-    cmd = "qstat -f $(job.metadata[:slurmid])"
+    cmd = `qstat -f $(job.metadata[:slurmid])`
     if runslocal(job)
-        str = readstring(`$cmd`)
+        str = readstring(cmd)
     else
         str = sshreadstring(job.server, cmd)
     end
