@@ -259,6 +259,7 @@ function save(job::DFJob, local_dir=job.local_dir)
     local_dir = local_dir != "" ? form_directory(local_dir) : error("Please specify a valid local_dir!")
     if !ispath(local_dir)
         mkpath(local_dir)
+        info("$local_dir did not exist, it was created.")
     end
     sanitizeflags!(job)
     job.local_dir = local_dir

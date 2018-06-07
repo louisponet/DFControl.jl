@@ -138,7 +138,10 @@ function qsub(job::DFJob)
         outstr = readstring(`ssh -t $(job.server) cd $(job.server_dir) '&&' qsub job.tt`)
     else
         try
-            outstr = readstring(`cd $(job.local_dir) '&&' qsub job.tt`)
+            curdir = pwd()
+            cd(job.local_dir)
+            outstr = readstring(`qsub job.tt`)
+            cd(curdir)
         catch
             error("Tried submitting on the local machine but got an error executing `qsub`.")
         end
