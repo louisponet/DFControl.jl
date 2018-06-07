@@ -81,9 +81,10 @@ module DFControl
     export getdefault_pseudodir
     export getdefault_pseudodirs
     export removedefault
-    include("display/overloads.jl")
     if Pkg.installed("Atom") != nothing
         include("display/printing_juno.jl")
+    else
+        include("display/overloads.jl")
     end
     dfprintln(io::IO, s::String) = println(io, s)
     dfprintln(s::String) = println(s)
