@@ -22,10 +22,6 @@ function Base.display(data::Vector{InputData})
     map(display, data)
 end
 
-function Base.display(input::DFInput)
-    print_info(input)
-end
-
 function Base.display(band::DFBand{T}) where T <: AbstractFloat
     string = """DFBand{$T}:
     k_points of length $(length(band.k_points_cryst)):
@@ -41,9 +37,14 @@ function Base.display(bands::Vector{<:DFBand})
     map(display,bands)
 end
 
-function Base.show(io::IO, job::DFJob)
-    print_info(job, io)
-end
 function Base.display(io::IO, job::DFJob)
-    print_info(job, io)
+    s = """--------------------
+    DFJob:      $(job.name)
+    Local_dir:  $(job.local_dir)
+    Server:     $(job.server)
+    Server_dir: $(job.server_dir)
+    $(length(job.inputs)) calculations
+    --------------------
+    """
+    dfprintln(io, s)
 end

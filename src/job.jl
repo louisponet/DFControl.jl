@@ -847,16 +847,7 @@ end
 Prints general info of the job.
 """
 function print_info(job::DFJob,io=STDIN)
-    s = """--------------------
-    DFJob:      $(job.name)
-    Local_dir:  $(job.local_dir)
-    Server:     $(job.server)
-    Server_dir: $(job.server_dir)
-    $(length(job.inputs)) calculations
-    --------------------
-    """
-    dfprintln(io, s)
-end
+    end
 
 hasoutput(job::DFJob, input) = ispath(outpath(job, input))
 
