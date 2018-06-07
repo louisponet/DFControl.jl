@@ -193,11 +193,11 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "job.html#DFControl.print_info-Tuple{DFControl.DFJob,Array{String,1}}",
+    "location": "job.html#DFControl.print_info",
     "page": "Job",
     "title": "DFControl.print_info",
-    "category": "method",
-    "text": "print_info(job::DFJob, filenames::Vector{String})\n\nPrints general info of the job.\n\n\n\n"
+    "category": "function",
+    "text": "print_info(job::DFJob, io=STDIN)\n\nPrints general info of the job.\n\n\n\n"
 },
 
 {
@@ -237,7 +237,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Job",
     "title": "DFControl.setatoms!",
     "category": "method",
-    "text": "setatoms!(job::DFJob, atoms::Dict{Symbol,<:Array{<:Point3,1}}, pseudo_setname=:default, pseudo_specifier=nothing, option=:angstrom)\n\nSets the data data with atomic positions to the new one. This is done for all calculations in the job that have that data. If default pseudopotentials are defined, a set can be specified, together with a fuzzy that distinguishes between the possible multiple pseudo strings in the pseudo set. These pseudospotentials are then set in all the calculations that need it. All flags which specify the number of atoms inside the calculation also gets set to the correct value.\n\n\n\n"
+    "text": "setatoms!(job::DFJob, atoms::Dict{Symbol,<:Array{<:Point3,1}}, pseudo_setname=:default, pseudospecifier=nothing, option=:angstrom)\n\nSets the data data with atomic positions to the new one. This is done for all calculations in the job that have that data. If default pseudopotentials are defined, a set can be specified, together with a fuzzy that distinguishes between the possible multiple pseudo strings in the pseudo set. These pseudospotentials are then set in all the calculations that need it. All flags which specify the number of atoms inside the calculation also gets set to the correct value.\n\n\n\n"
 },
 
 {
@@ -365,7 +365,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Job",
     "title": "DFControl.setpseudos!",
     "category": "function",
-    "text": "sets the pseudopotentials to the specified one in the default pseudo_set.\n\n\n\n"
+    "text": "sets the pseudopotentials to the specified one in the default pseudoset.\n\n\n\n"
 },
 
 {
@@ -377,7 +377,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "job.html#DFControl.setwanenergies!-Tuple{DFControl.DFJob,Any,Any}",
+    "location": "job.html#DFControl.setwanenergies!-Tuple{DFControl.DFJob,AbstractFloat,Any}",
     "page": "Job",
     "title": "DFControl.setwanenergies!",
     "category": "method",
@@ -629,7 +629,7 @@ var documenterSearchIndex = {"docs": [
     "page": "FileIO",
     "title": "DFControl.save",
     "category": "function",
-    "text": "save(input::DFInput{Wannier90}, structure, filename::String=input.filename)\n\nWrites the DFInput{Wannier90} and structure to a file, that can be interpreted by WANNIER90. The atoms in the structure must have projections defined.\n\n\n\n"
+    "text": "save(input::DFInput{QE}, structure, filename::String=input.filename)\n\nWrites a Quantum Espresso input file.\n\n\n\n"
 },
 
 {
@@ -637,7 +637,7 @@ var documenterSearchIndex = {"docs": [
     "page": "FileIO",
     "title": "DFControl.save",
     "category": "function",
-    "text": "save(input::DFInput{QE}, structure, filename::String=input.filename)\n\nWrites a Quantum Espresso input file.\n\n\n\n"
+    "text": "save(input::DFInput{Wannier90}, structure, filename::String=input.filename)\n\nWrites the DFInput{Wannier90} and structure to a file, that can be interpreted by WANNIER90. The atoms in the structure must have projections defined.\n\n\n\n"
 },
 
 {
@@ -669,7 +669,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Defaults",
     "title": "DFControl.getdefault_pseudo",
     "category": "function",
-    "text": "getdefault_pseudo(atom::Symbol, pseudo_setname=:default; pseudo_specifier=nothing)\n\nReturns the pseudo potential string linked to the atom.\n\n\n\n"
+    "text": "getdefault_pseudo(atom::Symbol, pseudo_setname=:default; pseudospecifier=nothing)\n\nReturns the pseudo potential string linked to the atom.\n\n\n\n"
 },
 
 {
@@ -677,7 +677,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Defaults",
     "title": "DFControl.getdefault_pseudodirs",
     "category": "method",
-    "text": "getdefault_pseudo_dirs()\n\nReturns the default pseudo dirs if it\'s defined. If it is not defined return nothing.\n\n\n\n"
+    "text": "getdefault_pseudodirs()\n\nReturns the default pseudo dirs if it\'s defined. If it is not defined return nothing.\n\n\n\n"
 },
 
 {
