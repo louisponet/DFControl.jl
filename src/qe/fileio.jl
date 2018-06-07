@@ -95,20 +95,16 @@ function read_qe_output(filename::String, T=Float64)
                 while !contains(line, "End final coordinates")
 
                     if contains(line, "CELL_PARAMETERS")
-                        out[:alat]            = parse(T, split(line)[end][1:end-1])
+                        out[:alat]            = contains(line, "angstrom") ? :angstrom : parse(T, split(line)[end][1:end-1])
                         out[:cell_parameters] = reshape(T[parse.(T, split(readline(f))); parse.(T, split(readline(f))); parse.(T, split(readline(f)))], (3,3))
                     elseif contains(line, "ATOMIC_POSITIONS")
                         out[:pos_option]      = cardoption(line)
                         line  = readline(f)
-                        atoms = Dict{Symbol,Array{Point3{T},1}}()
+                        atoms = []
                         while !contains(line, "End")
                             s_line = split(line)
                             key    = Symbol(s_line[1])
-                            if key in keys(atoms)
-                                push!(atoms[key], Point3{T}(parse.(T, s_line[2:end])...))
-                            else
-                                atoms[key] = [Point3{T}(parse.(T, s_line[2:end])...)]
-                            end
+                            push!(atoms, key=>Point3{T}(parse.(T, s_line[2:end])...))
                             line = readline(f)
                         end
                         out[:atomic_positions] = atoms

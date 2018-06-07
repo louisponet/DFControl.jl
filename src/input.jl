@@ -24,6 +24,7 @@ function DFInput(template::DFInput, filename, newflags...; excs=execs(template),
     input          = deepcopy(template)
     input.filename = filename
     input.execs    = excs
+    input.run      = run
     setflags!(input, newflags..., print=false)
 
     if data != nothing
@@ -49,7 +50,6 @@ package(::DFInput{P}) where P = P
 data(input::DFInput)     = input.data
 data(input::DFInput, name) = getfirst(x-> x.name == name, input.data)
 data(input::Vector{InputData}, name) = getfirst(x-> x.name == name, input.data)
-data(input, name)      = data(input, name).data
 
 exec(input::DFInput, exec::String) = getfirst(x -> contains(x.exec, exec), input.execs)
 execs(input::DFInput) = input.execs

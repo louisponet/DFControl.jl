@@ -842,11 +842,11 @@ end
 
 
 """
-    print_info(job::DFJob, filenames::Vector{String})
+    print_info(job::DFJob, io=STDIN)
 
 Prints general info of the job.
 """
-function print_info(job::DFJob, filenames::Vector{String})
+function print_info(job::DFJob,io=STDIN)
     s = """--------------------
     DFJob:      $(job.name)
     Local_dir:  $(job.local_dir)
@@ -855,10 +855,8 @@ function print_info(job::DFJob, filenames::Vector{String})
     $(length(job.inputs)) calculations
     --------------------
     """
-    dfprintln(s)
+    dfprintln(io, s)
 end
-print_info(job::DFJob)                   = print_info(job, [calc.filename for calc in job.inputs])
-print_info(job::DFJob, filename::String) = print_info(job, [filename])
 
 hasoutput(job::DFJob, input) = ispath(outpath(job, input))
 

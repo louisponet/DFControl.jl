@@ -1,14 +1,15 @@
 #printing that is not needed in Atom
 
-function Base.show(io::IO, info::InputData)
-    println("Info name: $(info.name)\n  flags:")
-    for (flag, value) in info.flags
-        println("    $flag => $value")
-    end
-    println("")
-end
 
-function Base.display(block::DataBlock)
+function Base.show(block::InputData)
+    s = """Block name: $(block.name)
+    Block option: $(block.option)
+    Block data:
+    """
+    dfprintln(s)
+    dfprintln(string(block.data) * "\n\n")
+end
+function Base.display(block::InputData)
     s = """Block name: $(block.name)
     Block option: $(block.option)
     Block data:
@@ -17,7 +18,7 @@ function Base.display(block::DataBlock)
     dfprintln(string(block.data) * "\n\n")
 end
 
-function Base.display(data::Array{<:Block})
+function Base.display(data::Vector{InputData})
     map(display, data)
 end
 
@@ -36,12 +37,13 @@ function Base.display(band::DFBand{T}) where T <: AbstractFloat
     dfprintln(string)
 end
 
-function Base.display(bands::Array{<:DFBand})
+function Base.display(bands::Vector{<:DFBand})
     map(display,bands)
 end
 
-function Base.show(job::DFJob)
-    try
-        print_info(job)
-    end
+function Base.show(io::IO, job::DFJob)
+    print_info(job, io)
+end
+function Base.display(io::IO, job::DFJob)
+    print_info(job, io)
 end

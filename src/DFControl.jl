@@ -57,11 +57,8 @@ module DFControl
     export read_wannier_input
 
     include("plotting.jl")
-    export plot_qe_bands
-    export plot_qe_kpdos
 
     include("server_comm.jl")
-    export read_errors
     export outputs
     export pullfile
     export pullfiles
@@ -84,10 +81,11 @@ module DFControl
     export getdefault_pseudodir
     export getdefault_pseudodirs
     export removedefault
-
+    include("display/overloads.jl")
     if Pkg.installed("Atom") != nothing
         include("display/printing_juno.jl")
     end
+    dfprintln(io::IO, s::String) = println(io, s)
     dfprintln(s::String) = println(s)
     function __init__()
         init_defaults(default_file)
