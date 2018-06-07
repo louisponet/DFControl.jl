@@ -1,28 +1,18 @@
 #printing that is not needed in Atom
 
 
-function Base.show(block::InputData)
+function Base.show(io::IO, block::InputData)
     s = """Block name: $(block.name)
     Block option: $(block.option)
     Block data:
     """
-    dfprintln(s)
-    dfprintln(string(block.data) * "\n\n")
-end
-function Base.display(block::InputData)
-    s = """Block name: $(block.name)
-    Block option: $(block.option)
-    Block data:
-    """
-    dfprintln(s)
-    dfprintln(string(block.data) * "\n\n")
+    dfprintln(io, s)
+    dfprintln(io, string(block.data) * "\n\n")
 end
 
-function Base.display(data::Vector{InputData})
-    map(display, data)
-end
+Base.show(io::IO, data::Vector{InputData}) = map(x-> show(io, x), data)
 
-function Base.display(band::DFBand{T}) where T <: AbstractFloat
+function Base.show(io::IO, band::DFBand{T}) where T <: AbstractFloat
     string = """DFBand{$T}:
     k_points of length $(length(band.k_points_cryst)):
     cart:    $(band.k_points_cart[1]) -> $(band.k_points_cart[end])
@@ -30,12 +20,10 @@ function Base.display(band::DFBand{T}) where T <: AbstractFloat
     eigvals: $(band.eigvals[1]) -> $(band.eigvals[end])
     extra:   $(band.extra)
     """
-    dfprintln(string)
+    dfprintln(io, string)
 end
 
-function Base.display(bands::Vector{<:DFBand})
-    map(display,bands)
-end
+Base.show(io::IO, bands::Vector{<:DFBand}) = map(x->show(io,x),bands)
 
 function Base.show(io::IO, job::DFJob)
     s = """--------------------
@@ -51,3 +39,5 @@ function Base.show(io::IO, job::DFJob)
         dfprintln(io, "\t$(i.filename) => runs=$(i.run)")
     end
 end
+
+Base.show(io::IO, at::Atom) = dfprintln(io, "$(id(at)): $(join(string.(position(at)...)," "))")
