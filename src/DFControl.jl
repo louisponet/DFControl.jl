@@ -33,7 +33,7 @@ module DFControl
            outputdata,
 
            setheaderword!, setserverdir!, setlocaldir!,
-           save, submit,
+           save, submit, abort,
            undo, undo!,
            print_info
 

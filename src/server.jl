@@ -111,32 +111,39 @@ function pulloutputs(job::DFJob, server="", server_dir="", local_dir=""; job_fuz
     return joinpath.(job.local_dir, pulled_outputs)
 end
 
+sshcmd(server, cmd) = run(`ssh -t $server $cmd`)
+
 """
     qstat(server)
 
 If sbatch is running on server it will return the output of the `qstat` command.
 """
-qstat(server) = server=="localhost" ? run(`qstat`) : run(`ssh -t $server qstat`)
+qstat(server) = server=="localhost" ? run(`qstat`) : sshcmd(server, "qstat")
 qstat()       = qstat(getdefault_server())
 
 """
     watch_qstat(server)
 If sbatch is running on server it will return the output of the `watch qstat` command.
 """
-watch_qstat(server) = server=="localhost" ? run(`watch qstat`) : run(`ssh -t $server watch qstat`)
+watch_qstat(server) = server=="localhost" ? run(`watch qstat`) : sshcmd(server, "watch qstat")
 watch_qstat()       = watch_qstat(getdefault_server())
 
+"Deletes the job from the local or server queue."
+qdel(job::DFJob) = runslocal(job) ? run(`qdel $(job.metadata[:slurmid])`) : sshcmd(job.server, "qdel $(job.metadata[:slurmid])")
+
 function qsub(job::DFJob)
+    outstr = ""
     if !runslocal(job)
         push(job)
-        run(`ssh -t $(job.server) cd $(job.server_dir) '&&' qsub job.tt`)
+        outstr = readstring(`ssh -t $(job.server) cd $(job.server_dir) '&&' qsub job.tt`)
     else
         try
-            run(`cd $(job.local_dir) '&&' qsub job.tt`)
+            outstr = readstring(`cd $(job.local_dir) '&&' qsub job.tt`)
         catch
             error("Tried submitting on the local machine but got an error executing `qsub`.")
         end
     end
+    return parse(Int, chomp(outstr))
 end
 
 "Tests whether a directory exists on a server and if not, creates it."

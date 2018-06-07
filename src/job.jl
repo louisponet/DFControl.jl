@@ -11,6 +11,7 @@ mutable struct DFJob
     server       ::String
     server_dir   ::String
     header       ::Vector{String}
+    metadata     ::Dict
     function DFJob(name, structure, calculations, local_dir, server, server_dir, header = getdefault_jobheader())
         if local_dir != ""
             local_dir = form_directory(local_dir)
@@ -22,10 +23,10 @@ mutable struct DFJob
 
         test = filter(x -> x.name == name,UNDO_JOBS)
         if length(test) == 1
-            job = new(test[1].id, name, structure, calculations, local_dir, server, server_dir, header)
+            job = new(test[1].id, name, structure, calculations, local_dir, server, server_dir, header, Dict())
             UNDO_JOBS[test[1].id] = deepcopy(job)
         elseif length(test) == 0
-            job = new(length(UNDO_JOBS) + 1, name, structure, calculations, local_dir, server, server_dir, header)
+            job = new(length(UNDO_JOBS) + 1, name, structure, calculations, local_dir, server, server_dir, header, Dict())
             push!(UNDO_JOBS, deepcopy(job))
         end
         job
@@ -285,7 +286,19 @@ Saves the job locally, and then either runs it locally using `qsub` (when `job.s
 function submit(job::DFJob; server=job.server, server_dir=job.server_dir)
     job.server = server
     job.server_dir = form_directory(server_dir)
-    qsub(job)
+    job.metadata[:slurmid] = qsub(job)
+end
+"""
+    abort(job::DFJob)
+
+Will look for the job id inside it's metadata and try to remove it from the server queue.
+"""
+function abort(job::DFJob)
+    if !haskey(job.metadata, :slurmid)
+        error("No slurm id found for this job.")
+    end
+    qdel(job::DFJob)
+    pop!(job.metadata, :slurmid)
 end
 
 """
