@@ -176,6 +176,8 @@ function DFJob(server_dir::String, local_dir::String, server = getdefault_server
 end
 
 #-------------------BEGINNING GENERAL SECTION-------------#
+runslocal(job::DFJob) = job.server=="localhost"
+
 #all inputs return arrays, input returns the first element if multiple are found
 inputs(job::DFJob) = job.inputs
 """
@@ -215,6 +217,8 @@ Returns an array of the inputs that match one of the filenames.
 function input(job::DFJob, filenames::Vector{String})
     return inputs(job, filenames)
 end
+
+
 
 #TODO should we also create a config file for each job with stuff like server etc? and other config things,
 #      which if not supplied could contain the default stuff?
@@ -272,49 +276,16 @@ function sanitizeflags!(job::DFJob)
     sanitizeflags!.(inputs(job))
 end
 
-
-
-#Incomplete everything is hardcoded for now still!!!! make it configurable
-"""
-    push(job::DFJob)
-
-Pushes a DFJob from it's local directory to its server side directory.
-"""
-function push(job::DFJob, newfiles)
-    if !isfile(job.local_dir * "job.tt")
-        save(job)
-    end
-    try
-        run(`ssh -t $(job.server) touch $(job.server_dir * "tmp.in")`)
-        run(`ssh -t $(job.server) rm $(job.server_dir * "tmp.in")`)
-    catch
-        run(`ssh -t $(job.server) mkdir $(job.server_dir)`)
-        info("$(job.server_dir) did not exist on $(job.server), it was created")
-    end
-    for file in newfiles
-        run(`scp $(job.local_dir * file) $(job.server * ":" * job.server_dir)`)
-    end
-    run(`scp $(job.local_dir * "job.tt") $(job.server * ":" * job.server_dir)`)
-end
-
 #TODO only uses qsub for now. how to make it more general?
 """
-    submit(job::DFJob; server=nothing, server_dir=nothing)
+    submit(job::DFJob; server=job.server, server_dir=job.server_dir)
 
-Submit a DFJob. First saves it locally, pushes it to the server then runs the job file on the server.
+Saves the job locally, and then either runs it locally using `qsub` (when `job.server == "localhost"`) or sends it to the specified `job.server` in `job.server_dir`, and submits it using `qsub` on the server.
 """
 function submit(job::DFJob; server=job.server, server_dir=job.server_dir)
-    new_files = save(job)
-    if server != ""
-        push(job, new_files)
-        run(`ssh -t $(job.server) cd $(job.server_dir) '&&' qsub job.tt`)
-    else
-        try
-            run(`cd $(job.local_dir) '&&' qsub job.tt`)
-        catch
-            error("Tried submitting on the local machine but got an error executing `qsub`.")
-        end
-    end
+    job.server = server
+    job.server_dir = form_directory(server_dir)
+    qsub(job)
 end
 
 """
@@ -622,10 +593,10 @@ end
 """
     errors(job::DFJob)
 
-Prints the possible error messages in outputs of the `DFJob`.
+Prints the possible error messages in pulloutputs of the `DFJob`.
 """
 function errors(job::DFJob)
-    out = outputs(job)
+    out = pulloutputs(job)
     errors  = Dict{String, Vector{String}}()
     for o in out
         errors[o] = read_errors(o)

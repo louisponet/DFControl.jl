@@ -60,14 +60,14 @@ end
 
 
 #TODO: doesn't work for abinit
-#TODO: local outputs!
+#TODO: local pulloutputs!
 """
-    outputs(job::DFJob, server="", server_dir="", local_dir=""; job_fuzzy="*job*", extras=String[])
+    pulloutputs(job::DFJob, server="", server_dir="", local_dir=""; job_fuzzy="*job*", extras=String[])
 
 First pulls the job file (specified by job_fuzzy), reads the possible output files and tries to pull them.
 Extra files to pull can be specified by the `extras` keyword, works with fuzzy filenames.
 """
-function outputs(job::DFJob, server="", server_dir="", local_dir=""; job_fuzzy="*job*", extras=String[], ignore=String[], overwrite=true)
+function pulloutputs(job::DFJob, server="", server_dir="", local_dir=""; job_fuzzy="*job*", extras=String[], ignore=String[], overwrite=true)
     if job.server == "" && server == ""
         error("Error: No job server specified. Please specify it first.")
     elseif server != ""
@@ -91,7 +91,7 @@ function outputs(job::DFJob, server="", server_dir="", local_dir=""; job_fuzzy="
     # pull_server_file(job_fuzzy)
 
     # job_file = searchdir(job.local_dir, strip(job_fuzzy, '*'))[1]
-    # inputs, outputs= read_job_filenames(job.local_dir * job_file)
+    # inputs, pulloutputs= read_job_filenames(job.local_dir * job_file)
     pulled_outputs = String[]
     for calc in job.inputs
         ofile = outfile(calc)
@@ -116,12 +116,51 @@ end
 
 If sbatch is running on server it will return the output of the `qstat` command.
 """
-qstat(server) = run(`ssh -t $server qstat`)
+qstat(server) = server=="localhost" ? run(`qstat`) : run(`ssh -t $server qstat`)
 qstat()       = qstat(getdefault_server())
 
 """
     watch_qstat(server)
 If sbatch is running on server it will return the output of the `watch qstat` command.
 """
-watch_qstat(server) = run(`ssh -t $server watch qstat`)
+watch_qstat(server) = server=="localhost" ? run(`watch qstat`) : run(`ssh -t $server watch qstat`)
 watch_qstat()       = watch_qstat(getdefault_server())
+
+function qsub(job::DFJob)
+    if !runslocal(job)
+        push(job)
+        run(`ssh -t $(job.server) cd $(job.server_dir) '&&' qsub job.tt`)
+    else
+        try
+            run(`cd $(job.local_dir) '&&' qsub job.tt`)
+        catch
+            error("Tried submitting on the local machine but got an error executing `qsub`.")
+        end
+    end
+end
+
+"Tests whether a directory exists on a server and if not, creates it."
+function mkserverdir(server, dir)
+    testfile = joinpath(dir, "tmp.in")
+    try
+        run(`ssh -t $server touch $testfile`)
+        run(`ssh -t $server rm $testfile`)
+    catch
+        run(`ssh -t $server mkdir -p $dir`)
+        info("$dir did not exist on $server, it was created.")
+    end
+end
+
+"""
+    push(job::DFJob)
+
+Pushes a DFJob from it's local directory to its server side directory.
+"""
+function push(job::DFJob)
+    mkserverdir(job.server, job.server_dir)
+    scp(file) = run(`scp $(job.local_dir * file) $(job.server * ":" * job.server_dir)`)
+    for i in inputs(job)
+        scp(i.filename)
+    end
+    scp("job.tt")
+end

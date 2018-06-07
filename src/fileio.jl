@@ -169,7 +169,7 @@ end
 Writes all the input files and job file that are linked to a DFJob.
 """
 function writejobfiles(job::DFJob)
-    files_to_remove = searchdir(job.local_dir, ".in")
+    rm.(job.local_dir .* searchdir(job.local_dir, ".in"))
     new_filenames   = getfield.(job.inputs, :filename)
     open(job.local_dir * "job.tt", "w") do f
         write(f, "#!/bin/bash\n")
@@ -182,13 +182,6 @@ function writejobfiles(job::DFJob)
             i += writetojob(f, job, job.inputs[i])
         end
     end
-
-    for file in files_to_remove
-        if !in(file, new_filenames)
-            rm(job.local_dir * file)
-        end
-    end
-    return new_filenames
 end
 
 function read_job_line(line)
