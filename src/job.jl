@@ -873,7 +873,6 @@ function isrunning(job::DFJob)
     end
     isempty(str) && return false
     splstr = split(str)
-    println(splstr)
     for (i,s) in enumerate(splstr)
         if s=="job_state"
             return any(splstr[i+2] .== ["Q","R"])
