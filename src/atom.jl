@@ -44,16 +44,16 @@ positions(atoms::Vector{<:AbstractAtom}, id::Symbol) = [position(x) for x in fil
 getpseudoset(at::AbstractAtom) = getpseudoset(elsym(at), pseudo(at))
 
 "Takes a Vector of atoms and returns a Vector with the atoms having unique symbols."
-function unique_atoms(atoms::Vector{<:AbstractAtom{T}}) where T <: AbstractFloat
+function Base.unique(atoms::Vector{<:AbstractAtom{T}}) where T <: AbstractFloat
     ids    = Symbol[]
-    unique = AbstractAtom{T}[]
+    uni = AbstractAtom{T}[]
     for at in atoms
         if !in(id(at), ids)
             push!(ids, id(at))
-            push!(unique, at)
+            push!(uni, at)
         end
     end
-    return unique
+    return uni
 end
 
 #We use angstrom everywhere

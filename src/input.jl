@@ -251,7 +251,16 @@ function setdataoption!(input::DFInput, name::Symbol, option::Symbol; print=true
     return input
 end
 
-spincalc(input::DFInput) = all(flag(input, :nspin) .!= [nothing, 1])
+isspincalc(input::DFInput) = all(flag(input, :nspin) .!= [nothing, 1])
 
 readoutput(input::DFInput{QE}, filename) = read_qe_output(filename)
 readoutput(input::DFInput{Wannier90}, filename) = SymAnyDict()
+
+function readbands(input::DFInput, filename)
+    to = readoutput(input, filename)
+    if haskey(to, :bands)
+        return to[:bands]
+    else
+        error("No bands found in $filename.")
+    end
+end

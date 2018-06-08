@@ -31,6 +31,9 @@ function extract_atoms(atoms_block::T, proj_block::T, cell) where T <: InputData
                         push!(same_ats, at)
                     end
                 end
+                if isempty(same_ats)
+                    continue
+                end
                 if length(same_ats) > 1
                     for at in same_ats[2:end]
                         push!(projections(same_ats[1]), projections(at)[1])
@@ -232,19 +235,24 @@ function save(input::DFInput{Wannier90}, structure, filename::String=input.filen
             write(f, "\n")
         end
         write(f, "begin projections\n")
-        for at in unique_atoms(structure.atoms)
-            projs = projections(at)
-            if projs == :random || !isdefined(at, :projections)
-                write(f, "random\n")
-                break
-            end
-            write(f, "$(id(at)): $(projs[1].orb)")
-            if length(projs) > 1
-                for proj in projs[2:end]
-                    write(f, ";$(proj.orb)")
+        uniats = unique(atoms(structure))
+        projs = projections.(uniats)
+        # projs = projections.(unique(atoms(structure)))
+        if all(isempty.(projs))
+            write(f, "random\n")
+        else
+            for (at, prjs) in zip(uniats, projs)
+                if isempty(prjs)
+                    continue
                 end
+                write(f, "$(id(at)): $(prjs[1].orb)")
+                if length(prjs) > 1
+                    for proj in prjs[2:end]
+                        write(f, ";$(proj.orb)")
+                    end
+                end
+                write(f, "\n")
             end
-            write(f, "\n")
         end
         write(f, "end projections\n")
 

@@ -295,7 +295,7 @@
 #     write(f, "rprim\n")
 #     write_cell(f, structure.cell)
 #
-#     unique = unique_atoms(structure.atoms)
+#     unique = unique(structure.atoms)
 #     write(f, "nat $(length(structure.atoms))\n")
 #     write(f, "ntypat $(length(unique))\n")
 #     write(f, "typat\n")

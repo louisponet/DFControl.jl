@@ -438,7 +438,7 @@ function save(input::DFInput{QE}, structure, filename::String=input.filename)
             write(f, "&$name\n")
             if name == :system
                 nat   = length(structure.atoms)
-                ntyp  = length(unique_atoms(structure.atoms))
+                ntyp  = length(unique(structure.atoms))
                 # A     = 1.0
                 ibrav = 0
                 write(f,"  ibrav = $ibrav\n")
@@ -469,7 +469,7 @@ function save(input::DFInput{QE}, structure, filename::String=input.filename)
 end
 
 function write_structure(f, input::DFInput{QE}, structure)
-    unique_at = unique_atoms(structure.atoms)
+    unique_at = unique(structure.atoms)
     pseudo_lines = String[]
     atom_lines   = String[]
     for at in unique_at

@@ -665,10 +665,10 @@ function addwancalc!(job::DFJob, nscf::DFInput{QE}, projections...;
                      wanflags=SymAnyDict(),
                      pw2wanexec=Exec("pw2wannier90.x", nscf.execs[2].dir),
                      wanexec=Exec("wannier90.x", nscf.execs[2].dir),
-                     bands=read_qe_bands_file(outpath(job, nscf)),
+                     bands=readbands(nscf, outpath(job, nscf)),
                      print=true)
 
-    spin = spincalc(nscf)
+    spin = isspincalc(nscf)
     if spin
         pw2wanfiles = ["pw2wan_up.in", "pw2wan_dn.in"]
         wanfiles = ["wan_up.win", "wan_dn.win"]
@@ -686,12 +686,14 @@ function addwancalc!(job::DFJob, nscf::DFInput{QE}, projections...;
     ats = atoms(job)
     projections = Dict(projections)
     ids   = [id(at) for at in ats]
-    @assert all(haskey.(projections, unique(ids))) error("Please supply a set of projections for each unique atom: $(join(unique(ids)," ")).")
+    nbnd = 0
+    for id in ids
+        if haskey(projections, id)
+            nbnd += sum([orbsize(orb) for orb in projections[id]])
+        end
+    end
 
-
-    nbnd = sum(sum.([[orbsize(orb) for orb in projections[id]] for id in ids]))
     print && info("num_bands=$nbnd (inferred from provided projections).")
-
 
     wanflags = SymAnyDict(wanflags)
     wanflags[:dis_win_min], wanflags[:dis_froz_min], wanflags[:dis_froz_max], wanflags[:dis_win_max] = wanenergyranges(Emin, nbnd, bands, Epad)
@@ -725,6 +727,7 @@ function addwancalc!(job::DFJob, nscf::DFInput{QE}, projections...;
         setfls!(job, "wan_up.win", :spin => "'up'")
         setfls!(job, "wan_dn.win", :spin => "'down'")
     end
+    emptyprojections!(job.structure)
     addprojections!(projections, ats)
 
     return job
