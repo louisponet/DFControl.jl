@@ -49,6 +49,14 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "job.html#DFControl.abort-Tuple{DFControl.DFJob}",
+    "page": "Job",
+    "title": "DFControl.abort",
+    "category": "method",
+    "text": "abort(job::DFJob)\n\nWill look for the job id inside it\'s metadata and try to remove it from the server queue.\n\n\n\n"
+},
+
+{
     "location": "job.html#DFControl.addcalc!",
     "page": "Job",
     "title": "DFControl.addcalc!",
@@ -57,7 +65,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "job.html#DFControl.addcalc!-Tuple{DFControl.DFJob,Array{#s44,1} where #s44<:(NTuple{4,T} where T),Vararg{Any,N} where N}",
+    "location": "job.html#DFControl.addcalc!-Tuple{DFControl.DFJob,Array{#s46,1} where #s46<:(NTuple{4,T} where T),Vararg{Any,N} where N}",
     "page": "Job",
     "title": "DFControl.addcalc!",
     "category": "method",
@@ -185,19 +193,19 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "job.html#DFControl.outputdata-Tuple{DFControl.DFJob,DFControl.DFInput}",
+    "page": "Job",
+    "title": "DFControl.outputdata",
+    "category": "method",
+    "text": "Returns the outputdata for the input.\n\n\n\n"
+},
+
+{
     "location": "job.html#DFControl.path-Tuple{DFControl.DFJob,DFControl.DFInput}",
     "page": "Job",
     "title": "DFControl.path",
     "category": "method",
     "text": "Returns the full path of the input\n\n\n\n"
-},
-
-{
-    "location": "job.html#DFControl.print_info",
-    "page": "Job",
-    "title": "DFControl.print_info",
-    "category": "function",
-    "text": "print_info(job::DFJob, io=STDIN)\n\nPrints general info of the job.\n\n\n\n"
 },
 
 {
@@ -217,7 +225,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "job.html#DFControl.rmflags!-Tuple{DFControl.DFJob,Array{#s44,1} where #s44<:AbstractString,Vararg{Any,N} where N}",
+    "location": "job.html#DFControl.rmflags!-Tuple{DFControl.DFJob,Array{#s46,1} where #s46<:AbstractString,Vararg{Any,N} where N}",
     "page": "Job",
     "title": "DFControl.rmflags!",
     "category": "method",
@@ -233,7 +241,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "job.html#DFControl.setatoms!-Tuple{DFControl.DFJob,Dict{Symbol,#s38} where #s38<:(Array{#s37,1} where #s37<:(GeometryTypes.Point{3,T} where T))}",
+    "location": "job.html#DFControl.setatoms!-Tuple{DFControl.DFJob,Dict{Symbol,#s45} where #s45<:(Array{#s44,1} where #s44<:(GeometryTypes.Point{3,T} where T))}",
     "page": "Job",
     "title": "DFControl.setatoms!",
     "category": "method",
@@ -389,7 +397,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Job",
     "title": "DFControl.submit",
     "category": "method",
-    "text": "submit(job::DFJob; server=nothing, server_dir=nothing)\n\nSubmit a DFJob. First saves it locally, pushes it to the server then runs the job file on the server.\n\n\n\n"
+    "text": "submit(job::DFJob; server=job.server, server_dir=job.server_dir)\n\nSaves the job locally, and then either runs it locally using qsub (when job.server == \"localhost\") or sends it to the specified job.server in job.server_dir, and submits it using qsub on the server.\n\n\n\n"
 },
 
 {
@@ -469,7 +477,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Inputs",
     "title": "DFControl.setdataoption!",
     "category": "method",
-    "text": "setdataoption!(input::DFInput, name::Symbol, option::Symbol;; print=true)\n\nSets the option of specified data.\n\n\n\n"
+    "text": "setdataoption!(input::DFInput, name::Symbol, option::Symbol; print=true)\n\nSets the option of specified data.\n\n\n\n"
 },
 
 {
