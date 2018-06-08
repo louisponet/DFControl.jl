@@ -70,8 +70,8 @@ qstat()
 #or watch it by
 #these default to run the commands on the default server
 
-#hopefully everything went according to plan and we can watch our outputs
-out = outputs(job)
+#hopefully everything went according to plan and we can watch our pulloutputs
+out = pulloutputs(job)
 
 #now the bandstructure can be plotted
 bands = read_qe_output(out[2])[:bands]

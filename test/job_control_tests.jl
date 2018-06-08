@@ -7,8 +7,8 @@ job = DFJob(testjobpath);
 
 #output stuff
 out = outputdata(job;print=false);
-@test haskey(out, :bands)
-@test haskey(out, :fermi)
+@test haskey(out, "nscf")
+@test haskey(out["nscf"], :fermi)
 
 nscf = DFControl.input(job, "nscf")
 nscf2 = DFInput(nscf, "nscf2.in", data=[:testdata => (:testoption, "test"), :k_points => (:blabla, [1,1,1,1,1,1])])
@@ -66,7 +66,6 @@ setflow!(job, "nscf" => true, "bands" => true)
 setflow!(job, "pw2wan" => true)
 @test job.inputs[end].run
 
-print_info(job)
 @test inputs(job,["nscf"]) == inputs(job, "nscf")
 
 save(job)

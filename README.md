@@ -75,29 +75,29 @@ job = load_server_job("path/to/job/starting_from_home", "local_dir", server=getd
 ```
 If the `local_dir` doesn't exist it will be first created before pulling the `job` script and the calculations that it read from this file.
 
-If you ran some calculations, you should be able to pull the outputs into the `local_dir` of the `job` by:
+If you ran some calculations, you should be able to pull the outputs into the `local_dir` of the `job`, followed by reading them:
 ```julia
-outputs = outputs(job)
+outs = pulloutputs(job)
+outdata= outputdata(job)
 ```
 
-If one of the calculations that were performed was a `'bands'` calculation using Quantum-Espresso, you can do
+If one of the calculations that were performed was a calculation that produced `bands` of some sort (currently both outputs of `nscf` and `bands` calculations count) using Quantum-Espresso, you can do
 ```julia
-bands = read_qe_output(getfirst(x -> contains(x, "bands"), outputs))[:bands]
-#or
-bands = read_qe_bands_file(getfirst(x -> contains(x, "bands"), outputs))
+bands = outputdata[:bands] #or outputdata[:bands][..] if multiple calculations were done
 using Plots
 plot(bands)
 ```
 
 Calculations can be set to run or not by
 ```julia
-change_flow!(job, "" => false)
-change_flow!(job, "nscf" => true, "bands" => true) #args..., and they are matched fuzzily
+setflow!(job, "" => false) #none will run
+setflow!(job, "nscf" => true, "bands" => true) #args..., and they are matched fuzzily
 ```
 
-A job can be submitted if the `job.server` and `job.server_dir` are defined by
+A job can be submitted by
 ```julia
 submit(job)
 ```
+If the job had "localhost" as it's server, it will run `qsub job.tt` locally, whereas if server and server_dir are something else, it will push the files and subsequently run them on the server.
 
-This gave just a very very small overview of the functionality, please look into the [documentation](https://louisponet.github.io/DFControl.jl/latest) and examples for more.
+This gave just a very small overview of the functionality, please look into the [documentation](https://louisponet.github.io/DFControl.jl/latest) and the examples for more.

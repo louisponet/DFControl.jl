@@ -33,7 +33,7 @@ module DFControl
            outputdata,
 
            setheaderword!, setserverdir!, setlocaldir!,
-           save, submit,
+           save, submit, abort, isrunning,
            undo, undo!,
            print_info
 
@@ -58,8 +58,8 @@ module DFControl
 
     include("plotting.jl")
 
-    include("server_comm.jl")
-    export outputs
+    include("server.jl")
+    export pulloutputs
     export pullfile
     export pullfiles
     export qstat

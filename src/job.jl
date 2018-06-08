@@ -11,6 +11,7 @@ mutable struct DFJob
     server       ::String
     server_dir   ::String
     header       ::Vector{String}
+    metadata     ::Dict
     function DFJob(name, structure, calculations, local_dir, server, server_dir, header = getdefault_jobheader())
         if local_dir != ""
             local_dir = form_directory(local_dir)
@@ -22,10 +23,10 @@ mutable struct DFJob
 
         test = filter(x -> x.name == name,UNDO_JOBS)
         if length(test) == 1
-            job = new(test[1].id, name, structure, calculations, local_dir, server, server_dir, header)
+            job = new(test[1].id, name, structure, calculations, local_dir, server, server_dir, header, Dict())
             UNDO_JOBS[test[1].id] = deepcopy(job)
         elseif length(test) == 0
-            job = new(length(UNDO_JOBS) + 1, name, structure, calculations, local_dir, server, server_dir, header)
+            job = new(length(UNDO_JOBS) + 1, name, structure, calculations, local_dir, server, server_dir, header, Dict())
             push!(UNDO_JOBS, deepcopy(job))
         end
         job
@@ -176,6 +177,8 @@ function DFJob(server_dir::String, local_dir::String, server = getdefault_server
 end
 
 #-------------------BEGINNING GENERAL SECTION-------------#
+runslocal(job::DFJob) = job.server=="localhost"
+
 #all inputs return arrays, input returns the first element if multiple are found
 inputs(job::DFJob) = job.inputs
 """
@@ -216,6 +219,8 @@ function input(job::DFJob, filenames::Vector{String})
     return inputs(job, filenames)
 end
 
+
+
 #TODO should we also create a config file for each job with stuff like server etc? and other config things,
 #      which if not supplied could contain the default stuff?
 """
@@ -254,6 +259,7 @@ function save(job::DFJob, local_dir=job.local_dir)
     local_dir = local_dir != "" ? form_directory(local_dir) : error("Please specify a valid local_dir!")
     if !ispath(local_dir)
         mkpath(local_dir)
+        info("$local_dir did not exist, it was created.")
     end
     sanitizeflags!(job)
     job.local_dir = local_dir
@@ -272,49 +278,28 @@ function sanitizeflags!(job::DFJob)
     sanitizeflags!.(inputs(job))
 end
 
-
-
-#Incomplete everything is hardcoded for now still!!!! make it configurable
-"""
-    push(job::DFJob)
-
-Pushes a DFJob from it's local directory to its server side directory.
-"""
-function push(job::DFJob, newfiles)
-    if !isfile(job.local_dir * "job.tt")
-        save(job)
-    end
-    try
-        run(`ssh -t $(job.server) touch $(job.server_dir * "tmp.in")`)
-        run(`ssh -t $(job.server) rm $(job.server_dir * "tmp.in")`)
-    catch
-        run(`ssh -t $(job.server) mkdir $(job.server_dir)`)
-        info("$(job.server_dir) did not exist on $(job.server), it was created")
-    end
-    for file in newfiles
-        run(`scp $(job.local_dir * file) $(job.server * ":" * job.server_dir)`)
-    end
-    run(`scp $(job.local_dir * "job.tt") $(job.server * ":" * job.server_dir)`)
-end
-
 #TODO only uses qsub for now. how to make it more general?
 """
-    submit(job::DFJob; server=nothing, server_dir=nothing)
+    submit(job::DFJob; server=job.server, server_dir=job.server_dir)
 
-Submit a DFJob. First saves it locally, pushes it to the server then runs the job file on the server.
+Saves the job locally, and then either runs it locally using `qsub` (when `job.server == "localhost"`) or sends it to the specified `job.server` in `job.server_dir`, and submits it using `qsub` on the server.
 """
 function submit(job::DFJob; server=job.server, server_dir=job.server_dir)
-    new_files = save(job)
-    if server != ""
-        push(job, new_files)
-        run(`ssh -t $(job.server) cd $(job.server_dir) '&&' qsub job.tt`)
-    else
-        try
-            run(`cd $(job.local_dir) '&&' qsub job.tt`)
-        catch
-            error("Tried submitting on the local machine but got an error executing `qsub`.")
-        end
+    save(job)
+    job.server = server
+    job.server_dir = server_dir == "" ? "" : form_directory(server_dir)
+    job.metadata[:slurmid] = qsub(job)
+end
+"""
+    abort(job::DFJob)
+
+Will look for the job id inside it's metadata and try to remove it from the server queue.
+"""
+function abort(job::DFJob)
+    if !haskey(job.metadata, :slurmid)
+        error("No slurm id found for this job.")
     end
+    qdel(job::DFJob)
 end
 
 """
@@ -622,10 +607,10 @@ end
 """
     errors(job::DFJob)
 
-Prints the possible error messages in outputs of the `DFJob`.
+Prints the possible error messages in pulloutputs of the `DFJob`.
 """
 function errors(job::DFJob)
-    out = outputs(job)
+    out = pulloutputs(job)
     errors  = Dict{String, Vector{String}}()
     for o in out
         errors[o] = read_errors(o)
@@ -680,10 +665,10 @@ function addwancalc!(job::DFJob, nscf::DFInput{QE}, projections...;
                      wanflags=SymAnyDict(),
                      pw2wanexec=Exec("pw2wannier90.x", nscf.execs[2].dir),
                      wanexec=Exec("wannier90.x", nscf.execs[2].dir),
-                     bands=read_qe_bands_file(outpath(job, nscf)),
+                     bands=readbands(nscf, outpath(job, nscf)),
                      print=true)
 
-    spin = spincalc(nscf)
+    spin = isspincalc(nscf)
     if spin
         pw2wanfiles = ["pw2wan_up.in", "pw2wan_dn.in"]
         wanfiles = ["wan_up.win", "wan_dn.win"]
@@ -701,12 +686,14 @@ function addwancalc!(job::DFJob, nscf::DFInput{QE}, projections...;
     ats = atoms(job)
     projections = Dict(projections)
     ids   = [id(at) for at in ats]
-    @assert all(haskey.(projections, unique(ids))) error("Please supply a set of projections for each unique atom: $(join(unique(ids)," ")).")
+    nbnd = 0
+    for id in ids
+        if haskey(projections, id)
+            nbnd += sum([orbsize(orb) for orb in projections[id]])
+        end
+    end
 
-
-    nbnd = sum(sum.([[orbsize(orb) for orb in projections[id]] for id in ids]))
     print && info("num_bands=$nbnd (inferred from provided projections).")
-
 
     wanflags = SymAnyDict(wanflags)
     wanflags[:dis_win_min], wanflags[:dis_froz_min], wanflags[:dis_froz_max], wanflags[:dis_win_max] = wanenergyranges(Emin, nbnd, bands, Epad)
@@ -740,6 +727,7 @@ function addwancalc!(job::DFJob, nscf::DFInput{QE}, projections...;
         setfls!(job, "wan_up.win", :spin => "'up'")
         setfls!(job, "wan_dn.win", :spin => "'down'")
     end
+    emptyprojections!(job.structure)
     addprojections!(projections, ats)
 
     return job
@@ -840,39 +828,49 @@ function setlocaldir!(job, dir)
     return job
 end
 
+hasoutputfile(job::DFJob, input) = ispath(outpath(job, input))
 
-"""
-    print_info(job::DFJob, io=STDIN)
-
-Prints general info of the job.
-"""
-function print_info(job::DFJob,io=STDIN)
+"Returns the outputdata for the input."
+function outputdata(job::DFJob, input::DFInput; print=true)
+    if hasoutput(input)
+        return outdata(input)
     end
-
-hasoutput(job::DFJob, input) = ispath(outpath(job, input))
-
-function addorvectorize!(dict1, dict2)
-    for (key, val) in dict2
-        if haskey(dict1, key)
-            dict1[key] = eltype(dict1[key]) <: Vector ? [dict1[key]..., val] : [dict1[key], val]
-        else
-            dict1[key] = val
-        end
+    if hasoutputfile(job, input)
+        input.outdata = readoutput(input, outpath(job, input))
+        return input.outdata
     end
+    print && warn("No output data or output file found for input: $(input.filename).")
+    return SymAnyDict()
 end
 
 "Finds the output files for each of the inputs of a job, and groups all found data into a dictionary."
 function outputdata(job::DFJob, inputs::Vector{DFInput}; print=true)
-    datadict = SymAnyDict()
+    datadict = Dict()
     for input in inputs
-        if hasoutput(job, input)
-            tdict = readoutput(input, outpath(job, input))
-            addorvectorize!(datadict, tdict)
-        else
-            print && warn("No output file found for input: $(input.filename).")
+        tout = outputdata(job, input; print=print)
+        if !isempty(tout)
+            datadict[name(input)] = tout
         end
     end
     datadict
 end
 outputdata(job::DFJob; kwargs...) = outputdata(job, inputs(job); kwargs...)
 outputdata(job::DFJob, filenames...; kwargs...) = outputdata(job, inputs(job, filenames); kwargs...)
+outputdata(job::DFJob, filename; kwargs...) = outputdata(job, input(job, filename); kwargs...)
+
+function isrunning(job::DFJob)
+    @assert haskey(job.metadata, :slurmid) error("No slurmid found for job $(job.name)")
+    cmd = `qstat -f $(job.metadata[:slurmid])`
+    if runslocal(job)
+        str = readstring(cmd)
+    else
+        str = sshreadstring(job.server, cmd)
+    end
+    isempty(str) && return false
+    splstr = split(str)
+    for (i,s) in enumerate(splstr)
+        if s=="job_state"
+            return any(splstr[i+2] .== ["Q","R"])
+        end
+    end
+end

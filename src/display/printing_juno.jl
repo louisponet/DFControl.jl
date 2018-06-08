@@ -18,3 +18,11 @@ end
     pos = position(x)
     Tree(Text("$(id(x))  ang: $(round(pos[1], 5)) $(round(pos[2], 5)) $(round(pos[3], 5))"), [SubTree(Text("$f → "), getfield_(x, f)) for f in fieldnames(x)[2:end]])
 end
+
+@render i::Inline x::DFJob begin
+    Tree(x.name, [SubTree(Text("$f → "), getfield(x, f)) for f in fieldnames(x)[3:end]])
+end
+
+@render i::Inline x::AbstractStructure begin
+    Tree(x.name , [SubTree(Text("$f → "), getfield(x, f)) for f in fieldnames(x)])
+end

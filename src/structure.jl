@@ -31,16 +31,16 @@ sets the projections of the specified atoms.
 """
 function setprojections!(str::Structure, projs...)
     projdict = Dict(projs)
-    for at in unique_atoms(str.atoms)
+    for at in unique(str.atoms)
         if !haskey(projdict, id(at))
             projdict[id(at)] = [proj.orb for proj in projections(at)]
         end
     end
-    empty_projections!(str)
+    emptyprojections!(str)
     addprojections!(projdict, str.atoms)
 end
 
-function empty_projections!(str::Structure)
+function emptyprojections!(str::Structure)
     for at in str.atoms
         empty!(projections(at))
     end
