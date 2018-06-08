@@ -5,14 +5,15 @@ mutable struct InputData
     data   ::Any
 end
 
-mutable struct DFInput{P <: Package}
+@with_kw mutable struct DFInput{P <: Package}
     filename ::String
-    flags    ::Dict{Symbol, Any}
+    flags    ::SymAnyDict
     data     ::Vector{InputData}
     execs    ::Vector{Exec}
     run      ::Bool
+    outdata  ::SymAnyDict=SymAnyDict()
 end
-
+DFInput{P}(file, flags, data, execs, run) where P<:Package = DFInput{P}(file, flags, data, execs, run, SymAnyDict())
 """
     DFInput(template::DFInput, filename, newflags...; runcommand=template.runcommand, run=true)
 
@@ -47,6 +48,8 @@ end
 Base.eltype(::DFInput{P}) where P = P
 package(::DFInput{P}) where P = P
 
+name(input::DFInput) = splitext(filename(input))[1]
+
 data(input::DFInput)     = input.data
 data(input::DFInput, name) = getfirst(x-> x.name == name, input.data)
 data(input::Vector{InputData}, name) = getfirst(x-> x.name == name, input.data)
@@ -67,6 +70,8 @@ outfile(input::DFInput{Wannier90}) = splitext(input.filename)[1]*".wout"
 
 setflow!(input::DFInput, run) = input.run = run
 
+outdata(input::DFInput) = input.outdata
+hasoutput(input::DFInput) = !isempty(outdata(input))
 
 """
     setkpoints!(input::DFInput, k_grid)
@@ -231,7 +236,7 @@ function setdata!(input::DFInput, data::InputData)
 end
 
 """
-    setdataoption!(input::DFInput, name::Symbol, option::Symbol;; print=true)
+    setdataoption!(input::DFInput, name::Symbol, option::Symbol; print=true)
 
 Sets the option of specified data.
 """

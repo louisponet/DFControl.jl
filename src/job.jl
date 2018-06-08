@@ -825,42 +825,35 @@ function setlocaldir!(job, dir)
     return job
 end
 
+hasoutputfile(job::DFJob, input) = ispath(outpath(job, input))
 
-"""
-    print_info(job::DFJob, io=STDIN)
-
-Prints general info of the job.
-"""
-function print_info(job::DFJob,io=STDIN)
+"Returns the outputdata for the input."
+function outputdata(job::DFJob, input::DFInput; print=true)
+    if hasoutput(input)
+        return outdata(input)
     end
-
-hasoutput(job::DFJob, input) = ispath(outpath(job, input))
-
-function addorvectorize!(dict1, dict2)
-    for (key, val) in dict2
-        if haskey(dict1, key)
-            dict1[key] = eltype(dict1[key]) <: Vector ? [dict1[key]..., val] : [dict1[key], val]
-        else
-            dict1[key] = val
-        end
+    if hasoutputfile(job, input)
+        input.outdata = readoutput(input, outpath(job, input))
+        return input.outdata
     end
+    print && warn("No output data or output file found for input: $(input.filename).")
+    return SymAnyDict()
 end
 
 "Finds the output files for each of the inputs of a job, and groups all found data into a dictionary."
 function outputdata(job::DFJob, inputs::Vector{DFInput}; print=true)
-    datadict = SymAnyDict()
+    datadict = Dict()
     for input in inputs
-        if hasoutput(job, input)
-            tdict = readoutput(input, outpath(job, input))
-            addorvectorize!(datadict, tdict)
-        else
-            print && warn("No output file found for input: $(input.filename).")
+        tout = outputdata(job, input; print=print)
+        if !isempty(tout)
+            datadict[name(input)] = tout
         end
     end
     datadict
 end
 outputdata(job::DFJob; kwargs...) = outputdata(job, inputs(job); kwargs...)
 outputdata(job::DFJob, filenames...; kwargs...) = outputdata(job, inputs(job, filenames); kwargs...)
+outputdata(job::DFJob, filename; kwargs...) = outputdata(job, input(job, filename); kwargs...)
 
 function isrunning(job::DFJob)
     @assert haskey(job.metadata, :slurmid) error("No slurmid found for job $(job.name)")

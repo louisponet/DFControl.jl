@@ -129,7 +129,9 @@ watch_qstat(server) = server=="localhost" ? run(`watch qstat`) : sshcmd(server, 
 watch_qstat()       = watch_qstat(getdefault_server())
 
 "Deletes the job from the local or server queue."
-qdel(job::DFJob) = runslocal(job) ? run(`qdel $(job.metadata[:slurmid])`) : sshcmd(job.server, "qdel $(job.metadata[:slurmid])")
+qdel(server::String, id::Int) = sshcmd(server, "qdel $id")
+qdel(id::Int) = run(`qdel $id`)
+qdel(job::DFJob) = runslocal(job) ? qdel(job.metadata[:slurmid]) : qdel(job.server, job.metadata[:slurmid])
 
 function qsub(job::DFJob)
     outstr = ""
