@@ -300,7 +300,6 @@ function abort(job::DFJob)
         error("No slurm id found for this job.")
     end
     qdel(job::DFJob)
-    pop!(job.metadata, :slurmid)
 end
 
 """
