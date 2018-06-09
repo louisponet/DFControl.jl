@@ -245,15 +245,15 @@ var documenterSearchIndex = {"docs": [
     "page": "Job",
     "title": "DFControl.setatoms!",
     "category": "method",
-    "text": "setatoms!(job::DFJob, atoms::Dict{Symbol,<:Array{<:Point3,1}}, pseudo_setname=:default, pseudospecifier=nothing, option=:angstrom)\n\nSets the data data with atomic positions to the new one. This is done for all calculations in the job that have that data. If default pseudopotentials are defined, a set can be specified, together with a fuzzy that distinguishes between the possible multiple pseudo strings in the pseudo set. These pseudospotentials are then set in all the calculations that need it. All flags which specify the number of atoms inside the calculation also gets set to the correct value.\n\n\n\n"
+    "text": "setatoms!(job::DFJob, atoms::Dict{Symbol,<:Array{<:Point3,1}}, pseudo_setname=nothing, pseudospecifier=nothing, option=:angstrom)\n\nSets the data data with atomic positions to the new one. This is done for all calculations in the job that have that data. If default pseudopotentials are defined, a set can be specified, together with a fuzzy that distinguishes between the possible multiple pseudo strings in the pseudo set. These pseudospotentials are then set in all the calculations that need it. All flags which specify the number of atoms inside the calculation also gets set to the correct value.\n\n\n\n"
 },
 
 {
-    "location": "job.html#DFControl.setcell!-Tuple{DFControl.DFJob,Array{T,2} where T}",
+    "location": "job.html#DFControl.setcell!-Tuple{DFControl.DFJob,StaticArrays.SArray{Tuple{3,3},T,2,9} where T}",
     "page": "Job",
     "title": "DFControl.setcell!",
     "category": "method",
-    "text": "setcell_parameters!(job::DFJob, cell_param::Matrix)\n\nsets the cell parameters of the structure in the job.\n\n\n\n"
+    "text": "setcell_parameters!(job::DFJob, cell_::Mat3)\n\nsets the cell parameters of the structure in the job.\n\n\n\n"
 },
 
 {
@@ -637,7 +637,7 @@ var documenterSearchIndex = {"docs": [
     "page": "FileIO",
     "title": "DFControl.save",
     "category": "function",
-    "text": "save(input::DFInput{QE}, structure, filename::String=input.filename)\n\nWrites a Quantum Espresso input file.\n\n\n\n"
+    "text": "save(input::DFInput{Wannier90}, structure, filename::String=input.filename)\n\nWrites the DFInput{Wannier90} and structure to a file, that can be interpreted by WANNIER90. The atoms in the structure must have projections defined.\n\n\n\n"
 },
 
 {
@@ -645,7 +645,7 @@ var documenterSearchIndex = {"docs": [
     "page": "FileIO",
     "title": "DFControl.save",
     "category": "function",
-    "text": "save(input::DFInput{Wannier90}, structure, filename::String=input.filename)\n\nWrites the DFInput{Wannier90} and structure to a file, that can be interpreted by WANNIER90. The atoms in the structure must have projections defined.\n\n\n\n"
+    "text": "save(input::DFInput{QE}, structure, filename::String=input.filename)\n\nWrites a Quantum Espresso input file.\n\n\n\n"
 },
 
 {
