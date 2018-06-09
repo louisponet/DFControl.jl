@@ -687,9 +687,7 @@ function addwancalc!(job::DFJob, nscf::DFInput{QE}, projections...;
         setfls!(job, "wan_up.win", :spin => "'up'")
         setfls!(job, "wan_dn.win", :spin => "'down'")
     end
-    emptyprojections!(job.structure)
-    addprojections!(projections, ats)
-
+    setprojections!(job, projections)
     return job
 end
 
