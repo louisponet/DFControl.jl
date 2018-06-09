@@ -131,11 +131,11 @@ undo!(job)
 
 setdataoption!(job, "nscf",:k_points, :blabla, print=false)
 @test data(job, "nscf", :k_points).option == :blabla
-setdataoption!(job, :k_points, :test)
+setdataoption!(job, :k_points, :test, print=false)
 @test data(job, "nscf", :k_points).option == :test
 
 job = undo(job)
-@test data(job, "nscf", :k_points).option == :crystal
+@test data(job, "nscf", :k_points).option == :blabla
 
 
 rm.(path.(job, job.inputs))
