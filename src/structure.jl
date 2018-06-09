@@ -25,7 +25,7 @@ function atoms(str::AbstractStructure, atsym::Symbol)
     return out
 end
 atoms(str::AbstractStructure) = structure(str).atoms
-
+cell(str::AbstractStructure) = structure(str).cell
 """
 sets the projections of the specified atoms.
 """

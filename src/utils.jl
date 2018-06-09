@@ -68,7 +68,7 @@ end
 """
 Makes sure that a directory string ends with "/".
 """
-function form_directory(directory::String)
+function formdirectory(directory::String)
     if directory[end] != '/'
         return directory * "/"
     else

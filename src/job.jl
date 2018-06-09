@@ -14,11 +14,11 @@ mutable struct DFJob
     metadata     ::Dict
     function DFJob(name, structure, calculations, local_dir, server, server_dir, header = getdefault_jobheader())
         if local_dir != ""
-            local_dir = form_directory(local_dir)
+            local_dir = formdirectory(local_dir)
         end
 
         if server_dir != ""
-            server_dir = form_directory(server_dir)
+            server_dir = formdirectory(server_dir)
         end
 
         test = filter(x -> x.name == name,UNDO_JOBS)
@@ -44,12 +44,12 @@ function DFJob(job_name, local_dir, structure::AbstractStructure, calculations::
                     header=getdefault_jobheader())
 
     @assert package==QE "Only implemented for Quantum Espresso!"
-    local_dir = form_directory(local_dir)
+    local_dir = formdirectory(local_dir)
     job_calcs = DFInput[]
     if typeof(common_flags) != Dict
         common_flags = Dict(common_flags)
     end
-    bin_dir = form_directory(bin_dir)
+    bin_dir = formdirectory(bin_dir)
     req_flags = Dict(:prefix  => "'$job_name'",
                      :outdir => "'$server_dir'",
                      :ecutwfc => 25.)
@@ -97,41 +97,24 @@ function DFJob(job_name, local_dir, ciffile::String, calculations::Vector, args.
     return DFJob(job_name, local_dir, structure, calculations, args... ; kwargs...)
 end
 
-function DFJob(job::DFJob, flagstoset...;
-               cell             = nothing,
-               atoms            = nothing,
-               pseudoset       = nothing,
-               pseudospecifier = "",
-               server_dir       = nothing,
-               local_dir        = nothing,
-               name             = nothing)
-
+function DFJob(job::DFJob, flagstoset...; cell_=copy(cell(job)), atoms_=copy(atoms(job)), name=job.name,
+                                          server_dir = job.server_dir,
+                                          local_dir  = job.local_dir,
+                                          pseudoset  = nothing,
+                                          pseudospecifier = "")
     newjob = deepcopy(job)
 
-    if cell != nothing
-        setcell!(newjob, cell)
+    setcell!(newjob, cell_)
+    if pseudoset == nothing
+        pseudoset, specifier = getpseudoset(job.structure.atoms[1])
+        specifier = pseudospecifier == nothing ? specifier : pseudospecifier
+        setatoms!(newjob, atoms_, pseudoset = pseudoset, pseudospecifier=specifier)
+    else
+        setatoms!(newjob, atoms_, pseudoset = pseudoset, pseudospecifier= pseudospecifier)
     end
-    if atoms != nothing
-        if pseudoset == nothing
-            pseudoset, specifier = getpseudoset(job.structure.atoms[1])
-            specifier = pseudospecifier == nothing ? specifier : pseudospecifier
-            setatoms!(newjob, atoms, pseudoset = pseudoset, pseudospecifier=specifier)
-        else
-            setatoms!(newjob, atoms, pseudoset = pseudoset, pseudospecifier= pseudospecifier)
-        end
-    end
-    if pseudoset != nothing && atoms == nothing
-        setpseudos!(newjob, pseudoset, pseudospecifier)
-    end
-    if server_dir != nothing
-        setserverdir!(newjob, server_dir)
-    end
-    if local_dir != nothing
-        setlocaldir!(newjob, local_dir)
-    end
-    if name != nothing
-        newjob.name = name
-    end
+    setserverdir!(newjob, server_dir)
+    setlocaldir!(newjob, local_dir)
+    newjob.name = name
 
     setflags!(newjob, flagstoset..., print=false)
     return newjob
@@ -149,7 +132,7 @@ function DFJob(job_dir::String, T=Float64;
                   server        = getdefault_server(),
                   server_dir    = "")
 
-    job_dir = form_directory(job_dir)
+    job_dir = formdirectory(job_dir)
 
     name, header, inputs, structure = read_job_inputs(job_dir * searchdir(job_dir, job_fuzzy)[1])
     j_name = isempty(new_job_name) ? name : new_job_name
@@ -178,7 +161,8 @@ end
 
 #-------------------BEGINNING GENERAL SECTION-------------#
 runslocal(job::DFJob) = job.server=="localhost"
-
+structure(job::DFJob) = job.structure
+cell(job::DFJob) = cell(structure(job))
 #all inputs return arrays, input returns the first element if multiple are found
 inputs(job::DFJob) = job.inputs
 """
@@ -229,8 +213,8 @@ end
 Pulls job from server. If no specific inputs are supplied it pulls all .in and .tt files.
 """
 function pulljob(server::String, server_dir::String, local_dir::String; job_fuzzy="*job*")
-    server_dir = form_directory(server_dir)
-    local_dir  = form_directory(local_dir)
+    server_dir = formdirectory(server_dir)
+    local_dir  = formdirectory(local_dir)
     if !ispath(local_dir)
         mkpath(local_dir)
     end
@@ -256,7 +240,7 @@ pulljob(args...; kwargs...) = pulljob(getdefault_server(), args..., kwargs...)
 Saves a DFJob, it's job file and all it's input files.
 """
 function save(job::DFJob, local_dir=job.local_dir)
-    local_dir = local_dir != "" ? form_directory(local_dir) : error("Please specify a valid local_dir!")
+    local_dir = local_dir != "" ? formdirectory(local_dir) : error("Please specify a valid local_dir!")
     if !ispath(local_dir)
         mkpath(local_dir)
         info("$local_dir did not exist, it was created.")
@@ -287,7 +271,7 @@ Saves the job locally, and then either runs it locally using `qsub` (when `job.s
 function submit(job::DFJob; server=job.server, server_dir=job.server_dir)
     save(job)
     job.server = server
-    job.server_dir = server_dir == "" ? "" : form_directory(server_dir)
+    job.server_dir = server_dir == "" ? "" : formdirectory(server_dir)
     job.metadata[:slurmid] = qsub(job)
 end
 """
@@ -489,16 +473,16 @@ end
 sets the filename from the old to the new one.
 """
 function setfilename!(job::DFJob, old_filename::String, new_filename::String)
-    input          = input(job, old_filename)
-    old_filename   = input.filename
-    input.filename = new_filename
-    dfprintln("Input filename in job $(job.name) has been setd from '$old_filename' to '$new_filename'.")
+    input_         = input(job, old_filename)
+    old_filename   = input_.filename
+    input_.filename = new_filename
+    return job
 end
 
 #---------------------------------END GENERAL SECTION ------------------#
 
 """
-    setatoms!(job::DFJob, atoms::Dict{Symbol,<:Array{<:Point3,1}}, pseudo_setname=:default, pseudospecifier=nothing, option=:angstrom)
+    setatoms!(job::DFJob, atoms::Dict{Symbol,<:Array{<:Point3,1}}, pseudo_setname=nothing, pseudospecifier=nothing, option=:angstrom)
 
 Sets the data data with atomic positions to the new one. This is done for all calculations in the job that have that data.
 If default pseudopotentials are defined, a set can be specified, together with a fuzzy that distinguishes between the possible multiple pseudo strings in the pseudo set.
@@ -507,11 +491,11 @@ All flags which specify the number of atoms inside the calculation also gets set
 """
 setatoms!(job::DFJob, atoms::Dict{Symbol,<:Vector{<:Point3}}; kwargs...) = setatoms(job, convert_2atoms(atoms); kwargs...)
 
-function setatoms!(job::DFJob, atoms::Vector{<:AbstractAtom}; pseudoset = :default, pseudospecifier="")
+function setatoms!(job::DFJob, atoms::Vector{<:AbstractAtom}; pseudoset=nothing, pseudospecifier="")
     UNDO_JOBS[job.id] = deepcopy(job)
 
     job.structure.atoms = atoms
-    setpseudos!(job, pseudoset, pseudospecifier)
+    pseudoset!=nothing && setpseudos!(job, pseudoset, pseudospecifier)
     return job
 end
 
@@ -524,17 +508,17 @@ atoms(job::DFJob) = job.structure.atoms
 
 "Returns the ith atom with id `atsym`."
 atom(job::DFJob, atsym::Symbol, i=1) = filter(x -> x.id == atsym, atoms(job))[i]
-cell(job::DFJob)  = job.structure.cell
+
 #automatically sets the cell parameters for the entire job, implement others
 """
-    setcell_parameters!(job::DFJob, cell_param::Matrix)
+    setcell_parameters!(job::DFJob, cell_::Mat3)
 
 sets the cell parameters of the structure in the job.
 """
-function setcell!(job::DFJob, cell_param::Matrix)
+function setcell!(job::DFJob, cell_::Mat3)
     UNDO_JOBS[job.id] = deepcopy(job)
 
-    job.structure.cell = cell_param
+    job.structure.cell = cell_
     return job
 end
 
@@ -556,22 +540,22 @@ end
 
 sets the option of specified data block in the specified calculations.
 """
-function setdataoption!(job::DFJob, filenames::Vector{String}, name::Symbol, option::Symbol)
+function setdataoption!(job::DFJob, filenames::Vector{String}, name::Symbol, option::Symbol; kwargs...)
     UNDO_JOBS[job.id] = deepcopy(job)
 
     for calc in inputs(job, filenames)
-        setdataoption!(calc, name, option)
+        setdataoption!(calc, name, option; kwargs...)
     end
     return job
 end
-setdataoption!(job::DFJob, filename::String, name::Symbol, option::Symbol) = setdataoption!(job, [filename], name, option)
+setdataoption!(job::DFJob, filename::String, name::Symbol, option::Symbol; kw...) = setdataoption!(job, [filename], name, option; kw...)
 
 """
     setdataoption!(job::DFJob, name::Symbol, option::Symbol)
 
 sets the option of specified data block in all calculations that have the block.
 """
-setdataoption!(job::DFJob, name::Symbol, option::Symbol) = setdataoption!(job, [i.filename for i in job.inputs], name, option)
+setdataoption!(job::DFJob, name::Symbol, option::Symbol; kw...) = setdataoption!(job, [i.filename for i in job.inputs], name, option; kw...)
 
 "sets the pseudopotentials to the specified one in the default pseudoset."
 function setpseudos!(job::DFJob, pseudoset, pseudospecifier="")
@@ -587,7 +571,7 @@ end
 
 Replaces the specified word in the header with the new word.
 """
-function setheaderword!(job::DFJob, word::String, new_word::String)
+function setheaderword!(job::DFJob, word::String, new_word::String; print=true)
     UNDO_JOBS[job.id] = deepcopy(job)
 
     for (i, line) in enumerate(job.header)
@@ -598,34 +582,10 @@ function setheaderword!(job::DFJob, word::String, new_word::String)
             New line:
             $(job.header[i])
             """
-            dfprintln(s)
+            print && info(s)
         end
     end
     return job
-end
-
-"""
-    errors(job::DFJob)
-
-Prints the possible error messages in pulloutputs of the `DFJob`.
-"""
-function errors(job::DFJob)
-    out = pulloutputs(job)
-    errors  = Dict{String, Vector{String}}()
-    for o in out
-        errors[o] = read_errors(o)
-    end
-
-    for (filename, errs) in errors
-        dfprintln("Error in output '$filename':")
-        for err in errs
-            dfprintln("$err")
-        end
-    end
-
-    if isempty(errors)
-        dfprintln("No errors found for job '$(job.name)'.")
-    end
 end
 
 "Returns the full path of the input"
@@ -752,9 +712,10 @@ end
 
 Undos the last set to the calculations of the job.
 """
-function undo!(job::DFJob; print=true)
-    job.inputs[:] = UNDO_JOBS[job.id].calculations[:]
-    print && dfprintln("Restored the calculations of job '$(job.name)' to their previous state.")
+function undo!(job::DFJob)
+    for field in fieldnames(DFJob)
+        setfield!(job, field, deepcopy(getfield(UNDO_JOBS[job.id], field)))
+    end
     return job
 end
 
@@ -814,7 +775,7 @@ end
 Sets the server dir of the job.
 """
 function setserverdir!(job, dir)
-    dir = form_directory(dir)
+    dir = dir != "" ? formdirectory(dir) : ""
     job.server_dir = dir
     return job
 end
@@ -823,7 +784,7 @@ end
 Sets the local dir of the job.
 """
 function setlocaldir!(job, dir)
-    dir = form_directory(dir)
+    dir = dir != "" ? formdirectory(dir) : ""
     job.local_dir = dir
     return job
 end

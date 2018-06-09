@@ -43,7 +43,7 @@ end
 Pulls a file from the default server if the default server is specified.
 """
 function pullfile(filepath::String, local_dir::String; server=getdefault_server(), local_filename=nothing)
-    local_dir = form_directory(local_dir)
+    local_dir = formdirectory(local_dir)
     if server != ""
         if local_filename != nothing
             run(`scp $(server * ":" * filepath) $(local_dir * local_filename)`)

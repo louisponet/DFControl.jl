@@ -227,18 +227,6 @@ read_qe_vcrel(filename::String, T=Float64) = read_qe_output(filename, T) do x
                                                 return x[:cell_parameters], x[:alat], x[:atomic_positions], x[:pos_option]
                                             end
 
-# function read_errors(filename::String)
-#     out = String[]
-#     open(filename, "r") do f
-#         line = readline(f)
-#         while !eof(f)
-#             if contains(lowercase(line), "error")
-#                 push!(out, line)
-#             end
-#         end
-#         return out
-#     end
-# end
 function alat(flags, pop=false)
     if haskey(flags, :A)
         alat = pop ? pop!(flags, :A) : flags[:A]

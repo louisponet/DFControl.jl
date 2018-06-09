@@ -84,6 +84,7 @@ begin
 end
 
 job3 = DFJob(job2, :lspinorb => true)
+@test all(atoms(job3).==atoms(job2))
 @test flag(job3, :lspinorb)
 rmflags!(job3, :lspinorb, print=false)
 
@@ -113,6 +114,28 @@ rmexecflags!(job, "pw.x", :nk)
 
 setexecdir!(job, "pw.x", "~/bin/")
 @test execs(job, "nscf")[2].dir == "~/bin/"
+
+setfilename!(job, "nscf", "test.in")
+@test path(job, "test") == joinpath(job.local_dir, "test.in")
+setfilename!(job, "test", "nscf.in")
+
+setserverdir!(job, "localhost")
+@test job.server_dir == "localhost/"
+
+setheaderword!(job, "defpart", "frontend", print=false)
+@test any(contains.(job.header, "frontend"))
+
+undo!(job)
+@test any(contains.(job.header, "defpart"))
+
+
+setdataoption!(job, "nscf",:k_points, :blabla, print=false)
+@test data(job, "nscf", :k_points).option == :blabla
+setdataoption!(job, :k_points, :test)
+@test data(job, "nscf", :k_points).option == :test
+
+job = undo(job)
+@test data(job, "nscf", :k_points).option == :crystal
 
 
 rm.(path.(job, job.inputs))
