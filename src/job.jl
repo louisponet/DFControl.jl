@@ -162,11 +162,13 @@ end
 #-------------------BEGINNING GENERAL SECTION-------------#
 runslocal(job::DFJob) = job.server=="localhost"
 structure(job::DFJob) = job.structure
+iswannierjob(job::DFJob) = any(x->package(x) == Wannier90, inputs(job)) && any(x->flag(x, :calculation) == "'nscf'", inputs(job))
+getnscfcalc(job::DFJob) = getfirst(x->flag(x, :calculation) == "'nscf'", inputs(job))
 cell(job::DFJob) = cell(structure(job))
 #all inputs return arrays, input returns the first element if multiple are found
 inputs(job::DFJob) = job.inputs
 """
-    inputs(job::DFJob, filenames::Array)
+    inputs(job::DFJob, filenames::Vector)
 
 Returns an array of the inputs that match one of the filenames.
 """
