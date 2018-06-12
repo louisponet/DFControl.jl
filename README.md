@@ -10,11 +10,12 @@ There is some integration with Juno, namely the display of various Types is spec
 
 ## Installation
 
-Since this package is not registered yet, the way to install it is by:
+This package is registered, but the recommended way to install it is by:
 ```julia
 Pkg.clone("https://github.com/louisponet/DFControl.jl.git")
 Pkg.build("DFControl")
 ```
+Since the package has changed quite a lot since the last release.
 
 This will create a directory `user_defaults` with file `user_defaults.jl` inside the `DFControl` source folder. This is done because it allows one to define certain variables and defaults that will get loaded when `using DFControl` is called. The main use for this is to define various defaults, which make a lot of actions more streamlined.
 
@@ -26,20 +27,20 @@ using DFControl
 ```
 default server:
 ```julia
-set_default_server("blabla@server.com") #default server
+setdefault_server("blabla@server.com") #default server
 ```
 
 default pseudo potentials:
 this defines a directory on the server to look through for the pseudo potentials for each element. This will be used for certain options when changing atom properties etc.
 ```julia
-set_default_pseudo_dir(:pbesol,  "pseudos/pbesol/") #change to your pseudo_set_name and directory of choice
-set_default_pseudo_dir(:pbesolrel, "pseudos/pbesolrel/")
+setdefault_pseudodir(:pbesol,  "pseudos/pbesol/") #change to your pseudo_set_name and directory of choice
+setdefault_pseudodir(:pbesolrel, "pseudos/pbesolrel/")
 #more sets can be defined
 ```
 
 followed by the actual loading of the various pseudo filenames:
 ```julia
-configure_default_pseudos()
+configuredefault_pseudos()
 ```
 This will then connect to the server, look through all the defined pseudo sets inside the `default_pseudos` and tries to link for each element, for each set the correct filename.
 To find out the filename of a certain atom for a certain pseudo set, or to check whether your config worked, you can do:
@@ -71,7 +72,7 @@ It will automatically look through the directory for a file which matches the fu
 
 To do something similar on a directory on a server, you can do
 ```julia
-job = load_server_job("path/to/job/starting_from_home", "local_dir", server=getdefault_server())
+job = DFJob("path/to/job/starting_from_home", "local_dir", server=getdefault_server())
 ```
 If the `local_dir` doesn't exist it will be first created before pulling the `job` script and the calculations that it read from this file.
 
@@ -83,9 +84,9 @@ outdata= outputdata(job)
 
 If one of the calculations that were performed was a calculation that produced `bands` of some sort (currently both outputs of `nscf` and `bands` calculations count) using Quantum-Espresso, you can do
 ```julia
-bands = outputdata[:bands] #or outputdata[:bands][..] if multiple calculations were done
+bands = outdata["name_of_calculation(e.g. nscf)"]
 using Plots
-plot(bands)
+plot(bands, fermi=outdata["nscf"][:fermi])
 ```
 
 Calculations can be set to run or not by
