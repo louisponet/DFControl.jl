@@ -252,8 +252,6 @@ function save(job::DFJob, local_dir=job.local_dir)
     return writejobfiles(job)
 end
 
-iswannierjob(job::DFJob) = any(x->package(x) == Wannier90, inputs(job)) && any(x->flag(x, :calculation) == "'nscf'", inputs(job))
-getnscfcalc(job::DFJob) = getfirst(x->flag(x, :calculation) == "'nscf'", inputs(job))
 "Runs some checks on the set flags for the inputs in the job, and sets metadata (:prefix, :outdir etc) related flags to the correct ones. It also checks whether flags in the various inputs are allowed and set to the correct types."
 function sanitizeflags!(job::DFJob)
     setflags!(job, :prefix => "'$(job.name)'", print=false)
@@ -621,7 +619,7 @@ projections(job::DFJob) = projections.(atoms(job))
 
 Adds a wannier calculation to a job. For now only works with QE.
 """
-function addwancalc!(job::DFJob, nscf::DFInput{QE}, projections...;
+function addwancalc!(job::DFJob, nscf::DFInput{QE}, projections_...;
                      Emin=-5.0,
                      Epad=5.0,
                      wanflags=SymAnyDict(),
@@ -645,16 +643,9 @@ function addwancalc!(job::DFJob, nscf::DFInput{QE}, projections...;
         print && info("'nosym' flag was not set in the nscf calculation.\nIf this was not intended please set it and rerun the nscf calculation.\nThis generally gives errors because of omitted kpoints, needed for pw2wannier90.x")
     end
 
-    ats = atoms(job)
-    projections = Dict(projections)
-    ids   = [id(at) for at in ats]
-    nbnd = 0
-    for id in ids
-        if haskey(projections, id)
-            nbnd += sum([orbsize(orb) for orb in projections[id]])
-        end
-    end
 
+    setprojections!(job, projections_...)
+    nbnd = sum(sum.(orbsize.(projections.(atoms(job))...)))
     print && info("num_bands=$nbnd (inferred from provided projections).")
 
     wanflags = SymAnyDict(wanflags)
@@ -689,7 +680,6 @@ function addwancalc!(job::DFJob, nscf::DFInput{QE}, projections...;
         setfls!(job, "wan_up.win", :spin => "'up'")
         setfls!(job, "wan_dn.win", :spin => "'down'")
     end
-    setprojections!(job, projections...)
     return job
 end
 
