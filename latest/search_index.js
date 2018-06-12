@@ -165,7 +165,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Job",
     "title": "DFControl.inputs",
     "category": "method",
-    "text": "inputs(job::DFJob, filenames::Array)\n\nReturns an array of the inputs that match one of the filenames.\n\n\n\n"
+    "text": "inputs(job::DFJob, filenames::Vector)\n\nReturns an array of the inputs that match one of the filenames.\n\n\n\n"
 },
 
 {
