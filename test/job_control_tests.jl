@@ -35,12 +35,12 @@ setkpoints!(nscf2, (3,3,3,0,0,1), print=false)
 fermi = read_qe_output(outpath(job, "nscf"))[:fermi]
 @test fermi == read_fermi_from_qe_output(job.local_dir * "nscf.out")
 
-addcalc!(job, [(0.5,0.0,0.5,10.0),(0.0,0.0,0.0,10.0),(0.5,0.5,0.5,1.0)],filename="bands2")
+addcalc!(job, [(0.5,0.0,0.5,10.0),(0.0,0.0,0.0,10.0),(0.5,0.5,0.5,1.0)], name="bands2")
 @test flag(job, "bands2", :calculation) == "'bands'"
 @test data(job, "bands2", :k_points).data == [(0.5,0.0,0.5,10.0),(0.0,0.0,0.0,10.0),(0.5,0.5,0.5,1.0)]
-addcalc!(job, (10,10,10), filename="nscf2")
+addcalc!(job, (10,10,10), name="nscf2")
 @test flag(job, "nscf2", :calculation) == "'nscf'"
-addcalc!(job, (5,5,5,1,1,1),filename="1scf2")
+addcalc!(job, (5,5,5,1,1,1), name="1scf2")
 @test flag(job, "1scf2", :calculation) == "'scf'"
 
 
@@ -48,7 +48,7 @@ addcalc!(job, (5,5,5,1,1,1),filename="1scf2")
 wanflags = [:write_hr => true, :wannier_plot => true]
 
 addwancalc!(job, "nscf",:Pt => [:s, :p, :d], Emin=fermi-7.0, Epad=5.0, wanflags=wanflags, print=false)
-@test flag(job, "wan.win", :write_hr) == flag(job, "wan.win", :wannier_plot) == true
+@test flag(job, "wan", :write_hr) == flag(job, "wan", :wannier_plot) == true
 
 
 job.inputs = job.inputs[1:3]
@@ -77,7 +77,7 @@ begin
         @test calc.flags == calc2.flags
         for (b1, b2) in zip(calc.data, calc2.data)
             for name in fieldnames(b1)
-                @test getfield(b1, name) == getfield(b2,name)
+                @test getfield(b1, name) == getfield(b2, name)
             end
         end
     end
@@ -102,7 +102,7 @@ end
 testorbs = [:s, :p]
 setprojections!(job, :Pt => testorbs)
 @test convert.(Symbol, [p.orb for p in projections(job, :Pt)]) == testorbs
-setwanenergies!(job, fermi-7.0, read_qe_bands_file(outpath(job, nscf)), Epad=3.0, print=false)
+setwanenergies!(job, fermi-7.0, read_qe_bands_file(outpath(nscf)), Epad=3.0, print=false)
 
 @test flag(job, :dis_froz_max) == 14.285699999999999
 @test flag(job, :dis_win_max) == 14.285699999999999 + 3.0
@@ -115,9 +115,9 @@ rmexecflags!(job, "pw.x", :nk)
 setexecdir!(job, "pw.x", "~/bin/")
 @test execs(job, "nscf")[2].dir == "~/bin/"
 
-setfilename!(job, "nscf", "test.in")
-@test path(job, "test") == joinpath(job.local_dir, "test.in")
-setfilename!(job, "test", "nscf.in")
+setname!(job, "nscf", "test")
+@test inpath(job, "test") == joinpath(job.local_dir, "test.in")
+setname!(job, "test", "nscf")
 
 setserverdir!(job, "localhost")
 @test job.server_dir == "localhost/"
@@ -138,5 +138,5 @@ job = undo(job)
 @test data(job, "nscf", :k_points).option == :blabla
 
 
-rm.(path.(job, job.inputs))
+rm.(inpath.(job.inputs))
 rm(job.local_dir * "job.tt")

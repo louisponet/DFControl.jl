@@ -26,7 +26,7 @@ module DFControl
            setflow!,
            execs, setexecflags!, setexecdir!, rmexecflags!,
            input, inputs,
-           path, outpath, setfilename!, setkpoints!, setdataoption!, setpseudos!,
+           inpath, outpath, setname!, setkpoints!, setdataoption!, setpseudos!,
            atoms, atom, setatoms!, setprojections!, projections,
            addwancalc!, addcalc!,
            setwanenergies!,
@@ -34,9 +34,8 @@ module DFControl
 
            setheaderword!, setserverdir!, setlocaldir!,
            save, submit, abort, isrunning,
-           undo, undo!,
-           print_info
-
+           undo, undo!
+           
     include("constants.jl")
     export qe_input_flags
 

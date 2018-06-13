@@ -212,16 +212,17 @@ function read_wannier_input(filename::String, T=Float64; runcommand= Exec(""), r
         end
     end
     structure = extract_structure(structure_name, cell_block, atoms_block, proj_block)
-    return DFInput{Wannier90}(splitdir(filename)[2], flags, data, [runcommand, exec], run), structure
+    dir, file = splitdir(filename)
+    return DFInput{Wannier90}(splitext(file)[1], dir, flags, data, [runcommand, exec], run), structure
 end
 
 """
-    save(input::DFInput{Wannier90}, structure, filename::String=input.filename)
+    save(input::DFInput{Wannier90}, structure, filename::String=inpath(input))
 
 Writes the `DFInput{Wannier90}` and `structure` to a file, that can be interpreted by WANNIER90.
 The atoms in the structure must have projections defined.
 """
-function save(input::DFInput{Wannier90}, structure, filename::String=input.filename)
+function save(input::DFInput{Wannier90}, structure, filename::String=inpath(input))
     open(filename, "w") do f
         for (flag, value) in input.flags
             write_flag_line(f, flag, value)

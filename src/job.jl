@@ -80,7 +80,7 @@ function DFJob(job_name, local_dir, structure::AbstractStructure, calculations::
         else
             datablocks =  InputData[]
         end
-        input_ = DFInput{package}(string(calc_) * ".in",
+        input_ = DFInput{package}(string(calc_), local_dir,
                          Dict{Symbol, Any}(),
                          datablocks, excs, true)
         setflags!(input_, req_flags..., print=false)
@@ -160,6 +160,9 @@ function DFJob(server_dir::String, local_dir::String, server = getdefault_server
 end
 
 #-------------------BEGINNING GENERAL SECTION-------------#
+scriptpath(job::DFJob) = job.local_dir * "job.tt"
+starttime(job::DFJob) = mtime(scriptpath(job))
+
 runslocal(job::DFJob) = job.server=="localhost"
 structure(job::DFJob) = job.structure
 iswannierjob(job::DFJob) = any(x->package(x) == Wannier90, inputs(job)) && any(x->flag(x, :calculation) == "'nscf'", inputs(job))
@@ -168,44 +171,23 @@ cell(job::DFJob) = cell(structure(job))
 #all inputs return arrays, input returns the first element if multiple are found
 inputs(job::DFJob) = job.inputs
 """
-    inputs(job::DFJob, filenames::Vector)
+    inputs(job::DFJob, names::Vector)
 
-Returns an array of the inputs that match one of the filenames.
+Returns an array of the inputs that match the names.
 """
-function inputs(job::DFJob, filenames::Vector)
+function inputs(job::DFJob, names::Vector)
     out = DFInput[]
-    for name in filenames
-        push!(out, filter(x -> contains(x.filename, name), job.inputs)...)
+    for n in names
+        push!(out, filter(x -> contains(name(x), n), inputs(job))...)
     end
     return out
 end
+inputs(job::DFJob, n::String) = filter(x -> contains(name(x), n), inputs(job))
+input(job::DFJob, n::String) = getfirst(x -> contains(name(x), n), inputs(job))
 
-"""
-    inputs(job::DFJob, filename::String)
-
-Returns an array of the input that matches the filename.
-"""
-function inputs(job::DFJob, filename::String)
-    return filter(x -> contains(x.filename, filename), job.inputs)
-end
-
-"""
-    input(job::DFJob, filename::String)
-
-Returns the input that matches the filename.
-"""
-input(job::DFJob, filename::String) = getfirst(x -> contains(x.filename, filename), job.inputs)
-
-"""
-    input(job::DFJob, filenames::Array)
-
-Returns an array of the inputs that match one of the filenames.
-"""
-function input(job::DFJob, filenames::Vector{String})
-    return inputs(job, filenames)
-end
-
-
+setname!(job::DFJob, oldn, newn) = (input(job, oldn).name = newn)
+inpath(job::DFJob, n) = inpath(input(job,n))
+outpath(job::DFJob, n) = outpath(input(job,n))
 
 #TODO should we also create a config file for each job with stuff like server etc? and other config things,
 #      which if not supplied could contain the default stuff?
@@ -287,33 +269,33 @@ function abort(job::DFJob)
 end
 
 """
-    add!(job::DFJob, input::DFInput, index::Int=length(job.inputs)+1; filename=input.filename)
+    add!(job::DFJob, input::DFInput, index::Int=length(job.inputs)+1; n=name(input))
 
 Adds a calculation to the job, at the specified index.
 """
-function add!(job::DFJob, input::DFInput, index::Int=length(job.inputs)+1; filename = input.filename)
+function add!(job::DFJob, input::DFInput, index::Int=length(job.inputs)+1; n=name(input))
 
     UNDO_JOBS[job.id] = deepcopy(job)
 
-    input.filename = filename
+    input.name = n
     insert!(job.inputs, index, input)
     return job
 end
 
 """
-    setflags!(job::DFJob, calculations::Vector{String}, flags...; print=true)
+    setflags!(job::DFJob, names::Vector{String}, flags...; print=true)
 
-Sets the flags in the calculations to the flags specified.
-This only happens if the specified flags are valid for the calculations.
+Sets the flags in the names to the flags specified.
+This only happens if the specified flags are valid for the names.
 If necessary the correct control block will be added to the calculation (e.g. for QEInputs).
 
 The values that are supplied will be checked whether they are valid.
 """
-function setflags!(job::DFJob, calculations::Vector{String}, flags...; print=true)
+function setflags!(job::DFJob, names::Vector{String}, flags...; print=true)
     UNDO_JOBS[job.id] = deepcopy(job)
     found_keys = Symbol[]
 
-    for calc in input.(job, calculations)
+    for calc in input.(job, names)
         t_found_keys, = setflags!(calc, flags..., print=print)
         for key in t_found_keys
             if !(key in found_keys) push!(found_keys, key) end
@@ -326,29 +308,29 @@ function setflags!(job::DFJob, calculations::Vector{String}, flags...; print=tru
     end
     if print
         if 1 < length(n_found_keys)
-            dfprintln("flags '$(join(":" .* String.(n_found_keys),", "))' were not found in the allowed input variables of the specified calculations!")
+            dfprintln("flags '$(join(":" .* String.(n_found_keys),", "))' were not found in the allowed input variables of the specified inputs!")
         elseif length(n_found_keys) == 1
-            dfprintln("flag '$(":" * String(n_found_keys[1]))' was not found in the allowed input variables of the specified calculations!")
+            dfprintln("flag '$(":" * String(n_found_keys[1]))' was not found in the allowed input variables of the specified inputs!")
         end
     end
     return job
 end
-setflags!(job::DFJob, flags...;kwargs...)                   = setflags!(job, [calc.filename for calc in job.inputs], flags...;kwargs...)
-setflags!(job::DFJob, filename::String, flags...;kwargs...) = setflags!(job, [filename], flags...;kwargs...)
+setflags!(job::DFJob, flags...;kwargs...)                   = setflags!(job, [name(calc) for calc in inputs(job)], flags...;kwargs...)
+setflags!(job::DFJob, name::String, flags...;kwargs...) = setflags!(job, [name], flags...;kwargs...)
 
 """
-    flag(job::DFJob, calc_filenames, flag_name::Symbol)
+    flag(job::DFJob, names, flag_name::Symbol)
 
-Looks through the calculation filenames and returns the value of the specified flag.
+Looks through the input names and returns the value of the specified flag.
 """
-function flag(job::DFJob, calc_filenames, fl::Symbol)
-    for calc in inputs(job, calc_filenames)
+function flag(job::DFJob, names, fl::Symbol)
+    for calc in inputs(job, names)
         flag_ = flag(calc, fl)
         if flag_ != nothing
             return flag_
         end
     end
-    error("Flag $fl not found in any input files.")
+    error("Flag $fl not found in any input.")
 end
 
 """
@@ -356,7 +338,7 @@ end
 
 Looks through all the calculations and returns the value of the specified flag.
 """
-flag(job::DFJob, flag_name::Symbol) = flag(job, [i.filename for i in inputs(job)], flag_name)
+flag(job::DFJob, flag_name::Symbol) = flag(job, name.(inputs(job)), flag_name)
 
 #TODO set so calculations also have a name.
 #TODO set after implementing k_point set so you don't need to specify all this crap
@@ -386,20 +368,20 @@ function setdata!(job::DFJob, calc_filenames, data_block_name::Symbol, new_block
 end
 
 """
-    rmflags!(job::DFJob, calc_filenames, flags...)
+    rmflags!(job::DFJob, names, flags...)
 
-Looks through the calculation filenames and removes the specified flags.
+Looks through the input names and removes the specified flags.
 """
-function rmflags!(job::DFJob, calc_filenames::Vector{<:AbstractString}, flags...; print=true)
+function rmflags!(job::DFJob, names::Vector{<:AbstractString}, flags...; print=true)
     UNDO_JOBS[job.id] = deepcopy(job)
 
-    for calc in inputs(job, calc_filenames)
-        rmflags!(calc, flags..., print=print)
+    for i in inputs(job, names)
+        rmflags!(i, flags..., print=print)
     end
     return job
 end
-rmflags!(job::DFJob, filename::String, flags...; kwargs...) = rmflags!(job, [filename], flags...; kwargs...)
-rmflags!(job::DFJob, flags...; kwargs...) = rmflags!(job, [calc.filename for calc in job.inputs], flags...; kwargs...)
+rmflags!(job::DFJob, n::String, flags...; kwargs...) = rmflags!(job, [n], flags...; kwargs...)
+rmflags!(job::DFJob, flags...; kwargs...) = rmflags!(job, name.(inputs(job)), flags...; kwargs...)
 
 """
     setflow!(job::DFJob, should_runs...)
@@ -417,7 +399,7 @@ function setflow!(job::DFJob, should_runs...)
     return job
 end
 
-setflow!(job::DFJob, should_runs::Vector{Bool}) = setflow!(job, [calc.filename => run for (calc, run) in zip(job.inputs, should_runs)]...)
+setflow!(job::DFJob, should_runs::Vector{Bool}) = setflow!(job, [name(calc) => run for (calc, run) in zip(job.inputs, should_runs)]...)
 
 """
     setflow!(job::DFJob, filenames::Array{String,1}, should_run)
@@ -435,19 +417,19 @@ Goes through the calculations of the job and if the name contains any of the `in
 setexecflags!(job::DFJob, exec, flags...) = setexecflags!.(job.inputs, exec, flags...)
 rmexecflags!(job::DFJob, exec, flags...) = rmexecflags!.(job.inputs, exec, flags...)
 "Returns the executables attached to a given input."
-execs(job::DFJob, filename) = execs(input(job, filename))
+execs(job::DFJob, name) = execs(input(job, name))
 
 setexecdir!(job::DFJob, exec, dir) = setexecdir!.(job.inputs, exec, dir)
 
 """
-    setdata!(job::DFJob, filenames, block::Block)
+    setdata!(job::DFJob, names, data::InputData)
 
-Adds a block to the specified filenames.
+Adds a block to the specified names.
 """
-function setdata!(job::DFJob, filenames, data::InputData)
+function setdata!(job::DFJob, names, data::InputData)
     UNDO_JOBS[job.id] = deepcopy(job)
 
-    for input in inputs(job, filenames)
+    for input in inputs(job, names)
         setdata!(input, data)
     end
     return job
@@ -464,18 +446,6 @@ function setdata!(job::DFJob, filenames, name, data, option=:none)
     for input in inputs(job, filenames)
         setdata!(input, name, data, option)
     end
-    return job
-end
-
-"""
-    setfilename!(job::DFJob, old_filename::String, new_filename::String)
-
-sets the filename from the old to the new one.
-"""
-function setfilename!(job::DFJob, old_filename::String, new_filename::String)
-    input_         = input(job, old_filename)
-    old_filename   = input_.filename
-    input_.filename = new_filename
     return job
 end
 
@@ -523,39 +493,39 @@ function setcell!(job::DFJob, cell_::Mat3)
 end
 
 """
-    setkpoints!(job::DFJob, calc_filename, k_points)
+    setkpoints!(job::DFJob, n, k_points)
 
-sets the data in the k point `DataBlock` inside the specified calculation.
+sets the data in the k point `DataBlock` inside the specified inputs.
 """
-function setkpoints!(job::DFJob, calc_filenames, k_points; print=true)
+function setkpoints!(job::DFJob, n, k_points; print=true)
     UNDO_JOBS[job.id] = deepcopy(job)
-    for calc in inputs(job, calc_filenames)
+    for calc in inputs(job, n)
         setkpoints!(calc, k_points, print=print)
     end
     return job
 end
 
 """
-    setdataoption!(job::DFJob, filenames::Array{String,1}, name::Symbol, option::Symbol)
+    setdataoption!(job::DFJob, names::Vector{String}, dataname::Symbol, option::Symbol)
 
-sets the option of specified data block in the specified calculations.
+sets the option of specified data in the specified inputs.
 """
-function setdataoption!(job::DFJob, filenames::Vector{String}, name::Symbol, option::Symbol; kwargs...)
+function setdataoption!(job::DFJob, names::Vector{String}, dataname::Symbol, option::Symbol; kwargs...)
     UNDO_JOBS[job.id] = deepcopy(job)
 
-    for calc in inputs(job, filenames)
-        setdataoption!(calc, name, option; kwargs...)
+    for calc in inputs(job, names)
+        setdataoption!(calc, dataname, option; kwargs...)
     end
     return job
 end
-setdataoption!(job::DFJob, filename::String, name::Symbol, option::Symbol; kw...) = setdataoption!(job, [filename], name, option; kw...)
+setdataoption!(job::DFJob, n::String, name::Symbol, option::Symbol; kw...) = setdataoption!(job, [n], name, option; kw...)
 
 """
     setdataoption!(job::DFJob, name::Symbol, option::Symbol)
 
 sets the option of specified data block in all calculations that have the block.
 """
-setdataoption!(job::DFJob, name::Symbol, option::Symbol; kw...) = setdataoption!(job, [i.filename for i in job.inputs], name, option; kw...)
+setdataoption!(job::DFJob, n::Symbol, option::Symbol; kw...) = setdataoption!(job, name.(inputs(job)), n, option; kw...)
 
 "sets the pseudopotentials to the specified one in the default pseudoset."
 function setpseudos!(job::DFJob, pseudoset, pseudospecifier="")
@@ -588,15 +558,6 @@ function setheaderword!(job::DFJob, word::String, new_word::String; print=true)
     return job
 end
 
-"Returns the full path of the input"
-path(job::DFJob, inp::DFInput) =
-    joinpath(job.local_dir, inp.filename)
-path(job::DFJob, inp::String) = path(job::DFJob, input(job, inp))
-
-"Provides the path of the output to the given input."
-outpath(job::DFJob, input::DFInput{QE}) = splitext(path(job, input))[1] * ".out"
-outpath(job::DFJob, input::DFInput{Wannier90}) = splitext(path(job, input))[1] * ".wout"
-outpath(job::DFJob, inp::String) = outpath(job, input(job, inp))
 
 """
 sets the projections of the specified atoms inside the job structure.
@@ -615,7 +576,7 @@ projections(job::DFJob) = projections.(atoms(job))
                      wanflags=SymAnyDict(),
                      pw2wanexec=Exec("pw2wannier90.x", nscf.execs[2].dir, nscf.execs[2].flags),
                      wanexec=Exec("wannier90.x", nscf.execs[2].dir),
-                     bands=read_qe_bands_file(outpath(job, nscf)))
+                     bands=readbands(nscf))
 
 Adds a wannier calculation to a job. For now only works with QE.
 """
@@ -625,17 +586,17 @@ function addwancalc!(job::DFJob, nscf::DFInput{QE}, projections_...;
                      wanflags=SymAnyDict(),
                      pw2wanexec=Exec("pw2wannier90.x", nscf.execs[2].dir),
                      wanexec=Exec("wannier90.x", nscf.execs[2].dir),
-                     bands=readbands(nscf, outpath(job, nscf)),
+                     bands=readbands(nscf),
                      print=true)
 
     spin = isspincalc(nscf)
     if spin
-        pw2wanfiles = ["pw2wan_up.in", "pw2wan_dn.in"]
-        wanfiles = ["wan_up.win", "wan_dn.win"]
+        pw2wannames = ["pw2wan_up", "pw2wan_dn"]
+        wannames = ["wanup", "wandn"]
         print && info("Spin polarized calculation found (inferred from nscf input).")
     else
-        pw2wanfiles = ["pw2wan.in"]
-        wanfiles = ["wan.win"]
+        pw2wannames = ["pw2wan"]
+        wannames = ["wan"]
     end
 
     @assert flag(nscf, :calculation) == "'nscf'" error("Please provide a valid 'nscf' calculation.")
@@ -668,17 +629,17 @@ function addwancalc!(job::DFJob, nscf::DFInput{QE}, projections_...;
 
     kdata = InputData(:kpoints, :none, kgrid(wanflags[:mp_grid]..., :wan))
 
-    for (pw2wanfil, wanfil) in zip(pw2wanfiles, wanfiles)
-        add!(job, DFInput{Wannier90}(wanfil, copy(wanflags), [kdata], [Exec(), wanexec], true))
-        add!(job, DFInput{QE}(pw2wanfil, copy(pw2wanflags), InputData[], [nscf.execs[1], pw2wanexec], true))
+    for (pw2wanfil, wanfil) in zip(pw2wannames, wannames)
+        add!(job, DFInput{Wannier90}(wanfil, job.local_dir, copy(wanflags), [kdata], [Exec(), wanexec], true))
+        add!(job, DFInput{QE}(pw2wanfil, job.local_dir, copy(pw2wanflags), InputData[], [nscf.execs[1], pw2wanexec], true))
     end
 
     setfls!(job, name, flags...) = setflags!(job, name, flags..., print=false)
     if spin
         setfls!(job, "pw2wan_up", :spin_component => "'up'")
         setfls!(job, "pw2wan_dn", :spin_component => "'down'")
-        setfls!(job, "wan_up.win", :spin => "'up'")
-        setfls!(job, "wan_dn.win", :spin => "'down'")
+        setfls!(job, "wanup", :spin => "'up'")
+        setfls!(job, "wandn", :spin => "'down'")
     end
     return job
 end
@@ -722,42 +683,42 @@ end
 "Creates a new `DFInput` from the template with the new flags and new data, then adds it to the inputs of the job at the specified index."
 addcalc!(job::DFJob, input::DFInput, index=length(job.inputs)+1) = insert!(job.inputs, index, input)
 
-function addcalc!(job::DFJob, template::DFInput, filename, newflags...; index=length(job.inputs)+1, run=true, newdata=nothing)
-    newcalc = DFInput(template, filename, newflags..., data=newdata, run=run)
+function addcalc!(job::DFJob, template::DFInput, name, newflags...; index=length(job.inputs)+1, run=true, newdata=nothing)
+    newcalc = DFInput(template, name, newflags..., data=newdata, run=run)
     addcalc!(job, newcalc, index)
     job
 end
 addcalc!(job::DFJob, template::String, args...; kwargs...) = addcalc!(job, input(job, template), args...; kwargs...)
 
 """
-    addcalc!(job::DFJob, kpoints::Vector{NTuple{4}}, newflags...; filename="bands.in", run=true, template="scf")
+    addcalc!(job::DFJob, kpoints::Vector{NTuple{4}}, newflags...; name="bands", run=true, template="scf")
 
 Searches for the given template and creates a bands calculation from it.
 """
-function addcalc!(job::DFJob, kpoints::Vector{<:NTuple{4}},args...; filename="bands.in", template="scf", kwargs...)
-    addcalc!(job, template, filename, :calculation => "'bands'",args...; kwargs...)
-    setkpoints!(job, filename, kpoints, print=false)
+function addcalc!(job::DFJob, kpoints::Vector{<:NTuple{4}},args...; name="bands", template="scf", kwargs...)
+    addcalc!(job, template, name, :calculation => "'bands'",args...; kwargs...)
+    setkpoints!(job, name, kpoints, print=false)
     job
 end
 
 """
-    addcalc!(job::DFJob, kpoints::NTuple{3}, newflags...; filename="nscf.in", run=true, template="scf")
+    addcalc!(job::DFJob, kpoints::NTuple{3}, newflags...; name="nscf", run=true, template="scf")
 
 Searches for the given template and creates a bands calculation from it.
 """
-function addcalc!(job::DFJob, kpoints::NTuple{3}, args...; filename="nscf.in", template="scf", kwargs...)
-    addcalc!(job, template, filename, :calculation => "'nscf'",args...; kwargs...)
-    setkpoints!(job, filename, kpoints, print=false)
+function addcalc!(job::DFJob, kpoints::NTuple{3}, args...; name="nscf", template="scf", kwargs...)
+    addcalc!(job, template, name, :calculation => "'nscf'",args...; kwargs...)
+    setkpoints!(job, name, kpoints, print=false)
     job
 end
 """
-    addcalc!(job::DFJob, kpoints::NTuple{6}, newflags...; filename="scf.in", run=true, template="nscf")
+    addcalc!(job::DFJob, kpoints::NTuple{6}, newflags...; name="scf", run=true, template="nscf")
 
 Searches for the given template and creates a bands calculation from it.
 """
-function addcalc!(job::DFJob, kpoints::NTuple{6}, args...; filename="scf.in", template="nscf", kwargs...)
-    addcalc!(job, template, filename, :calculation => "'scf'",args...; kwargs...)
-    setkpoints!(job, filename, kpoints, print=false)
+function addcalc!(job::DFJob, kpoints::NTuple{6}, args...; name="scf", template="nscf", kwargs...)
+    addcalc!(job, template, name, :calculation => "'scf'",args...; kwargs...)
+    setkpoints!(job, name, kpoints, print=false)
     job
 end
 
@@ -779,26 +740,15 @@ function setlocaldir!(job, dir)
     return job
 end
 
-hasoutputfile(job::DFJob, input) = ispath(outpath(job, input))
-
-"Returns the outputdata for the input."
-function outputdata(job::DFJob, input::DFInput; print=true)
-    if hasoutput(input)
-        return outdata(input)
-    end
-    if hasoutputfile(job, input)
-        input.outdata = readoutput(input, outpath(job, input))
-        return input.outdata
-    end
-    print && warn("No output data or output file found for input: $(input.filename).")
-    return SymAnyDict()
-end
+"Finds the input corresponding to the name and returns the full output path."
+outpath(job::DFJob, n::String) = outpath(input(job,n))
 
 "Finds the output files for each of the inputs of a job, and groups all found data into a dictionary."
 function outputdata(job::DFJob, inputs::Vector{DFInput}; print=true)
     datadict = Dict()
+    stime = starttime(job)
     for input in inputs
-        tout = outputdata(job, input; print=print)
+        tout = outputdata(input; print=print, overwrite=hasnewout(input, stime))
         if !isempty(tout)
             datadict[name(input)] = tout
         end
@@ -806,8 +756,8 @@ function outputdata(job::DFJob, inputs::Vector{DFInput}; print=true)
     datadict
 end
 outputdata(job::DFJob; kwargs...) = outputdata(job, inputs(job); kwargs...)
-outputdata(job::DFJob, filenames...; kwargs...) = outputdata(job, inputs(job, filenames); kwargs...)
-outputdata(job::DFJob, filename; kwargs...) = outputdata(job, input(job, filename); kwargs...)
+outputdata(job::DFJob, names...; kwargs...) = outputdata(job, inputs(job, names); kwargs...)
+outputdata(job::DFJob, name; kwargs...) = outputdata(job, input(job, name); kwargs...)
 
 function isrunning(job::DFJob)
     @assert haskey(job.metadata, :slurmid) error("No slurmid found for job $(job.name)")

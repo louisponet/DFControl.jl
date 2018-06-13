@@ -9,7 +9,7 @@ getfield_(x, f) = isdefined(x, f) ? getfield(x, f) : UNDEF
 end
 
 @render i::Inline x::DFInput begin
-    runstring = x.run ? span(".syntax--constant.syntax--other.syntax--symbol",x.filename) : span(".syntax--comment", x.filename)
+    runstring = x.run ? span(".syntax--constant.syntax--other.syntax--symbol", name(x)) : span(".syntax--comment", name(x))
     fields = filter(x->x != run, fieldnames(x)[2:end])
     Tree(runstring , [SubTree(Text("$f → "), getfield(x, f)) for f in fields])
 end

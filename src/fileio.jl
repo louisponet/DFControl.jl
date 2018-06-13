@@ -126,41 +126,41 @@ function writeexec(f, exec::Exec)
 end
 
 function writetojob(f, job, input::DFInput)
-    filename    = input.filename
+    filename    = infile(input)
     should_run  = input.run
-    save(input, job.structure, job.local_dir * filename)
+    save(input, job.structure)
     if !should_run
         write(f, "#")
     end
     writeexec.(f, execs(input))
-    write(f, "< $filename > $(split(filename,".")[1]).out\n")
+    write(f, "< $filename > $(outfile(input))\n")
     return 1
 end
 
 function writetojob(f, job, input::DFInput{Wannier90})
-    filename    = input.filename
+    filename    = infile(input)
     should_run  = input.run
     id = findfirst(job.inputs, input)
-    seedname = splitext(filename)[1]
+    seedname = name(input)
 
     pw2wanid = findfirst(x -> contains(x.execs[2].exec, "pw2wannier90.x"), job.inputs[id+1:end])+id
     pw2wan   = job.inputs[pw2wanid]
-    setflags!(pw2wan, :seedname => "'$(splitext(input.filename)[1])'",print=false)
+    setflags!(pw2wan, :seedname => "'$seedname'", print=false)
 
     if !pw2wan.run
         write(f, "#")
     end
     writeexec.(f, execs(input))
-    write(f, "-pp $(filename[1:end-4]).win > $(filename[1:end-4]).wout\n")
+    write(f, "-pp $filename > $(outfile(input))\n")
 
-    save(input, job.structure, job.local_dir * filename)
+    save(input, job.structure)
     writetojob(f, job, pw2wan)
 
     if !should_run
         write(f, "#")
     end
     writeexec.(f, execs(input))
-    write(f, "$(filename[1:end-4]).win > $(filename[1:end-4]).wout\n")
+    write(f, "$filename > $(outfile(input))\n")
     return 2
 end
 """
@@ -170,16 +170,15 @@ Writes all the input files and job file that are linked to a DFJob.
 """
 function writejobfiles(job::DFJob)
     rm.(job.local_dir .* searchdir(job.local_dir, ".in"))
-    new_filenames   = getfield.(job.inputs, :filename)
     open(job.local_dir * "job.tt", "w") do f
         write(f, "#!/bin/bash\n")
         write_job_name(f, job)
         write_job_header(f, job)
-        abiinputs = Vector{DFInput{Abinit}}(filter(x -> package(x) == Abinit, job.inputs))
-        !isempty(abiinputs) && push!(new_filenames, writetojob(f, job, abiinputs)...)
+        abiinputs = Vector{DFInput{Abinit}}(filter(x -> package(x) == Abinit, inputs(job)))
+        !isempty(abiinputs) && writetojob(f, job, abiinputs)
         i = length(abiinputs) + 1
-        while i <= length(job.inputs)
-            i += writetojob(f, job, job.inputs[i])
+        while i <= length(inputs(job))
+            i += writetojob(f, job, inputs(job)[i])
         end
     end
 end
@@ -253,12 +252,6 @@ function read_job_filenames(job_file::String)
     return input_files, output_files
 end
 
-"""
-    read_job_file(job_file::String)
-
-Reads and returns all the relevant information contained in the job input file.
-All files that are read contain extension "in".
-"""
 function read_job_inputs(job_file::String)
     dir = splitdir(job_file)[1]
     name   = ""
@@ -280,7 +273,7 @@ function read_job_inputs(job_file::String)
                 elseif only_exec == "wannier90.x"
                     input, structure = read_wannier_input(joinpath(dir, splitext(inputfile)[1] * ".win"), runcommand=runcommand, run=run, exec=exec)
                 end
-                id = find(x-> x == splitext(inputfile)[1], getindex.(splitext.(getfield.(inputs, :filename)),1))
+                id = find(x-> infile(x) == inputfile, inputs)
                 if !isempty(id)
                     inputs[id[1]] = input
                     structures[id[1]] = structure

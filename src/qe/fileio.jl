@@ -391,15 +391,16 @@ function read_qe_input(filename, T=Float64::Type; exec=Exec("pw.x"), runcommand=
 
     structure = extract_structure!(structure_name, flags, cell_block, atom_block, pseudo_block)
     pop!.(flags, [:ibrav, :nat, :ntyp, :A, :celldm_1, :celldm], nothing)
-    return DFInput{QE}(splitdir(filename)[2], flags, data, [runcommand, exec], run), structure
+    dir, file = splitdir(filename)
+    return DFInput{QE}(splitext(file)[1], dir, flags, data, [runcommand, exec], run), structure
 end
 
 """
-    save(input::DFInput{QE}, structure, filename::String=input.filename)
+    save(input::DFInput{QE}, structure, filename::String=inpath(input))
 
 Writes a Quantum Espresso input file.
 """
-function save(input::DFInput{QE}, structure, filename::String=input.filename)
+function save(input::DFInput{QE}, structure, filename::String=inpath(input))
     open(filename, "w") do f
         write_flag(flag_data) = write_flag_line(f, flag_data[1], flag_data[2])
         write_dat(data)       = write_data(f, data)

@@ -6,26 +6,29 @@ mutable struct InputData
 end
 
 @with_kw mutable struct DFInput{P <: Package}
-    filename ::String
+    name     ::String
+    dir      ::String
     flags    ::SymAnyDict
     data     ::Vector{InputData}
     execs    ::Vector{Exec}
     run      ::Bool
     outdata  ::SymAnyDict=SymAnyDict()
 end
-DFInput{P}(file, flags, data, execs, run) where P<:Package = DFInput{P}(file, flags, data, execs, run, SymAnyDict())
+DFInput{P}(name, dir, flags, data, execs, run) where P<:Package = DFInput{P}(name, dir, flags, data, execs, run, SymAnyDict())
+
 """
-    DFInput(template::DFInput, filename, newflags...; runcommand=template.runcommand, run=true)
+    DFInput(template::DFInput, name, newflags...; runcommand=template.runcommand, run=true)
 
 Creates a new `DFInput` from a template `DFInput`, setting the newflags in the new one.
 """
-function DFInput(template::DFInput, filename, newflags...; excs=execs(template), run=true, data=nothing)
+function DFInput(template::DFInput, name, newflags...; excs=execs(template), run=true, data=nothing, dir=template.dir)
     newflags = Dict(newflags...)
 
     input          = deepcopy(template)
-    input.filename = filename
+    input.name     = name
     input.execs    = excs
     input.run      = run
+    input.dir      = dir
     setflags!(input, newflags..., print=false)
 
     if data != nothing
@@ -36,7 +39,16 @@ function DFInput(template::DFInput, filename, newflags...; excs=execs(template),
     return input
 end
 
-filename(input::DFInput) = input.filename
+name(input::DFInput) = input.name
+dir(input::DFInput)  = input.dir
+namewext(input::DFInput, ext)      = name(input) * ext
+infile(input::DFInput{QE})         = namewext(input, ".in")
+infile(input::DFInput{Wannier90})  = namewext(input, ".win")
+outfile(input::DFInput{QE})        = namewext(input, ".out")
+outfile(input::DFInput{Wannier90}) = namewext(input, ".wout")
+inpath(input::DFInput)             = joinpath(dir(input), infile(input))
+outpath(input::DFInput)            = joinpath(dir(input), outfile(input))
+
 
 flags(input::DFInput)    = input.flags
 function flag(input::DFInput, flag::Symbol)
@@ -47,8 +59,6 @@ end
 
 Base.eltype(::DFInput{P}) where P = P
 package(::DFInput{P}) where P = P
-
-name(input::DFInput) = splitext(filename(input))[1]
 
 data(input::DFInput)     = input.data
 data(input::DFInput, name) = getfirst(x-> x.name == name, input.data)
@@ -65,13 +75,8 @@ rmexecflags!(input::DFInput, exec::String, flags...) = rmflags!.(execs(input, ex
 
 runcommand(input::DFInput) = input.execs[1]
 
-outfile(input::DFInput{QE})        = splitext(input.filename)[1]*".out"
-outfile(input::DFInput{Wannier90}) = splitext(input.filename)[1]*".wout"
-
 setflow!(input::DFInput, run) = input.run = run
 
-outdata(input::DFInput) = input.outdata
-hasoutput(input::DFInput) = !isempty(outdata(input))
 
 """
     setkpoints!(input::DFInput, k_grid)
@@ -253,11 +258,30 @@ end
 
 isspincalc(input::DFInput) = all(flag(input, :nspin) .!= [nothing, 1])
 
-readoutput(input::DFInput{QE}, filename) = read_qe_output(filename)
-readoutput(input::DFInput{Wannier90}, filename) = SymAnyDict()
+outdata(input::DFInput) = input.outdata
+hasoutput(input::DFInput) = !isempty(outdata(input))
 
-function readbands(input::DFInput, filename)
-    to = readoutput(input, filename)
+hasoutfile(input::DFInput) = ispath(outpath(input))
+hasnewout(input::DFInput, time) = mtime(outpath(input)) > time
+
+"Returns the outputdata for the input."
+function outputdata(input::DFInput; print=true, overwrite=true)
+    if hasoutput(input) && !overwrite
+        return outdata(input)
+    end
+    if hasoutfile(input)
+        input.outdata = readoutput(input)
+        return input.outdata
+    end
+    print && warn("No output data or output file found for input: $(input.filename).")
+    return SymAnyDict()
+end
+
+readoutput(input::DFInput{QE}) = read_qe_output(outpath(input))
+readoutput(input::DFInput{Wannier90}) = SymAnyDict()
+
+function readbands(input::DFInput)
+    to = readoutput(input)
     if haskey(to, :bands)
         return to[:bands]
     else
