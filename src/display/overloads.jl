@@ -36,7 +36,7 @@ function Base.show(io::IO, job::DFJob)
     """
     dfprintln(io, s)
     for i in inputs(job)
-        dfprintln(io, "\t$(i.filename) => runs=$(i.run)")
+        dfprintln(io, "\t$(name(i)) => runs=$(i.run)")
     end
 end
 
