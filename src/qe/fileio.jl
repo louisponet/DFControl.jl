@@ -20,9 +20,10 @@ Possible keys:
  - `:total_force`
  - `:colin_mag_moments`
  - `:bands`
+ - `:estimated_accuracy`
 """
 function read_qe_output(filename::String, T=Float64)
-    out = Dict{Symbol,Any}()
+    out = Dict{Symbol,Any}(:estimated_accuracy => T[])
     open(filename, "r") do f
         prefac_k     = nothing
         k_eigvals    = Array{Array{T,1},1}()
@@ -88,7 +89,6 @@ function read_qe_output(filename::String, T=Float64)
                 warn("File ended unexpectedly, returning what info has been gathered so far.")
                 return out
                 break
-
                 #vcrel outputs
             elseif contains(line, "Begin final coordinates")
                 line = readline(f)
@@ -127,6 +127,8 @@ function read_qe_output(filename::String, T=Float64)
                     push!(out[key], parse(split(line)[6]))
                     line = readline(f)
                 end
+            elseif contains(line, "estimated scf accuracy")
+                push!(out[:estimated_accuracy], parse(split(line)[end-1]))
             end
         end
 
