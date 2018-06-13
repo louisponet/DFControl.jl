@@ -565,7 +565,7 @@ var documenterSearchIndex = {"docs": [
     "page": "FileIO",
     "title": "DFControl.read_qe_output",
     "category": "function",
-    "text": "read_qe_output(filename::String, T=Float64)\n\nReads a generic quantum espresso input, returns a dictionary with all found data in the file. Possible keys:\n\n:fermi\n:polarization\n:pol_mod\n:k_cryst\n:k_cart\n:alat\n:cell_parameters\n:pos_option\n:atomic_positions\n:total_force\n:colin_mag_moments\n:bands\n:estimated_accuracy\n\n\n\n"
+    "text": "read_qe_output(filename::String, T=Float64)\n\nReads a generic quantum espresso input, returns a dictionary with all found data in the file. Possible keys:\n\n:fermi\n:polarization\n:pol_mod\n:k_cryst\n:k_cart\n:alat\n:cell_parameters\n:pos_option\n:atomic_positions\n:total_force\n:colin_mag_moments\n:bands\n:accuracy\n\n\n\n"
 },
 
 {
