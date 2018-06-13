@@ -597,7 +597,7 @@ var documenterSearchIndex = {"docs": [
     "page": "FileIO",
     "title": "DFControl.save",
     "category": "function",
-    "text": "save(input::DFInput{Wannier90}, structure, filename::String=inpath(input))\n\nWrites the DFInput{Wannier90} and structure to a file, that can be interpreted by WANNIER90. The atoms in the structure must have projections defined.\n\n\n\n"
+    "text": "save(input::DFInput{QE}, structure, filename::String=inpath(input))\n\nWrites a Quantum Espresso input file.\n\n\n\n"
 },
 
 {
@@ -605,7 +605,7 @@ var documenterSearchIndex = {"docs": [
     "page": "FileIO",
     "title": "DFControl.save",
     "category": "function",
-    "text": "save(input::DFInput{QE}, structure, filename::String=inpath(input))\n\nWrites a Quantum Espresso input file.\n\n\n\n"
+    "text": "save(input::DFInput{Wannier90}, structure, filename::String=inpath(input))\n\nWrites the DFInput{Wannier90} and structure to a file, that can be interpreted by WANNIER90. The atoms in the structure must have projections defined.\n\n\n\n"
 },
 
 {
