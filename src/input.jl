@@ -256,7 +256,10 @@ function setdataoption!(input::DFInput, name::Symbol, option::Symbol; print=true
     return input
 end
 
-isspincalc(input::DFInput) = all(flag(input, :nspin) .!= [nothing, 1])
+isbandscalc(input::DFInput{QE}) = flag(input, :calculation) == "'bands'"
+isnscfcalc(input::DFInput{QE}) = flag(input, :calculation) == "'nscf'"
+isscfcalc(input::DFInput{QE}) = flag(input, :calculation) == "'scf'"
+isspincalc(input::DFInput{QE}) = all(flag(input, :nspin) .!= [nothing, 1])
 
 outdata(input::DFInput) = input.outdata
 hasoutput(input::DFInput) = !isempty(outdata(input))
@@ -273,7 +276,7 @@ function outputdata(input::DFInput; print=true, overwrite=true)
         input.outdata = readoutput(input)
         return input.outdata
     end
-    print && warn("No output data or output file found for input: $(input.filename).")
+    print && warn("No output data or output file found for input: $(name(input)).")
     return SymAnyDict()
 end
 

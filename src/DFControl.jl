@@ -33,9 +33,9 @@ module DFControl
            outputdata,
 
            setheaderword!, setserverdir!, setlocaldir!,
-           save, submit, abort, isrunning,
+           save, submit, abort, isrunning, progressreport,
            undo, undo!
-           
+
     include("constants.jl")
     export qe_input_flags
 

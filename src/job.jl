@@ -295,27 +295,18 @@ function setflags!(job::DFJob, names::Vector{String}, flags...; print=true)
     UNDO_JOBS[job.id] = deepcopy(job)
     found_keys = Symbol[]
 
-    for calc in input.(job, names)
-        t_found_keys, = setflags!(calc, flags..., print=print)
-        for key in t_found_keys
-            if !(key in found_keys) push!(found_keys, key) end
-        end
+    for calc in inputs(job, names)
+        t_, = setflags!(calc, flags..., print=print)
+        push!(found_keys, t_...)
     end
-
-    n_found_keys = Symbol[]
-    for (k, v) in flags
-        if !(k in found_keys) push!(n_found_keys, k) end
-    end
-    if print
-        if 1 < length(n_found_keys)
-            dfprintln("flags '$(join(":" .* String.(n_found_keys),", "))' were not found in the allowed input variables of the specified inputs!")
-        elseif length(n_found_keys) == 1
-            dfprintln("flag '$(":" * String(n_found_keys[1]))' was not found in the allowed input variables of the specified inputs!")
-        end
+    nfound = setdiff([k for (k, v) in flags], found_keys)
+    if print && length(nfound) > 0
+        f = length(nfound) == 1 ? "flag" : "flags"
+        dfprintln("$f '$(join(":" .* String.(setdiff(flagkeys, found_keys)),", "))' were not found in the allowed input variables of the specified inputs!")
     end
     return job
 end
-setflags!(job::DFJob, flags...;kwargs...)                   = setflags!(job, [name(calc) for calc in inputs(job)], flags...;kwargs...)
+setflags!(job::DFJob, flags...;kwargs...)                   = setflags!(job, name.(inputs(job)), flags...;kwargs...)
 setflags!(job::DFJob, name::String, flags...;kwargs...) = setflags!(job, [name], flags...;kwargs...)
 
 """
@@ -330,7 +321,7 @@ function flag(job::DFJob, names, fl::Symbol)
             return flag_
         end
     end
-    error("Flag $fl not found in any input.")
+    warn("Flag $fl not found in any input.")
 end
 
 """
@@ -474,7 +465,7 @@ end
 
 Returns a list the atoms in the structure.
 """
-atoms(job::DFJob) = job.structure.atoms
+atoms(job::DFJob) = atoms(job.structure)
 
 "Returns the ith atom with id `atsym`."
 atom(job::DFJob, atsym::Symbol, i=1) = filter(x -> x.id == atsym, atoms(job))[i]
@@ -512,10 +503,7 @@ sets the option of specified data in the specified inputs.
 """
 function setdataoption!(job::DFJob, names::Vector{String}, dataname::Symbol, option::Symbol; kwargs...)
     UNDO_JOBS[job.id] = deepcopy(job)
-
-    for calc in inputs(job, names)
-        setdataoption!(calc, dataname, option; kwargs...)
-    end
+    setdataoption!.(inputs(job, names), dataname, option; kwargs...)
     return job
 end
 setdataoption!(job::DFJob, n::String, name::Symbol, option::Symbol; kw...) = setdataoption!(job, [n], name, option; kw...)
@@ -744,11 +732,15 @@ end
 outpath(job::DFJob, n::String) = outpath(input(job,n))
 
 "Finds the output files for each of the inputs of a job, and groups all found data into a dictionary."
-function outputdata(job::DFJob, inputs::Vector{DFInput}; print=true)
+function outputdata(job::DFJob, inputs::Vector{DFInput}; print=true, onlynew=true)
     datadict = Dict()
     stime = starttime(job)
     for input in inputs
-        tout = outputdata(input; print=print, overwrite=hasnewout(input, stime))
+        newout = hasnewout(input, stime)
+        if onlynew && !newout
+            continue
+        end
+        tout = outputdata(input; print=print, overwrite=newout)
         if !isempty(tout)
             datadict[name(input)] = tout
         end
@@ -774,4 +766,19 @@ function isrunning(job::DFJob)
             return any(splstr[i+2] .== ["Q","R"])
         end
     end
+end
+
+function progressreport(job::DFJob; kwargs...)
+    dat = outputdata(job; kwargs...)
+    plotdat = SymAnyDict(:fermi=>0.0)
+    for (n, d) in dat
+        i = input(job, n)
+        if isbandscalc(i) && haskey(d, :bands)
+            plotdat[:bands] = d[:bands]
+        elseif isscfcalc(i) || isnscfcalc(i)
+            haskey(d, :fermi) && (plotdat[:fermi] = d[:fermi])
+            haskey(d, :accuracy) && (plotdat[:accuracy] = d[:accuracy])
+        end
+    end
+    return plotdat
 end

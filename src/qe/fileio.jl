@@ -20,10 +20,10 @@ Possible keys:
  - `:total_force`
  - `:colin_mag_moments`
  - `:bands`
- - `:estimated_accuracy`
+ - `:accuracy`
 """
 function read_qe_output(filename::String, T=Float64)
-    out = Dict{Symbol,Any}(:estimated_accuracy => T[])
+    out = Dict{Symbol,Any}()
     open(filename, "r") do f
         prefac_k     = nothing
         k_eigvals    = Array{Array{T,1},1}()
@@ -128,7 +128,13 @@ function read_qe_output(filename::String, T=Float64)
                     line = readline(f)
                 end
             elseif contains(line, "estimated scf accuracy")
-                push!(out[:estimated_accuracy], parse(split(line)[end-1]))
+                key = :accuracy
+                acc = parse(split(line)[end-1])
+                if haskey(out, key)
+                    push!(out[key], acc)
+                else
+                    out[key] = [acc]
+                end
             end
         end
 

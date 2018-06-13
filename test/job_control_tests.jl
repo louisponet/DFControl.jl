@@ -6,7 +6,7 @@ testjobpath = joinpath(@__DIR__, "testassets/test_job/")
 job = DFJob(testjobpath);
 
 #output stuff
-out = outputdata(job;print=false);
+out = outputdata(job;print=false,onlynew=false);
 @test haskey(out, "nscf")
 @test haskey(out["nscf"], :fermi)
 
@@ -137,6 +137,9 @@ setdataoption!(job, :k_points, :test, print=false)
 job = undo(job)
 @test data(job, "nscf", :k_points).option == :blabla
 
+report = progressreport(job; onlynew=false, print=false)
+@test report[:fermi] == 17.4572
+@test length(report[:accuracy]) == 9
 
 rm.(inpath.(job.inputs))
 rm(job.local_dir * "job.tt")
