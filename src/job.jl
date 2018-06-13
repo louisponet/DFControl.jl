@@ -749,7 +749,7 @@ function outputdata(job::DFJob, inputs::Vector{DFInput}; print=true, onlynew=tru
 end
 outputdata(job::DFJob; kwargs...) = outputdata(job, inputs(job); kwargs...)
 outputdata(job::DFJob, names::String...; kwargs...) = outputdata(job, inputs(job, names); kwargs...)
-outputdata(job::DFJob, name::String; kwargs...) = outputdata(job, inputs(job, name); kwargs...)
+outputdata(job::DFJob, name::String; kwargs...) = outputdata(job, [input(job, name)]; kwargs...)
 
 function isrunning(job::DFJob)
     @assert haskey(job.metadata, :slurmid) error("No slurmid found for job $(job.name)")
