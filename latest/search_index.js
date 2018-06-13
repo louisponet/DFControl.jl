@@ -65,11 +65,11 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "job.html#DFControl.addcalc!-Tuple{DFControl.DFJob,Array{#s46,1} where #s46<:(NTuple{4,T} where T),Vararg{Any,N} where N}",
+    "location": "job.html#DFControl.addcalc!-Tuple{DFControl.DFJob,Array{#s48,1} where #s48<:(NTuple{4,T} where T),Vararg{Any,N} where N}",
     "page": "Job",
     "title": "DFControl.addcalc!",
     "category": "method",
-    "text": "addcalc!(job::DFJob, kpoints::Vector{NTuple{4}}, newflags...; filename=\"bands.in\", run=true, template=\"scf\")\n\nSearches for the given template and creates a bands calculation from it.\n\n\n\n"
+    "text": "addcalc!(job::DFJob, kpoints::Vector{NTuple{4}}, newflags...; name=\"bands\", run=true, template=\"scf\")\n\nSearches for the given template and creates a bands calculation from it.\n\n\n\n"
 },
 
 {
@@ -77,7 +77,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Job",
     "title": "DFControl.addcalc!",
     "category": "method",
-    "text": "addcalc!(job::DFJob, kpoints::NTuple{6}, newflags...; filename=\"scf.in\", run=true, template=\"nscf\")\n\nSearches for the given template and creates a bands calculation from it.\n\n\n\n"
+    "text": "addcalc!(job::DFJob, kpoints::NTuple{6}, newflags...; name=\"scf\", run=true, template=\"nscf\")\n\nSearches for the given template and creates a bands calculation from it.\n\n\n\n"
 },
 
 {
@@ -85,7 +85,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Job",
     "title": "DFControl.addcalc!",
     "category": "method",
-    "text": "addcalc!(job::DFJob, kpoints::NTuple{3}, newflags...; filename=\"nscf.in\", run=true, template=\"scf\")\n\nSearches for the given template and creates a bands calculation from it.\n\n\n\n"
+    "text": "addcalc!(job::DFJob, kpoints::NTuple{3}, newflags...; name=\"nscf\", run=true, template=\"scf\")\n\nSearches for the given template and creates a bands calculation from it.\n\n\n\n"
 },
 
 {
@@ -93,7 +93,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Job",
     "title": "DFControl.addwancalc!",
     "category": "method",
-    "text": "addwancalc!(job::DFJob, nscf::DFInput{QE}, projections;\n                 Emin=-5.0,\n                 Epad=5.0,\n                 wanflags=SymAnyDict(),\n                 pw2wanexec=Exec(\"pw2wannier90.x\", nscf.execs[2].dir, nscf.execs[2].flags),\n                 wanexec=Exec(\"wannier90.x\", nscf.execs[2].dir),\n                 bands=read_qe_bands_file(outpath(job, nscf)))\n\nAdds a wannier calculation to a job. For now only works with QE.\n\n\n\n"
+    "text": "addwancalc!(job::DFJob, nscf::DFInput{QE}, projections;\n                 Emin=-5.0,\n                 Epad=5.0,\n                 wanflags=SymAnyDict(),\n                 pw2wanexec=Exec(\"pw2wannier90.x\", nscf.execs[2].dir, nscf.execs[2].flags),\n                 wanexec=Exec(\"wannier90.x\", nscf.execs[2].dir),\n                 bands=readbands(nscf))\n\nAdds a wannier calculation to a job. For now only works with QE.\n\n\n\n"
 },
 
 {
@@ -133,7 +133,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Job",
     "title": "DFControl.flag",
     "category": "method",
-    "text": "flag(job::DFJob, calc_filenames, flag_name::Symbol)\n\nLooks through the calculation filenames and returns the value of the specified flag.\n\n\n\n"
+    "text": "flag(job::DFJob, names, flag_name::Symbol)\n\nLooks through the input names and returns the value of the specified flag.\n\n\n\n"
 },
 
 {
@@ -145,43 +145,19 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "job.html#DFControl.input-Tuple{DFControl.DFJob,Array{String,1}}",
-    "page": "Job",
-    "title": "DFControl.input",
-    "category": "method",
-    "text": "input(job::DFJob, filenames::Array)\n\nReturns an array of the inputs that match one of the filenames.\n\n\n\n"
-},
-
-{
-    "location": "job.html#DFControl.input-Tuple{DFControl.DFJob,String}",
-    "page": "Job",
-    "title": "DFControl.input",
-    "category": "method",
-    "text": "input(job::DFJob, filename::String)\n\nReturns the input that matches the filename.\n\n\n\n"
-},
-
-{
     "location": "job.html#DFControl.inputs-Tuple{DFControl.DFJob,Array{T,1} where T}",
     "page": "Job",
     "title": "DFControl.inputs",
     "category": "method",
-    "text": "inputs(job::DFJob, filenames::Vector)\n\nReturns an array of the inputs that match one of the filenames.\n\n\n\n"
+    "text": "inputs(job::DFJob, names::Vector)\n\nReturns an array of the inputs that match the names.\n\n\n\n"
 },
 
 {
-    "location": "job.html#DFControl.inputs-Tuple{DFControl.DFJob,String}",
-    "page": "Job",
-    "title": "DFControl.inputs",
-    "category": "method",
-    "text": "inputs(job::DFJob, filename::String)\n\nReturns an array of the input that matches the filename.\n\n\n\n"
-},
-
-{
-    "location": "job.html#DFControl.outpath-Tuple{DFControl.DFJob,DFControl.DFInput{DFControl.QE}}",
+    "location": "job.html#DFControl.outpath-Tuple{DFControl.DFJob,String}",
     "page": "Job",
     "title": "DFControl.outpath",
     "category": "method",
-    "text": "Provides the path of the output to the given input.\n\n\n\n"
+    "text": "Finds the input corresponding to the name and returns the full output path.\n\n\n\n"
 },
 
 {
@@ -190,22 +166,6 @@ var documenterSearchIndex = {"docs": [
     "title": "DFControl.outputdata",
     "category": "method",
     "text": "Finds the output files for each of the inputs of a job, and groups all found data into a dictionary.\n\n\n\n"
-},
-
-{
-    "location": "job.html#DFControl.outputdata-Tuple{DFControl.DFJob,DFControl.DFInput}",
-    "page": "Job",
-    "title": "DFControl.outputdata",
-    "category": "method",
-    "text": "Returns the outputdata for the input.\n\n\n\n"
-},
-
-{
-    "location": "job.html#DFControl.path-Tuple{DFControl.DFJob,DFControl.DFInput}",
-    "page": "Job",
-    "title": "DFControl.path",
-    "category": "method",
-    "text": "Returns the full path of the input\n\n\n\n"
 },
 
 {
@@ -225,11 +185,11 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "job.html#DFControl.rmflags!-Tuple{DFControl.DFJob,Array{#s46,1} where #s46<:AbstractString,Vararg{Any,N} where N}",
+    "location": "job.html#DFControl.rmflags!-Tuple{DFControl.DFJob,Array{#s48,1} where #s48<:AbstractString,Vararg{Any,N} where N}",
     "page": "Job",
     "title": "DFControl.rmflags!",
     "category": "method",
-    "text": "rmflags!(job::DFJob, calc_filenames, flags...)\n\nLooks through the calculation filenames and removes the specified flags.\n\n\n\n"
+    "text": "rmflags!(job::DFJob, names, flags...)\n\nLooks through the input names and removes the specified flags.\n\n\n\n"
 },
 
 {
@@ -241,7 +201,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "job.html#DFControl.setatoms!-Tuple{DFControl.DFJob,Dict{Symbol,#s45} where #s45<:(Array{#s44,1} where #s44<:(GeometryTypes.Point{3,T} where T))}",
+    "location": "job.html#DFControl.setatoms!-Tuple{DFControl.DFJob,Dict{Symbol,#s47} where #s47<:(Array{#s46,1} where #s46<:(GeometryTypes.Point{3,T} where T))}",
     "page": "Job",
     "title": "DFControl.setatoms!",
     "category": "method",
@@ -269,7 +229,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Job",
     "title": "DFControl.setdata!",
     "category": "method",
-    "text": "setdata!(job::DFJob, filenames, block::Block)\n\nAdds a block to the specified filenames.\n\n\n\n"
+    "text": "setdata!(job::DFJob, names, data::InputData)\n\nAdds a block to the specified names.\n\n\n\n"
 },
 
 {
@@ -285,7 +245,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Job",
     "title": "DFControl.setdataoption!",
     "category": "method",
-    "text": "setdataoption!(job::DFJob, filenames::Array{String,1}, name::Symbol, option::Symbol)\n\nsets the option of specified data block in the specified calculations.\n\n\n\n"
+    "text": "setdataoption!(job::DFJob, names::Vector{String}, dataname::Symbol, option::Symbol)\n\nsets the option of specified data in the specified inputs.\n\n\n\n"
 },
 
 {
@@ -305,19 +265,11 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "job.html#DFControl.setfilename!-Tuple{DFControl.DFJob,String,String}",
-    "page": "Job",
-    "title": "DFControl.setfilename!",
-    "category": "method",
-    "text": "setfilename!(job::DFJob, old_filename::String, new_filename::String)\n\nsets the filename from the old to the new one.\n\n\n\n"
-},
-
-{
     "location": "job.html#DFControl.setflags!-Tuple{DFControl.DFJob,Array{String,1},Vararg{Any,N} where N}",
     "page": "Job",
     "title": "DFControl.setflags!",
     "category": "method",
-    "text": "setflags!(job::DFJob, calculations::Vector{String}, flags...; print=true)\n\nSets the flags in the calculations to the flags specified. This only happens if the specified flags are valid for the calculations. If necessary the correct control block will be added to the calculation (e.g. for QEInputs).\n\nThe values that are supplied will be checked whether they are valid.\n\n\n\n"
+    "text": "setflags!(job::DFJob, names::Vector{String}, flags...; print=true)\n\nSets the flags in the names to the flags specified. This only happens if the specified flags are valid for the names. If necessary the correct control block will be added to the calculation (e.g. for QEInputs).\n\nThe values that are supplied will be checked whether they are valid.\n\n\n\n"
 },
 
 {
@@ -349,7 +301,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Job",
     "title": "DFControl.setkpoints!",
     "category": "method",
-    "text": "setkpoints!(job::DFJob, calc_filename, k_points)\n\nsets the data in the k point DataBlock inside the specified calculation.\n\n\n\n"
+    "text": "setkpoints!(job::DFJob, n, k_points)\n\nsets the data in the k point DataBlock inside the specified inputs.\n\n\n\n"
 },
 
 {
@@ -445,7 +397,15 @@ var documenterSearchIndex = {"docs": [
     "page": "Inputs",
     "title": "DFControl.DFInput",
     "category": "method",
-    "text": "DFInput(template::DFInput, filename, newflags...; runcommand=template.runcommand, run=true)\n\nCreates a new DFInput from a template DFInput, setting the newflags in the new one.\n\n\n\n"
+    "text": "DFInput(template::DFInput, name, newflags...; runcommand=template.runcommand, run=true)\n\nCreates a new DFInput from a template DFInput, setting the newflags in the new one.\n\n\n\n"
+},
+
+{
+    "location": "input.html#DFControl.outputdata-Tuple{DFControl.DFInput}",
+    "page": "Inputs",
+    "title": "DFControl.outputdata",
+    "category": "method",
+    "text": "Returns the outputdata for the input.\n\n\n\n"
 },
 
 {
@@ -637,7 +597,7 @@ var documenterSearchIndex = {"docs": [
     "page": "FileIO",
     "title": "DFControl.save",
     "category": "function",
-    "text": "save(input::DFInput{Wannier90}, structure, filename::String=input.filename)\n\nWrites the DFInput{Wannier90} and structure to a file, that can be interpreted by WANNIER90. The atoms in the structure must have projections defined.\n\n\n\n"
+    "text": "save(input::DFInput{QE}, structure, filename::String=inpath(input))\n\nWrites a Quantum Espresso input file.\n\n\n\n"
 },
 
 {
@@ -645,7 +605,7 @@ var documenterSearchIndex = {"docs": [
     "page": "FileIO",
     "title": "DFControl.save",
     "category": "function",
-    "text": "save(input::DFInput{QE}, structure, filename::String=input.filename)\n\nWrites a Quantum Espresso input file.\n\n\n\n"
+    "text": "save(input::DFInput{Wannier90}, structure, filename::String=inpath(input))\n\nWrites the DFInput{Wannier90} and structure to a file, that can be interpreted by WANNIER90. The atoms in the structure must have projections defined.\n\n\n\n"
 },
 
 {
