@@ -271,7 +271,7 @@ end
 """
     abort(job::DFJob)
 
-Will look for the job id inside it's metadata and try to remove it from the server queue. If the lastrunning input happened to be a QE input, the correct abort file will be written. If it's Wannier90 the job will be brutally removed from the slurm queue.
+Will look for the job id inside it's metadata and try to remove it from the server queue. If the lastrunning input happened to be a QE input, the correct abort file will be written. If it's Wannier90 the job will be brutally removed from the slurm queue. EDIT: It's absolutely impossible to gracefully abort a multi job script with QE... for later
 """
 function abort(job::DFJob)
     lastrunning = runninginput(job)

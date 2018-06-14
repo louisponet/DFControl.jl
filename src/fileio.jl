@@ -393,6 +393,7 @@ function write_cell(f::IO, cell::AbstractMatrix)
     write(f, "$(cell[3, 1]) $(cell[3, 2]) $(cell[3, 3])\n")
 end
 
+"LOL this absolutely is impossible to do for QE"
 function writeabortfile(job::DFJob, input::DFInput{QE})
     abortpath = joinpath(job.local_dir,"$(flag(input, :prefix)[2:end-1]).EXIT")
     open(abortpath, "w") do f
