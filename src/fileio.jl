@@ -394,7 +394,7 @@ function write_cell(f::IO, cell::AbstractMatrix)
 end
 
 function writeabortfile(job::DFJob, input::DFInput{QE})
-    open(joinpath(job.local_dir,"$(flag(input, :prefix)).EXIT"), "w") do f
+    open(joinpath(job.local_dir,"$(flag(input, :prefix)[2:end-1]).EXIT"), "w") do f
         write(f, " \n")
     end
 end
