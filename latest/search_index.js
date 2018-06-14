@@ -53,7 +53,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Job",
     "title": "DFControl.abort",
     "category": "method",
-    "text": "abort(job::DFJob)\n\nWill look for the job id inside it\'s metadata and try to remove it from the server queue. If the lastrunning input happened to be a QE input, the correct abort file will be written. If it\'s Wannier90 the job will be brutally removed from the slurm queue.\n\n\n\n"
+    "text": "abort(job::DFJob)\n\nWill look for the job id inside it\'s metadata and try to remove it from the server queue. If the lastrunning input happened to be a QE input, the correct abort file will be written. If it\'s Wannier90 the job will be brutally removed from the slurm queue. EDIT: It\'s absolutely impossible to gracefully abort a multi job script with QE... for later\n\n\n\n"
 },
 
 {
@@ -597,7 +597,7 @@ var documenterSearchIndex = {"docs": [
     "page": "FileIO",
     "title": "DFControl.save",
     "category": "function",
-    "text": "save(input::DFInput{Wannier90}, structure, filename::String=inpath(input))\n\nWrites the DFInput{Wannier90} and structure to a file, that can be interpreted by WANNIER90. The atoms in the structure must have projections defined.\n\n\n\n"
+    "text": "save(input::DFInput{QE}, structure, filename::String=inpath(input))\n\nWrites a Quantum Espresso input file.\n\n\n\n"
 },
 
 {
@@ -605,7 +605,7 @@ var documenterSearchIndex = {"docs": [
     "page": "FileIO",
     "title": "DFControl.save",
     "category": "function",
-    "text": "save(input::DFInput{QE}, structure, filename::String=inpath(input))\n\nWrites a Quantum Espresso input file.\n\n\n\n"
+    "text": "save(input::DFInput{Wannier90}, structure, filename::String=inpath(input))\n\nWrites the DFInput{Wannier90} and structure to a file, that can be interpreted by WANNIER90. The atoms in the structure must have projections defined.\n\n\n\n"
 },
 
 {
