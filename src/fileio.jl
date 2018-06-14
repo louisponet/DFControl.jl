@@ -392,3 +392,9 @@ function write_cell(f::IO, cell::AbstractMatrix)
     write(f, "$(cell[2, 1]) $(cell[2, 2]) $(cell[2, 3])\n")
     write(f, "$(cell[3, 1]) $(cell[3, 2]) $(cell[3, 3])\n")
 end
+
+function writeabortfile(job::DFJob, input::DFInput{QE})
+    open(joinpath(job.local_dir,"$(flag(input, :prefix)).EXIT"), "w") do f
+        write(f, " \n")
+    end
+end

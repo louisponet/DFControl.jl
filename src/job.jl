@@ -256,16 +256,36 @@ function submit(job::DFJob; server=job.server, server_dir=job.server_dir)
     job.server_dir = server_dir == "" ? "" : formdirectory(server_dir)
     job.metadata[:slurmid] = qsub(job)
 end
+
+"Checks the last created output file for a certain job. Intended use for now is locally."
+function runninginput(job::DFJob)
+    t = mtime(scriptpath(job))
+    for i in reverse(inputs(job))
+        p = outpath(i)
+        if ispath(p) && mtime(p) > t
+            return i
+        end
+    end
+end
+
 """
     abort(job::DFJob)
 
-Will look for the job id inside it's metadata and try to remove it from the server queue.
+Will look for the job id inside it's metadata and try to remove it from the server queue. If the lastrunning input happened to be a QE input, the correct abort file will be written. If it's Wannier90 the job will be brutally removed from the slurm queue.
 """
 function abort(job::DFJob)
-    if !haskey(job.metadata, :slurmid)
-        error("No slurm id found for this job.")
+    lastrunning = runninginput(job)
+    if lastrunning == nothing
+        error("Is this job running?")
     end
-    qdel(job::DFJob)
+    if package(lastrunning) == QE
+        writeabortfile(job, lastrunning)
+    else
+        if !haskey(job.metadata, :slurmid)
+            error("No slurm id found for this job.")
+        end
+        qdel(job::DFJob)
+    end
 end
 
 """
