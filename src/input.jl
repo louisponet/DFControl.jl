@@ -143,12 +143,12 @@ function setflags!(input::DFInput{T}, flags...; print=true) where T
             try
                 value = convertflag(flag_type, value)
             catch
-                print && warn("Filename '$(input.filename)':\n  Could not convert '$value' into '$flag_type'.\n    Flag '$flag' not set.\n")
+                print && warn("Filename '$(name(input))':\n  Could not convert '$value' into '$flag_type'.\n    Flag '$flag' not set.\n")
                 continue
             end
             old_data = haskey(input.flags, flag) ? input.flags[flag] : ""
             input.flags[flag] = value
-            print && info("$(input.filename):\n  -> $flag:\n      $old_data set to: $value\n")
+            print && info("$(name(input)):\n  -> $flag:\n      $old_data set to: $value\n")
         end
     end
     return found_keys, input
@@ -167,7 +167,7 @@ function sanitizeflags!(input::DFInput)
             try
                 flags(input)[flag] = convertflag(flagtype_, value)
             catch
-                error("Input $(filename(input)): Could not convert :$flag of value $value to the correct type ($flagtype_), please set it to the correct type.")
+                error("Input $(name(input)): Could not convert :$flag of value $value to the correct type ($flagtype_), please set it to the correct type.")
             end
         end
     end
@@ -182,7 +182,7 @@ function rmflags!(input::DFInput, flags...; print=true)
     for flag in flags
         if haskey(input.flags, flag)
             pop!(input.flags, flag, false)
-            print && info("Removed flag '$flag' from input '$(input.filename)'")
+            print && info("Removed flag '$flag' from input '$(name(input))'")
         end
     end
     return input
@@ -204,7 +204,7 @@ function setdata!(input::DFInput, block_name::Symbol, new_block_data; option=not
             data_block.data = new_block_data
             data_block.option = option == nothing ? data_block.option : option
             if print
-                info("Block data '$(data_block.name)' in input  '$(input.filename)' is now:\n\t$(string(data_block.data)) \n\toption: $(data_block.option)\n")
+                info("Block data '$(data_block.name)' in input  '$(name(input))' is now:\n\t$(string(data_block.data)) \n\toption: $(data_block.option)\n")
             end
             setd = true
         end
@@ -250,7 +250,7 @@ function setdataoption!(input::DFInput, name::Symbol, option::Symbol; print=true
         if data.name == name
             old_option  = data.option
             data.option = option
-            if print info("Option of InputData '$(data.name)' in input '$(input.filename)' set from '$old_option' to '$option'") end
+            if print info("Option of InputData '$(data.name)' in input '$(name(input))' set from '$old_option' to '$option'") end
         end
     end
     return input
@@ -288,6 +288,6 @@ function readbands(input::DFInput)
     if haskey(to, :bands)
         return to[:bands]
     else
-        error("No bands found in $filename.")
+        error("No bands found in $(name(input)).")
     end
 end
