@@ -53,7 +53,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Job",
     "title": "DFControl.abort",
     "category": "method",
-    "text": "abort(job::DFJob)\n\nWill look for the job id inside it\'s metadata and try to remove it from the server queue.\n\n\n\n"
+    "text": "abort(job::DFJob)\n\nWill look for the job id inside it\'s metadata and try to remove it from the server queue. If the lastrunning input happened to be a QE input, the correct abort file will be written. If it\'s Wannier90 the job will be brutally removed from the slurm queue.\n\n\n\n"
 },
 
 {
