@@ -394,7 +394,12 @@ function write_cell(f::IO, cell::AbstractMatrix)
 end
 
 function writeabortfile(job::DFJob, input::DFInput{QE})
-    open(joinpath(job.local_dir,"$(flag(input, :prefix)[2:end-1]).EXIT"), "w") do f
+    abortpath = joinpath(job.local_dir,"$(flag(input, :prefix)[2:end-1]).EXIT")
+    open(abortpath, "w") do f
         write(f, " \n")
     end
+    while ispath(abortpath)
+        continue
+    end
+    qdel(job)
 end
