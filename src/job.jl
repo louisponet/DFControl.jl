@@ -168,22 +168,18 @@ structure(job::DFJob) = job.structure
 iswannierjob(job::DFJob) = any(x->package(x) == Wannier90, inputs(job)) && any(x->flag(x, :calculation) == "'nscf'", inputs(job))
 getnscfcalc(job::DFJob) = getfirst(x->flag(x, :calculation) == "'nscf'", inputs(job))
 cell(job::DFJob) = cell(structure(job))
-#all inputs return arrays, input returns the first element if multiple are found
+
+
+input(job::DFJob, n::String) = getfirst(x -> contains(name(x), n), inputs(job))
 inputs(job::DFJob) = job.inputs
 """
     inputs(job::DFJob, names::Vector)
 
 Returns an array of the inputs that match the names.
 """
-function inputs(job::DFJob, names::Vector)
-    out = DFInput[]
-    for n in names
-        push!(out, filter(x -> contains(name(x), n), inputs(job))...)
-    end
-    return out
-end
-inputs(job::DFJob, n::String) = filter(x -> contains(name(x), n), inputs(job))
-input(job::DFJob, n::String) = getfirst(x -> contains(name(x), n), inputs(job))
+inputs(job::DFJob, names::Vector, fuzzy=true) = fuzzy ? filter(x -> any(contains.(name(x), names)), inputs(job)) : input.(job, names)
+
+inputs(job::DFJob, n::String, fuzzy=true) = inputs(job, [n], fuzzy)
 
 setname!(job::DFJob, oldn, newn) = (input(job, oldn).name = newn)
 inpath(job::DFJob, n) = inpath(input(job,n))
@@ -303,7 +299,7 @@ function add!(job::DFJob, input::DFInput, index::Int=length(job.inputs)+1; n=nam
 end
 
 """
-    setflags!(job::DFJob, names::Vector{String}, flags...; print=true)
+    setflags!(job::DFJob, inputs::Vector{<:DFInput}, flags...; print=true)
 
 Sets the flags in the names to the flags specified.
 This only happens if the specified flags are valid for the names.
@@ -311,11 +307,11 @@ If necessary the correct control block will be added to the calculation (e.g. fo
 
 The values that are supplied will be checked whether they are valid.
 """
-function setflags!(job::DFJob, names::Vector{String}, flags...; print=true)
+function setflags!(job::DFJob, inputs::Vector{<:DFInput}, flags...; print=true)
     UNDO_JOBS[job.id] = deepcopy(job)
     found_keys = Symbol[]
 
-    for calc in inputs(job, names)
+    for calc in inputs
         t_, = setflags!(calc, flags..., print=print)
         push!(found_keys, t_...)
     end
@@ -326,16 +322,18 @@ function setflags!(job::DFJob, names::Vector{String}, flags...; print=true)
     end
     return job
 end
-setflags!(job::DFJob, flags...;kwargs...)                   = setflags!(job, name.(inputs(job)), flags...;kwargs...)
-setflags!(job::DFJob, name::String, flags...;kwargs...) = setflags!(job, [name], flags...;kwargs...)
+setflags!(job::DFJob, flags...;kwargs...) =
+    setflags!(job, inputs(job), flags...;kwargs...)
+setflags!(job::DFJob, name::String, flags...; fuzzy=true, kwargs...) =
+    setflags!(job, inputs(job, name, fuzzy), flags...; kwargs...)
 
 """
-    flag(job::DFJob, names, flag_name::Symbol)
+    flag(job::DFJob, inputs::Vector{<:DFInput}, flag_name::Symbol)
 
 Looks through the input names and returns the value of the specified flag.
 """
-function flag(job::DFJob, names, fl::Symbol)
-    for calc in inputs(job, names)
+function flag(job::DFJob, inputs::Vector{<:DFInput}, fl::Symbol)
+    for calc in inputs
         flag_ = flag(calc, fl)
         if flag_ != nothing
             return flag_
@@ -349,50 +347,70 @@ end
 
 Looks through all the calculations and returns the value of the specified flag.
 """
-flag(job::DFJob, flag_name::Symbol) = flag(job, name.(inputs(job)), flag_name)
+flag(job::DFJob, flag_name::Symbol) =
+    flag(job, inputs(job), flag_name)
+flag(job::DFJob, name::String, flag_name::Symbol) =
+    flag(job, [input(job, name)], flag_name)
 
-#TODO set so calculations also have a name.
-#TODO set after implementing k_point set so you don't need to specify all this crap
 """
-    data(job::DFJob, calc_filenames, name::Symbol)
+    data(job::DFJob, name::String, dataname::Symbol)
 
 Looks through the calculation filenames and returns the data with the specified symbol.
 """
-function data(job::DFJob, calc_filenames, name::Symbol)
-    for calc in inputs(job, calc_filenames)
-        return data(calc, name)
-    end
-end
+data(job::DFJob, name::String, dataname::Symbol) =
+    data(input(job, name), dataname)
 
 """
-    setdata!(job::DFJob, calc_filenames, data_block_name::Symbol, new_block_data; option=nothing)
+    setdata!(job::DFJob, inputs::Vector{<:DFInput}, dataname::Symbol, data; option=nothing)
 
 Looks through the calculation filenames and sets the data of the datablock with `data_block_name` to `new_block_data`.
 if option is specified it will set the block option to it.
 """
-function setdata!(job::DFJob, calc_filenames, data_block_name::Symbol, new_block_data; option=nothing)
+function setdata!(job::DFJob, inputs::Vector{<:DFInput}, dataname::Symbol, data; kwargs...)
     UNDO_JOBS[job.id] = deepcopy(job)
 
-    for calc in inputs(job, calc_filenames)
-        setdata!(calc, data_block_name, new_block_data, option=option)
-    end
+    setdata!.(inputs, dataname, data; kwargs...)
+    return job
 end
+setdata!(job::DFJob, name::String, dataname::Symbol, data; fuzzy=true, kwargs...) =
+    setdata!(job, inputs(job, name, fuzzy), dataname, data; kwargs...)
 
 """
-    rmflags!(job::DFJob, names, flags...)
+    setdataoption!(job::DFJob, names::Vector{String}, dataname::Symbol, option::Symbol)
+
+sets the option of specified data in the specified inputs.
+"""
+function setdataoption!(job::DFJob, names::Vector{String}, dataname::Symbol, option::Symbol; kwargs...)
+    UNDO_JOBS[job.id] = deepcopy(job)
+    setdataoption!.(inputs(job, names), dataname, option; kwargs...)
+    return job
+end
+setdataoption!(job::DFJob, n::String, name::Symbol, option::Symbol; kw...) =
+    setdataoption!(job, [n], name, option; kw...)
+
+"""
+    setdataoption!(job::DFJob, name::Symbol, option::Symbol)
+
+sets the option of specified data block in all calculations that have the block.
+"""
+setdataoption!(job::DFJob, n::Symbol, option::Symbol; kw...) =
+    setdataoption!(job, name.(inputs(job)), n, option; kw...)
+
+"""
+    rmflags!(job::DFJob, inputs::Vector{<:DFInput}, flags...)
 
 Looks through the input names and removes the specified flags.
 """
-function rmflags!(job::DFJob, names::Vector{<:AbstractString}, flags...; print=true)
+function rmflags!(job::DFJob, inputs::Vector{<:DFInput}, flags...; kwargs...)
     UNDO_JOBS[job.id] = deepcopy(job)
 
-    for i in inputs(job, names)
-        rmflags!(i, flags..., print=print)
-    end
+    rmflags!.(inputs, flags...; kwargs...)
     return job
 end
-rmflags!(job::DFJob, n::String, flags...; kwargs...) = rmflags!(job, [n], flags...; kwargs...)
-rmflags!(job::DFJob, flags...; kwargs...) = rmflags!(job, name.(inputs(job)), flags...; kwargs...)
+rmflags!(job::DFJob, name::String, flags...; fuzzy=true, kwargs...) =
+    rmflags!(job, inputs(job, name, fuzzy), flags...; kwargs...)
+rmflags!(job::DFJob, flags...; kwargs...) =
+    rmflags!(job, inputs(job), flags...; kwargs...)
 
 """
     setflow!(job::DFJob, should_runs...)
@@ -402,65 +420,29 @@ Sets whether or not calculations should be run. Calculations are specified using
 function setflow!(job::DFJob, should_runs...)
     UNDO_JOBS[job.id] = deepcopy(job)
 
-    for (filename, run) in should_runs
-        for input in inputs(job, filename)
+    for (name, run) in should_runs
+        for input in inputs(job, name)
             input.run = run
         end
     end
     return job
 end
 
-setflow!(job::DFJob, should_runs::Vector{Bool}) = setflow!(job, [name(calc) => run for (calc, run) in zip(job.inputs, should_runs)]...)
-
-"""
-    setflow!(job::DFJob, filenames::Array{String,1}, should_run)
-
-Goes throug the calculation filenames and sets whether it should run or not.
-"""
-setflow!(job::DFJob, filenames::Vector{String}, should_run) = setflow!.(inputs(job, filenames), should_run)
-
-
 """
     setexecflags!(job::DFJob, exec, flags...)
 
 Goes through the calculations of the job and if the name contains any of the `inputnames` it sets the exec flags to the specified ones.
 """
-setexecflags!(job::DFJob, exec, flags...) = setexecflags!.(job.inputs, exec, flags...)
-rmexecflags!(job::DFJob, exec, flags...) = rmexecflags!.(job.inputs, exec, flags...)
+setexecflags!(job::DFJob, exec, flags...) =
+    setexecflags!.(job.inputs, exec, flags...)
+rmexecflags!(job::DFJob, exec, flags...) =
+    rmexecflags!.(job.inputs, exec, flags...)
+
 "Returns the executables attached to a given input."
 execs(job::DFJob, name) = execs(input(job, name))
 
 setexecdir!(job::DFJob, exec, dir) = setexecdir!.(job.inputs, exec, dir)
 
-"""
-    setdata!(job::DFJob, names, data::InputData)
-
-Adds a block to the specified names.
-"""
-function setdata!(job::DFJob, names, data::InputData)
-    UNDO_JOBS[job.id] = deepcopy(job)
-
-    for input in inputs(job, names)
-        setdata!(input, data)
-    end
-    return job
-end
-
-"""
-    setdata!(job::DFJob, filenames, name, data, option=:none)
-
-Adds a block to the specified filenames.
-"""
-function setdata!(job::DFJob, filenames, name, data, option=:none)
-    UNDO_JOBS[job.id] = deepcopy(job)
-
-    for input in inputs(job, filenames)
-        setdata!(input, name, data, option)
-    end
-    return job
-end
-
-#---------------------------------END GENERAL SECTION ------------------#
 
 """
     setatoms!(job::DFJob, atoms::Dict{Symbol,<:Array{<:Point3,1}}, pseudo_setname=nothing, pseudospecifier=nothing, option=:angstrom)
@@ -470,7 +452,6 @@ If default pseudopotentials are defined, a set can be specified, together with a
 These pseudospotentials are then set in all the calculations that need it.
 All flags which specify the number of atoms inside the calculation also gets set to the correct value.
 """
-setatoms!(job::DFJob, atoms::Dict{Symbol,<:Vector{<:Point3}}; kwargs...) = setatoms(job, convert_2atoms(atoms); kwargs...)
 
 function setatoms!(job::DFJob, atoms::Vector{<:AbstractAtom}; pseudoset=nothing, pseudospecifier="")
     UNDO_JOBS[job.id] = deepcopy(job)
@@ -479,6 +460,8 @@ function setatoms!(job::DFJob, atoms::Vector{<:AbstractAtom}; pseudoset=nothing,
     pseudoset!=nothing && setpseudos!(job, pseudoset, pseudospecifier)
     return job
 end
+setatoms!(job::DFJob, atoms::Dict{Symbol,<:Vector{<:Point3}}; kwargs...) =
+    setatoms!(job, convert_2atoms(atoms); kwargs...)
 
 """
     atoms(job::DFJob)
@@ -516,24 +499,7 @@ function setkpoints!(job::DFJob, n, k_points; print=true)
     return job
 end
 
-"""
-    setdataoption!(job::DFJob, names::Vector{String}, dataname::Symbol, option::Symbol)
 
-sets the option of specified data in the specified inputs.
-"""
-function setdataoption!(job::DFJob, names::Vector{String}, dataname::Symbol, option::Symbol; kwargs...)
-    UNDO_JOBS[job.id] = deepcopy(job)
-    setdataoption!.(inputs(job, names), dataname, option; kwargs...)
-    return job
-end
-setdataoption!(job::DFJob, n::String, name::Symbol, option::Symbol; kw...) = setdataoption!(job, [n], name, option; kw...)
-
-"""
-    setdataoption!(job::DFJob, name::Symbol, option::Symbol)
-
-sets the option of specified data block in all calculations that have the block.
-"""
-setdataoption!(job::DFJob, n::Symbol, option::Symbol; kw...) = setdataoption!(job, name.(inputs(job)), n, option; kw...)
 
 "sets the pseudopotentials to the specified one in the default pseudoset."
 function setpseudos!(job::DFJob, pseudoset, pseudospecifier="")
@@ -570,7 +536,8 @@ end
 """
 sets the projections of the specified atoms inside the job structure.
 """
-setprojections!(job::DFJob, projections...) = setprojections!(job.structure, projections...)
+setprojections!(job::DFJob, projections...) =
+    setprojections!(job.structure, projections...)
 
 "Returns the projections inside the job for the specified `i`th atom in the job with id `atsym`."
 projections(job::DFJob, atsym::Symbol, i=1) = projections(atom(job, atsym, i))
@@ -768,8 +735,10 @@ function outputdata(job::DFJob, inputs::Vector{DFInput}; print=true, onlynew=tru
     datadict
 end
 outputdata(job::DFJob; kwargs...) = outputdata(job, inputs(job); kwargs...)
-outputdata(job::DFJob, names::String...; kwargs...) = outputdata(job, inputs(job, names); kwargs...)
-outputdata(job::DFJob, name::String; kwargs...) = outputdata(job, [input(job, name)]; kwargs...)
+outputdata(job::DFJob, names::String...; kwargs...) =
+    outputdata(job, inputs(job, names); kwargs...)
+outputdata(job::DFJob, name::String; fuzzy=true, kwargs...) =
+    outputdata(job, inputs(job, name, fuzzy); kwargs...)
 
 function isrunning(job::DFJob)
     @assert haskey(job.metadata, :slurmid) error("No slurmid found for job $(job.name)")

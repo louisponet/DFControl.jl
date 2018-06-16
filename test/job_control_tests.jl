@@ -13,7 +13,6 @@ out = outputdata(job;print=false,onlynew=false);
 nscf = DFControl.input(job, "nscf")
 nscf2 = DFInput(nscf, "nscf2.in", data=[:testdata => (:testoption, "test"), :k_points => (:blabla, [1,1,1,1,1,1])])
 
-@test data(job, "nscf2", :testdata) == nothing
 @test data(nscf2, :testdata).option == :testoption
 @test data(nscf2, :testdata).data   == "test"
 @test data(nscf2, :testdata).name   == :testdata
@@ -58,8 +57,7 @@ setflags!(job, :nspin => 2, print=false)
 
 addwancalc!(job, nscf,:Pt => [:s, :p, :d], Emin=fermi-7.0, Epad=5.0, wanflags=wanflags, print=false)
 
-
-setflow!(job, [false for i=1:length(job.inputs)])
+setflow!(job, ""=>false)
 @test job.inputs[1].run == false
 setflow!(job, "nscf" => true, "bands" => true)
 @test job.inputs[3].run
