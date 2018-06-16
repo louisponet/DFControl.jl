@@ -113,11 +113,11 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "job.html#DFControl.data-Tuple{DFControl.DFJob,Any,Symbol}",
+    "location": "job.html#DFControl.data-Tuple{DFControl.DFJob,String,Symbol}",
     "page": "Job",
     "title": "DFControl.data",
     "category": "method",
-    "text": "data(job::DFJob, calc_filenames, name::Symbol)\n\nLooks through the calculation filenames and returns the data with the specified symbol.\n\n\n\n"
+    "text": "data(job::DFJob, name::String, dataname::Symbol)\n\nLooks through the calculation filenames and returns the data with the specified symbol.\n\n\n\n"
 },
 
 {
@@ -129,11 +129,11 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "job.html#DFControl.flag-Tuple{DFControl.DFJob,Any,Symbol}",
+    "location": "job.html#DFControl.flag-Tuple{DFControl.DFJob,Array{#s56,1} where #s56<:DFControl.DFInput,Symbol}",
     "page": "Job",
     "title": "DFControl.flag",
     "category": "method",
-    "text": "flag(job::DFJob, names, flag_name::Symbol)\n\nLooks through the input names and returns the value of the specified flag.\n\n\n\n"
+    "text": "flag(job::DFJob, inputs::Vector{<:DFInput}, flag_name::Symbol)\n\nLooks through the input names and returns the value of the specified flag.\n\n\n\n"
 },
 
 {
@@ -145,10 +145,10 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "job.html#DFControl.inputs-Tuple{DFControl.DFJob,Array{T,1} where T}",
+    "location": "job.html#DFControl.inputs",
     "page": "Job",
     "title": "DFControl.inputs",
-    "category": "method",
+    "category": "function",
     "text": "inputs(job::DFJob, names::Vector)\n\nReturns an array of the inputs that match the names.\n\n\n\n"
 },
 
@@ -185,11 +185,11 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "job.html#DFControl.rmflags!-Tuple{DFControl.DFJob,Array{#s48,1} where #s48<:AbstractString,Vararg{Any,N} where N}",
+    "location": "job.html#DFControl.rmflags!-Tuple{DFControl.DFJob,Array{#s48,1} where #s48<:DFControl.DFInput,Vararg{Any,N} where N}",
     "page": "Job",
     "title": "DFControl.rmflags!",
     "category": "method",
-    "text": "rmflags!(job::DFJob, names, flags...)\n\nLooks through the input names and removes the specified flags.\n\n\n\n"
+    "text": "rmflags!(job::DFJob, inputs::Vector{<:DFInput}, flags...)\n\nLooks through the input names and removes the specified flags.\n\n\n\n"
 },
 
 {
@@ -201,7 +201,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "job.html#DFControl.setatoms!-Tuple{DFControl.DFJob,Dict{Symbol,#s47} where #s47<:(Array{#s46,1} where #s46<:(GeometryTypes.Point{3,T} where T))}",
+    "location": "job.html#DFControl.setatoms!-Tuple{DFControl.DFJob,Array{#s48,1} where #s48<:DFControl.AbstractAtom}",
     "page": "Job",
     "title": "DFControl.setatoms!",
     "category": "method",
@@ -217,27 +217,11 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "job.html#DFControl.setdata!",
-    "page": "Job",
-    "title": "DFControl.setdata!",
-    "category": "function",
-    "text": "setdata!(job::DFJob, filenames, name, data, option=:none)\n\nAdds a block to the specified filenames.\n\n\n\n"
-},
-
-{
-    "location": "job.html#DFControl.setdata!-Tuple{DFControl.DFJob,Any,DFControl.InputData}",
+    "location": "job.html#DFControl.setdata!-Tuple{DFControl.DFJob,Array{#s47,1} where #s47<:DFControl.DFInput,Symbol,Any}",
     "page": "Job",
     "title": "DFControl.setdata!",
     "category": "method",
-    "text": "setdata!(job::DFJob, names, data::InputData)\n\nAdds a block to the specified names.\n\n\n\n"
-},
-
-{
-    "location": "job.html#DFControl.setdata!-Tuple{DFControl.DFJob,Any,Symbol,Any}",
-    "page": "Job",
-    "title": "DFControl.setdata!",
-    "category": "method",
-    "text": "setdata!(job::DFJob, calc_filenames, data_block_name::Symbol, new_block_data; option=nothing)\n\nLooks through the calculation filenames and sets the data of the datablock with data_block_name to new_block_data. if option is specified it will set the block option to it.\n\n\n\n"
+    "text": "setdata!(job::DFJob, inputs::Vector{<:DFInput}, dataname::Symbol, data; option=nothing)\n\nLooks through the calculation filenames and sets the data of the datablock with data_block_name to new_block_data. if option is specified it will set the block option to it.\n\n\n\n"
 },
 
 {
@@ -265,19 +249,11 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "job.html#DFControl.setflags!-Tuple{DFControl.DFJob,Array{String,1},Vararg{Any,N} where N}",
+    "location": "job.html#DFControl.setflags!-Tuple{DFControl.DFJob,Array{#s37,1} where #s37<:DFControl.DFInput,Vararg{Any,N} where N}",
     "page": "Job",
     "title": "DFControl.setflags!",
     "category": "method",
-    "text": "setflags!(job::DFJob, names::Vector{String}, flags...; print=true)\n\nSets the flags in the names to the flags specified. This only happens if the specified flags are valid for the names. If necessary the correct control block will be added to the calculation (e.g. for QEInputs).\n\nThe values that are supplied will be checked whether they are valid.\n\n\n\n"
-},
-
-{
-    "location": "job.html#DFControl.setflow!-Tuple{DFControl.DFJob,Array{String,1},Any}",
-    "page": "Job",
-    "title": "DFControl.setflow!",
-    "category": "method",
-    "text": "setflow!(job::DFJob, filenames::Array{String,1}, should_run)\n\nGoes throug the calculation filenames and sets whether it should run or not.\n\n\n\n"
+    "text": "setflags!(job::DFJob, inputs::Vector{<:DFInput}, flags...; print=true)\n\nSets the flags in the names to the flags specified. This only happens if the specified flags are valid for the names. If necessary the correct control block will be added to the calculation (e.g. for QEInputs).\n\nThe values that are supplied will be checked whether they are valid.\n\n\n\n"
 },
 
 {
