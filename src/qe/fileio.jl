@@ -96,7 +96,7 @@ function read_qe_output(filename::String, T=Float64)
 
                     if contains(line, "CELL_PARAMETERS")
                         out[:alat]            = contains(line, "angstrom") ? :angstrom : parse(T, split(line)[end][1:end-1])
-                        out[:cell_parameters] = reshape(T[parse.(T, split(readline(f))); parse.(T, split(readline(f))); parse.(T, split(readline(f)))], (3,3))
+                        out[:cell_parameters] = reshape(T[parse.(T, split(readline(f))); parse.(T, split(readline(f))); parse.(T, split(readline(f)))], (3,3))'
                     elseif contains(line, "ATOMIC_POSITIONS")
                         out[:pos_option]      = cardoption(line)
                         line  = readline(f)
