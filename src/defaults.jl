@@ -212,14 +212,14 @@ end
 Returns the pseudo potential string linked to the atom.
 """
 function getdefault_pseudo(atom::Symbol, pseudo_setname=:default; pseudospecifier="")
-    if !isnull(tryparse(Int, String(atom)[end:end]))
+    if tryparse(Int, String(atom)[end:end]) != nothing
         pp_atom = Symbol(String(atom)[1:end-1])
     else
         pp_atom = atom
     end
-    if isdefined(:default_pseudos) && haskey(DFControl.default_pseudos[pp_atom], pseudo_setname)
+    if isdefined(Main, :default_pseudos) && haskey(default_pseudos[pp_atom], pseudo_setname)
         if pseudospecifier != ""
-            return getfirst(x -> contains(x, pseudospecifier), default_pseudos[pp_atom][pseudo_setname])
+            return getfirst(x -> contains(pseudospecifier,x), default_pseudos[pp_atom][pseudo_setname])
         else
             return DFControl.default_pseudos[pp_atom][pseudo_setname][1]
         end
