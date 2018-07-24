@@ -1,0 +1,9 @@
+authors = ["ponet <louisponet@gmail.com>"]
+name = "DFControl"
+uuid = "1e31e15d-4957-550d-a244-318eced754ae"
+repo = "https://github.com/louisponet/DFControl.jl.git"
+version = "0.1.1"
+
+[deps]
+GeometryTypes = "4d00f742-c7ba-57c2-abde-4428a4b178cb"
+RecipesBase = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
