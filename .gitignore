@@ -7,3 +7,5 @@ docs/build/
 docs/site/
 deps/bin/
 deps/lib/
+deps/build.log
+wip
