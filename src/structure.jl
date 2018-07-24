@@ -48,7 +48,7 @@ end
 
 #TODO extend base.merge
 "Takes a vector of structures and merges all the attributes of the atoms."
-function mergestructures(structures::Vector{Union{<:AbstractStructure, Void}})
+function mergestructures(structures::Vector{Union{<:AbstractStructure, Nothing}})
     nonvoid = filter(x -> x != nothing, structures)
     out = nonvoid[1]
     for structure in nonvoid[2:end]
@@ -71,7 +71,7 @@ function mergestructures(structures::Vector{Union{<:AbstractStructure, Void}})
     return out
 end
 
-"Uses cif2cell to parse a cif file, then returns the parsed structure."
+"Uses cif2cell to Meta.parse a cif file, then returns the parsed structure."
 function cif2structure(cif_file::String; structure_name="NoName")
     tmpdir = tempdir()
     tmpfile = joinpath(tmpdir, "tmp.in")

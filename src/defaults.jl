@@ -10,7 +10,7 @@ function init_defaults(filename::String)
             if line == "" || line[1] == '#'
                 continue
             end
-            lhs = parse(line).args[1]
+            lhs = Meta.parse(line).args[1]
             if typeof(lhs) == Symbol
                 push!(names_to_export, lhs)
             end
@@ -18,9 +18,9 @@ function init_defaults(filename::String)
         end
     end
     for name in names_to_export
-        eval(:(export $name))
+        Core.eval(Main, :(export $name))
     end
-    eval(parse(raw_input))
+    Core.eval(Main, Meta.parse(raw_input))
 end
 
 function load_defaults(filename::String=default_file)
@@ -32,19 +32,19 @@ function load_defaults(filename::String=default_file)
         end
     end
     raw_input *= "nothing ;"
-    eval(parse(raw_input))
+    Core.eval(Main, Meta.parse(raw_input))
 end
 
 "Macro which allows you to define any default variable that will get loaded every time you use this package."
 macro add_default(expr)
     expr2file(default_file, expr)
-    eval(Main, expr)
+    Core.eval(Main, expr)
     load_defaults()
 end
 
 function removedefault(lhs)
     rm_expr_lhs(default_file, :($lhs))
-    eval(Main, :($lhs = nothing))
+    Core.eval(Main, :($lhs = nothing))
 end
 
 function define_def(default, expr1, expr2)
@@ -79,7 +79,7 @@ function removedefault_pseudodir(pseudo_symbol::Symbol)
         rm_expr_lhs(default_file, :(default_pseudo_dirs[$(QuoteNode(pseudo_symbol))]))
         if isempty(DFControl.default_pseudo_dirs)
             rm_expr_lhs(default_file, :default_pseudo_dirs)
-            eval(:(default_pseudo_dirs = nothing))
+            Core.eval(Main, :(default_pseudo_dirs = nothing))
         end
         removedefault_pseudos(pseudo_symbol)
     else
@@ -104,7 +104,7 @@ function removedefault_pseudos(pseudo_symbol::Symbol)
         end
         if isempty(DFControl.default_pseudos)
             rm_expr_lhs(default_file, :default_pseudos)
-            eval(:(default_pseudos = nothing))
+            Core.eval(Main, :(default_pseudos = nothing))
         end
     end
     if found
@@ -169,7 +169,7 @@ function configuredefault_pseudos(;server = getdefault_server(), pseudo_dirs=get
 
     outputs = Dict{Symbol, String}()
     for (name, directory) in pseudo_dirs
-        outputs[name] = server == "localhost" ? readstring(`ls $directory`) : readstring(`ssh -t $server ls $directory`)
+        outputs[name] = server == "localhost" ? read(`ls $directory`, String) : read(`ssh -t $server ls $directory`, String)
     end
 
     if !isdefined(:default_pseudos)
@@ -248,7 +248,7 @@ Adds the input to the `default_inputs` variable, and writes it to a file in user
 """
 function setdefault_input(input::DFInput{T}, structure, calculation::Symbol) where T
     if !isdefined(:default_inputs)
-        expr = :(default_inputs = Dict{Symbol, Tuple{DFInput, Union{AbstractStructure, Void}}}())
+        expr = :(default_inputs = Dict{Symbol, Tuple{DFInput, Union{AbstractStructure, Nothing}}}())
         expr2file(default_file,expr)
         init_defaults(default_file)
     end

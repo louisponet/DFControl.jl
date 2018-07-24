@@ -2,6 +2,7 @@ __precompile__()
 module DFControl
 # using Reexport
     using Compat
+    using LinearAlgebra
     import Base.Iterators.flatten
     using RecipesBase, GeometryTypes, Parameters, Nullables, Media
 

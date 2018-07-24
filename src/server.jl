@@ -101,6 +101,8 @@ function pulloutputs(job::DFJob, server="", server_dir="", local_dir=""; job_fuz
         try
             pull_server_file(ofile)
             push!(pulled_outputs, ofile)
+        catch
+            nothing
         end
     end
 
@@ -112,7 +114,7 @@ function pulloutputs(job::DFJob, server="", server_dir="", local_dir=""; job_fuz
 end
 
 sshcmd(server, cmd) = run(`ssh -t $server $cmd`)
-sshreadstring(server, cmd) = readstring(`ssh -t $server $cmd`)
+sshreadstring(server, cmd) = read(`ssh -t $server $cmd`, String)
 """
     qstat(server)
 
@@ -137,18 +139,18 @@ function qsub(job::DFJob)
     outstr = ""
     if !runslocal(job)
         push(job)
-        outstr = readstring(`ssh -t $(job.server) cd $(job.server_dir) '&&' qsub job.tt`)
+        outstr = read(`ssh -t $(job.server) cd $(job.server_dir) '&&' qsub job.tt`, String)
     else
         try
             curdir = pwd()
             cd(job.local_dir)
-            outstr = readstring(`qsub job.tt`)
+            outstr = read(`qsub job.tt`, String)
             cd(curdir)
         catch
             error("Tried submitting on the local machine but got an error executing `qsub`.")
         end
     end
-    return parse(Int, chomp(outstr))
+    return Meta.parse(Int, chomp(outstr))
 end
 
 "Tests whether a directory exists on a server and if not, creates it."

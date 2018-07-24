@@ -35,24 +35,24 @@ function read_qe_output(filename::String, T=Float64)
             #polarization
             if contains(line, "C/m^2")
                 s_line = split(line)
-                P      = parse(T, s_line[3])
-                mod    = parse(T, s_line[5][1:end-1])
+                P      = Meta.parse(T, s_line[3])
+                mod    = Meta.parse(T, s_line[5][1:end-1])
                 readline(f)
-                s_line = parse.(T, split(readline(f))[6:2:10])
+                s_line = Meta.parse.(T, split(readline(f))[6:2:10])
                 out[:polarization] = Point3{T}(P * s_line[1], P * s_line[2], P * s_line[3])
                 out[:pol_mod]      = mod
 
                 #fermi energy
             elseif contains(line, "Fermi")
-                out[:fermi]        = parse(T, split(line)[5])
+                out[:fermi]        = Meta.parse(T, split(line)[5])
             elseif contains(line, "lowest unoccupied") && contains(line, "highest occupied")
-                out[:fermi]        = parse(T, split(line)[7])
+                out[:fermi]        = Meta.parse(T, split(line)[7])
 
             elseif contains(line, "lowest unoccupied") || contains(line, "highest occupied")
-                out[:fermi]        = parse(T, split(line)[5])
+                out[:fermi]        = Meta.parse(T, split(line)[5])
                 #setup for k_points
             elseif contains(line, "celldm(1)")
-                alat_bohr = parse(T, split(line)[2])
+                alat_bohr = Meta.parse(T, split(line)[2])
                 prefac_k  = T(2pi / alat_bohr * 1.889725)
                 #k_cryst
 
@@ -95,8 +95,8 @@ function read_qe_output(filename::String, T=Float64)
                 while !contains(line, "End final coordinates")
 
                     if contains(line, "CELL_PARAMETERS")
-                        out[:alat]            = contains(line, "angstrom") ? :angstrom : parse(T, split(line)[end][1:end-1])
-                        out[:cell_parameters] = reshape(T[parse.(T, split(readline(f))); parse.(T, split(readline(f))); parse.(T, split(readline(f)))], (3,3))'
+                        out[:alat]            = contains(line, "angstrom") ? :angstrom : Meta.parse(T, split(line)[end][1:end-1])
+                        out[:cell_parameters] = reshape(T[Meta.parse.(T, split(readline(f))); Meta.parse.(T, split(readline(f))); Meta.parse.(T, split(readline(f)))], (3,3))'
                     elseif contains(line, "ATOMIC_POSITIONS")
                         out[:pos_option]      = cardoption(line)
                         line  = readline(f)
@@ -104,7 +104,7 @@ function read_qe_output(filename::String, T=Float64)
                         while !contains(line, "End")
                             s_line = split(line)
                             key    = Symbol(s_line[1])
-                            push!(atoms, key=>Point3{T}(parse.(T, s_line[2:end])...))
+                            push!(atoms, key=>Point3{T}(Meta.parse.(T, s_line[2:end])...))
                             line = readline(f)
                         end
                         out[:atomic_positions] = atoms
@@ -114,7 +114,7 @@ function read_qe_output(filename::String, T=Float64)
                 end
 
             elseif contains(line, "Total force")
-                force = parse(T, split(line)[4])
+                force = Meta.parse(T, split(line)[4])
                 if force <= lowest_force
                     lowest_force      = force
                     out[:total_force] = force
@@ -124,12 +124,12 @@ function read_qe_output(filename::String, T=Float64)
                 out[key] = T[]
                 line = readline(f)
                 while !isempty(line)
-                    push!(out[key], parse(split(line)[6]))
+                    push!(out[key], Meta.parse(split(line)[6]))
                     line = readline(f)
                 end
             elseif contains(line, "estimated scf accuracy")
                 key = :accuracy
-                acc = parse(split(line)[end-1])
+                acc = Meta.parse(split(line)[end-1])
                 if haskey(out, key)
                     push!(out[key], acc)
                 else
@@ -325,9 +325,9 @@ function read_qe_input(filename, T=Float64::Type; exec=Exec("pw.x"), runcommand=
                         key, val = String.(strip.(split(s, "=")))
                         qe_flag  = Symbol(replace(replace(key, "(", "_"), ")",""))
                         flag_type = flagtype(QE, exec, qe_flag)
-                        if flag_type != Void
+                        if flag_type != Nothing
                             t_val = parse_flag_val(val, flag_type)
-                            flags[qe_flag] = eltype(t_val) == flag_type || flag_type == String ? t_val : error("Couldn't parse the value of flag '$key' in file '$filename'!")
+                            flags[qe_flag] = eltype(t_val) == flag_type || flag_type == String ? t_val : error("Couldn't Meta.parse the value of flag '$key' in file '$filename'!")
                         else
                             error("Error reading $filename: flag '$key' not found in QE flag Dictionary for input $(exec.exec)!")
                         end
@@ -339,9 +339,9 @@ function read_qe_input(filename, T=Float64::Type; exec=Exec("pw.x"), runcommand=
             elseif contains(line, "CELL_PARAMETERS") || contains(line, "cell_parameters")
                 cell_unit    = cardoption(line)
                 cell_        = Matrix{T}(3, 3)
-                cell_[1, 1:3] = parse.(T, split(readline(f)))
-                cell_[2, 1:3] = parse.(T, split(readline(f)))
-                cell_[3, 1:3] = parse.(T, split(readline(f)))
+                cell_[1, 1:3] = Meta.parse.(T, split(readline(f)))
+                cell_[2, 1:3] = Meta.parse.(T, split(readline(f)))
+                cell_[3, 1:3] = Meta.parse.(T, split(readline(f)))
                 cell = Mat3(cell_)
                 line = readline(f)
                 cell_block = InputData(:cell_parameters, cell_unit, cell)
@@ -364,7 +364,7 @@ function read_qe_input(filename, T=Float64::Type; exec=Exec("pw.x"), runcommand=
                 while length(split(line)) == 4
                     s_line   = split(line)
                     atom     = Symbol(s_line[1])
-                    position = Point3(parse(T, s_line[2]), parse(T, s_line[3]), parse(T, s_line[4]))
+                    position = Point3(Meta.parse(T, s_line[2]), Meta.parse(T, s_line[3]), Meta.parse(T, s_line[4]))
                     if !haskey(atoms, atom)
                         atoms[atom] = [position]
                     else
@@ -380,12 +380,12 @@ function read_qe_input(filename, T=Float64::Type; exec=Exec("pw.x"), runcommand=
                 line     = readline(f)
                 if k_option == :automatic
                     s_line = split(line)
-                    k_data = parse.(Int, s_line)
+                    k_data = Meta.parse.(Int, s_line)
                 else
-                    nks    = parse(Int, line)
+                    nks    = Meta.parse(Int, line)
                     k_data = Vector{Vector{T}}(nks)
                     for i = 1:nks
-                        k_data[i] = parse.(T, split(readline(f)))
+                        k_data[i] = Meta.parse.(T, split(readline(f)))
                     end
                 end
                 push!(data, InputData(:k_points, k_option, k_data))

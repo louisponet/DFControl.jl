@@ -18,7 +18,7 @@
 #         return s
 #     end
 #     # Handle e.g `pawecutdg*`
-#     if typeof(parse(string(s[1]))) == Symbol && s[end - 1] == '*'
+#     if typeof(Meta.parse(string(s[1]))) == Symbol && s[end - 1] == '*'
 #         return s
 #     end
 #     flag, rest = split(s)
@@ -32,7 +32,7 @@
 #
 #     val = spl[2]
 #     out = "$flag $val"
-#     len = parse(string(spl[1]))
+#     len = Meta.parse(string(spl[1]))
 #     for i = 1:len-1
 #         out *= " $val"
 #     end
@@ -43,7 +43,7 @@
 #     spl = split(s)
 #     out = "$(spl[1])"
 #     for p in spl[2:end]
-#         out *= " $(eval(parse(string(p))))"
+#         out *= " $(eval(Meta.parse(string(p))))"
 #     end
 #     return out
 # end
@@ -72,7 +72,7 @@
 #             dataset[flag] = convert_2abi(dataset[flag], line)
 #             continue
 #         end
-#         if typeof(parse(line)) == Symbol
+#         if typeof(Meta.parse(line)) == Symbol
 #             j = tryparse(Int, string(line[end]))
 #             if !isnull(j)
 #                 dtset = get(j)+1
@@ -95,9 +95,9 @@
 #                 continue
 #             end
 #             if haskey(dataset,flag)
-#                 push!(dataset[flag], parse(line))
+#                 push!(dataset[flag], Meta.parse(line))
 #             else
-#                 dataset[flag] = [parse(line)]
+#                 dataset[flag] = [Meta.parse(line)]
 #             end
 #         end
 #     end
@@ -105,7 +105,7 @@
 #     for (d,data) in enumerate(datasets)
 #         for (flag, val) in data
 #             flag_type = abi_flag_type(flag)
-#             if flag_type == Void
+#             if flag_type == Nothing
 #                 error("Flag $flag in dataset $d not found in abinit variables.")
 #             elseif flag_type != typeof(val)
 #                 try
@@ -399,7 +399,7 @@
 #                 eigvals = Vector{T}()
 #                 line    = readline(f)
 #                 while line != "" && line != "&"
-#                     eigval, pdos = parse.(T, split(line)[2:end])
+#                     eigval, pdos = Meta.parse.(T, split(line)[2:end])
 #                     push!(eigvals, eigval)
 #                     push!(extra[:pdos], pdos)
 #                     line = readline(f)
@@ -421,7 +421,7 @@
 #             if contains(line,"List of k-points")
 #                 line = readline(f)
 #                 while line[1] != '@'
-#                     k_point = parse.(T, replace.(strip.(strip.(strip.(split(line)[4:end], '['), ']'), ','), 'E', 'e'))
+#                     k_point = Meta.parse.(T, replace.(strip.(strip.(strip.(split(line)[4:end], '['), ']'), ','), 'E', 'e'))
 #                     push!(k_points_cryst, k_point)
 #                     line = readline(f)
 #                 end
@@ -431,7 +431,7 @@
 #                 eigvals = T[]
 #                 line = readline(f)
 #                 while line[1] != '&'
-#                     push!(eigvals, parse(T, split(line)[2]))
+#                     push!(eigvals, Meta.parse(T, split(line)[2]))
 #                     line = readline(f)
 #                 end
 #                 push!(bands, DFBand([T[0.0, 0.0, 0.0] for i=1:length(eigvals)], k_points_cryst, eigvals))
@@ -450,7 +450,7 @@
 #         while !eof(f)
 #             line = readline(f)
 #             if contains(line, "kpt#")
-#                 push!(k_points_array, parse.(T, split(line)[7:9]))
+#                 push!(k_points_array, Meta.parse.(T, split(line)[7:9]))
 #                 read_abi_eig_block!(f, k_points_array, eigvals_array, T)
 #             end
 #         end
@@ -472,10 +472,10 @@
 #         if contains(line,"Eigenvalues")
 #             continue
 #         elseif contains(line, "kpt#")
-#             push!(k_points_array, parse.(T, split(line)[7:9]))
+#             push!(k_points_array, Meta.parse.(T, split(line)[7:9]))
 #             read_abi_eig_block!(f, k_points_array, eigvals_array, T)
 #         else
-#             for val in parse.(T, split(line))
+#             for val in Meta.parse.(T, split(line))
 #                 if first_run
 #                     push!(eigvals_array, [val])
 #                 else

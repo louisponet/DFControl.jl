@@ -1,7 +1,7 @@
 """
 Searches a directory for all files containing the key.
 """
-searchdir(path::String, key) = filter(x -> contains(x, key), readdir(path))
+searchdir(path::String, key) = filter(x -> occursin(key, x), readdir(path))
 
 """
 Parse an array of strings into an array of a type.
@@ -96,7 +96,7 @@ function fort2julia(f_type)
         return Float64
     elseif f_type == "complex(kind=dp)"
         return Complex{Float64}
-    elseif contains(f_type, "character")
+    elseif occursin("character", f_type)
         return String
     elseif f_type == "string"
         return String
@@ -104,10 +104,10 @@ function fort2julia(f_type)
         return Int
     elseif f_type == "logical"
         return Bool
-    elseif contains(f_type,".D")
+    elseif occursin(".D", f_type)
         return replace(f_type, "D", "e")
     else
-        return Void
+        return Nothing
     end
 end
 
@@ -144,7 +144,7 @@ function parse_block(f, types...; to_strip=',')
             typ = types[i]
             l   = line[j]
             try
-                t   = parse(l)
+                t   = Meta.parse(l)
                 if typeof(t) == typ
                     push!(tmp, t)
                     i+=1

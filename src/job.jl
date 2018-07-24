@@ -452,7 +452,6 @@ If default pseudopotentials are defined, a set can be specified, together with a
 These pseudospotentials are then set in all the calculations that need it.
 All flags which specify the number of atoms inside the calculation also gets set to the correct value.
 """
-
 function setatoms!(job::DFJob, atoms::Vector{<:AbstractAtom}; pseudoset=nothing, pseudospecifier="")
     UNDO_JOBS[job.id] = deepcopy(job)
 
@@ -747,7 +746,7 @@ function isrunning(job::DFJob)
     @assert haskey(job.metadata, :slurmid) error("No slurmid found for job $(job.name)")
     cmd = `qstat -f $(job.metadata[:slurmid])`
     if runslocal(job)
-        str = readstring(cmd)
+        str = read(cmd, String)
     else
         str = sshreadstring(job.server, cmd)
     end

@@ -8,5 +8,5 @@ inputinfos = begin
 end
 
 
-@test qevariable(inputinfos[2], :calculation).typ == Void
+@test qevariable(inputinfos[2], :calculation).typ == Nothing
 @test qevariable(inputinfos[3], :calculation).typ == qevariable(:calculation).typ

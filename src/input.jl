@@ -139,7 +139,7 @@ function setflags!(input::DFInput{T}, flags...; print=true) where T
     found_keys = Symbol[]
     for (flag, value) in flags
         flag_type = flagtype(input, flag)
-        if flag_type != Void
+        if flag_type != Nothing
             !(flag in found_keys) && push!(found_keys, flag)
             try
                 value = convertflag(flag_type, value)
@@ -159,7 +159,7 @@ end
 function cleanflags!(input::DFInput)
     for (flag, value) in flags(input)
         flagtype_ = flagtype(input, flag)
-        if flagtype_ == Void
+        if flagtype_ == Nothing
             warn("Flag $flag was not found in allowed flags for exec $(execs(input)[2]). Removing flag.")
             rmflags!(input, flag)
             continue

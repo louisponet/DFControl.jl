@@ -4,7 +4,7 @@ function read_block(f, startstr::String, endstr::String)
     block = [startstr]
     line = readline(f)
     while !eof(f)
-        while !contains(line, endstr)
+        while !occursin(endstr, line)
             line = readline(f)
             push!(block, line)
         end
@@ -17,11 +17,11 @@ end
 struct QEVariableInfo{T}
     name::Symbol
     typ::Type{T}
-    # default::Union{T,Void,Symbol}  #check again v0.7 Some
+    # default::Union{T,Nothing,Symbol}  #check again v0.7 Some
     description::Array{String, 1}
 end
 QEVariableInfo{T}(name::Symbol, description) where T = QEVariableInfo{T}(name, T, description)
-QEVariableInfo() = QEVariableInfo(:error, Void, String[])
+QEVariableInfo() = QEVariableInfo(:error, Nothing, String[])
 
 function read_qe_variable(lines, i)
     name = gensym()
@@ -32,25 +32,25 @@ function read_qe_variable(lines, i)
     # default = nothing
     i += 1
     line = lines[i]
-    while !contains(line,"+------")
-        # if contains(line, "Default")
+    while !occursin("+------", line)
+        # if occursin("Default", line)
         #     _t = strip_split(line)[2]
         #     _t = strip(strip(_t,'('),')')
-        #     if contains(_t, "D")
-        #         default = parse(typ, replace(_t,"D","e"))
+        #     if occursin("D", _t)
+        #         default = Meta.parse(typ, replace(_t,"D","e"))
         #     else
-        #         _t = contains(_t,"=") ?split(_t,"=")[end] : _t
-        #         default = typ ==String ? _t : parse(_t)
+        #         _t = occursin("=",_t) ?split(_t,"=")[end] : _t
+        #         default = typ ==String ? _t : Meta.parse(_t)
         #         println(_t)
         #         if typeof(default) != Symbol
         #             default = convert(typ, default)
         #         end
         #     end
-        if contains(line, "Description")
+        if occursin("Description", line)
             push!(description, strip_split(line,":")[2])
             i += 1
             line = lines[i]
-            while !contains(line,"+------")
+            while !occursin("+------", line)
                 push!(description, strip(lines[i]))
                 i += 1
                 line = lines[i]
@@ -62,12 +62,12 @@ function read_qe_variable(lines, i)
     end
     @label break_label
     line = lines[var_i]
-    if contains(line, "Variables")
-        spl = [split(x,"(")[1] for x in strip.(filter(x -> !contains(x, "="), split(line)[2:end]), ',')]
+    if occursin("Variables", line)
+        spl = [split(x,"(")[1] for x in strip.(filter(x -> !occursin("=", x), split(line)[2:end]), ',')]
         names = Symbol.(spl)
         return [QEVariableInfo{typ}(name, description) for name in names], i
     else
-        if contains(line, "(") && contains(line, ")")
+        if occursin("(", line) && occursin(")", line)
             name = Symbol(split(strip_split(line, ":")[end],"(")[1])
         else
             name = Symbol(strip_split(line,":")[end])
@@ -87,7 +87,7 @@ function QEControlBlockInfo(lines::Array{<:AbstractString, 1})
     varinfos = QEVariableInfo[]
     for i=1:length(lines)
         line = lines[i]
-        if contains(line, "Variable")
+        if occursin("Variable", line)
             variables, _i = read_qe_variable(lines, i)
             i += _i
             for var in variables
@@ -103,7 +103,7 @@ function qevariable(block::AbstractBlockInfo, variable_name::Symbol)
     varstr1 = string(variable_name)
     for var in block.variables
         varstr2 = string(var.name)
-        if contains(varstr1, varstr2) && (length(varstr1) == length(varstr2) || length(varstr1) == length(varstr2) + 2)
+        if occursin(varstr2, varstr1) && (length(varstr1) == length(varstr2) || length(varstr1) == length(varstr2) + 2)
             return var
         end
     end
@@ -127,31 +127,31 @@ function QEDataBlockInfo(lines::Array{<:AbstractString, 1})
     i = 2
     while i <= length(lines) - 1
         line = strip(lines[i])
-        if contains(line, "___________") && !contains(line, "+--")
+        if occursin("___________", line) && !occursin("+--", line)
             i += 1
             line = lines[i]
-            while !contains(line, "----------------")
+            while !occursin("----------------", line)
                 push!(description, strip(line))
                 i += 1
                 line = lines[i]
             end
             i += 1
 
-        elseif contains(line, "Card's flags:")
+        elseif occursin("Card's flags:", line)
             i += 2
-            if !contains(lines[i],"Description:")
+            if !occursin("Description:", lines[i])
                 i += 1
             end
             push!(options_description,  join(split(lines[i])[2:end]," "))
             i += 1
             line = lines[i]
-            while !contains(line, "----------------")
+            while !occursin("----------------", line)
                 push!(options_description, strip(line))
                 i += 1
                 line = lines[i]
             end
             i += 1
-        elseif contains(line, "Variable")
+        elseif occursin("Variable", line)
             vars, _i = read_qe_variable(lines, i)
             i = _i
             for var in vars
@@ -160,7 +160,7 @@ function QEDataBlockInfo(lines::Array{<:AbstractString, 1})
         end
         i += 1
     end
-    return QEDataBlockInfo(name, description, options, options_description, variables)
+    return QEDataBlockInfo(Symbol(name), description, options, options_description, variables)
 end
 
 struct QEInputInfo
@@ -175,10 +175,10 @@ function QEInputInfo(filename::String; exec_name = join([lowercase(splitext(spli
     open(filename, "r") do f
         while !eof(f)
             line = readline(f)
-            if contains(line, "NAMELIST")
+            if occursin("NAMELIST", line)
                 push!(control_block_infos,
                       QEControlBlockInfo(read_block(f, line, "END OF NAMELIST")))
-            elseif contains(line, "CARD:")
+            elseif occursin("CARD:", line)
                 push!(data_block_infos,
                       QEDataBlockInfo(read_block(f, line, "END OF CARD")))
             end
@@ -207,14 +207,14 @@ const QEInputInfos = begin
     vcat(QEInputInfo.(file_paths), QEInputInfo("pw2wannier90.x", [pw2wannier90_block_info], QEDataBlockInfo[]))
 end
 
-qe_input_info(input::DFInput{QE}) = getfirst(x-> contains(input.exec, x.exec), QEInputInfos)
-qe_input_info(exec::AbstractString) = getfirst(x-> contains(exec, x.exec), QEInputInfos)
+qe_input_info(input::DFInput{QE}) = getfirst(x-> occursin(x.exec, input.exec), QEInputInfos)
+qe_input_info(exec::AbstractString) = getfirst(x-> occursin(x.exec, exec), QEInputInfos)
 qe_input_flags(exec::AbstractString) = allflags(qe_input_info(exec))
 
 function qevariable(input_info::QEInputInfo, variable_name::Symbol)
     for block in vcat(input_info.control, input_info.data)
         var = qevariable(block, variable_name)
-        if var.typ != Void
+        if var.typ != Nothing
             return var
         end
     end
@@ -224,7 +224,7 @@ end
 function qevariable(variable_name::Symbol)
     for info in QEInputInfos
         var = qevariable(info, variable_name)
-        if var.typ != Void
+        if var.typ != Nothing
             return var
         end
     end
@@ -234,7 +234,7 @@ end
 function qe_block_variable(input_info::QEInputInfo, variable_name)
     for block in vcat(input_info.control, input_info.data)
         var = qevariable(block, variable_name)
-        if var.typ != Void
+        if var.typ != Nothing
             return block, var
         end
     end
@@ -243,7 +243,7 @@ end
 
 function qevariable(exec::Exec, varname)
     for input_info in QEInputInfos
-        if contains(exec.exec, input_info.exec)
+        if occursin(input_info.exec, exec.exec)
             return qevariable(input_info, varname)
         end
     end
@@ -267,7 +267,7 @@ all_qe_block_flags(exec::AbstractString, block_name) = getfirst(x -> x.name == b
 
 function qe_block_variable(exec::AbstractString, flagname)
     for input_info in QEInputInfos
-        if contains(exec, input_info.exec)
+        if occursin(input_info.exec, exec)
             return qe_block_variable(input_info, flagname)
         end
     end

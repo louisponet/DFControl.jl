@@ -29,7 +29,7 @@
 #     open(joinpath(assets_dir,"inputs/abinit/input_variables.txt"), "r") do f
 #         while !eof(f)
 #             spl = split(readline(f))
-#             out[parse(spl[1])] = eval(parse(spl[2]))
+#             out[Meta.parse(spl[1])] = eval(Meta.parse(spl[2]))
 #         end
 #     end
 #     return out
@@ -37,4 +37,4 @@
 #
 # const AbinitFlags  = construct_abi_flags()
 #
-# flagtype(input::DFInput{Abinit}, flag) = haskey(AbinitFlags, flag) ? AbinitFlags[flag] : Void
+# flagtype(input::DFInput{Abinit}, flag) = haskey(AbinitFlags, flag) ? AbinitFlags[flag] : Nothing

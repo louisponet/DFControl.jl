@@ -1,7 +1,7 @@
 using DFControl
 
 try
-    parse("5")
+    Meta.parse("5")
 catch
     "5"
 end

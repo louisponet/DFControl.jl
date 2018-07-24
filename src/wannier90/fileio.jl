@@ -52,7 +52,7 @@ function extract_atoms(atoms_block::T, proj_block::T, cell) where T <: InputData
     return out_ats
 end
 
-function extract_structure(name, cell_block::T, atoms_block::T, projections_block::T) where T <: Union{InputData, Void}
+function extract_structure(name, cell_block::T, atoms_block::T, projections_block::T) where T <: Union{InputData, Nothing}
     if atoms_block == nothing || cell_block == nothing
         return nothing
     end
@@ -156,7 +156,7 @@ function read_wannier_input(filename::String, T=Float64; runcommand= Exec(""), r
                             continue
                         end
                         if length(split(line)) == 1
-                            option = parse(line)
+                            option = Meta.parse(line)
                             line = readline(f)
                             continue
                         end
