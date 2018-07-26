@@ -1,7 +1,7 @@
 #THIS IS THE MOST HORRIBLE FUNCTION I HAVE EVER CREATED!!!
 function extract_atoms(atoms_block::T, proj_block::T, cell) where T <: InputData
     if atoms_block.name == :atoms_cart
-        cell = Mat3(eye(3))
+        cell = Mat3(Matrix(I, 3, 3))
     end
     projections_ = proj_block.data
     atoms = atoms_block.data
@@ -137,7 +137,7 @@ function read_wannier_input(filename::String, T=Float64; runcommand= Exec(""), r
                     else
                         option = :ang
                     end
-                    cell_param = Matrix{T}(3, 3)
+                    cell_param = Matrix{T}(undef, 3, 3)
                     for i = 1:3
                         cell_param[i, :] = parse_line(T, line)
                         line = readline(f)
@@ -148,7 +148,7 @@ function read_wannier_input(filename::String, T=Float64; runcommand= Exec(""), r
 
                 elseif block_name == :atoms_frac || block_name == :atoms_cart
                     line   = readline(f)
-                    atoms  = Dict{Symbol,Array{Point3{T},1}}()
+                    atoms  = Dict{Symbol, Array{Point3{T}, 1}}()
                     option = :ang
                     while !occursin("end", lowercase(line))
                         if occursin("!", line) || line == ""

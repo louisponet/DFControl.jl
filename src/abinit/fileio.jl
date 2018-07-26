@@ -421,7 +421,7 @@
 #             if occursin("List of k-points", line)
 #                 line = readline(f)
 #                 while line[1] != '@'
-#                     k_point = Meta.parse.(T, replace.(strip.(strip.(strip.(split(line)[4:end], '['), ']'), ','), 'E', 'e'))
+#                     k_point = Meta.parse.(T, replace.(strip.(strip.(strip.(split(line)[4:end], '['), ']'), ','), 'E', 'e'))#ohno the replace here!
 #                     push!(k_points_cryst, k_point)
 #                     line = readline(f)
 #                 end

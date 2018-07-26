@@ -519,7 +519,7 @@ function setheaderword!(job::DFJob, word::String, new_word::String; print=true)
 
     for (i, line) in enumerate(job.header)
         if occursin(word, line)
-            job.header[i] = replace(line, word, new_word)
+            job.header[i] = replace(line, word => new_word)
             s = """Old line:
             $line
             New line:

@@ -131,7 +131,7 @@ function read_qe_output(filename::String, T=Float64)
                 end
             elseif occursin("estimated scf accuracy", line)
                 key = :accuracy
-                acc = parse(split(line)[end-1])
+                acc = parse(T, split(line)[end-1])
                 if haskey(out, key)
                     push!(out[key], acc)
                 else
@@ -277,7 +277,7 @@ function extract_atoms!(control, atom_block, pseudo_block, cell)
     elseif option == :bohr
         primv = conversions[:bohr2ang] * Mat3(eye(3))
     else
-        primv = Mat3(eye(3))
+        primv = Mat3(Matrix(I, 3, 3))
     end
 
     for (at_sym, positions) in atom_block.data
@@ -325,7 +325,7 @@ function read_qe_input(filename, T=Float64::Type; exec=Exec("pw.x"), runcommand=
                     split_line = filter(x -> x != "", strip.(split(line, ",")))
                     for s in split_line
                         key, val = String.(strip.(split(s, "=")))
-                        qe_flag  = Symbol(replace(replace(key, "(", "_"), ")",""))
+                        qe_flag  = Symbol(replace(replace(key, "(" => "_"), ")" => ""))
                         flag_type = flagtype(QE, exec, qe_flag)
                         if flag_type != Nothing
                             t_val = parse_flag_val(val, flag_type)
@@ -340,7 +340,7 @@ function read_qe_input(filename, T=Float64::Type; exec=Exec("pw.x"), runcommand=
 
             elseif occursin("CELL_PARAMETERS", line) || occursin("cell_parameters", line)
                 cell_unit    = cardoption(line)
-                cell_        = Matrix{T}(3, 3)
+                cell_        = Matrix{T}(undef, 3, 3)
                 cell_[1, 1:3] = parse.(T, split(readline(f)))
                 cell_[2, 1:3] = parse.(T, split(readline(f)))
                 cell_[3, 1:3] = parse.(T, split(readline(f)))
@@ -385,7 +385,7 @@ function read_qe_input(filename, T=Float64::Type; exec=Exec("pw.x"), runcommand=
                     k_data = parse.(Int, s_line)
                 else
                     nks    = parse(Int, line)
-                    k_data = Vector{Vector{T}}(nks)
+                    k_data = Vector{Vector{T}}(undef, nks)
                     for i = 1:nks
                         k_data[i] = parse.(T, split(readline(f)))
                     end

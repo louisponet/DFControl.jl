@@ -37,7 +37,7 @@ function read_qe_variable(lines, i)
         #     _t = strip_split(line)[2]
         #     _t = strip(strip(_t,'('),')')
         #     if occursin("D", _t)
-        #         default = Meta.parse(typ, replace(_t,"D","e"))
+        #         default = Meta.parse(typ, replace(_t,"D" => "e"))
         #     else
         #         _t = occursin("=",_t) ?split(_t,"=")[end] : _t
         #         default = typ ==String ? _t : Meta.parse(_t)

@@ -1,4 +1,4 @@
-import Base: parse
+# import Base: parse
 
 include("qe/fileio.jl")
 # include("abinit/fileio.jl")
@@ -48,11 +48,11 @@ function parse_flag_val(val, T=Float64)
     end
 
     if occursin("d", val)
-        val = replace(val, "d", "e")
+        val = replace(val, "d" => "e")
     end
 
     val = strip(val, '.')
-    t = convert.(T, parse.(split(lowercase(val))))
+    t = parse.(T, split(lowercase(val)))
     #deal with abinit constants -> all flags that are read which are not part of the abi[:structure] get cast into the correct atomic units!
     if length(t) > 1 && typeof(t[end]) == Symbol
         t = t[1:end-1] .* abi_conversions[t[end]]
@@ -142,7 +142,7 @@ end
 function writetojob(f, job, input::DFInput{Wannier90})
     filename    = infile(input)
     should_run  = input.run
-    id = findfirst(job.inputs, input)
+    id = findfirst(isequal(input), job.inputs)
     seedname = name(input)
 
     pw2wanid = findfirst(x -> occursin("pw2wannier90.x", x.execs[2].exec), job.inputs[id+1:end])+id
@@ -187,7 +187,7 @@ end
 
 function read_job_line(line)
     line = strip(line)
-    line = replace(line, ['>', '<'], " ")
+    line = replace(line, ['>', '<'] => " ")
 
     if line[1] == '#'
         run = false
@@ -219,7 +219,7 @@ function read_job_line(line)
                 continue
             end
             flag = Symbol(ts[2:end])
-            val  = parse(spl[i + 1])
+            val  = parse(Int, spl[i + 1])
             t_flags[flag] = val
             i += 2
         end
@@ -275,7 +275,7 @@ function read_job_inputs(job_file::String)
                 elseif only_exec == "wannier90.x"
                     input, structure = read_wannier_input(joinpath(dir, splitext(inputfile)[1] * ".win"), runcommand=runcommand, run=run, exec=exec)
                 end
-                id = find(x-> infile(x) == inputfile, inputs)
+                id = findall(x-> infile(x) == inputfile, inputs)
                 if !isempty(id)
                     inputs[id[1]] = input
                     structures[id[1]] = structure
@@ -338,7 +338,7 @@ function expr2file(filename::String, expression::Expr)
             continue
         end
 
-        expr = parse(line)
+        expr = Meta.parse(line)
         if typeof(expr) == Nothing
             continue
         end
@@ -373,7 +373,7 @@ function rm_expr_lhs(filename, lhs)
     ind_2_rm    = 0
 
     for line in lines
-        lhs_t = parse(line).args[1]
+        lhs_t = Meta.parse(line).args[1]
         if lhs_t == lhs
             continue
         else

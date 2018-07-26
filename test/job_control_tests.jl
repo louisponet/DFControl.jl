@@ -72,8 +72,8 @@ begin
     for (calc, calc2) in zip(job.inputs, job2.inputs)
         @test calc.flags == calc2.flags
         for (b1, b2) in zip(calc.data, calc2.data)
-            for name in fieldnames(b1)
-                @test getfield(b1, name) == getfield(b2, name)
+            for n in fieldnames(typeof(b1))
+                @test getfield(b1, n) == getfield(b2, n)
             end
         end
     end
@@ -88,8 +88,8 @@ begin
     for (calc, calc2) in zip(job.inputs, job3.inputs)
         @test calc.flags == calc2.flags
         for (b1, b2) in zip(calc.data, calc2.data)
-            for name in fieldnames(b1)
-                @test getfield(b1, name) == getfield(b2,name)
+            for n in fieldnames(typeof(b1))
+                @test getfield(b1, n) == getfield(b2,n)
             end
         end
     end

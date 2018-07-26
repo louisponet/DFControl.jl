@@ -81,8 +81,8 @@ end
 
 Returns an array of k-grid points that are equally spaced, input can be either `:wan` or `:nscf`, the returned grids are appropriate as inputs for wannier90 or an nscf calculation respectively.
 """
-kgrid(na, nb, nc, ::Type{QE}) = reshape([[a, b, c, 1 / (na * nb * nc)] for a in collect(linspace(0, 1, na + 1))[1:end - 1], b in collect(linspace(0, 1, nb + 1))[1:end - 1], c in collect(linspace(0, 1, nc + 1))[1:end - 1]], (na * nb * nc))
-kgrid(na, nb, nc, ::Type{Wannier90}) = reshape([[a, b, c] for a in collect(linspace(0, 1, na + 1))[1:end - 1], b in collect(linspace(0, 1, nb + 1))[1:end - 1], c in collect(linspace(0, 1, nc + 1))[1:end - 1]],(na * nb * nc))
+kgrid(na, nb, nc, ::Type{QE}) = reshape([[a, b, c, 1 / (na * nb * nc)] for a in collect(range(0, stop=1, length=na + 1))[1:end - 1], b in collect(range(0, stop=1, length=nb + 1))[1:end - 1], c in collect(range(0, stop=1, length=nc + 1))[1:end - 1]], (na * nb * nc))
+kgrid(na, nb, nc, ::Type{Wannier90}) = reshape([[a, b, c] for a in collect(range(0, stop=1, length=na + 1))[1:end - 1], b in collect(range(0, stop=1, length=nb + 1))[1:end - 1], c in collect(range(0, stop=1, length=nc + 1))[1:end - 1]],(na * nb * nc))
 kgrid(na, nb, nc, input::Symbol) = input==:wan ? kgrid(na, nb, nc, Wannier90) : kgrid(na, nb, nc, QE)
 kgrid(na, nb, nc, input::DFInput{T}) where T = kgrid(na, nb, nc, T)
 
@@ -105,7 +105,7 @@ function fort2julia(f_type)
     elseif f_type == "logical"
         return Bool
     elseif occursin(".D", f_type)
-        return replace(f_type, "D", "e")
+        return replace(f_type, "D" => "e")
     else
         return Nothing
     end
