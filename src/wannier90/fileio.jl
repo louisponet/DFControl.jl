@@ -199,10 +199,10 @@ function read_wannier_input(filename::String, T=Float64; runcommand= Exec(""), r
                         flags[flag] = true
                     elseif lowercase(value) == "f" || lowercase(value) == "false"
                         flags[flag] = false
-                    elseif !isnull(tryparse(Int, value))
-                        flags[flag] = get(tryparse(Int, value))
-                    elseif !isnull(tryparse(T, value))
-                        flags[flag] = get(tryparse(T, value))
+                    elseif tryparse(Int, value) != nothing
+                        flags[flag] = parse(Int, value)
+                    elseif tryparse(T, value) != nothing
+                        flags[flag] = parse(T, value)
                     else
                         flags[flag] = value
                     end

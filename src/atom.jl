@@ -23,7 +23,7 @@ open(joinpath(@__DIR__, "../assets/elements.txt"), "r") do f
 end
 
 function element(sym::Symbol)
-    if !isnull(tryparse(Int, String(sym)[end:end]))
+    if tryparse(Int, String(sym)[end:end]) != nothing
         sym = Symbol(String(sym)[1:end-1])
     end
     found = filter(x->x.symbol == sym, ELEMENTS)

@@ -8,11 +8,11 @@ function orbital(s::Symbol)
             error("Orbital $s not defined.")
         end
     end
-    return t
+    return Orbital(t)
 end
 Base.convert(::Type{Symbol}, x::Orbital) = Symbol(x)
 orbsize(orb::Orbital) = Int(orb) * 2 + 1
-orbsize(orb::Symbol)  = orbital(orb) * 2 + 1
+orbsize(orb::Symbol)  = orbsize(orbital(orb))
 
 @with_kw struct Projection
     orb   ::Orbital = s

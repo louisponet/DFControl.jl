@@ -1,3 +1,4 @@
+import Base: parse
 
 include("qe/fileio.jl")
 # include("abinit/fileio.jl")
@@ -7,15 +8,15 @@ include("wannier90/fileio.jl")
 #--------------------Used by other file processing------------------#
 function parse_k_line(line, T)
     splt = split(line)
-    k1   = Meta.parse(T, splt[5])
-    k2   = Meta.parse(T, splt[6])
-    k3   = Meta.parse(T, splt[7][1:1:end-2])
+    k1   = parse(T, splt[5])
+    k2   = parse(T, splt[6])
+    k3   = parse(T, splt[7][1:1:end-2])
     return Vec3([k1, k2, k3])
 end
 
 function write_flag_line(f, flag, data, seperator="=", i="")
     flagstr = string(flag)
-    if flagstr[end-1] == '_' && !isnull(tryparse(Int, string(flagstr[end])))
+    if flagstr[end-1] == '_' && tryparse(Int, string(flagstr[end])) != nothing
         flagstr = flagstr[1:end-2] * "($(flagstr[end]))"
     end
     write(f,"  $flagstr$i $seperator ")
@@ -51,7 +52,7 @@ function parse_flag_val(val, T=Float64)
     end
 
     val = strip(val, '.')
-    t = convert.(T, Meta.parse.(split(lowercase(val))))
+    t = convert.(T, parse.(split(lowercase(val))))
     #deal with abinit constants -> all flags that are read which are not part of the abi[:structure] get cast into the correct atomic units!
     if length(t) > 1 && typeof(t[end]) == Symbol
         t = t[1:end-1] .* abi_conversions[t[end]]
@@ -218,7 +219,7 @@ function read_job_line(line)
                 continue
             end
             flag = Symbol(ts[2:end])
-            val  = Meta.parse(spl[i + 1])
+            val  = parse(spl[i + 1])
             t_flags[flag] = val
             i += 2
         end
@@ -337,7 +338,7 @@ function expr2file(filename::String, expression::Expr)
             continue
         end
 
-        expr = Meta.parse(line)
+        expr = parse(line)
         if typeof(expr) == Nothing
             continue
         end
@@ -372,7 +373,7 @@ function rm_expr_lhs(filename, lhs)
     ind_2_rm    = 0
 
     for line in lines
-        lhs_t = Meta.parse(line).args[1]
+        lhs_t = parse(line).args[1]
         if lhs_t == lhs
             continue
         else

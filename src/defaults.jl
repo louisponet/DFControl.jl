@@ -74,10 +74,10 @@ end
 Removes entry with flag `pseudo_symbol` from the `default_pseudodirs` and `user_defaults.jl` file.
 """
 function removedefault_pseudodir(pseudo_symbol::Symbol)
-    if isdefined(:default_pseudo_dirs) && haskey(DFControl.default_pseudo_dirs, pseudo_symbol)
-        pop!(DFControl.default_pseudo_dirs, pseudo_symbol)
+    if isdefined(Main, :default_pseudo_dirs) && haskey(Main.default_pseudo_dirs, pseudo_symbol)
+        pop!(Main.default_pseudo_dirs, pseudo_symbol)
         rm_expr_lhs(default_file, :(default_pseudo_dirs[$(QuoteNode(pseudo_symbol))]))
-        if isempty(DFControl.default_pseudo_dirs)
+        if isempty(Main.default_pseudo_dirs)
             rm_expr_lhs(default_file, :default_pseudo_dirs)
             Core.eval(Main, :(default_pseudo_dirs = nothing))
         end
@@ -94,15 +94,15 @@ Removes all pseudo entries with flag `pseudo_symbol` from the `default_pseudos`.
 """
 function removedefault_pseudos(pseudo_symbol::Symbol)
     found = false
-    if isdefined(:default_pseudos)
-        for (at, pseudos) in DFControl.default_pseudos
+    if isdefined(Main, :default_pseudos)
+        for (at, pseudos) in Main.default_pseudos
             if haskey(pseudos, pseudo_symbol)
                 pop!(pseudos, pseudo_symbol)
                 rm_expr_lhs(default_file, :(default_pseudos[$(QuoteNode(at))][$(QuoteNode(pseudo_symbol))]))
                 found = true
             end
         end
-        if isempty(DFControl.default_pseudos)
+        if isempty(Main.default_pseudos)
             rm_expr_lhs(default_file, :default_pseudos)
             Core.eval(Main, :(default_pseudos = nothing))
         end
@@ -319,10 +319,10 @@ function findspecifier(str, strs::Vector{<:AbstractString})
 end
 
 function getpseudoset(elsym::Symbol, str::String)
-    if !isdefined(:default_pseudos)
+    if !isdefined(Main, :default_pseudos)
         return :none, ""
     else
-        for (key, val) in default_pseudos[elsym]
+        for (key, val) in Main.default_pseudos[elsym]
             if length(val) == 1
                 str == val[1] && return key, ""
             else
