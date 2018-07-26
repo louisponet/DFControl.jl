@@ -119,10 +119,10 @@ setserverdir!(job, "localhost")
 @test job.server_dir == "localhost/"
 
 setheaderword!(job, "defpart", "frontend", print=false)
-@test any(contains.(job.header, "frontend"))
+@test any(occursin.("frontend",job.header))
 
 undo!(job)
-@test any(contains.(job.header, "defpart"))
+@test any(occursin.("defpart", job.header))
 
 
 setdataoption!(job, "nscf",:k_points, :blabla, print=false)

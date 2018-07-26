@@ -170,14 +170,14 @@ getnscfcalc(job::DFJob) = getfirst(x->flag(x, :calculation) == "'nscf'", inputs(
 cell(job::DFJob) = cell(structure(job))
 
 
-input(job::DFJob, n::String) = getfirst(x -> contains(name(x), n), inputs(job))
+input(job::DFJob, n::String) = getfirst(x -> occursin(n, name(x)), inputs(job))
 inputs(job::DFJob) = job.inputs
 """
     inputs(job::DFJob, names::Vector)
 
 Returns an array of the inputs that match the names.
 """
-inputs(job::DFJob, names::Vector, fuzzy=true) = fuzzy ? filter(x -> any(contains.(name(x), names)), inputs(job)) : input.(job, names)
+inputs(job::DFJob, names::Vector, fuzzy=true) = fuzzy ? filter(x -> any(occursin.(names, name(x))), inputs(job)) : input.(job, names)
 
 inputs(job::DFJob, n::String, fuzzy=true) = inputs(job, [n], fuzzy)
 
@@ -518,7 +518,7 @@ function setheaderword!(job::DFJob, word::String, new_word::String; print=true)
     UNDO_JOBS[job.id] = deepcopy(job)
 
     for (i, line) in enumerate(job.header)
-        if contains(line, word)
+        if occursin(word, line)
             job.header[i] = replace(line, word, new_word)
             s = """Old line:
             $line

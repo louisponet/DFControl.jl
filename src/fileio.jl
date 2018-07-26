@@ -46,7 +46,7 @@ function parse_flag_val(val, T=Float64)
         return val
     end
 
-    if contains(val, "d")
+    if occursin("d", val)
         val = replace(val, "d", "e")
     end
 
@@ -92,7 +92,7 @@ end
 function write_job_header(f, job::DFJob)
     job_header = job.header == "" ? getdefault_jobheader() : job.header
     for line in job_header
-        if contains(line, "\n")
+        if occursin("\n", line)
             write(f, line)
         else
             write(f, line * "\n")
@@ -144,7 +144,7 @@ function writetojob(f, job, input::DFInput{Wannier90})
     id = findfirst(job.inputs, input)
     seedname = name(input)
 
-    pw2wanid = findfirst(x -> contains(x.execs[2].exec, "pw2wannier90.x"), job.inputs[id+1:end])+id
+    pw2wanid = findfirst(x -> occursin("pw2wannier90.x", x.execs[2].exec), job.inputs[id+1:end])+id
     pw2wan   = job.inputs[pw2wanid]
     setflags!(pw2wan, :seedname => "'$seedname'", print=false)
 
@@ -243,7 +243,7 @@ function read_job_filenames(job_file::String)
             if isempty(line)
                 continue
             end
-            if contains(line, ".x")
+            if occursin(".x", line)
                 runcommand, exec, input, output, run = read_job_line(line)
                 !in(input,  input_files)  && push!(input_files,  input)
                 !in(output, output_files) && push!(output_files, output)
@@ -266,7 +266,7 @@ function read_job_inputs(job_file::String)
             if line == ""
                 continue
             end
-            if contains(line, ".x ")
+            if occursin(".x ", line)
                 runcommand, exec, inputfile, output, run = read_job_line(line)
                 only_exec = exec.exec
                 if only_exec in parseable_qe_execs
@@ -283,18 +283,18 @@ function read_job_inputs(job_file::String)
                     push!(structures, structure)
                 end
             #Incomplete: Handle abinit in the new way!
-            # elseif contains(line, "abinit ")
+            # elseif occursin(line, "abinit ")
             #     data[:abinit_pseudos] = Array{String,1}()
             #     s_line         = split(line)
             #     i, runcommand = read_job_line(s_line)
             #     push!(data[:run_commands], strip(runcommand, '#'))
-            #     if contains(line, "!EOF")
+            #     if occursin(line, "!EOF")
             #         push!(data[:input_files],  strip(readline(f), '#'))
             #         push!(data[:output_files], strip(readline(f), '#'))
             #         push!(data[:should_run], true)
             #         line = readline(f)
-            #         while !contains(line, "EOF")
-            #             if contains(line, ".xml")
+            #         while !occursin(line, "EOF")
+            #             if occursin(line, ".xml")
             #                 push!(data[:abinit_pseudos], strip(line, '#'))
             #             end
             #             line = readline(f)
@@ -302,8 +302,8 @@ function read_job_inputs(job_file::String)
             #     end
             #
             #     #this is reading the sbatch lines
-            elseif contains(line, "#SBATCH")
-                if contains(line, "-J")
+        elseif occursin("#SBATCH", line)
+                if occursin("-J", line)
                     name = split(line)[end]
                 else
                     push!(header, line)

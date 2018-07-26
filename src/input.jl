@@ -65,9 +65,9 @@ data(input::DFInput)     = input.data
 data(input::DFInput, name) = getfirst(x-> x.name == name, input.data)
 data(input::Vector{InputData}, name) = getfirst(x-> x.name == name, input.data)
 
-exec(input::DFInput, exec::String) = getfirst(x -> contains(x.exec, exec), input.execs)
+exec(input::DFInput, exec::String) = getfirst(x -> occursin(exec, x.exec), input.execs)
 execs(input::DFInput) = input.execs
-execs(input::DFInput, exec::String) = filter(x -> contains(x.exec, exec), input.execs)
+execs(input::DFInput, exec::String) = filter(x -> occursin(exec, x.exec), input.execs)
 
 execflags(input::DFInput, exec::String) = [x.flags for x in execs(input, exec)]
 setexecflags!(input::DFInput, exec::String, flags...) = setflags!.(execs(input, exec), flags...)
@@ -101,7 +101,7 @@ end
 
 function setkpoints!(input::DFInput{QE}, k_grid::NTuple{6, Int}; print=true) #scf
     calc = flag(input, :calculation)
-    print && (calc != "'scf'" || !contains(calc, "relax")) && warn("Expected calculation to be 'scf', 'vc-relax', 'relax'.\nGot $calc.")
+    print && (calc != "'scf'" || !occursin("relax", calc)) && warn("Expected calculation to be 'scf', 'vc-relax', 'relax'.\nGot $calc.")
     setdata!(input, :k_points, [k_grid...], option = :automatic, print=print)
     prod(k_grid[1:3]) > 100 && setflags!(input, :verbosity => "'high'", print=print)
     return input

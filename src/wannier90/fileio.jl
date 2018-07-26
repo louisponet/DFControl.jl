@@ -82,23 +82,23 @@ function read_wannier_input(filename::String, T=Float64; runcommand= Exec(""), r
         while !eof(f)
             @label start_label
 
-            if contains(line, "!") || line == "" || contains(lowercase(line), "end") || contains(line, "#")
+            if occursin("!", line) || line == "" || occursin("end", lowercase(line)) || occursin("#", line)
                 line = readline(f)
                 continue
             end
 
-            if contains(lowercase(line), "begin")
+            if occursin("begin", lowercase(line))
                 block_name = Symbol(split(lowercase(line))[end])
 
                 if block_name == :projections
                     proj_dict = Dict{Symbol,Array{Symbol,1}}()
                     line      = readline(f)
-                    while !contains(lowercase(line), "end")
-                        if contains(line, "!") || line == ""
+                    while !occursin("end", lowercase(line))
+                        if occursin("!", line) || line == ""
                             line = readline(f)
                             continue
                         end
-                        if contains(line, "random")
+                        if occursin("random", line)
                             proj_block = InputData(:projections, :random, nothing)
                             line = readline(f)
                             break
@@ -116,8 +116,8 @@ function read_wannier_input(filename::String, T=Float64; runcommand= Exec(""), r
                 elseif block_name == :kpoint_path
                     line = readline(f)
                     k_path_array = Array{Tuple{Symbol,Array{T,1}},1}()
-                    while !contains(lowercase(line), "end")
-                    if contains(line, "!") || line == ""
+                    while !occursin("end", lowercase(line))
+                    if occursin("!", line) || line == ""
                         line = readline(f)
                         continue
                     end
@@ -150,8 +150,8 @@ function read_wannier_input(filename::String, T=Float64; runcommand= Exec(""), r
                     line   = readline(f)
                     atoms  = Dict{Symbol,Array{Point3{T},1}}()
                     option = :ang
-                    while !contains(lowercase(line), "end")
-                        if contains(line, "!") || line == ""
+                    while !occursin("end", lowercase(line))
+                        if occursin("!", line) || line == ""
                             line = readline(f)
                             continue
                         end
@@ -176,7 +176,7 @@ function read_wannier_input(filename::String, T=Float64; runcommand= Exec(""), r
                 elseif block_name == :kpoints
                     line     = readline(f)
                     k_points = Array{Array{T,1},1}()
-                    while !contains(lowercase(line), "end")
+                    while !occursin("end", lowercase(line))
                         if line == ""
                             line = readline(f)
                             continue
@@ -189,7 +189,7 @@ function read_wannier_input(filename::String, T=Float64; runcommand= Exec(""), r
                 end
 
             else
-                if contains(line, "mp_grid")
+                if occursin("mp_grid", line)
                     flags[:mp_grid] = parse_string_array(Int, split(split(line, '=')[2]))
                 else
                     split_line = strip_split(line, '=')

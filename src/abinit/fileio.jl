@@ -14,7 +14,7 @@
 #
 # function expand_star_syntax(s::String)
 #     s = strip(s)
-#     if !contains(s,"*")
+#     if !occursin("*", s)
 #         return s
 #     end
 #     # Handle e.g `pawecutdg*`
@@ -64,7 +64,7 @@
 #     dataset = Dict{Symbol,Any}()
 #     flag = Symbol("start")
 #     for (l, line) in enumerate(lines)
-#         if contains(line, "?") || contains(line, ":")
+#         if occursin("?", line) || occursin(":", line)
 #             continue
 #         end
 #         #convert to the correct abinit units
@@ -377,11 +377,11 @@
 #
 # #very stupid
 # function read_abi_output(filename::String, T=Float64)
-#     if contains(filename, "FATBANDS")
+#     if occursin("FATBANDS", filename)
 #         return read_abi_fatbands(filename, T)
-#     elseif contains(filename, "EBANDS.agr")
+#     elseif occursin("EBANDS.agr", filename)
 #         return read_abi_ebands(filename, T)
-#     elseif contains(filename, "_EIG")
+#     elseif occursin("_EIG", filename)
 #         return read_abi_eig(filename, T)
 #     else
 #         error("Please supply a file with FATBANDS, EBANDS.agr or _EIG in the filename.")
@@ -394,7 +394,7 @@
 #     open(filename, "r") do f
 #         while !eof(f)
 #             line = readline(f)
-#             if contains(line, "BAND number")
+#             if occursin("BAND number", line)
 #                 extra   = Dict{Symbol,Any}(:pdos => T[])
 #                 eigvals = Vector{T}()
 #                 line    = readline(f)
@@ -418,7 +418,7 @@
 #         k_points_cryst = Vector{Vector{T}}()
 #         while !eof(f)
 #             line = readline(f)
-#             if contains(line,"List of k-points")
+#             if occursin("List of k-points", line)
 #                 line = readline(f)
 #                 while line[1] != '@'
 #                     k_point = Meta.parse.(T, replace.(strip.(strip.(strip.(split(line)[4:end], '['), ']'), ','), 'E', 'e'))
@@ -426,7 +426,7 @@
 #                     line = readline(f)
 #                 end
 #
-#             elseif contains(line,"target")
+#             elseif occursin("target", line)
 #                 readline(f)
 #                 eigvals = T[]
 #                 line = readline(f)
@@ -449,7 +449,7 @@
 #     open(filename, "r") do f
 #         while !eof(f)
 #             line = readline(f)
-#             if contains(line, "kpt#")
+#             if occursin("kpt#", line)
 #                 push!(k_points_array, Meta.parse.(T, split(line)[7:9]))
 #                 read_abi_eig_block!(f, k_points_array, eigvals_array, T)
 #             end
@@ -469,9 +469,9 @@
 #     i = 1
 #     while !eof(f)
 #         line = readline(f)
-#         if contains(line,"Eigenvalues")
+#         if occursin("Eigenvalues", line)
 #             continue
-#         elseif contains(line, "kpt#")
+#         elseif occursin("kpt#", line)
 #             push!(k_points_array, Meta.parse.(T, split(line)[7:9]))
 #             read_abi_eig_block!(f, k_points_array, eigvals_array, T)
 #         else

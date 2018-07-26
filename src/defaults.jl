@@ -131,8 +131,8 @@ end
 Returns the default server if it's defined. If it is not defined return "".
 """
 function getdefault_server()
-    if isdefined(:default_server)
-        return default_server
+    if isdefined(Main, :default_server)
+        return Main.default_server
     else
         return ""
     end
@@ -144,8 +144,8 @@ end
 Returns the default pseudo dirs if it's defined. If it is not defined return nothing.
 """
 function getdefault_pseudodirs()
-    if isdefined(:default_pseudo_dirs)
-        return default_pseudo_dirs
+    if isdefined(Main, :default_pseudo_dirs)
+        return Main.default_pseudo_dirs
     else
         return error("Please configure default pseudo directories first, using `setdefault_pseudodir` and `configuredefault_pseudos`.")
     end
@@ -172,7 +172,7 @@ function configuredefault_pseudos(;server = getdefault_server(), pseudo_dirs=get
         outputs[name] = server == "localhost" ? read(`ls $directory`, String) : read(`ssh -t $server ls $directory`, String)
     end
 
-    if !isdefined(:default_pseudos)
+    if !isdefined(Main, :default_pseudos)
         expr2file(default_file, :(default_pseudos = Dict{Symbol, Dict{Symbol, Vector{String}}}()))
         init_defaults(default_file)
     end
@@ -217,11 +217,11 @@ function getdefault_pseudo(atom::Symbol, pseudo_setname=:default; pseudospecifie
     else
         pp_atom = atom
     end
-    if isdefined(Main, :default_pseudos) && haskey(default_pseudos[pp_atom], pseudo_setname)
+    if isdefined(Main, :default_pseudos) && haskey(Main.default_pseudos[pp_atom], pseudo_setname)
         if pseudospecifier != ""
-            return getfirst(x -> contains(pseudospecifier,x), default_pseudos[pp_atom][pseudo_setname])
+            return getfirst(x -> occursin(x, pseudospecifier), Main.default_pseudos[pp_atom][pseudo_setname])
         else
-            return DFControl.default_pseudos[pp_atom][pseudo_setname][1]
+            return Main.default_pseudos[pp_atom][pseudo_setname][1]
         end
     end
 end
@@ -311,7 +311,7 @@ function findspecifier(str, strs::Vector{<:AbstractString})
     end
     testout = join(tmp)
     for s in strs[i+1:end]
-        if contains(s, testout)
+        if occursin(testout, s)
             return findspecifier(str, strs[i+1:end])
         end
     end

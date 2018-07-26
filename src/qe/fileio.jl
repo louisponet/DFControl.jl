@@ -33,7 +33,7 @@ function read_qe_output(filename::String, T=Float64)
             line = readline(f)
 
             #polarization
-            if contains(line, "C/m^2")
+            if occursin("C/m^2", line)
                 s_line = split(line)
                 P      = Meta.parse(T, s_line[3])
                 mod    = Meta.parse(T, s_line[5][1:end-1])
@@ -43,65 +43,65 @@ function read_qe_output(filename::String, T=Float64)
                 out[:pol_mod]      = mod
 
                 #fermi energy
-            elseif contains(line, "Fermi")
+            elseif occursin("Fermi", line)
                 out[:fermi]        = Meta.parse(T, split(line)[5])
-            elseif contains(line, "lowest unoccupied") && contains(line, "highest occupied")
+            elseif occursin("lowest unoccupied", line) && occursin("highest occupied", line)
                 out[:fermi]        = Meta.parse(T, split(line)[7])
 
-            elseif contains(line, "lowest unoccupied") || contains(line, "highest occupied")
+            elseif occursin("lowest unoccupied", line) || occursin("highest occupied", line)
                 out[:fermi]        = Meta.parse(T, split(line)[5])
                 #setup for k_points
-            elseif contains(line, "celldm(1)")
+            elseif occursin("celldm(1)", line)
                 alat_bohr = Meta.parse(T, split(line)[2])
                 prefac_k  = T(2pi / alat_bohr * 1.889725)
                 #k_cryst
 
-            elseif contains(line, "cryst.") && length(split(line)) == 2
+            elseif occursin("cryst.", line) && length(split(line)) == 2
                 out[:k_cryst] = Vector{Vec3{T}}()
                 line = readline(f)
-                while line != "" && !contains(line, "--------")
+                while line != "" && !occursin("--------", line)
                     push!(out[:k_cryst], parse_k_line(line, T))
                     line = readline(f)
                 end
 
                 #k_cart
-            elseif contains(line, "cart.") && length(split(line)) == 5
+            elseif occursin("cart.", line) && length(split(line)) == 5
                 out[:k_cart] = Vector{Vec3{T}}()
                 line = readline(f)
-                while line != "" && !contains(line, "--------")
+                while line != "" && !occursin("--------", line)
                     push!(out[:k_cart], prefac_k * parse_k_line(line, T))
                     line = readline(f)
                 end
 
                 #bands
-            elseif contains(line, "k") && contains(line, "PWs)")
+            elseif occursin("k", line) && occursin("PWs)", line)
                 tmp = T[]
                 readline(f)
                 line = readline(f)
-                while line != "" && !contains(line, "--------")
+                while line != "" && !occursin("--------", line)
                     append!(tmp, parse_line(T, line))
                     line = readline(f)
                 end
                 push!(k_eigvals, tmp)
 
                 #errors
-            elseif contains(line, "mpirun noticed")
+            elseif occursin("mpirun noticed", line)
                 warn("File ended unexpectedly, returning what info has been gathered so far.")
                 return out
                 break
                 #vcrel outputs
-            elseif contains(line, "Begin final coordinates")
+            elseif occursin("Begin final coordinates", line)
                 line = readline(f)
-                while !contains(line, "End final coordinates")
+                while !occursin("End final coordinates", line)
 
-                    if contains(line, "CELL_PARAMETERS")
-                        out[:alat]            = contains(line, "angstrom") ? :angstrom : Meta.parse(T, split(line)[end][1:end-1])
+                    if occursin("CELL_PARAMETERS", line)
+                        out[:alat]            = occursin("angstrom", line) ? :angstrom : Meta.parse(T, split(line)[end][1:end-1])
                         out[:cell_parameters] = reshape(T[Meta.parse.(T, split(readline(f))); Meta.parse.(T, split(readline(f))); Meta.parse.(T, split(readline(f)))], (3,3))'
-                    elseif contains(line, "ATOMIC_POSITIONS")
+                    elseif occursin("ATOMIC_POSITIONS", line)
                         out[:pos_option]      = cardoption(line)
                         line  = readline(f)
                         atoms = []
-                        while !contains(line, "End")
+                        while !occursin("End", line)
                             s_line = split(line)
                             key    = Symbol(s_line[1])
                             push!(atoms, key=>Point3{T}(Meta.parse.(T, s_line[2:end])...))
@@ -113,13 +113,13 @@ function read_qe_output(filename::String, T=Float64)
                     line = readline(f)
                 end
 
-            elseif contains(line, "Total force")
+            elseif occursin("Total force", line)
                 force = Meta.parse(T, split(line)[4])
                 if force <= lowest_force
                     lowest_force      = force
                     out[:total_force] = force
                 end
-            elseif contains(line, "Magnetic moment per site")
+            elseif occursin("Magnetic moment per site", line)
                 key = :colin_mag_moments
                 out[key] = T[]
                 line = readline(f)
@@ -127,7 +127,7 @@ function read_qe_output(filename::String, T=Float64)
                     push!(out[key], Meta.parse(split(line)[6]))
                     line = readline(f)
                 end
-            elseif contains(line, "estimated scf accuracy")
+            elseif occursin("estimated scf accuracy", line)
                 key = :accuracy
                 acc = Meta.parse(split(line)[end-1])
                 if haskey(out, key)
@@ -313,10 +313,10 @@ function read_qe_input(filename, T=Float64::Type; exec=Exec("pw.x"), runcommand=
         line = readline(f)
         while !eof(f)
             @label start_label
-            if contains(line, "&")
+            if occursin("&", line)
                 line = readline(f)
                 while strip(line) != "/"
-                    if contains(line, "!")
+                    if occursin("!", line)
                         line = readline(f)
                         continue
                     end
@@ -336,7 +336,7 @@ function read_qe_input(filename, T=Float64::Type; exec=Exec("pw.x"), runcommand=
                 end
                 @goto start_label
 
-            elseif contains(line, "CELL_PARAMETERS") || contains(line, "cell_parameters")
+            elseif occursin("CELL_PARAMETERS", line) || occursin("cell_parameters", line)
                 cell_unit    = cardoption(line)
                 cell_        = Matrix{T}(3, 3)
                 cell_[1, 1:3] = Meta.parse.(T, split(readline(f)))
@@ -347,7 +347,7 @@ function read_qe_input(filename, T=Float64::Type; exec=Exec("pw.x"), runcommand=
                 cell_block = InputData(:cell_parameters, cell_unit, cell)
                 @goto start_label
 
-            elseif contains(line, "ATOMIC_SPECIES") || contains(line, "atomic_species")
+            elseif occursin("ATOMIC_SPECIES", line) || occursin("atomic_species", line)
                 line    = readline(f)
                 pseudos = Dict{Symbol,String}()
                 while length(split(line)) == 3
@@ -357,7 +357,7 @@ function read_qe_input(filename, T=Float64::Type; exec=Exec("pw.x"), runcommand=
                 pseudo_block = InputData(:atomic_species, :none, pseudos)
                 @goto start_label
 
-            elseif contains(line, "ATOMIC_POSITIONS") || contains(line, "atomic_positions")
+            elseif occursin("ATOMIC_POSITIONS", line) || occursin("atomic_positions", line)
                 option = cardoption(line)
                 atoms  = Dict{Symbol, Vector{Point3{T}}}()
                 line   = readline(f)
@@ -375,7 +375,7 @@ function read_qe_input(filename, T=Float64::Type; exec=Exec("pw.x"), runcommand=
                 atom_block = InputData(:atomic_positions, option, atoms)
                 @goto start_label
 
-            elseif contains(line, "K_POINTS") || contains(line, "k_points")
+            elseif occursin("K_POINTS", line) || occursin("k_points", line)
                 k_option = cardoption(line)
                 line     = readline(f)
                 if k_option == :automatic
