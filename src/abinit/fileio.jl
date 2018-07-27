@@ -376,17 +376,17 @@
 # end
 #
 # #very stupid
-# function read_abi_output(filename::String, T=Float64)
-#     if occursin("FATBANDS", filename)
-#         return read_abi_fatbands(filename, T)
-#     elseif occursin("EBANDS.agr", filename)
-#         return read_abi_ebands(filename, T)
-#     elseif occursin("_EIG", filename)
-#         return read_abi_eig(filename, T)
-#     else
-#         error("Please supply a file with FATBANDS, EBANDS.agr or _EIG in the filename.")
-#     end
-# end
+function read_abi_output(filename::String, T=Float64)
+    if occursin("FATBANDS", filename)
+        return read_abi_fatbands(filename, T)
+    elseif occursin("EBANDS.agr", filename)
+        return read_abi_ebands(filename, T)
+    elseif occursin("_EIG", filename)
+        return read_abi_eig(filename, T)
+    else
+        error("Please supply a file with FATBANDS, EBANDS.agr or _EIG in the filename.")
+    end
+end
 #
 # "Reads an abinit FATBANDS output file and returns the found DFBands, with pdos values in the data field. K-points are not given (they aren't present in the output file)."
 # function read_abi_fatbands(filename::String, T=Float64)
@@ -412,34 +412,34 @@
 # end
 #
 # "Reads an abinit EBANDS.agr output file and returns the found DFBands. K-points only given in crystalline coordinates."
-# function read_abi_ebands(filename::String, T=Float64)
-#     bands = DFBand[]
-#     open(filename, "r") do f
-#         k_points_cryst = Vector{Vector{T}}()
-#         while !eof(f)
-#             line = readline(f)
-#             if occursin("List of k-points", line)
-#                 line = readline(f)
-#                 while line[1] != '@'
-#                     k_point = Meta.parse.(T, replace.(strip.(strip.(strip.(split(line)[4:end], '['), ']'), ','), 'E', 'e'))#ohno the replace here!
-#                     push!(k_points_cryst, k_point)
-#                     line = readline(f)
-#                 end
-#
-#             elseif occursin("target", line)
-#                 readline(f)
-#                 eigvals = T[]
-#                 line = readline(f)
-#                 while line[1] != '&'
-#                     push!(eigvals, Meta.parse(T, split(line)[2]))
-#                     line = readline(f)
-#                 end
-#                 push!(bands, DFBand([T[0.0, 0.0, 0.0] for i=1:length(eigvals)], k_points_cryst, eigvals))
-#             end
-#         end
-#     end
-#     return bands
-# end
+function read_abi_ebands(filename::String, T=Float64)
+    bands = DFBand[]
+    open(filename, "r") do f
+        k_points_cryst = Vector{Vector{T}}()
+        while !eof(f)
+            line = readline(f)
+            if occursin("List of k-points", line)
+                line = readline(f)
+                while line[1] != '@'
+                    k_point = parse.(T, replace.(strip.(strip.(strip.(split(line)[4:end], '['), ']'), ','), 'E', 'e'))#ohno the replace here!
+                    push!(k_points_cryst, k_point)
+                    line = readline(f)
+                end
+
+            elseif occursin("target", line)
+                readline(f)
+                eigvals = T[]
+                line = readline(f)
+                while line[1] != '&'
+                    push!(eigvals, parse(T, split(line)[2]))
+                    line = readline(f)
+                end
+                push!(bands, DFBand([T[0.0, 0.0, 0.0] for i=1:length(eigvals)], k_points_cryst, eigvals))
+            end
+        end
+    end
+    return bands
+end
 #
 # "Reads and abinit _EIG output file and returns the found DFBands. K-points are only given in crystalline coordinates."
 # function read_abi_eig(filename::String, T=Float64)

@@ -43,9 +43,9 @@ module DFControl
 
     include("fileio.jl")
     # export read_abi_input
-    # export read_abi_output
+    export read_abi_output
     # export read_abi_fatbands
-    # export read_abi_ebands
+    export read_abi_ebands
     # export read_abi_eig
     export read_qe_bands_file
     export read_ks_from_qe_output
