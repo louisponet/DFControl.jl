@@ -1,4 +1,4 @@
-authors = ["ponet <louisponet@gmail.com>"]
+authors = ["Louis Ponet <louisponet@gmail.com>"]
 name = "DFControl"
 uuid = "1e31e15d-4957-550d-a244-318eced754ae"
 repo = "https://github.com/louisponet/DFControl.jl.git"
