@@ -41,6 +41,7 @@ end
 
 name(input::DFInput) = input.name
 dir(input::DFInput)  = input.dir
+setdir!(input::DFInput, dir) = (input.dir = dir)
 namewext(input::DFInput, ext)      = name(input) * ext
 infile(input::DFInput{QE})         = namewext(input, ".in")
 infile(input::DFInput{Wannier90})  = namewext(input, ".win")

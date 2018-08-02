@@ -68,6 +68,8 @@ end
 Atom(id::Symbol, el::Element, pos::Point3; kwargs...)  = Atom(id=id, element=el, position=pos; kwargs...)
 Atom(id::Symbol, el::Symbol, pos::Point3; kwargs...)  = Atom(id=id, element=element(el), position=pos; kwargs...)
 
+#Easiest way to implement a new abstractatom is to provide a way to access
+#the struct holding `id`, `position`, `element`, `pseudo`, `projection` fields
 atom(at::Atom) = at
 id(at::AbstractAtom)          = atom(at).id
 position(at::AbstractAtom)    = atom(at).position
@@ -75,7 +77,13 @@ element(at::AbstractAtom)     = atom(at).element
 pseudo(at::AbstractAtom)      = atom(at).pseudo
 projections(at::AbstractAtom) = atom(at).projections
 
-setpseudo!(at::AbstractAtom, pseudo) = atom(at).pseudo = pseudo
+setid!(at::AbstractAtom, id::Symbol) = (atom(at).id = id)
+setposition!(at::AbstractAtom{T}, position::Point3) where T =
+    (atom(at).position = convert(Point3{T}, position))
+setpseudo!(at::AbstractAtom, pseudo) = (atom(at).pseudo = pseudo)
+setprojections!(at::AbstractAtom, projections::Vector{Projection}) =
+    (atom(at).projections = projections)
+
 bondlength(at1::AbstractAtom{T}, at2::AbstractAtom{T}, R=T(0.0)) where T<:AbstractFloat = norm(position(at1) - position(at2) - R)
 
 import Base: ==

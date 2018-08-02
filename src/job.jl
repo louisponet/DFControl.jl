@@ -712,6 +712,9 @@ Sets the local dir of the job.
 function setlocaldir!(job, dir)
     dir = dir != "" ? formdirectory(dir) : ""
     job.local_dir = dir
+    for i in inputs(job)
+        setdir!(i, dir)
+    end
     return job
 end
 
