@@ -233,7 +233,7 @@ end
 "Runs some checks on the set flags for the inputs in the job, and sets metadata (:prefix, :outdir etc) related flags to the correct ones. It also checks whether flags in the various inputs are allowed and set to the correct types."
 function sanitizeflags!(job::DFJob)
     setflags!(job, :prefix => "'$(job.name)'", print=false)
-    setflags!(job, :outdir => "'./'", print=false)
+    # setflags!(job, :outdir => "'./'", print=false)
     if iswannierjob(job)
         setflags!(job, :num_bands => flag(getnscfcalc(job), :nbnd), print=false)
     end

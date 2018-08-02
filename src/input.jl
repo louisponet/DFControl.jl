@@ -156,7 +156,7 @@ function setflags!(input::DFInput{T}, flags...; print=true) where T
 end
 
 "Runs through all the set flags and checks if they are allowed and set to the correct value"
-function sanitizeflags!(input::DFInput)
+function cleanflags!(input::DFInput)
     for (flag, value) in flags(input)
         flagtype_ = flagtype(input, flag)
         if flagtype_ == Void
@@ -172,6 +172,23 @@ function sanitizeflags!(input::DFInput)
             end
         end
     end
+end
+
+#TODO implement abinit and wannier90
+"""
+    sanitizeflags!(input::DFInput)
+
+Cleans up flags, i.e. remove flags that are not allowed and convert all
+flags to the correct types.
+Tries to correct common errors for different input types.
+"""
+function sanitizeflags!(input::DFInput)
+    cleanflags!(input)
+end
+function sanitizeflags!(input::DFInput{QE})
+    cleanflags!(input)
+    flag(input, :outdir) != dir(input) && setflags!(input, :outdir => dir(input), print=false)
+    #TODO add all the required flags    
 end
 
 """
