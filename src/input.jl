@@ -72,6 +72,7 @@ function Base.getindex(input::DFInput, n::Symbol)
     end
 end
 
+
 Base.eltype(::DFInput{P}) where P = P
 package(::DFInput{P}) where P = P
 
@@ -161,12 +162,18 @@ function setflags!(input::DFInput{T}, flags...; print=true) where T
                 print && warn("Filename '$(name(input))':\n  Could not convert '$value' into '$flag_type'.\n    Flag '$flag' not set.\n")
                 continue
             end
-            old_data = haskey(input.flags, flag) ? input.flags[flag] : ""
+            old_data = haskey(input.flags, flag) ? inp      ut.flags[flag] : ""
             input.flags[flag] = value
             print && info("$(name(input)):\n  -> $flag:\n      $old_data set to: $value\n")
         end
     end
     return found_keys, input
+end
+
+Base.setindex!(input::DFInput, dat, key) = setflags!(input, key => dat; print=false)
+function Base.setindex!(input::DFInput, dat::InputData, id)
+    index = findfirst(x -> name(x)==id, data(input))
+    data(input)[index] = dat
 end
 
 "Runs through all the set flags and checks if they are allowed and set to the correct value"

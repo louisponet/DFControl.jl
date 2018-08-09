@@ -188,7 +188,11 @@ function Base.getindex(job::DFJob, id::String)
         error("No Input with name $id")
     end
 end
-
+function Base.setindex!(job::DFJob, dat, key::Symbol)
+    for input in inputs(job)
+        input[key] = dat
+    end
+end
 
 setname!(job::DFJob, oldn, newn) = (input(job, oldn).name = newn)
 inpath(job::DFJob, n) = inpath(input(job,n))

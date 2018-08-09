@@ -56,6 +56,15 @@ job.inputs = job.inputs[1:3]
 
 setflags!(job, :nspin => 2, print=false)
 @test flag(job, "nscf", :nspin) == 2
+job["nscf"][:nspin] = 3
+@test job["nscf"][:nspin] == 3
+
+job[:nspin] = 10
+@test job["nscf"][:nspin] == 10
+
+job["nscf"][:Hubbard_U] = [1.0, 2.0]
+@test job["nscf"][:Hubbard_U] == [1.0, 2.0]
+
 
 addwancalc!(job, nscf,:Pt => [:s, :p, :d], Emin=fermi-7.0, Epad=5.0, wanflags=wanflags, print=false)
 
