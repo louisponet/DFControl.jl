@@ -169,17 +169,26 @@ iswannierjob(job::DFJob) = any(x->package(x) == Wannier90, inputs(job)) && any(x
 getnscfcalc(job::DFJob) = getfirst(x->flag(x, :calculation) == "'nscf'", inputs(job))
 cell(job::DFJob) = cell(structure(job))
 
-
 input(job::DFJob, n::String) = getfirst(x -> occursin(n, name(x)), inputs(job))
 inputs(job::DFJob) = job.inputs
+
 """
     inputs(job::DFJob, names::Vector)
 
 Returns an array of the inputs that match the names.
 """
 inputs(job::DFJob, names::Vector, fuzzy=true) = fuzzy ? filter(x -> any(occursin.(names, name(x))), inputs(job)) : input.(job, names)
-
 inputs(job::DFJob, n::String, fuzzy=true) = inputs(job, [n], fuzzy)
+
+function Base.getindex(job::DFJob, id::String)
+    tmp = getfirst(x -> name(x)==id, inputs(job))
+    if tmp != nothing
+        return tmp
+    else
+        error("No Input with name $id")
+    end
+end
+
 
 setname!(job::DFJob, oldn, newn) = (input(job, oldn).name = newn)
 inpath(job::DFJob, n) = inpath(input(job,n))

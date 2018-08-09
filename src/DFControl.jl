@@ -1,4 +1,3 @@
-__precompile__()
 module DFControl
 # using Reexport
     using Compat

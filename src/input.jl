@@ -4,6 +4,7 @@ mutable struct InputData
     option ::Symbol
     data   ::Any
 end
+name(data::InputData) = data.name
 
 @with_kw mutable struct DFInput{P <: Package}
     name     ::String
@@ -55,6 +56,19 @@ flags(input::DFInput)    = input.flags
 function flag(input::DFInput, flag::Symbol)
     if haskey(input.flags, flag)
         return input.flags[flag]
+    end
+end
+
+function Base.getindex(input::DFInput, n::Symbol)
+    if haskey(input.flags, n)
+        return input.flags[n]
+    else
+        tmp = getfirst(x->name(x) == n, data(input))
+        if tmp != nothing
+            return tmp
+        else
+            error("Id :$n \n\t Not found in flags or data of Input $(name(input))")
+        end
     end
 end
 

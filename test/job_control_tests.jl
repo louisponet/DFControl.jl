@@ -1,6 +1,6 @@
-using DFControl, Base.Test
+using DFControl, Test
 
-testjobpath = joinpath(Pkg.dir("DFControl"), "test/testassets/test_job/")
+testjobpath = joinpath(testdir, "testassets/test_job/")
 job = DFJob(testjobpath);
 
 #output stuff
@@ -9,13 +9,17 @@ out = outputdata(job;print=false,onlynew=false);
 @test haskey(out["nscf"], :fermi)
 
 nscf = DFControl.input(job, "nscf")
-nscf2 = DFInput(nscf, "nscf2.in", data=[:testdata => (:testoption, "test"), :k_points => (:blabla, [1,1,1,1,1,1])])
+nscf2 = DFInput(nscf, "nscf2", data=[:testdata => (:testoption, "test"), :k_points => (:blabla, [1,1,1,1,1,1])])
 
 @test data(nscf2, :testdata).option == :testoption
 @test data(nscf2, :testdata).data   == "test"
 @test data(nscf2, :testdata).name   == :testdata
 @test data(nscf2, :k_points).option == :blabla
 @test data(nscf2, :k_points).data   == [1,1,1,1,1,1]
+@test job["scf"][:k_points].option == :automatic
+@test_throws ErrorException job["bladbsflk"]
+@test_throws ErrorException job["nscf"][:bladkfj]
+
 
 setkpoints!(nscf2, (3,3,3), print=false)
 @test data(nscf2, :k_points).data  == kgrid(3, 3, 3, :nscf)
@@ -39,7 +43,7 @@ addcalc!(job, (10,10,10), name="nscf2")
 @test flag(job, "nscf2", :calculation) == "'nscf'"
 addcalc!(job, (5,5,5,1,1,1), name="1scf2")
 @test flag(job, "1scf2", :calculation) == "'scf'"
-
+@test job["nscf2"][:calculation] == flag(job, "nscf2", :calculation)
 
 
 wanflags = [:write_hr => true, :wannier_plot => true]

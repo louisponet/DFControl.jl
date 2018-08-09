@@ -1,7 +1,7 @@
-using DFControl
+using DFControl, Test
 import DFControl: searchdir, QEVariableInfo, QEControlBlockInfo, QEInputInfo, QEDataBlockInfo, qevariable
 
-qeassetpath = joinpath(Pkg.dir("DFControl"), "assets/inputs/qe/")
+qeassetpath = joinpath(dirname(pathof(DFControl)),"..", "assets/inputs/qe/")
 inputinfos = begin
     file_paths = qeassetpath .* searchdir(qeassetpath, "INPUT")
     QEInputInfo.(file_paths)

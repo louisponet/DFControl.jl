@@ -65,7 +65,7 @@ When the `job.tt` file gets written upon saving of the `DFJob`, calculations whi
 
 As a quick start to see this in action you can do (Juno is highly recommended, for reading clarity)
 ```julia
-job = DFJob(joinpath(Pkg.dir("DFControl"), "test/test_job/"))
+job = DFJob(joinpath(dirname(pathof("DFControl")), "..", "test/test_job/"))
 ```
 
 It will automatically look through the directory for a file which matches the fuzzy `*job*`. This can be specified through kwargs, further info in the documentation and examples.

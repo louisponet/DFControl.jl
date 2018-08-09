@@ -17,10 +17,10 @@ function init_defaults(filename::String)
             raw_input *= line * "; "
         end
     end
-    for name in names_to_export
-        Core.eval(Main, :(export $name))
-    end
-    Core.eval(Main, Meta.parse(raw_input))
+    # for name in names_to_export
+    #     Core.eval(DFControl, :(export $name))
+    # end
+    Core.eval(DFControl, Meta.parse(raw_input))
 end
 
 function load_defaults(filename::String=default_file)
@@ -32,19 +32,19 @@ function load_defaults(filename::String=default_file)
         end
     end
     raw_input *= "nothing ;"
-    Core.eval(Main, Meta.parse(raw_input))
+    Core.eval(DFControl, Meta.parse(raw_input))
 end
 
 "Macro which allows you to define any default variable that will get loaded every time you use this package."
 macro add_default(expr)
     expr2file(default_file, expr)
-    Core.eval(Main, expr)
+    Core.eval(DFControl, expr)
     load_defaults()
 end
 
 function removedefault(lhs)
     rm_expr_lhs(default_file, :($lhs))
-    Core.eval(Main, :($lhs = nothing))
+    Core.eval(DFControl, :($lhs = nothing))
 end
 
 function define_def(default, expr1, expr2)
@@ -74,12 +74,12 @@ end
 Removes entry with flag `pseudo_symbol` from the `default_pseudodirs` and `user_defaults.jl` file.
 """
 function removedefault_pseudodir(pseudo_symbol::Symbol)
-    if isdefined(Main, :default_pseudo_dirs) && haskey(Main.default_pseudo_dirs, pseudo_symbol)
-        pop!(Main.default_pseudo_dirs, pseudo_symbol)
+    if isdefined(DFControl, :default_pseudo_dirs) && haskey(DFControl.default_pseudo_dirs, pseudo_symbol)
+        pop!(DFControl.default_pseudo_dirs, pseudo_symbol)
         rm_expr_lhs(default_file, :(default_pseudo_dirs[$(QuoteNode(pseudo_symbol))]))
-        if isempty(Main.default_pseudo_dirs)
+        if isempty(DFControl.default_pseudo_dirs)
             rm_expr_lhs(default_file, :default_pseudo_dirs)
-            Core.eval(Main, :(default_pseudo_dirs = nothing))
+            Core.eval(DFControl, :(default_pseudo_dirs = nothing))
         end
         removedefault_pseudos(pseudo_symbol)
     else
@@ -94,17 +94,17 @@ Removes all pseudo entries with flag `pseudo_symbol` from the `default_pseudos`.
 """
 function removedefault_pseudos(pseudo_symbol::Symbol)
     found = false
-    if isdefined(Main, :default_pseudos)
-        for (at, pseudos) in Main.default_pseudos
+    if isdefined(DFControl, :default_pseudos)
+        for (at, pseudos) in DFControl.default_pseudos
             if haskey(pseudos, pseudo_symbol)
                 pop!(pseudos, pseudo_symbol)
                 rm_expr_lhs(default_file, :(default_pseudos[$(QuoteNode(at))][$(QuoteNode(pseudo_symbol))]))
                 found = true
             end
         end
-        if isempty(Main.default_pseudos)
+        if isempty(DFControl.default_pseudos)
             rm_expr_lhs(default_file, :default_pseudos)
-            Core.eval(Main, :(default_pseudos = nothing))
+            Core.eval(DFControl, :(default_pseudos = nothing))
         end
     end
     if found
@@ -131,8 +131,8 @@ end
 Returns the default server if it's defined. If it is not defined return "".
 """
 function getdefault_server()
-    if isdefined(Main, :default_server)
-        return Main.default_server
+    if isdefined(DFControl, :default_server)
+        return DFControl.default_server
     else
         return ""
     end
@@ -144,8 +144,8 @@ end
 Returns the default pseudo dirs if it's defined. If it is not defined return nothing.
 """
 function getdefault_pseudodirs()
-    if isdefined(Main, :default_pseudo_dirs)
-        return Main.default_pseudo_dirs
+    if isdefined(DFControl, :default_pseudo_dirs)
+        return DFControl.default_pseudo_dirs
     else
         return error("Please configure default pseudo directories first, using `setdefault_pseudodir` and `configuredefault_pseudos`.")
     end
@@ -172,7 +172,7 @@ function configuredefault_pseudos(;server = getdefault_server(), pseudo_dirs=get
         outputs[name] = server == "localhost" ? read(`ls $directory`, String) : read(`ssh -t $server ls $directory`, String)
     end
 
-    if !isdefined(Main, :default_pseudos)
+    if !isdefined(DFControl, :default_pseudos)
         expr2file(default_file, :(default_pseudos = Dict{Symbol, Dict{Symbol, Vector{String}}}()))
         init_defaults(default_file)
     end
@@ -217,11 +217,11 @@ function getdefault_pseudo(atom::Symbol, pseudo_setname=:default; pseudospecifie
     else
         pp_atom = atom
     end
-    if isdefined(Main, :default_pseudos) && haskey(Main.default_pseudos[pp_atom], pseudo_setname)
+    if isdefined(DFControl, :default_pseudos) && haskey(DFControl.default_pseudos[pp_atom], pseudo_setname)
         if pseudospecifier != ""
-            return getfirst(x -> occursin(x, pseudospecifier), Main.default_pseudos[pp_atom][pseudo_setname])
+            return getfirst(x -> occursin(x, pseudospecifier), DFControl.default_pseudos[pp_atom][pseudo_setname])
         else
-            return Main.default_pseudos[pp_atom][pseudo_setname][1]
+            return DFControl.default_pseudos[pp_atom][pseudo_setname][1]
         end
     end
 end
@@ -319,10 +319,10 @@ function findspecifier(str, strs::Vector{<:AbstractString})
 end
 
 function getpseudoset(elsym::Symbol, str::String)
-    if !isdefined(Main, :default_pseudos)
+    if !isdefined(DFControl, :default_pseudos)
         return :none, ""
     else
-        for (key, val) in Main.default_pseudos[elsym]
+        for (key, val) in DFControl.default_pseudos[elsym]
             if length(val) == 1
                 str == val[1] && return key, ""
             else

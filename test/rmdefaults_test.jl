@@ -1,9 +1,9 @@
-using DFControl, Base.Test
+using DFControl, Test
 
 DFControl.removedefault_pseudos(:test)
 
 @test DFControl.getdefault_pseudo(:Si, :test) == nothing
 
 removedefault(:testdefaultstring)
-@test testdefaultstring == nothing
+@test DFControl.testdefaultstring == nothing
 setdefault_server(prevdefault)

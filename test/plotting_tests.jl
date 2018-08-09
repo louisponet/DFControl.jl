@@ -1,4 +1,4 @@
-using DFControl, Base.Test
+using DFControl, Test
 using Plots
 # @test plot_qe_bands(joinpath(@__DIR__,"../assets/pulloutputs/bands.out")) != nothing
 # @test plot_qe_kpdos(joinpath(@__DIR__,"../assets/pulloutputs/kpdos.out")) != nothing
