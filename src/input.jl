@@ -162,7 +162,7 @@ function setflags!(input::DFInput{T}, flags...; print=true) where T
                 print && warn("Filename '$(name(input))':\n  Could not convert '$value' into '$flag_type'.\n    Flag '$flag' not set.\n")
                 continue
             end
-            old_data = haskey(input.flags, flag) ? inp      ut.flags[flag] : ""
+            old_data = haskey(input.flags, flag) ? input.flags[flag] : ""
             input.flags[flag] = value
             print && info("$(name(input)):\n  -> $flag:\n      $old_data set to: $value\n")
         end
