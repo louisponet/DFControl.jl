@@ -398,7 +398,7 @@ function read_qe_input(filename, T=Float64::Type; exec=Exec("pw.x"), runcommand=
     end
 
     structure = extract_structure!(structure_name, flags, cell_block, atom_block, pseudo_block)
-    pop!.(flags, [:ibrav, :nat, :ntyp, :A, :celldm_1, :celldm], nothing)
+    pop!.((flags,), [:ibrav, :nat, :ntyp, :A, :celldm_1, :celldm], (nothing,))
     dir, file = splitdir(filename)
     return DFInput{QE}(splitext(file)[1], dir, flags, data, [runcommand, exec], run), structure
 end
@@ -480,7 +480,7 @@ function write_structure(f, input::DFInput{QE}, structure)
     end
 
     write(f, "ATOMIC_SPECIES\n")
-    write.(f, pseudo_lines)
+    write.((f, ), pseudo_lines)
 
     write(f, "\n")
     write(f, "CELL_PARAMETERS (angstrom)\n")
@@ -488,6 +488,6 @@ function write_structure(f, input::DFInput{QE}, structure)
     write(f, "\n")
 
     write(f, "ATOMIC_POSITIONS (angstrom) \n")
-    write.(f, atom_lines)
+    write.((f, ), atom_lines)
     write(f, "\n")
 end

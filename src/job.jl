@@ -447,9 +447,9 @@ end
 Goes through the calculations of the job and if the name contains any of the `inputnames` it sets the exec flags to the specified ones.
 """
 setexecflags!(job::DFJob, exec, flags...) =
-    setexecflags!.(job.inputs, exec, flags...)
+    setexecflags!.(job.inputs, (exec, flags)...)
 rmexecflags!(job::DFJob, exec, flags...) =
-    rmexecflags!.(job.inputs, exec, flags...)
+    rmexecflags!.(job.inputs, (exec, flags)...)
 
 "Returns the executables attached to a given input."
 execs(job::DFJob, name) = execs(input(job, name))
@@ -641,7 +641,7 @@ function setwanenergies!(job::DFJob, Emin::AbstractFloat, bands; Epad=5.0, print
     nbnd = sum([sum(orbsize.(t)) for  t in projections(job)])
     print && info("num_bands=$nbnd (inferred from provided projections).")
     winmin, frozmin, frozmax, winmax = wanenergyranges(Emin, nbnd, bands, Epad)
-    setflags!.(wancalcs, :dis_win_min => winmin, :dis_froz_min => frozmin, :dis_froz_max => frozmax, :dis_win_max => winmax, :num_wann => nbnd, :num_bands=>length(bands), print=false)
+    map(x->setflags!(x, :dis_win_min => winmin, :dis_froz_min => frozmin, :dis_froz_max => frozmax, :dis_win_max => winmax, :num_wann => nbnd, :num_bands=>length(bands); print=false), wancalcs)
     return job
 end
 

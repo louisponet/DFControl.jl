@@ -48,7 +48,7 @@ function removedefault(lhs)
 end
 
 function define_def(default, expr1, expr2)
-    if !isdefined(default)
+    if !isdefined(DFControl, default)
         expr2file(default_file, expr1)
         init_defaults(default_file)
     else
@@ -234,7 +234,7 @@ Sets the header that will get added to each job.tt file, if no other header was 
 function setdefault_jobheader(lines)
     expr = :(default_job_header = $lines)
     expr2file(default_file,expr)
-    if !isdefined(:default_job_header)
+    if !isdefined(DFControl, :default_job_header)
         init_defaults(default_file)
     else
         load_defaults(default_file)
@@ -247,7 +247,7 @@ end
 Adds the input to the `default_inputs` variable, and writes it to a file in user_defaults folder to be read every time on load.
 """
 function setdefault_input(input::DFInput{T}, structure, calculation::Symbol) where T
-    if !isdefined(:default_inputs)
+    if !isdefined(DFControl, :default_inputs)
         expr = :(default_inputs = Dict{Symbol, Tuple{DFInput, Union{AbstractStructure, Nothing}}}())
         expr2file(default_file,expr)
         init_defaults(default_file)
@@ -285,7 +285,7 @@ function removedefault_input(input::Symbol)
 end
 
 function getdefault_jobheader()
-    if isdefined(:default_job_header)
+    if isdefined(DFControl, :default_job_header)
         return default_job_header
     else
         return ""

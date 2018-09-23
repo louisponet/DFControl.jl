@@ -32,7 +32,7 @@ linewidth=2
     end
     linewidth --> linewidth
     title     --> "Eigenvalues"
-    yguide    -->(haskey(d,:yguide) ? d[:yguide] : "energy (eV)")
+    yguide    --> "Energy (eV)"
     out = band.eigvals
     ks, out
 end

@@ -9,9 +9,17 @@ end
 
 using Conda
 using BinDeps
+using Pkg
 
-!ispath(Conda.PYTHONDIR) && Conda.update()
-
+pythonpath = joinpath(Conda.PYTHONDIR, "python2")
+if !ispath(pythonpath)
+    Pkg.rm("Conda")
+    ENV["CONDA_JL_VERSION"]="2"
+    rm(Conda.ROOTENV, recursive=true)
+    Pkg.add("Conda")
+    Pkg.build("Conda")
+    Conda.update()
+end
 # Conda.add("PyCifRW")
 tarpath = joinpath(@__DIR__, "cif2cell.tar.gz")
 tarpath2 = joinpath(@__DIR__, "pycifrw.tar.gz")

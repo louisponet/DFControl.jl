@@ -85,7 +85,7 @@ execs(input::DFInput) = input.execs
 execs(input::DFInput, exec::String) = filter(x -> occursin(exec, x.exec), input.execs)
 
 execflags(input::DFInput, exec::String) = [x.flags for x in execs(input, exec)]
-setexecflags!(input::DFInput, exec::String, flags...) = setflags!.(execs(input, exec), flags...)
+setexecflags!(input::DFInput, exec::String, flags...) = setflags!.(execs(input, exec), (flags,)...)
 setexecdir!(input::DFInput, exec, dir) = setexecdir!.(execs(input, exec), dir)
 rmexecflags!(input::DFInput, exec::String, flags...) = rmflags!.(execs(input, exec), flags...)
 

@@ -134,7 +134,7 @@ function writetojob(f, job, input::DFInput)
     if !should_run
         write(f, "#")
     end
-    writeexec.(f, execs(input))
+    writeexec.((f, ), execs(input))
     write(f, "< $filename > $(outfile(input))\n")
     return 1
 end
@@ -152,7 +152,7 @@ function writetojob(f, job, input::DFInput{Wannier90})
     if !pw2wan.run
         write(f, "#")
     end
-    writeexec.(f, execs(input))
+    writeexec.((f,), execs(input))
     write(f, "-pp $filename > $(outfile(input))\n")
 
     save(input, job.structure)
@@ -161,7 +161,7 @@ function writetojob(f, job, input::DFInput{Wannier90})
     if !should_run
         write(f, "#")
     end
-    writeexec.(f, execs(input))
+    writeexec.((f, ), execs(input))
     write(f, "$filename > $(outfile(input))\n")
     return 2
 end
