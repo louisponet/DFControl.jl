@@ -11,38 +11,19 @@ using Conda
 using BinDeps
 using Pkg
 
-pythonpath = joinpath(Conda.PYTHONDIR, "python2")
-if !ispath(pythonpath)
-    Pkg.rm("Conda")
-    ENV["CONDA_JL_VERSION"]="2"
-    rm(Conda.ROOTENV, recursive=true)
-    Pkg.add("Conda")
-    Pkg.build("Conda")
-    Conda.update()
-end
-# Conda.add("PyCifRW")
 tarpath = joinpath(@__DIR__, "cif2cell.tar.gz")
 tarpath2 = joinpath(@__DIR__, "pycifrw.tar.gz")
 download("https://sourceforge.net/projects/cif2cell/files/latest/download", tarpath)
-download("https://pypi.python.org/packages/f9/95/dd59d9c62c76f90110913d28910c81c563fb6db1e2c9fc668eac43c96a75/PyCifRW-4.1.1.tar.gz#md5=2435f47a1a7a935d43c8402d8f4339d5", tarpath2)
 run(unpack_cmd("cif2cell.tar.gz", @__DIR__, ".gz",".tar"))
-run(unpack_cmd("pycifrw.tar.gz", @__DIR__, ".gz",".tar"))
-pythonpath = joinpath(Conda.PYTHONDIR, "python2")
+pythonpath = joinpath(Conda.PYTHONDIR, "python")
 depsdir = @__DIR__
 cif2celldir = joinpath(depsdir, "cif2cell-1.2.10")
-pycifdir = joinpath(depsdir, "PyCifRW-4.1.1")
 cd(cif2celldir)
 run(`$pythonpath setup.py install --prefix=../`)
-cd(pycifdir)
-run(`$pythonpath setup.py install`)
-cd(depsdir)
-#
 cp(joinpath(depsdir, "lib/python2.7/site-packages/elementdata.py"),joinpath(depsdir, "bin/elementdata.py"))
 cp(joinpath(depsdir, "lib/python2.7/site-packages/ESPInterfaces.py"),joinpath(depsdir, "bin/ESPInterfaces.py"))
 cp(joinpath(depsdir, "lib/python2.7/site-packages/spacegroupdata.py"),joinpath(depsdir, "bin/spacegroupdata.py"))
 cp(joinpath(depsdir, "lib/python2.7/site-packages/uctools.py"),joinpath(depsdir, "bin/uctools.py"))
 cp(joinpath(depsdir, "lib/python2.7/site-packages/utils.py"),joinpath(depsdir, "bin/utils.py"))
 rm(tarpath)
-rm(tarpath2)
-rm(joinpath(depsdir,"PyCifRW-4.1.1"),recursive=true)
 rm(joinpath(depsdir,"cif2cell-1.2.10"),recursive=true)

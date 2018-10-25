@@ -87,7 +87,7 @@ function setpseudos!(structure::AbstractStructure, pseudoset, pseudospecifier=no
     for (i, at) in enumerate(atoms(structure))
         pseudo = getdefault_pseudo(id(at), pseudoset, pseudospecifier=pseudospecifier)
         if pseudo == nothing
-            warn("Pseudo for $(id(at)) at index $i not found in set $pseudoset.")
+            @warn "Pseudo for $(id(at)) at index $i not found in set $pseudoset."
         else
             setpseudo!(at, pseudo)
         end

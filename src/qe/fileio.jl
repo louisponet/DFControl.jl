@@ -88,7 +88,7 @@ function read_qe_output(filename::String, T=Float64)
 
                 #errors
             elseif occursin("mpirun noticed", line)
-                warn("File ended unexpectedly, returning what info has been gathered so far.")
+                @warn "File ended unexpectedly, returning what info has been gathered so far."
                 return out
                 break
                 #vcrel outputs

@@ -352,7 +352,7 @@ function flag(job::DFJob, inputs::Vector{<:DFInput}, fl::Symbol)
             return flag_
         end
     end
-    warn("Flag $fl not found in any input.")
+    @warn "Flag $fl not found in any input."
 end
 
 """

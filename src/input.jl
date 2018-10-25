@@ -108,7 +108,7 @@ end
 function setkpoints!(input::DFInput{QE}, k_grid::NTuple{3, Int}; print=true) #nscf
 
     calc = flag(input, :calculation)
-    print && calc != "'nscf'" && warn("Expected calculation to be 'nscf'.\nGot $calc.")
+    print && calc != "'nscf'" && (@warn "Expected calculation to be 'nscf'.\nGot $calc.")
     setdata!(input, :k_points, kgrid(k_grid..., :nscf), option = :crystal, print=print)
     prod(k_grid) > 100 && setflags!(input, :verbosity => "'high'", print=print)
     return input
@@ -116,7 +116,7 @@ end
 
 function setkpoints!(input::DFInput{QE}, k_grid::NTuple{6, Int}; print=true) #scf
     calc = flag(input, :calculation)
-    print && (calc != "'scf'" || !occursin("relax", calc)) && warn("Expected calculation to be 'scf', 'vc-relax', 'relax'.\nGot $calc.")
+    print && (calc != "'scf'" || !occursin("relax", calc)) && (@warn "Expected calculation to be 'scf', 'vc-relax', 'relax'.\nGot $calc.")
     setdata!(input, :k_points, [k_grid...], option = :automatic, print=print)
     prod(k_grid[1:3]) > 100 && setflags!(input, :verbosity => "'high'", print=print)
     return input
@@ -124,7 +124,7 @@ end
 
 function setkpoints!(input::DFInput{QE}, k_grid::Vector{NTuple{4, T}}; print=true, k_option=:crystal_b) where T<:AbstractFloat
     calc = flag(input, :calculation)
-    print && calc != "'bands'" && warn("Expected calculation to be 'bands', got $calc.")
+    print && calc != "'bands'" && (@warn "Expected calculation to be 'bands', got $calc.")
     @assert in(k_option, [:tpiba_b, :crystal_b, :tpiba_c, :crystal_c]) error("Only $([:tpiba_b, :crystal_b, :tpiba_c, :crystal_c]...) are allowed as a k_option, got $k_option.")
     if k_option in [:tpiba_c, :crystal_c]
         @assert length(k_grid) == 3 error("If $([:tpiba_c, :crystal_c]...) is selected the length of the k_points needs to be 3, got length: $(length(k_grid)).")
@@ -159,7 +159,7 @@ function setflags!(input::DFInput{T}, flags...; print=true) where T
             try
                 value = convertflag(flag_type, value)
             catch
-                print && warn("Filename '$(name(input))':\n  Could not convert '$value' into '$flag_type'.\n    Flag '$flag' not set.\n")
+                print && ( @warn "Filename '$(name(input))':\n  Could not convert '$value' into '$flag_type'.\n    Flag '$flag' not set.\n")
                 continue
             end
             old_data = haskey(input.flags, flag) ? input.flags[flag] : ""
@@ -181,7 +181,7 @@ function cleanflags!(input::DFInput)
     for (flag, value) in flags(input)
         flagtype_ = flagtype(input, flag)
         if flagtype_ == Nothing
-            warn("Flag $flag was not found in allowed flags for exec $(execs(input)[2]). Removing flag.")
+            @warn "Flag $flag was not found in allowed flags for exec $(execs(input)[2]). Removing flag."
             rmflags!(input, flag)
             continue
         end
@@ -237,7 +237,7 @@ function setdata!(input::DFInput, block_name::Symbol, new_block_data; option=not
     for data_block in input.data
         if data_block.name == block_name
             if typeof(data_block.data) != typeof(new_block_data)
-                if print warn("Overwritten data of type '$(typeof(data_block.data))' with type '$(typeof(new_block_data))'.") end
+                if print @warn "Overwritten data of type '$(typeof(data_block.data))' with type '$(typeof(new_block_data))'." end
             end
             old_data        = data_block.data
             data_block.data = new_block_data
@@ -315,7 +315,7 @@ function outputdata(input::DFInput; print=true, overwrite=true)
         input.outdata = readoutput(input)
         return input.outdata
     end
-    print && warn("No output data or output file found for input: $(name(input)).")
+    print && (@warn "No output data or output file found for input: $(name(input)).")
     return SymAnyDict()
 end
 
