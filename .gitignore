@@ -9,3 +9,5 @@ deps/bin/
 deps/lib/
 deps/build.log
 wip
+
+deps/python2/

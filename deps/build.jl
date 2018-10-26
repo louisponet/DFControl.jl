@@ -1,3 +1,6 @@
+using Compat
+using BinDeps
+
 if !isdir(joinpath(@__DIR__,"../user_defaults"))
     mkdir(joinpath(@__DIR__,"../user_defaults"))
 end
@@ -7,23 +10,82 @@ if !ispath(joinpath(@__DIR__,"../user_defaults/user_defaults.jl"))
     end
 end
 
-using Conda
-using BinDeps
-using Pkg
 
-tarpath = joinpath(@__DIR__, "cif2cell.tar.gz")
-tarpath2 = joinpath(@__DIR__, "pycifrw.tar.gz")
+
+relpath = x -> joinpath(@__DIR__, x)
+dlpath = relpath("downloads")
+if !ispath(dlpath)
+    mkdir(dlpath)
+end
+pythonpath = relpath("python2")
+if !ispath(pythonpath)
+    mkdir(pythonpath)
+end
+#From Conda installation
+url = "https://repo.continuum.io/miniconda/Miniconda2-latest-"
+if Compat.Sys.isapple()
+    url *= "MacOSX"
+elseif Compat.Sys.islinux()
+    url *= "Linux"
+elseif Compat.Sys.iswindows()
+    if MINICONDA_VERSION == "3"
+        # Quick fix for:
+        # * https://github.com/JuliaLang/IJulia.jl/issues/739
+        # * https://github.com/ContinuumIO/anaconda-issues/issues/10082
+        # * https://github.com/conda/conda/issues/7789
+        url = "https://repo.continuum.io/miniconda/Miniconda$(MINICONDA_VERSION)-4.5.4-"
+    end
+    url *= "Windows"
+else
+    error("Unsuported OS.")
+end
+url *= Sys.WORD_SIZE == 64 ? "-x86_64" : "-x86"
+url *= Compat.Sys.iswindows() ? ".exe" : ".sh"
+
+if Compat.Sys.isunix()
+    installer = joinpath(dlpath, "installer.sh")
+end
+if Compat.Sys.iswindows()
+    installer = joinpath(dlpath, "installer.exe")
+end
+download(url, installer)
+if Compat.Sys.isunix()
+    chmod(installer, 33261)  # 33261 corresponds to 755 mode of the 'chmod' program
+    run(`$installer -b -f -p $pythonpath`)
+end
+if Compat.Sys.iswindows()
+    run(Cmd(`$installer /S /AddToPath=0 /RegisterPython=0 /D=$pythonpath`, windows_verbatim=true))
+end
+
+# using Conda
+# using Pkg
+#
+# if !ispath(pythonpath)
+#     Pkg.rm("Conda")
+#     ENV["CONDA_JL_VERSION"]="2"
+#     rm(Conda.ROOTENV, recursive=true)
+#     Pkg.add("Conda")
+#     Pkg.build("Conda")
+#     Conda.update()
+# end
+# # Conda.add("PyCifRW")
+tarpath = relpath("cif2cell.tar.gz")
 download("https://sourceforge.net/projects/cif2cell/files/latest/download", tarpath)
 run(unpack_cmd("cif2cell.tar.gz", @__DIR__, ".gz",".tar"))
-pythonpath = joinpath(Conda.PYTHONDIR, "python")
-depsdir = @__DIR__
-cif2celldir = joinpath(depsdir, "cif2cell-1.2.10")
+cif2celldir = relpath("cif2cell-1.2.10")
 cd(cif2celldir)
-run(`$pythonpath setup.py install --prefix=../`)
-cp(joinpath(depsdir, "lib/python2.7/site-packages/elementdata.py"),joinpath(depsdir, "bin/elementdata.py"))
-cp(joinpath(depsdir, "lib/python2.7/site-packages/ESPInterfaces.py"),joinpath(depsdir, "bin/ESPInterfaces.py"))
-cp(joinpath(depsdir, "lib/python2.7/site-packages/spacegroupdata.py"),joinpath(depsdir, "bin/spacegroupdata.py"))
-cp(joinpath(depsdir, "lib/python2.7/site-packages/uctools.py"),joinpath(depsdir, "bin/uctools.py"))
-cp(joinpath(depsdir, "lib/python2.7/site-packages/utils.py"),joinpath(depsdir, "bin/utils.py"))
+run(`$(joinpath(pythonpath, "bin/python2")) setup.py install --prefix=$pythonpath`)
+# cd(pycifdir)
+# run(`$pythonpath setup.py install`)
+# cd(depsdir)
+# #
+# cp(joinpath(depsdir, "lib/python2.7/site-packages/elementdata.py"),joinpath(depsdir, "bin/elementdata.py"))
+# cp(joinpath(depsdir, "lib/python2.7/site-packages/ESPInterfaces.py"),joinpath(depsdir, "bin/ESPInterfaces.py"))
+# cp(joinpath(depsdir, "lib/python2.7/site-packages/spacegroupdata.py"),joinpath(depsdir, "bin/spacegroupdata.py"))
+# cp(joinpath(depsdir, "lib/python2.7/site-packages/uctools.py"),joinpath(depsdir, "bin/uctools.py"))
+# cp(joinpath(depsdir, "lib/python2.7/site-packages/utils.py"),joinpath(depsdir, "bin/utils.py"))
 rm(tarpath)
-rm(joinpath(depsdir,"cif2cell-1.2.10"),recursive=true)
+# rm(tarpath2)
+# rm(joinpath(depsdir,"PyCifRW-4.1.1"),recursive=true)
+rm(relpath("cif2cell-1.2.10"), recursive=true)
+rm(relpath("downloads"), recursive=true)
