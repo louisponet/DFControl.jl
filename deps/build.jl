@@ -68,7 +68,7 @@ download("https://sourceforge.net/projects/cif2cell/files/latest/download", tarp
 run(unpack_cmd("cif2cell.tar.gz", @__DIR__, ".gz",".tar"))
 cif2celldir = relpath("cif2cell-1.2.10")
 cd(cif2celldir)
-run(`$(joinpath(pythonpath, "bin/python2")) setup.py install --prefix=$pythonpath`)
+run(`$(joinpath(pythonpath, "bin", "python2")) setup.py install --prefix=$pythonpath`)
 # cd(pycifdir)
 # run(`$pythonpath setup.py install`)
 # cd(depsdir)
