@@ -1,6 +1,6 @@
 using DFControl, Test
 
-testdir = joinpath(dirname(pathof(DFControl)), "..", "test")
+testdir = joinpath(dirname(dirname(pathof(DFControl))), "test")
 @elapsed begin
 @testset "constants" begin include("constant_tests.jl") end
 @testset "Setting defaults"  begin include("defaults_test.jl") end
