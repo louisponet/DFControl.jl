@@ -93,5 +93,5 @@ module DFControl
 
     const UNDO_JOBS = DFJob[]
 
-    const cif2cellpath = joinpath(@__DIR__, "../deps/python2/bin/cif2cell")
+    const cif2cellpath = Compat.Sys.iswindows() ? joinpath(@__DIR__, "..", "deps", "python2", "Scripts", "cif2cell") : joinpath(@__DIR__, "..", "deps", "python2", "Scripts", "cif2cell")
 end
