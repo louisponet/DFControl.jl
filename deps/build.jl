@@ -64,7 +64,7 @@ end
 # end
 # # Conda.add("PyCifRW")
 tarpath = relpath("cif2cell.tar.gz")
-download("https://sourceforge.net/projects/cif2cell/files/latest/download", tarpath)
+download("http://sourceforge.net/projects/cif2cell/files/latest/download", tarpath)
 run(unpack_cmd("cif2cell.tar.gz", @__DIR__, ".gz",".tar"))
 cif2celldir = relpath("cif2cell-1.2.10")
 cd(cif2celldir)
