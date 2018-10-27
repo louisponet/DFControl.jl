@@ -66,17 +66,6 @@ function apply_fermi_level(band::Band, fermi)
 end
 
 """
-Makes sure that a directory string ends with "/".
-"""
-function formdirectory(directory::String)
-    if directory[end] != '/'
-        return directory * "/"
-    else
-        return directory
-    end
-end
-
-"""
     kgrid(na, nb, nc, input)
 
 Returns an array of k-grid points that are equally spaced, input can be either `:wan` or `:nscf`, the returned grids are appropriate as inputs for wannier90 or an nscf calculation respectively.

@@ -34,7 +34,7 @@ setkpoints!(nscf2, (3,3,3,0,0,1), print=false)
 @test data(nscf2, :k_points).data  == [3,3,3,0,0,1]
 
 fermi = read_qe_output(outpath(job, "nscf"))[:fermi]
-@test fermi == read_fermi_from_qe_output(job.local_dir * "nscf.out")
+@test fermi == read_fermi_from_qe_output(joinpath(job.local_dir, "nscf.out"))
 
 addcalc!(job, [(0.5,0.0,0.5,10.0),(0.0,0.0,0.0,10.0),(0.5,0.5,0.5,1.0)], name="bands2")
 @test flag(job, "bands2", :calculation) == "'bands'"
@@ -151,4 +151,4 @@ report = progressreport(job; onlynew=false, print=false)
 @test length(report[:accuracy]) == 9
 
 rm.(inpath.(job.inputs))
-rm(job.local_dir * "job.tt")
+rm(joinpath(job.local_dir, "job.tt"))

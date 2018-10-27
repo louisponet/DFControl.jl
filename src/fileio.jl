@@ -171,8 +171,8 @@ end
 Writes all the input files and job file that are linked to a DFJob.
 """
 function writejobfiles(job::DFJob)
-    rm.(job.local_dir .* searchdir(job.local_dir, ".in"))
-    open(job.local_dir * "job.tt", "w") do f
+    rm.(joinpath.(Ref(job.local_dir), searchdir(job.local_dir, ".in")))
+    open(joinpath(job.local_dir, "job.tt"), "w") do f
         write(f, "#!/bin/bash\n")
         write_job_name(f, job)
         write_job_header(f, job)

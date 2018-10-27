@@ -14,11 +14,11 @@ mutable struct DFJob
     metadata     ::Dict
     function DFJob(name, structure, calculations, local_dir, server, server_dir, header = getdefault_jobheader())
         if local_dir != ""
-            local_dir = formdirectory(local_dir)
+            local_dir = local_dir
         end
 
         if server_dir != ""
-            server_dir = formdirectory(server_dir)
+            server_dir = server_dir
         end
 
         test = filter(x -> x.name == name,UNDO_JOBS)
@@ -38,18 +38,18 @@ function DFJob(job_name, local_dir, structure::AbstractStructure, calculations::
                     server=getdefault_server(),
                     server_dir="",
                     package=QE,
-                    bin_dir="/usr/local/bin/",
+                    bin_dir=joinpath("usr","local","bin"),
                     pseudoset=:default,
                     pseudospecifier="",
                     header=getdefault_jobheader())
 
     @assert package==QE "Only implemented for Quantum Espresso!"
-    local_dir = formdirectory(local_dir)
+    local_dir = local_dir
     job_calcs = DFInput[]
     if typeof(common_flags) != Dict
         common_flags = Dict(common_flags)
     end
-    bin_dir = formdirectory(bin_dir)
+    bin_dir = bin_dir
     req_flags = Dict(:prefix  => "'$job_name'",
                      :outdir => "'$server_dir'",
                      :ecutwfc => 25.)
@@ -132,9 +132,7 @@ function DFJob(job_dir::String, T=Float64;
                   server        = getdefault_server(),
                   server_dir    = "")
 
-    job_dir = formdirectory(job_dir)
-
-    name, header, inputs, structure = read_job_inputs(job_dir * searchdir(job_dir, job_fuzzy)[1])
+    name, header, inputs, structure = read_job_inputs(joinpath(job_dir, searchdir(job_dir, job_fuzzy)[1]))
     j_name = isempty(new_job_name) ? name : new_job_name
     structure_name = split(j_name, "_")[1]
     structure.name = structure_name
@@ -160,7 +158,7 @@ function DFJob(server_dir::String, local_dir::String, server = getdefault_server
 end
 
 #-------------------BEGINNING GENERAL SECTION-------------#
-scriptpath(job::DFJob) = job.local_dir * "job.tt"
+scriptpath(job::DFJob) = joinpath(job.local_dir, "job.tt")
 starttime(job::DFJob) = mtime(scriptpath(job))
 
 runslocal(job::DFJob) = job.server=="localhost"
@@ -206,8 +204,8 @@ outpath(job::DFJob, n) = outpath(input(job,n))
 Pulls job from server. If no specific inputs are supplied it pulls all .in and .tt files.
 """
 function pulljob(server::String, server_dir::String, local_dir::String; job_fuzzy="*job*")
-    server_dir = formdirectory(server_dir)
-    local_dir  = formdirectory(local_dir)
+    server_dir = server_dir
+    local_dir  = local_dir
     if !ispath(local_dir)
         mkpath(local_dir)
     end
@@ -217,7 +215,7 @@ function pulljob(server::String, server_dir::String, local_dir::String; job_fuzz
     job_file = searchdir(local_dir, strip(job_fuzzy, '*'))[1]
 
     if job_file != nothing
-        input_files, output_files = read_job_filenames(local_dir * job_file)
+        input_files, output_files = read_job_filenames(joinpath(local_dir, job_file))
         for file in input_files
             pull_server_file(file)
         end
@@ -233,7 +231,7 @@ pulljob(args...; kwargs...) = pulljob(getdefault_server(), args..., kwargs...)
 Saves a DFJob, it's job file and all it's input files.
 """
 function save(job::DFJob, local_dir=job.local_dir)
-    local_dir = local_dir != "" ? formdirectory(local_dir) : error("Please specify a valid local_dir!")
+    local_dir = local_dir != "" ? local_dir : error("Please specify a valid local_dir!")
     if !ispath(local_dir)
         mkpath(local_dir)
         info("$local_dir did not exist, it was created.")
@@ -262,7 +260,6 @@ Saves the job locally, and then either runs it locally using `qsub` (when `job.s
 function submit(job::DFJob; server=job.server, server_dir=job.server_dir)
     save(job)
     job.server = server
-    job.server_dir = server_dir == "" ? "" : formdirectory(server_dir)
     job.metadata[:slurmid] = qsub(job)
 end
 
@@ -713,7 +710,6 @@ end
 Sets the server dir of the job.
 """
 function setserverdir!(job, dir)
-    dir = dir != "" ? formdirectory(dir) : ""
     job.server_dir = dir
     return job
 end
@@ -722,7 +718,6 @@ end
 Sets the local dir of the job.
 """
 function setlocaldir!(job, dir)
-    dir = dir != "" ? formdirectory(dir) : ""
     job.local_dir = dir
     for i in inputs(job)
         setdir!(i, dir)

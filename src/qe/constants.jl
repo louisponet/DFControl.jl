@@ -191,7 +191,7 @@ allflags(info::QEInputInfo) = flatten([[i.variables for i in info.control]; [i.v
 
 const QEInputInfos = begin
     input_files = searchdir(joinpath(@__DIR__, "..", "..", "assets", "inputs", "qe"), "INPUT")
-    file_paths  = joinpath(@__DIR__, "..", "..", "assets", "inputs", "qe") .* input_files
+    filepaths  = joinpath.(Ref(joinpath(@__DIR__, "..", "..", "assets", "inputs", "qe")), input_files)
     pw2wannier90_flags = [QEVariableInfo{String}(:outdir        , ["location of temporary output files"]),
                           QEVariableInfo{String}(:prefix        , ["pwscf filename prefix"]),
                           QEVariableInfo{String}(:seedname      , ["wannier90 input/output filename prefix"]),
@@ -204,7 +204,7 @@ const QEInputInfos = begin
                           QEVariableInfo{Bool}(:wvfn_formatted, ["formatted or unformatted output for wavefunctions"]),
                           QEVariableInfo{Bool}(:reduce_unk    , ["output wavefunctions on a coarse grid to save memory"])]
     pw2wannier90_block_info = QEControlBlockInfo(:inputpp, pw2wannier90_flags)
-    vcat(QEInputInfo.(file_paths), QEInputInfo("pw2wannier90.x", [pw2wannier90_block_info], QEDataBlockInfo[]))
+    vcat(QEInputInfo.(filepaths), QEInputInfo("pw2wannier90.x", [pw2wannier90_block_info], QEDataBlockInfo[]))
 end
 
 qe_input_info(input::DFInput{QE}) = getfirst(x-> occursin(x.exec, input.exec), QEInputInfos)
