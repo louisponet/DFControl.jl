@@ -11,12 +11,10 @@ if !ispath(joinpath(@__DIR__,"..", "user_defaults", "user_defaults.jl"))
     end
 end
 
-
-
+relpath = x -> joinpath(@__DIR__, x)
 pythonpath = relpath("python2")
 if !ispath(pythonpath)
     mkdir(pythonpath)
-    relpath = x -> joinpath(@__DIR__, x)
     dlpath = relpath("downloads")
     if !ispath(dlpath)
         mkdir(dlpath)
