@@ -1,12 +1,11 @@
 using DFControl, Test
 
-testjobpath = joinpath(testdir,"testassets/test_job/")
-# testjobpath = joinpath(@__DIR__,"testassets/test_job/")
+testjobpath = joinpath(testdir, "testassets", "test_job")
 
 name = "Pt"
 local_dir = testjobpath
 server_dir = testjobpath
-bin_dir = "/usr/local/bin"
+bin_dir = joinpath(homedir(), "bin")
 excs = [Exec("mpirun", bin_dir, Dict{Symbol, Any}(:np => 24)), Exec("pw.x", bin_dir, Dict{Symbol, Any}(:nk => 2))]
 
 pseudoset = :test

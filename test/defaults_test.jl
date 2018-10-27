@@ -4,7 +4,7 @@ import DFControl: Exec, data, add!, execs
 
 prevdefault = getdefault_server()
 setdefault_server("localhost")
-setdefault_pseudodir(:test, joinpath(testdir, "testassets/pseudos/"))
+setdefault_pseudodir(:test, joinpath(testdir, "testassets", "pseudos"))
 configuredefault_pseudos(pseudo_dirs=Dict(:test => getdefault_pseudodirs()[:test]))
 @add_default testdefaultstring = "test"
 

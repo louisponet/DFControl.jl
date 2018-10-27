@@ -190,8 +190,8 @@ end
 allflags(info::QEInputInfo) = flatten([[i.variables for i in info.control]; [i.variables for i in info.data]])
 
 const QEInputInfos = begin
-    input_files = searchdir(joinpath(@__DIR__, "../../assets/inputs/qe/"), "INPUT")
-    file_paths  = joinpath(@__DIR__, "../../assets/inputs/qe/") .* input_files
+    input_files = searchdir(joinpath(@__DIR__, "..", "..", "assets", "inputs", "qe"), "INPUT")
+    file_paths  = joinpath(@__DIR__, "..", "..", "assets", "inputs", "qe") .* input_files
     pw2wannier90_flags = [QEVariableInfo{String}(:outdir        , ["location of temporary output files"]),
                           QEVariableInfo{String}(:prefix        , ["pwscf filename prefix"]),
                           QEVariableInfo{String}(:seedname      , ["wannier90 input/output filename prefix"]),

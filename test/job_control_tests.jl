@@ -1,6 +1,6 @@
 using DFControl, Test
 
-testjobpath = joinpath(testdir, "testassets/test_job/")
+testjobpath = joinpath(testdir, "testassets", "test_job")
 job = DFJob(testjobpath);
 
 #output stuff
@@ -121,15 +121,15 @@ setexecflags!(job, "pw.x", :nk => 230)
 rmexecflags!(job, "pw.x", :nk)
 @test !haskey(execs(job, "nscf")[2].flags,:nk)
 
-setexecdir!(job, "pw.x", "~/bin/")
-@test execs(job, "nscf")[2].dir == "~/bin/"
+setexecdir!(job, "pw.x", joinpath(homedir(), "bin"))
+@test execs(job, "nscf")[2].dir == joinpath(homedir(), "bin")
 
 setname!(job, "nscf", "test")
 @test inpath(job, "test") == joinpath(job.local_dir, "test.in")
 setname!(job, "test", "nscf")
 
 setserverdir!(job, "localhost")
-@test job.server_dir == "localhost/"
+@test job.server_dir == "localhost"
 
 setheaderword!(job, "defpart", "frontend", print=false)
 @test any(occursin.("frontend",job.header))

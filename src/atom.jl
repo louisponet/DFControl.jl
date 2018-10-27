@@ -15,7 +15,7 @@ end
 Reads all the elements from the file.
 """
 const ELEMENTS = Element[]
-open(joinpath(@__DIR__, "../assets/elements.txt"), "r") do f
+open(joinpath(@__DIR__, "..", "assets", "elements.txt"), "r") do f
     while !eof(f)
         line = split(readline(f))
         push!(ELEMENTS, Element(Symbol(line[4]), Meta.parse(line[1]), line[9], Meta.parse(line[10]), (Meta.parse.(line[5:7],)...,)./65535))

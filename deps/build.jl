@@ -51,18 +51,6 @@ if Compat.Sys.iswindows()
     run(Cmd(`$installer /S /AddToPath=0 /RegisterPython=0 /D=$pythonpath`, windows_verbatim=true))
 end
 
-# using Conda
-# using Pkg
-#
-# if !ispath(pythonpath)
-#     Pkg.rm("Conda")
-#     ENV["CONDA_JL_VERSION"]="2"
-#     rm(Conda.ROOTENV, recursive=true)
-#     Pkg.add("Conda")
-#     Pkg.build("Conda")
-#     Conda.update()
-# end
-# # Conda.add("PyCifRW")
 tarpath = relpath("cif2cell.tar.gz")
 download("https://sourceforge.net/projects/cif2cell/files/latest/download", tarpath)
 run(unpack_cmd("cif2cell.tar.gz", @__DIR__, ".gz",".tar"))
@@ -71,17 +59,7 @@ cd(cif2celldir)
 pyex = Compat.Sys.iswindows() ? joinpath(pythonpath, "python") : joinpath(pythonpath, "bin", "python2")
 run(`$pyex setup.py install --prefix=$pythonpath`)
 cd("..")
-# cd(pycifdir)
-# run(`$pythonpath setup.py install`)
-# cd(depsdir)
-# #
-# cp(joinpath(depsdir, "lib/python2.7/site-packages/elementdata.py"),joinpath(depsdir, "bin/elementdata.py"))
-# cp(joinpath(depsdir, "lib/python2.7/site-packages/ESPInterfaces.py"),joinpath(depsdir, "bin/ESPInterfaces.py"))
-# cp(joinpath(depsdir, "lib/python2.7/site-packages/spacegroupdata.py"),joinpath(depsdir, "bin/spacegroupdata.py"))
-# cp(joinpath(depsdir, "lib/python2.7/site-packages/uctools.py"),joinpath(depsdir, "bin/uctools.py"))
-# cp(joinpath(depsdir, "lib/python2.7/site-packages/utils.py"),joinpath(depsdir, "bin/utils.py"))
+
 rm(tarpath)
-# rm(tarpath2)
-# rm(joinpath(depsdir,"PyCifRW-4.1.1"),recursive=true)
 rm(relpath("cif2cell-1.2.10"), recursive=true)
 rm(relpath("downloads"), recursive=true)

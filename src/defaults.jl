@@ -1,5 +1,5 @@
 "File with all the user defaults inside it"
-const default_file = joinpath(@__DIR__, "../user_defaults/user_defaults.jl")
+const default_file = joinpath(@__DIR__, "..", "user_defaults", "user_defaults.jl")
 
 function init_defaults(filename::String)
     raw_input       = ""
@@ -278,7 +278,7 @@ function removedefault_input(input::Symbol)
             rm_expr_lhs(default_file, :default_inputs)
             default_inputs = nothing
         end
-        rm(joinpath(@__DIR__, "../user_defaults/$(input_t.filename)"))
+        rm(joinpath(@__DIR__, "..","user_defaults", "$(input_t.filename)"))
     else
         error("Default_calculations does not have an input with symbol $symbol.\n  Possible symbols are: $(keys(default_inputs))")
     end
