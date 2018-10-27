@@ -73,7 +73,7 @@ end
 
 "Uses cif2cell to Meta.parse a cif file, then returns the parsed structure."
 function cif2structure(cif_file::String; structure_name="NoName")
-    tmpdir = tempdir()
+    tmpdir = splitdir(cif_file)[1]
     tmpfile = joinpath(tmpdir, "tmp.in")
     @assert splitext(cif_file)[2] == ".cif" error("Please specify a valid cif input file")
     run(`$cif2cellpath $cif_file -p quantum-espresso -o $tmpfile`)
