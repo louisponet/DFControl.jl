@@ -169,7 +169,7 @@ function configuredefault_pseudos(;server = getdefault_server(), pseudo_dirs=get
 
     outputs = Dict{Symbol, String}()
     for (name, directory) in pseudo_dirs
-        outputs[name] = server == "localhost" ? readdir(directory) : read(`ssh -t $server ls $directory`, String)
+        outputs[name] = server == "localhost" ? join(readdir(directory)) : read(`ssh -t $server ls $directory`, String)
     end
 
     if !isdefined(DFControl, :default_pseudos)
