@@ -28,13 +28,7 @@ if Compat.Sys.isapple()
 elseif Compat.Sys.islinux()
     url *= "Linux"
 elseif Compat.Sys.iswindows()
-    if MINICONDA_VERSION == "3"
-        # Quick fix for:
-        # * https://github.com/JuliaLang/IJulia.jl/issues/739
-        # * https://github.com/ContinuumIO/anaconda-issues/issues/10082
-        # * https://github.com/conda/conda/issues/7789
-        url = "https://repo.continuum.io/miniconda/Miniconda$(MINICONDA_VERSION)-4.5.4-"
-    end
+    url = "https://repo.continuum.io/miniconda/Miniconda2-4.5.4-"
     url *= "Windows"
 else
     error("Unsuported OS.")
