@@ -57,7 +57,12 @@ if !ispath(pythonpath)
     pyex = Compat.Sys.iswindows() ? joinpath(pythonpath, "python") : joinpath(pythonpath, "bin", "python2")
     run(`$pyex setup.py install --prefix=$pythonpath`)
     cd("..")
-
+#stupid urlopen
+    starfile = Compat.Sys.iswindows() ? joinpath(pythonpath, "lib", "site-packages", "StarFile.py") : joinpath(pythonpath, "lib", "python2.7", "site-packages", "StarFile.py")
+    starsource = read(starfile, String)
+    starsource = replace(starsource, "filestream = urlopen(filename)"=>"filestream = urlopen('file:' + filename)")
+    write(starfile, starsource)
+#
     rm(tarpath)
     rm(relpath("cif2cell-1.2.10"), recursive=true)
     rm(relpath("downloads"), recursive=true)
