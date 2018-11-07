@@ -1,4 +1,4 @@
-import ..DFControl: parse_flag_val, save, write_flag_line, write_cell
+import ..DFControl: parse_flag_val, save, write_flag_line, write_cell, conversions
 import ..DFControl: element, orbital, position, orbsize, id, parse_string_array, strip_split, parse_line
 #THIS IS THE MOST HORRIBLE FUNCTION I HAVE EVER CREATED!!!
 function extract_atoms(atoms_block::T, proj_block::T, cell) where T <: InputData
