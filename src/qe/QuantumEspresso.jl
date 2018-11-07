@@ -1,7 +1,10 @@
 module QuantumEspresso
 
     using ..DFControl
-    import ..DFControl: Package
+    using ..DFControl.GeometryTypes
+    using ..DFControl.LinearAlgebra
+    import ..DFControl: Package, InputData, DFInput, Atom, Structure, DFJob, DFBand
+
     struct QE <: Package end
     include("constants.jl")
     include("input.jl")

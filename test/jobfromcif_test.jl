@@ -43,7 +43,7 @@ job = DFJob(QE, name, local_dir, joinpath(testjobpath, "Pt.cif"), calculations,
 save(job)
 job
 @test data(job, "scf", :k_points).data == [6, 6, 6, 1, 1, 1]
-@test data(job, "nscf", :k_points).data == DFControl.kgrid(10, 10, 10, :nscf)
+@test data(job, "nscf", :k_points).data == DFControl.QuantumEspresso.kgrid(10, 10, 10)
 
 @test flag(job, "scf", :prefix) == flag(job, "nscf", :prefix) == "'$name'"
 @test flag(job, "bands", :verbosity) == "'high'"

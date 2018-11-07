@@ -1,5 +1,4 @@
-import ..DFControl: DFJob
-import ..DFControl: infile, outfile, setkpoints!, isbandscalc, isnscfcalc, isscfcalc, isspincalc, readoutput, generate_jobinputs, sanitizeflags!, cleanflags!, fortstring
+import ..DFControl: infile, outfile, setkpoints!, isbandscalc, isnscfcalc, isscfcalc, isspincalc, readoutput, generate_jobinputs, sanitizeflags!, cleanflags!, fortstring, namewext
 
 outfile(input::DFInput{QE})        = namewext(input, ".out")
 infile(input::DFInput{QE})         = namewext(input, ".in")
@@ -9,7 +8,7 @@ kgrid(na, nb, nc) = reshape([[a, b, c, 1 / (na * nb * nc)] for a in collect(rang
 function setkpoints!(input::DFInput{QE}, k_grid::NTuple{3, Int}; print=true) #nscf
 
     calc = flag(input, :calculation)
-    print && calc != "'nscf'" && warn("Expected calculation to be 'nscf'.\nGot $calc.")
+    print && calc != "'nscf'" && (@warn "Expected calculation to be 'nscf'.\nGot $calc.")
     setdata!(input, :k_points, kgrid(k_grid...), option = :crystal, print=print)
     prod(k_grid) > 100 && setflags!(input, :verbosity => "'high'", print=print)
     return input
@@ -17,7 +16,7 @@ end
 
 function setkpoints!(input::DFInput{QE}, k_grid::NTuple{6, Int}; print=true) #scf
     calc = flag(input, :calculation)
-    print && (calc != "'scf'" || !occursin("relax", calc)) && warn("Expected calculation to be 'scf', 'vc-relax', 'relax'.\nGot $calc.")
+    print && (calc != "'scf'" || !occursin("relax", calc)) && (@warn "Expected calculation to be 'scf', 'vc-relax', 'relax'.\nGot $calc.")
     setdata!(input, :k_points, [k_grid...], option = :automatic, print=print)
     prod(k_grid[1:3]) > 100 && setflags!(input, :verbosity => "'high'", print=print)
     return input
@@ -25,7 +24,7 @@ end
 
 function setkpoints!(input::DFInput{QE}, k_grid::Vector{NTuple{4, T}}; print=true, k_option=:crystal_b) where T<:AbstractFloat
     calc = flag(input, :calculation)
-    print && calc != "'bands'" && warn("Expected calculation to be 'bands', got $calc.")
+    print && calc != "'bands'" && (@warn "Expected calculation to be 'bands', got $calc.")
     @assert in(k_option, [:tpiba_b, :crystal_b, :tpiba_c, :crystal_c]) error("Only $([:tpiba_b, :crystal_b, :tpiba_c, :crystal_c]...) are allowed as a k_option, got $k_option.")
     if k_option in [:tpiba_c, :crystal_c]
         @assert length(k_grid) == 3 error("If $([:tpiba_c, :crystal_c]...) is selected the length of the k_points needs to be 3, got length: $(length(k_grid)).")
@@ -49,7 +48,7 @@ function sanitizeflags!(input::DFInput{QE}, job::DFJob)
     cleanflags!(input)
 
     setflags!(input, :outdir => fortstring(job.server_dir), print=false)
-    setflags!(input, :prefix => job.name, print=false)
+    setflags!(input, :prefix => fortstring(job.name), print=false)
     flag(input, :ecutwfc) == nothing && setflags!(input,  :ecutwfc => 25.0) #arbitrary default
     #TODO add all the required flags
 end

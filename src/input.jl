@@ -1,4 +1,3 @@
-import Media: info
 #these are all the control data, they hold the flags that guide the calculation
 mutable struct InputData
     name   ::Symbol
@@ -49,8 +48,7 @@ infile(input::DFInput{T}) where T  = error("infile extension not defined for pac
 outfile(input::DFInput{T}) where T = error("outfile extension not defined for package $T.")
 inpath(input::DFInput)             = joinpath(dir(input), infile(input))
 outpath(input::DFInput)            = joinpath(dir(input), outfile(input))
-
-
+save(input::DFInput)               = notimplemented("save", input)
 flags(input::DFInput)    = input.flags
 function flag(input::DFInput, flag::Symbol)
     if haskey(input.flags, flag)
@@ -166,7 +164,7 @@ Cleans up flags, i.e. remove flags that are not allowed and convert all
 flags to the correct types.
 Tries to correct common errors for different input types.
 """
-function sanitizeflags!(input::DFInput)
+function sanitizeflags!(input::DFInput, job)
     cleanflags!(input)
 end
 

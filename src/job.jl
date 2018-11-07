@@ -515,27 +515,36 @@ function addwancalc!(job::DFJob, wanflags...;
                      Emax=5.0,
                      Epad=5.0,
                      projections = :random,
+                     template = nothing,
                      kwargs...)
-    nscf = filter(isnscfcalc, job.inputs)
-    @assert nscf != nothing error("No valid nscf calculation found in job $(job.name)")
-
-
-    inputs = generate_waninputs(nscf[end], wanflags...; kwargs...)
-    addcalc!.(job, inputs)
-    if projections != :random
-        setprojections!(job, projections_...)
-        setwanenergies(job, Emin, bands(nscf[end]), projections(job), Epad = Epad)
+    if template == nothing
+        n = filter(isnscfcalc, job.inputs)
+        @assert n != nothing error("No valid nscf calculation found in job $(job.name)")
+        nscf = n[end]
     else
-        setwanenergies(job, Emin, Emax, bands(nscf[end]), Epad=Epad)
+        @assert isnscfcalc(template) error("Provided template is not an nscf calculation")
+        nscf = template
+    end
+
+
+
+    inputs = generate_waninputs(nscf, wanflags...; kwargs...)
+    addcalc!.((job,), inputs)
+
+    if projections != :random
+        setprojections!(job, projections...)
+        setwanenergies!(job, Emin, readbands(nscf), Epad = Epad)
+    else
+        setwanenergies!(job, Emin, Emax, readbands(nscf), Epad=Epad)
     end
     return job
 end
 addwancalc!(job::DFJob, template::String="nscf", args...; kwargs...) =
-    addwancalc!(job, input(job, template), args...; kwargs...)
+    addwancalc!(job, args...;template = input(job, template), kwargs...)
 
 
 "Automatically calculates and sets the wannier energies. This uses the projections, `Emin` and the bands to infer the other limits.\n`Epad` allows one to specify the padding around the inner and outer energy windows"
-function setwanenergies!(job::DFJob, Emin, bands::Vector{<:DFBand}, projections;
+function setwanenergies!(job::DFJob, Emin, bands::Vector{<:DFBand};
                          Epad=5.0, print=true)
     wancalcs = filter(x -> package(x) == Wannier90.Wan90, job.inputs)
     @assert length(wancalcs) != 0 error("Job ($(job.name)) has no Wannier90 calculations, nothing to do.")
@@ -551,10 +560,10 @@ function setwanenergies!(job::DFJob, Emin, Emax, bands; print=true)
     wancalcs = filter(x -> package(x) == Wannier90.Wan90, job.inputs)
     @assert length(wancalcs) != 0 error("Job ($(job.name)) has no Wannier90 calculations, nothing to do.")
 
-    nbnd = sum([sum(orbsize.(t)) for  t in projections(job)])
+    nbnd = sum([sum(orbsize.(t)) for  t in DFControl.projections(job)])
     bands_in_window = num_wann(Emin, Emax, bands)
     @assert nbnd <= bands_in_window error("Amount of projections that are present in the job exceed the amount of bands inside the specified energy window. \n Either empty the projections using `emptyprojections!(job)` or provide a larger energy window")
-    print && info("num_wann=$bands_in_window (number of bands fully inside energy window).")
+    print && (@info "num_wann=$bands_in_window (number of bands fully inside energy window).")
     map(x->setflags!(x, :dis_win_min => Emin,:dis_win_max => Emin, :num_wann => bands_in_window, :num_bands=>length(bands); print=false), wancalcs)
     return job
 end
