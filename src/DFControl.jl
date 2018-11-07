@@ -11,7 +11,6 @@ module DFControl
     include("atom.jl")
     include("structure.jl")
     include("types.jl")
-    export kpoints
 
     include("input.jl")
     include("utils.jl")

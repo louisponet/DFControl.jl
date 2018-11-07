@@ -22,13 +22,18 @@ open(joinpath(@__DIR__, "..", "assets", "elements.txt"), "r") do f
     end
 end
 
+#undefined element for when the atoms are not specified with a symbol
+push!(ELEMENTS, Element(:undef, 0, "undef", 0, (0.0,0.0,0.0)))
+
+
 function element(sym::Symbol)
     if tryparse(Int, String(sym)[end:end]) != nothing
         sym = Symbol(String(sym)[1:end-1])
     end
     found = filter(x->x.symbol == sym, ELEMENTS)
     if isempty(found)
-        error("No element found with symbol '$sym'.")
+        @warn "No element found with symbol '$sym'."
+        return :undef
     end
     return found[1]
 end

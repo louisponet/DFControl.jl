@@ -1,4 +1,4 @@
-import ..DFControl: parse_flag_val, save, write_flag_line, write_cell
+import ..DFControl: parse_flag_val, save, write_flag_line, write_cell, conversions
 import ..DFControl: element, orbital, position, orbsize, id, parse_string_array, strip_split, parse_line
 #THIS IS THE MOST HORRIBLE FUNCTION I HAVE EVER CREATED!!!
 function extract_atoms(atoms_block::T, proj_block::T, cell) where T <: InputData
@@ -192,7 +192,7 @@ function read_input(filename::String, T=Float64; runcommand= Exec(""), run=true,
 
             else
                 if occursin("mp_grid", line)
-                    flags[:mp_grid] = parse_string_array(Int, split(split(line, '=')[2]))
+                    flags[:mp_grid] = parse_string_array(Int, split(line)[end-2:end])
                 else
                     split_line = strip_split(line, '=')
                     flag       = Symbol(split_line[1])
