@@ -41,13 +41,23 @@ function Emax(Emin, nbnd, bands)
         end
     end
 
-    nbndfound <= nbnd && error("num_bands ($nbnd) starting from Emin=$Emin exceeds the number of bands ($nbndfound).")
+    nbndfound <= nbnd && error("num_wann ($nbnd) starting from Emin=$Emin exceeds the number of bands ($nbndfound).")
     return max
 end
 
 function wanenergyranges(Emin, nbnd, bands, Epad=5)
     max = Emax(Emin, nbnd, bands)
     (Emin - Epad, Emin, max, max + Epad)
+end
+
+function num_wann(Emin, Emax, bands)
+    nbndfound = 0
+    for b in bands
+        if minimum(b.eigvals) >= Emin && maximum(b.eigvals) <= Emax
+            nbndfound += 1
+        end
+    end
+    return nbndfound
 end
 
 """
@@ -70,9 +80,7 @@ end
 
 Returns an array of k-grid points that are equally spaced, input can be either `:wan` or `:nscf`, the returned grids are appropriate as inputs for wannier90 or an nscf calculation respectively.
 """
-kgrid(na, nb, nc, ::Type{QE}) = reshape([[a, b, c, 1 / (na * nb * nc)] for a in collect(range(0, stop=1, length=na + 1))[1:end - 1], b in collect(range(0, stop=1, length=nb + 1))[1:end - 1], c in collect(range(0, stop=1, length=nc + 1))[1:end - 1]], (na * nb * nc))
-kgrid(na, nb, nc, ::Type{Wannier90}) = reshape([[a, b, c] for a in collect(range(0, stop=1, length=na + 1))[1:end - 1], b in collect(range(0, stop=1, length=nb + 1))[1:end - 1], c in collect(range(0, stop=1, length=nc + 1))[1:end - 1]],(na * nb * nc))
-kgrid(na, nb, nc, input::Symbol) = input==:wan ? kgrid(na, nb, nc, Wannier90) : kgrid(na, nb, nc, QE)
+kgrid(na, nb, nc, ::Type{T}) where T = error("kgrid generation not implemented for package $T")
 kgrid(na, nb, nc, input::DFInput{T}) where T = kgrid(na, nb, nc, T)
 
 kakbkc(kgrid) = length.(unique.([[n[i] for n in kgrid] for i=1:3]))
@@ -179,3 +187,5 @@ macro undoable(func)
 end
 
 fortstring(s::AbstractString) = "'$s'"
+notimplemented(f, ::Type{P}) where P = error("$f not implemented for package $P.")
+notimplemented(f, i::DFInput) = notimplemented(f, package(i))

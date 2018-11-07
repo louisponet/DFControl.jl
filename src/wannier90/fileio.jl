@@ -1,3 +1,5 @@
+import ..DFControl: InputData, DFInput
+import ..DFControl: parse_flag_val
 #THIS IS THE MOST HORRIBLE FUNCTION I HAVE EVER CREATED!!!
 function extract_atoms(atoms_block::T, proj_block::T, cell) where T <: InputData
     if atoms_block.name == :atoms_cart
@@ -67,11 +69,11 @@ function extract_structure(name, cell_block::T, atoms_block::T, projections_bloc
 end
 
 """
-    read_wannier_input(filename::String, T=Float64; runcommand= Exec(""), run=true, exec=Exec("wannier90.x"), structure_name="NoName")
+    read_input(filename::String, T=Float64; runcommand= Exec(""), run=true, exec=Exec("wannier90.x"), structure_name="NoName")
 
-Reads a `DFInput{Wannier90}` and the included `Structure` from a WANNIER90 input file.
+Reads a `DFInput{Wan90}` and the included `Structure` from a WANNIER90 input file.
 """
-function read_wannier_input(filename::String, T=Float64; runcommand= Exec(""), run=true, exec=Exec("wannier90.x"), structure_name="NoName")
+function read_input(filename::String, T=Float64; runcommand= Exec(""), run=true, exec=Exec("wannier90.x"), structure_name="NoName")
     flags = Dict{Symbol,Any}()
     data  = Vector{InputData}()
     atoms_block = nothing
@@ -91,7 +93,7 @@ function read_wannier_input(filename::String, T=Float64; runcommand= Exec(""), r
                 block_name = Symbol(split(lowercase(line))[end])
 
                 if block_name == :projections
-                    proj_dict = Dict{Symbol,Array{Symbol,1}}()
+                    proj_dict = Dict{Symbol, Vector{Symbol}}()
                     line      = readline(f)
                     while !occursin("end", lowercase(line))
                         if occursin("!", line) || line == ""
@@ -115,7 +117,7 @@ function read_wannier_input(filename::String, T=Float64; runcommand= Exec(""), r
 
                 elseif block_name == :kpoint_path
                     line = readline(f)
-                    k_path_array = Array{Tuple{Symbol,Array{T,1}},1}()
+                    k_path_array = Vector{Tuple{Symbol,Vector{T}}}()
                     while !occursin("end", lowercase(line))
                     if occursin("!", line) || line == ""
                         line = readline(f)
@@ -217,16 +219,16 @@ function read_wannier_input(filename::String, T=Float64; runcommand= Exec(""), r
     end
     structure = extract_structure(structure_name, cell_block, atoms_block, proj_block)
     dir, file = splitdir(filename)
-    return DFInput{Wannier90}(splitext(file)[1], dir, flags, data, [runcommand, exec], run), structure
+    return DFInput{Wan90}(splitext(file)[1], dir, flags, data, [runcommand, exec], run), structure
 end
 
 """
-    save(input::DFInput{Wannier90}, structure, filename::String=inpath(input))
+    save(input::DFInput{Wan90}, structure, filename::String=inpath(input))
 
-Writes the `DFInput{Wannier90}` and `structure` to a file, that can be interpreted by WANNIER90.
+Writes the `DFInput{Wan90}` and `structure` to a file, that can be interpreted by WANNIER90.
 The atoms in the structure must have projections defined.
 """
-function save(input::DFInput{Wannier90}, structure, filename::String=inpath(input))
+function save(input::DFInput{Wan90}, structure, filename::String=inpath(input))
     open(filename, "w") do f
         for (flag, value) in input.flags
             write_flag_line(f, flag, value)
@@ -240,6 +242,7 @@ function save(input::DFInput{Wannier90}, structure, filename::String=inpath(inpu
             write(f, "\n")
         end
         write(f, "begin projections\n")
+        nbnd_for_projs = sum([sum(orbsize.(t)) for  t in projections.(atoms(structure))])
         uniats = unique(atoms(structure))
         projs = projections.(uniats)
         # projs = projections.(unique(atoms(structure)))
@@ -257,6 +260,9 @@ function save(input::DFInput{Wannier90}, structure, filename::String=inpath(inpu
                     end
                 end
                 write(f, "\n")
+            end
+            if nbnd_for_projs < flag(input, :num_wann)
+                write(f, "random\n")
             end
         end
         write(f, "end projections\n")
@@ -287,4 +293,31 @@ function save(input::DFInput{Wannier90}, structure, filename::String=inpath(inpu
             write(f, "end $(block.name)\n\n")
         end
     end
+end
+
+function writetojob(f, job, input::DFInput{Wan90})
+    filename    = infile(input)
+    should_run  = input.run
+    id = findfirst(isequal(input), job.inputs)
+    seedname = name(input)
+
+    pw2wanid = findfirst(x -> occursin("pw2wannier90.x", x.execs[2].exec), job.inputs[id+1:end])+id
+    pw2wan   = job.inputs[pw2wanid]
+    setflags!(pw2wan, :seedname => "'$seedname'", print=false)
+
+    if !pw2wan.run
+        write(f, "#")
+    end
+    writeexec.((f,), execs(input))
+    write(f, "-pp $filename > $(outfile(input))\n")
+
+    save(input, job.structure)
+    writetojob(f, job, pw2wan)
+
+    if !should_run
+        write(f, "#")
+    end
+    writeexec.((f, ), execs(input))
+    write(f, "$filename > $(outfile(input))\n")
+    return 2
 end

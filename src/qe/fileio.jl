@@ -1,12 +1,16 @@
+using ..DFControl.GeometryTypes
+
 import Base: parse
 
+import ..DFControl: InputData, DFInput, Atom, Structure
+import ..DFControl: strip_split, parse_flag_val, element
 const parseable_qe_execs = ["pw.x", "projwfc.x", "pw2wannier90.x", "pp.x"]
 #this is all pretty hacky with regards to the new structure and atom api. can for sure be a lot better!
 "Quantum espresso card option parser"
 cardoption(line) = Symbol(match(r"((?:[a-z][a-z0-9_]*))", split(line)[2]).match)
 
 """
-    read_qe_output(filename::String, T=Float64)
+    read_output(filename::String, T=Float64)
 
 Reads a generic quantum espresso input, returns a dictionary with all found data in the file.
 Possible keys:
@@ -24,7 +28,7 @@ Possible keys:
  - `:bands`
  - `:accuracy`
 """
-function read_qe_output(filename::String, T=Float64)
+function read_output(filename::String, T=Float64)
     out = Dict{Symbol,Any}()
     open(filename, "r") do f
         prefac_k     = nothing
@@ -318,12 +322,12 @@ function extract_structure!(name, control, cell_block, atom_block, pseudo_block)
 end
 
 """
-    read_qe_input(filename, T=Float64; exec="pw.x",  runcommand="", run=true, structure_name="NoName")
+    read_input(filename, T=Float64; exec="pw.x",  runcommand="", run=true, structure_name="NoName")
 
 Reads a Quantum Espresso input file. The exec get's used to find which flags are allowed in this input file, and convert the read values to the correct Types.
 Returns a `DFInput{QE}` and the `Structure` that is found in the input.
 """
-function read_qe_input(filename, T=Float64::Type; exec=Exec("pw.x"), runcommand=Exec(""), run=true, structure_name="NoName")
+function read_input(filename, T=Float64::Type; exec=Exec("pw.x"), runcommand=Exec(""), run=true, structure_name="NoName")
     data    = Vector{InputData}()
     flags   = Dict{Symbol, Any}()
     atom_block     = nothing
@@ -511,4 +515,16 @@ function write_structure(f, input::DFInput{QE}, structure)
     write(f, "ATOMIC_POSITIONS (angstrom) \n")
     write.((f, ), atom_lines)
     write(f, "\n")
+end
+
+"LOL this absolutely is impossible to do for QE"
+function writeabortfile(job::DFJob, input::DFInput{QE})
+    abortpath = joinpath(job.local_dir,"$(flag(input, :prefix)[2:end-1]).EXIT")
+    open(abortpath, "w") do f
+        write(f, " \n")
+    end
+    while ispath(abortpath)
+        continue
+    end
+    qdel(job)
 end

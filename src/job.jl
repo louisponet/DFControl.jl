@@ -1,3 +1,4 @@
+
 #here all the different input structures for the different calculations go
 """
 Represents a full DFT job with multiple input files and calculations.
@@ -34,67 +35,23 @@ mutable struct DFJob
 end
 
 #TODO implement abinit
-function DFJob(job_name, local_dir, structure::AbstractStructure, calculations::Vector, common_flags...;
+function DFJob(package, job_name, local_dir, structure::AbstractStructure, calculations::Vector, common_flags...;
                     server=getdefault_server(),
                     server_dir="",
-                    package=QE,
                     bin_dir=joinpath("usr","local","bin"),
                     pseudoset=:default,
                     pseudospecifier="",
                     header=getdefault_jobheader())
 
-    @assert package==QE "Only implemented for Quantum Espresso!"
-    local_dir = local_dir
-    job_calcs = DFInput[]
-    if typeof(common_flags) != Dict
-        common_flags = Dict(common_flags)
-    end
-    bin_dir = bin_dir
-    req_flags = Dict(:prefix  => "'$job_name'",
-                     :outdir => "'$server_dir'",
-                     :ecutwfc => 25.)
-    merge!(req_flags, common_flags)
-    for (calc, (excs, data)) in calculations
-        calc_ = typeof(calc) == String ? Symbol(calc) : calc
-        if in(calc_, [:vc_relax, :relax, :scf])
-            k_points = get(data, :k_points, [1, 1, 1, 0, 0, 0])
-            k_option = :automatic
-        elseif calc_ == :nscf
-            k_points = kgrid(get(data, :k_points, [1, 1, 1])..., :nscf)
-            k_option = :crystal
-        elseif calc_ == :bands
-            k_points = get(data, :k_points, [[0., 0., 0., 1.]])
-            num_k = 0.0
-            for point in k_points
-                num_k += point[4]
-            end
-            if num_k > 100.
-                push!(data[:flags], :verbosity => "'high'")
-            end
-            k_option = :crystal_b
-        end
-        flags  = get(data, :flags, Dict{Symbol, Any}())
-        if excs[2].exec == "pw.x"
-            push!(flags, :calculation => "'$(string(calc_))'")
-            datablocks = [InputData(:k_points, k_option, k_points)]
-        else
-            datablocks =  InputData[]
-        end
-        input_ = DFInput{package}(string(calc_), local_dir,
-                         Dict{Symbol, Any}(),
-                         datablocks, excs, true)
-        setflags!(input_, req_flags..., print=false)
-        setflags!(input_, flags..., print=false)
-        push!(job_calcs, input_)
-    end
+    job_calcs = generate_jobinputs(package, local_dir, structure, calculations, common_flags...)
     out = DFJob(job_name, structure, job_calcs, local_dir, server, server_dir, header)
     setatoms!(out, structure.atoms, pseudoset = pseudoset, pseudospecifier= pseudospecifier)
     return DFJob(job_name, structure, job_calcs, local_dir, server, server_dir, header)
 end
 
-function DFJob(job_name, local_dir, ciffile::String, calculations::Vector, args...; kwargs...)
+function DFJob(package, job_name, local_dir, ciffile::String, calculations::Vector, args...; kwargs...)
     structure = Structure(ciffile, name=job_name)
-    return DFJob(job_name, local_dir, structure, calculations, args... ; kwargs...)
+    return DFJob(package, job_name, local_dir, structure, calculations, args... ; kwargs...)
 end
 
 function DFJob(job::DFJob, flagstoset...; cell_=copy(cell(job)), atoms_=copy(atoms(job)), name=job.name,
@@ -248,7 +205,7 @@ function sanitizeflags!(job::DFJob)
     if iswannierjob(job)
         setflags!(job, :num_bands => flag(getnscfcalc(job), :nbnd), print=false)
     end
-    sanitizeflags!.(inputs(job))
+    sanitizeflags!.(inputs(job), (job,))
 end
 
 #TODO only uses qsub for now. how to make it more general?
@@ -319,17 +276,7 @@ The values that are supplied will be checked whether they are valid.
 """
 function setflags!(job::DFJob, inputs::Vector{<:DFInput}, flags...; print=true)
     UNDO_JOBS[job.id] = deepcopy(job)
-    found_keys = Symbol[]
-
-    for calc in inputs
-        t_, = setflags!(calc, flags..., print=print)
-        push!(found_keys, t_...)
-    end
-    nfound = setdiff([k for (k, v) in flags], found_keys)
-    if print && length(nfound) > 0
-        f = length(nfound) == 1 ? "flag" : "flags"
-        dfprintln("$f '$(join(":" .* String.(setdiff(flagkeys, found_keys)),", "))' were not found in the allowed input variables of the specified inputs!")
-    end
+    setflags!(inputs, flags...; print=print)
     return job
 end
 setflags!(job::DFJob, flags...;kwargs...) =
@@ -545,93 +492,54 @@ sets the projections of the specified atoms inside the job structure.
 setprojections!(job::DFJob, projections...) =
     setprojections!(job.structure, projections...)
 
+emptyprojections!(job::DFJob) = emptyprojections!(job.structure)
 "Returns the projections inside the job for the specified `i`th atom in the job with id `atsym`."
 projections(job::DFJob, atsym::Symbol, i=1) = projections(atom(job, atsym, i))
 "Returns all the projections inside the job."
 projections(job::DFJob) = projections.(atoms(job))
 
+# addwancalc!(job::DFJob, input::DFInput{T}, projections...; kwargs...) = error("addwancalc! not implemented for package $T")
+
 """
-    addwancalc!(job::DFJob, nscf::DFInput{QE}, projections;
+    addwancalc!(job::DFJob, wanflags...;
                      Emin=-5.0,
                      Epad=5.0,
+                     projections = :random,
                      wanflags=SymAnyDict(),
-                     pw2wanexec=Exec("pw2wannier90.x", nscf.execs[2].dir, nscf.execs[2].flags),
-                     wanexec=Exec("wannier90.x", nscf.execs[2].dir),
-                     bands=readbands(nscf))
+                     kwargs...)
 
 Adds a wannier calculation to a job. For now only works with QE.
 """
-function addwancalc!(job::DFJob, nscf::DFInput{QE}, projections_...;
+function addwancalc!(job::DFJob, wanflags...;
                      Emin=-5.0,
+                     Emax=5.0,
                      Epad=5.0,
-                     wanflags=SymAnyDict(),
-                     pw2wanexec=Exec("pw2wannier90.x", nscf.execs[2].dir),
-                     wanexec=Exec("wannier90.x", nscf.execs[2].dir),
-                     bands=readbands(nscf),
-                     print=true)
+                     projections = :random,
+                     kwargs...)
+    nscf = filter(isnscfcalc, job.inputs)
+    @assert nscf != nothing error("No valid nscf calculation found in job $(job.name)")
 
-    spin = isspincalc(nscf)
-    if spin
-        pw2wannames = ["pw2wan_up", "pw2wan_dn"]
-        wannames = ["wanup", "wandn"]
-        print && (@info "Spin polarized calculation found (inferred from nscf input).")
+
+    inputs = generate_waninputs(nscf[end], wanflags...; kwargs...)
+    addcalc!.(job, inputs)
+    if projections != :random
+        setprojections!(job, projections_...)
+        setwanenergies(job, Emin, bands(nscf[end]), projections(job), Epad = Epad)
     else
-        pw2wannames = ["pw2wan"]
-        wannames = ["wan"]
-    end
-
-    @assert flag(nscf, :calculation) == "'nscf'" error("Please provide a valid 'nscf' calculation.")
-    if flag(nscf, :nosym) != true
-        print && (@info "'nosym' flag was not set in the nscf calculation.\nIf this was not intended please set it and rerun the nscf calculation.\nThis generally gives errors because of omitted kpoints, needed for pw2wannier90.x")
-    end
-
-
-    setprojections!(job, projections_...)
-    nbnd = sum(sum.(orbsize.(projections.(atoms(job))...)))
-    print && (@info "num_bands=$nbnd (inferred from provided projections).")
-
-    wanflags = SymAnyDict(wanflags)
-    wanflags[:dis_win_min], wanflags[:dis_froz_min], wanflags[:dis_froz_max], wanflags[:dis_win_max] = wanenergyranges(Emin, nbnd, bands, Epad)
-
-    wanflags[:num_bands] = length(bands)
-    wanflags[:num_wann]  = nbnd
-
-    wanflags[:mp_grid] = kakbkc(data(nscf, :k_points).data)
-    print && (@info "mp_grid=$(join(wanflags[:mp_grid]," ")) (inferred from nscf input).")
-
-    pw2wanflags = SymAnyDict(:prefix => flag(nscf, :prefix), :outdir => flag(nscf, :outdir) == nothing ? "'./'" : flag(nscf, :outdir))
-    if haskey(wanflags, :write_hr)
-        pw2wanflags[:write_amn] = true
-        pw2wanflags[:write_mmn] = true
-    end
-    if haskey(wanflags, :wannier_plot)
-        pw2wanflags[:write_unk] = true
-    end
-
-    kdata = InputData(:kpoints, :none, kgrid(wanflags[:mp_grid]..., :wan))
-
-    for (pw2wanfil, wanfil) in zip(pw2wannames, wannames)
-        add!(job, DFInput{Wannier90}(wanfil, job.local_dir, copy(wanflags), [kdata], [Exec(), wanexec], true))
-        add!(job, DFInput{QE}(pw2wanfil, job.local_dir, copy(pw2wanflags), InputData[], [nscf.execs[1], pw2wanexec], true))
-    end
-
-    setfls!(job, name, flags...) = setflags!(job, name, flags..., print=false)
-    if spin
-        setfls!(job, "pw2wan_up", :spin_component => "'up'")
-        setfls!(job, "pw2wan_dn", :spin_component => "'down'")
-        setfls!(job, "wanup", :spin => "'up'")
-        setfls!(job, "wandn", :spin => "'down'")
+        setwanenergies(job, Emin, Emax, bands(nscf[end]), Epad=Epad)
     end
     return job
 end
-
 addwancalc!(job::DFJob, template::String="nscf", args...; kwargs...) =
     addwancalc!(job, input(job, template), args...; kwargs...)
 
+
 "Automatically calculates and sets the wannier energies. This uses the projections, `Emin` and the bands to infer the other limits.\n`Epad` allows one to specify the padding around the inner and outer energy windows"
-function setwanenergies!(job::DFJob, Emin::AbstractFloat, bands; Epad=5.0, print=true)
-    wancalcs = filter(x -> package(x) == Wannier90, job.inputs)
-    @assert length(wancalcs) != 0 error("Job ($(job.name)) has no Wannier90 calculations, nothing todo.")
+function setwanenergies!(job::DFJob, Emin, bands::Vector{<:DFBand}, projections;
+                         Epad=5.0, print=true)
+    wancalcs = filter(x -> package(x) == Wannier90.Wan90, job.inputs)
+    @assert length(wancalcs) != 0 error("Job ($(job.name)) has no Wannier90 calculations, nothing to do.")
+
     nbnd = sum([sum(orbsize.(t)) for  t in projections(job)])
     print && (@info "num_bands=$nbnd (inferred from provided projections).")
     winmin, frozmin, frozmax, winmax = wanenergyranges(Emin, nbnd, bands, Epad)
@@ -639,6 +547,17 @@ function setwanenergies!(job::DFJob, Emin::AbstractFloat, bands; Epad=5.0, print
     return job
 end
 
+function setwanenergies!(job::DFJob, Emin, Emax, bands; print=true)
+    wancalcs = filter(x -> package(x) == Wannier90.Wan90, job.inputs)
+    @assert length(wancalcs) != 0 error("Job ($(job.name)) has no Wannier90 calculations, nothing to do.")
+
+    nbnd = sum([sum(orbsize.(t)) for  t in projections(job)])
+    bands_in_window = num_wann(Emin, Emax, bands)
+    @assert nbnd <= bands_in_window error("Amount of projections that are present in the job exceed the amount of bands inside the specified energy window. \n Either empty the projections using `emptyprojections!(job)` or provide a larger energy window")
+    print && info("num_wann=$bands_in_window (number of bands fully inside energy window).")
+    map(x->setflags!(x, :dis_win_min => Emin,:dis_win_max => Emin, :num_wann => bands_in_window, :num_bands=>length(bands); print=false), wancalcs)
+    return job
+end
 """
     undo!(job::DFJob)
 

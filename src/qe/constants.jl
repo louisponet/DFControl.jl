@@ -1,3 +1,5 @@
+import ..DFControl: searchdir, strip_split, fort2julia, flagtype
+
 const celldm_1 = Symbol("celldm(1)")
 
 function read_block(f, startstr::String, endstr::String)
