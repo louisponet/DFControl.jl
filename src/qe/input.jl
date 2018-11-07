@@ -37,8 +37,8 @@ function setkpoints!(input::DFInput{QE}, k_grid::Vector{NTuple{4, T}}; print=tru
     if num_k > 100.
         setflags!(input, :verbosity => "'high'", print=print)
         if print
-            info("Verbosity is set to high because num_kpoints > 100,\n
-                       otherwise bands won't get printed.")
+            @info "Verbosity is set to high because num_kpoints > 100,\n
+                       otherwise bands won't get printed."
         end
     end
     setdata!(input, :k_points, k_grid, option=k_option, print=print)
@@ -59,7 +59,7 @@ isnscfcalc(input::DFInput{QE}) = flag(input, :calculation) == "'nscf'"
 isscfcalc(input::DFInput{QE}) = flag(input, :calculation) == "'scf'"
 isspincalc(input::DFInput{QE}) = all(flag(input, :nspin) .!= [nothing, 1])
 
-readoutput(input::DFInput{QE}) = read_qe_output(outpath(input))
+readoutput(input::DFInput{QE}) = read_output(outpath(input))
 
 function generate_jobinputs(::Type{QE}, local_dir, structure, calculations, common_flags...)
     job_calcs = DFInput{QE}[]

@@ -1,3 +1,4 @@
+import Media: info
 #these are all the control data, they hold the flags that guide the calculation
 mutable struct InputData
     name   ::Symbol

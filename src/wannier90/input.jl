@@ -1,7 +1,6 @@
 import ..DFControl: readoutput, setkpoints!, infile, outfile, generate_waninputs
 import ..DFControl.QuantumEspresso: QE
 
-
 readoutput(input::DFInput{Wan90}) = SymAnyDict()
 infile(input::DFInput{Wan90})  = namewext(input, ".win")
 outfile(input::DFInput{Wan90}) = namewext(input, ".wout")
