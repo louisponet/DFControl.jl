@@ -22,7 +22,7 @@ nscf2 = DFInput(nscf, "nscf2", data=[:testdata => (:testoption, "test"), :k_poin
 
 
 setkpoints!(nscf2, (3,3,3), print=false)
-@test data(nscf2, :k_points).data  == kgrid(3, 3, 3, :nscf)
+@test data(nscf2, :k_points).data  == QuantumEspresso.kgrid(3, 3, 3)
 
 
 setkpoints!(nscf2, [(3.,3.,3.,1.), (3.,3.,3.,1.)], print=false)
@@ -33,8 +33,8 @@ setkpoints!(nscf2, (3,3,3,0,0,1), print=false)
 @test data(nscf2, :k_points).option  == :automatic
 @test data(nscf2, :k_points).data  == [3,3,3,0,0,1]
 
-fermi = read_qe_output(outpath(job, "nscf"))[:fermi]
-@test fermi == read_fermi_from_qe_output(joinpath(job.local_dir, "nscf.out"))
+fermi = QuantumEspresso.read_output(outpath(job, "nscf"))[:fermi]
+@test fermi == QuantumEspresso.read_fermi_from_qe_output(joinpath(job.local_dir, "nscf.out"))
 
 addcalc!(job, [(0.5,0.0,0.5,10.0),(0.0,0.0,0.0,10.0),(0.5,0.5,0.5,1.0)], name="bands2")
 @test flag(job, "bands2", :calculation) == "'bands'"
@@ -48,7 +48,7 @@ addcalc!(job, (5,5,5,1,1,1), name="1scf2")
 
 wanflags = [:write_hr => true, :wannier_plot => true]
 
-addwancalc!(job, "nscf",:Pt => [:s, :p, :d], Emin=fermi-7.0, Epad=5.0, wanflags=wanflags, print=false)
+addwancalc!(job, "nscf", wanflags...; projections=[:Pt => [:s, :p, :d]], Emin=fermi-7.0, Epad=5.0, print=false)
 @test flag(job, "wan", :write_hr) == flag(job, "wan", :wannier_plot) == true
 
 
@@ -66,7 +66,7 @@ job["nscf"][:Hubbard_U] = [1.0, 2.0]
 @test job["nscf"][:Hubbard_U] == [1.0, 2.0]
 
 
-addwancalc!(job, nscf,:Pt => [:s, :p, :d], Emin=fermi-7.0, Epad=5.0, wanflags=wanflags, print=false)
+addwancalc!(job, wanflags...; projections= [:Pt => [:s, :p, :d]], template=nscf, Emin=fermi-7.0, Epad=5.0,  print=false)
 
 setflow!(job, ""=>false)
 @test job.inputs[1].run == false
@@ -111,7 +111,7 @@ end
 testorbs = [:s, :p]
 setprojections!(job, :Pt => testorbs)
 @test convert.(Symbol, [p.orb for p in projections(job, :Pt)]) == testorbs
-setwanenergies!(job, fermi-7.0, read_qe_bands_file(outpath(nscf)), Epad=3.0, print=false)
+setwanenergies!(job, fermi-7.0, QuantumEspresso.read_qe_bands_file(outpath(nscf)), Epad=3.0, print=false)
 
 @test flag(job, :dis_froz_max) == 14.285699999999999
 @test flag(job, :dis_win_max) == 14.285699999999999 + 3.0

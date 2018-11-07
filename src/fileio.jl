@@ -274,7 +274,7 @@ function read_job_inputs(job_file::String)
             if occursin(".x ", line)
                 runcommand, exec, inputfile, output, run = read_job_line(line)
                 only_exec = exec.exec
-                if only_exec in parseable_qe_execs
+                if only_exec in QuantumEspresso.parseable_qe_execs
                     inpath = joinpath(dir, inputfile)
                     input = ispath(inpath) ? read_qe_input(inpath, runcommand=runcommand, run=run, exec=exec) : (nothing, nothing)
                 elseif only_exec == "wannier90.x"

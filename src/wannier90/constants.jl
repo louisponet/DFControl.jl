@@ -1,4 +1,4 @@
-import ..DFControl: fort2julia
+import ..DFControl: fort2julia, flagtype
 function read_wan_control_flags(filename::String)
     out = Dict{Symbol,Type}()
     open(filename, "r") do f

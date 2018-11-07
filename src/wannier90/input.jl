@@ -1,5 +1,7 @@
-import ..DFControl: readoutput, setkpoints!, infile, outfile, generate_waninputs
 import ..DFControl.QuantumEspresso: QE
+import ..DFControl: SymAnyDict
+import ..DFControl: readoutput, setkpoints!, infile, outfile, generate_waninputs, isspincalc, kakbkc, dir, name, getfirst, namewext
+
 
 readoutput(input::DFInput{Wan90}) = SymAnyDict()
 infile(input::DFInput{Wan90})  = namewext(input, ".win")
@@ -36,19 +38,19 @@ function generate_waninputs(nscf::DFInput{QE}, wanflags...;
     if spin
         pw2wannames = ["pw2wan_up", "pw2wan_dn"]
         wannames = ["wanup", "wandn"]
-        print && info("Spin polarized calculation found (inferred from nscf input).")
+        print && (@info "Spin polarized calculation found (inferred from nscf input).")
     else
         pw2wannames = ["pw2wan"]
         wannames = ["wan"]
     end
 
     if flag(nscf, :nosym) != true
-        print && info("'nosym' flag was not set in the nscf calculation.\nIf this was not intended please set it and rerun the nscf calculation.\nThis generally gives errors because of omitted kpoints, needed for pw2wannier90.x")
+        print && (@info "'nosym' flag was not set in the nscf calculation.\nIf this was not intended please set it and rerun the nscf calculation.\nThis generally gives errors because of omitted kpoints, needed for pw2wannier90.x")
     end
 
     wanflags = SymAnyDict(wanflags)
     wanflags[:mp_grid] = kakbkc(data(nscf, :k_points).data)
-    print && info("mp_grid=$(join(wanflags[:mp_grid]," ")) (inferred from nscf input).")
+    print && (@info "mp_grid=$(join(wanflags[:mp_grid]," ")) (inferred from nscf input).")
 
     pw2wanflags = SymAnyDict(:prefix => flag(nscf, :prefix), :outdir => flag(nscf, :outdir) == nothing ? "'./'" : flag(nscf, :outdir))
     if haskey(wanflags, :write_hr)
@@ -62,16 +64,16 @@ function generate_waninputs(nscf::DFInput{QE}, wanflags...;
     kdata = InputData(:kpoints, :none, kgrid(wanflags[:mp_grid]...))
     inputs = DFInput[]
     for (pw2wanfil, wanfil) in zip(pw2wannames, wannames)
-        push!(inputs, DFInput{Wan90}(wanfil, job.local_dir, copy(wanflags), [kdata], [Exec(), wanexec], true))
-        push!(inputs, DFInput{QE}(pw2wanfil, job.local_dir, copy(pw2wanflags), InputData[], [nscf.execs[1], pw2wanexec], true))
+        push!(inputs, DFInput{Wan90}(wanfil, dir(nscf), copy(wanflags), [kdata], [Exec(), wanexec], true))
+        push!(inputs, DFInput{QE}(pw2wanfil, dir(nscf), copy(pw2wanflags), InputData[], [nscf.execs[1], pw2wanexec], true))
     end
 
-    setflags!(n, flags...) = setflags!(findfirst(x-> name(x) == n, inputs), flags...)
+    setflgs!(n::String, flags...) = setflags!(getfirst(x-> name(x) == n, inputs), flags...)
     if spin
-        setflags!("pw2wan_up",  :spin_component => "'up'")
-        setflags!("pw2wan_dn",  :spin_component => "'down'")
-        setflags!("wanup", :spin => "'up'")
-        setflags!("wandn", :spin => "'down'")
+        setflgs!("pw2wan_up",  :spin_component => "'up'")
+        setflgs!("pw2wan_dn",  :spin_component => "'down'")
+        setflgs!("wanup", :spin => "'up'")
+        setflgs!("wandn", :spin => "'down'")
     end
     return inputs
 end

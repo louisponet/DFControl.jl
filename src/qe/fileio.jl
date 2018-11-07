@@ -1,9 +1,8 @@
-using ..DFControl.GeometryTypes
 
 import Base: parse
 
-import ..DFControl: InputData, DFInput, Atom, Structure
-import ..DFControl: strip_split, parse_flag_val, element
+import ..DFControl: strip_split, parse_flag_val, save, write_flag_line, write_cell, write_data, parse_k_line, parse_line
+import ..DFControl: element, id, pseudo, position
 const parseable_qe_execs = ["pw.x", "projwfc.x", "pw2wannier90.x", "pp.x"]
 #this is all pretty hacky with regards to the new structure and atom api. can for sure be a lot better!
 "Quantum espresso card option parser"
@@ -183,7 +182,7 @@ end
 Reads the output file of a 'bands' calculation in Quantum Espresso.
 Returns an array of DFBands each with the same k_points and their respective energies.
 """
-read_qe_bands_file(filename::String, T=Float64) = read_qe_output(filename, T)[:bands]
+read_qe_bands_file(filename::String, T=Float64) = read_output(filename, T)[:bands]
 
 """
     read_ks_from_qe_output(filename::String, T=Float64)
@@ -192,7 +191,7 @@ Read k-points from a Quantum Espresso bands output file in cartesian (2pi/alat i
 Returns (k_points_cart,k_points_cryst).
 """
 function read_ks_from_qe_output(filename::String, T=Float64)
-    t = read_qe_output(filename, T)
+    t = read_output(filename, T)
     return t[:k_cart], t[:k_cryst]
 end
 
@@ -202,7 +201,7 @@ end
 Reads the Fermi level from a Quantum Espresso scf calculation output file
 (if there is one).
 """
-read_fermi_from_qe_output(filename::String, T=Float64) = read_qe_output(filename, T)[:fermi]
+read_fermi_from_qe_output(filename::String, T=Float64) = read_output(filename, T)[:fermi]
 
 """
     read_qe_kpdos(filename::String,column=1;fermi=0)
@@ -251,11 +250,11 @@ end
 Returns the polarization and modulus.
 """
 function read_qe_polarization(filename::String, T=Float64)
-    t = read_qe_output(filename, T)
+    t = read_output(filename, T)
     return t[:polarization], t[:pol_mod]
 end
 
-read_qe_vcrel(filename::String, T=Float64) = read_qe_output(filename, T) do x
+read_qe_vcrel(filename::String, T=Float64) = read_output(filename, T) do x
                                                 return x[:cell_parameters], x[:alat], x[:atomic_positions], x[:pos_option]
                                             end
 
