@@ -1,5 +1,6 @@
 using DFControl, Test
-import DFControl: searchdir, QEVariableInfo, QEControlBlockInfo, QEInputInfo, QEDataBlockInfo, qevariable
+import DFControl: searchdir
+import DFControl.QuantumEspresso: QEVariableInfo, QEControlBlockInfo, QEInputInfo, QEDataBlockInfo, qevariable
 
 qeassetpath = joinpath(dirname(pathof(DFControl)),"..", "assets","inputs", "qe")
 inputinfos = begin

@@ -6,8 +6,6 @@ module DFControl
     using RecipesBase, GeometryTypes, Parameters, Nullables, Media
 
     abstract type Package end
-    struct Wannier90 <: Package end
-    struct QE <: Package end
     struct Abinit <: Package end
 
     include("atom.jl")
@@ -28,7 +26,7 @@ module DFControl
            execs, setexecflags!, setexecdir!, rmexecflags!,
            input, inputs,
            inpath, outpath, setname!, setkpoints!, setdataoption!, setpseudos!,
-           atoms, atom, setatoms!, setprojections!, projections,
+           atoms, atom, setatoms!, setprojections!, emptyprojections!, projections,
            addwancalc!, addcalc!,
            setwanenergies!,
            outputdata,
@@ -52,9 +50,8 @@ module DFControl
     export read_qe_kpdos
     export read_qe_pdos
     export read_qe_polarization
-    export read_qe_input
-    export read_qe_output
-    export read_wannier_input
+    export read_input
+    export read_output
 
     include("plotting.jl")
 
@@ -82,6 +79,8 @@ module DFControl
     export getdefault_pseudodirs
     export removedefault
 
+    include("qe/QuantumEspresso.jl")
+    include("wannier90/Wannier90.jl")
     dfprintln(s::String) = println(s)
     function __init__()
         # if haskey(Pkg.installed(), "Atom")

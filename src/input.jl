@@ -44,10 +44,8 @@ name(input::DFInput) = input.name
 dir(input::DFInput)  = input.dir
 setdir!(input::DFInput, dir) = (input.dir = dir)
 namewext(input::DFInput, ext)      = name(input) * ext
-infile(input::DFInput{QE})         = namewext(input, ".in")
-infile(input::DFInput{Wannier90})  = namewext(input, ".win")
-outfile(input::DFInput{QE})        = namewext(input, ".out")
-outfile(input::DFInput{Wannier90}) = namewext(input, ".wout")
+infile(input::DFInput{T}) where T  = error("infile extension not defined for package $T.")
+outfile(input::DFInput{T}) where T = error("outfile extension not defined for package $T.")
 inpath(input::DFInput)             = joinpath(dir(input), infile(input))
 outpath(input::DFInput)            = joinpath(dir(input), outfile(input))
 
@@ -92,65 +90,15 @@ rmexecflags!(input::DFInput, exec::String, flags...) = rmflags!.(execs(input, ex
 runcommand(input::DFInput) = input.execs[1]
 
 setflow!(input::DFInput, run) = input.run = run
-
-
-"""
-    setkpoints!(input::DFInput, k_grid)
-
-Sets the kpoints of the input. Will automatically generate the kgrid values if necessary.
-"""
-function setkpoints!(input::DFInput{Wannier90}, k_grid::NTuple{3, Int}; print=true)
-    setflags!(input, :mp_grid => [k_grid...], print=print)
-    setdata!(input, :kpoints, kgrid(k_grid..., :wan), print=print)
-    return input
-end
-
-function setkpoints!(input::DFInput{QE}, k_grid::NTuple{3, Int}; print=true) #nscf
-
-    calc = flag(input, :calculation)
-    print && calc != "'nscf'" && (@warn "Expected calculation to be 'nscf'.\nGot $calc.")
-    setdata!(input, :k_points, kgrid(k_grid..., :nscf), option = :crystal, print=print)
-    prod(k_grid) > 100 && setflags!(input, :verbosity => "'high'", print=print)
-    return input
-end
-
-function setkpoints!(input::DFInput{QE}, k_grid::NTuple{6, Int}; print=true) #scf
-    calc = flag(input, :calculation)
-    print && (calc != "'scf'" || !occursin("relax", calc)) && (@warn "Expected calculation to be 'scf', 'vc-relax', 'relax'.\nGot $calc.")
-    setdata!(input, :k_points, [k_grid...], option = :automatic, print=print)
-    prod(k_grid[1:3]) > 100 && setflags!(input, :verbosity => "'high'", print=print)
-    return input
-end
-
-function setkpoints!(input::DFInput{QE}, k_grid::Vector{NTuple{4, T}}; print=true, k_option=:crystal_b) where T<:AbstractFloat
-    calc = flag(input, :calculation)
-    print && calc != "'bands'" && (@warn "Expected calculation to be 'bands', got $calc.")
-    @assert in(k_option, [:tpiba_b, :crystal_b, :tpiba_c, :crystal_c]) error("Only $([:tpiba_b, :crystal_b, :tpiba_c, :crystal_c]...) are allowed as a k_option, got $k_option.")
-    if k_option in [:tpiba_c, :crystal_c]
-        @assert length(k_grid) == 3 error("If $([:tpiba_c, :crystal_c]...) is selected the length of the k_points needs to be 3, got length: $(length(k_grid)).")
-    end
-    num_k = 0.0
-    for k in k_grid
-        num_k += k[4]
-    end
-    if num_k > 100.
-        setflags!(input, :verbosity => "'high'", print=print)
-        if print
-            @info "Verbosity is set to high because num_kpoints > 100,\n
-                       otherwise bands won't get printed."
-        end
-    end
-    setdata!(input, :k_points, k_grid, option=k_option, print=print)
-    return input
-end
-
+setkpoints!(input::DFInput) = notimplemented("setkpoints!", input)
+flagtype(input::DFInput) = notimplemented("flagtype", input)
 
 """
     setflags!(input::DFInput, flags...; print=true)
 
 Sets the specified flags in the input.
 """
-function setflags!(input::DFInput{T}, flags...; print=true) where T
+function setflags!(input::DFInput, flags...; print=true)
     found_keys = Symbol[]
     for (flag, value) in flags
         flag_type = flagtype(input, flag)
@@ -168,6 +116,20 @@ function setflags!(input::DFInput{T}, flags...; print=true) where T
         end
     end
     return found_keys, input
+end
+
+function setflags!(inputs::Vector{<:DFInput}, flags...; print=true)
+    found_keys = Symbol[]
+
+    for calc in inputs
+        t_, = setflags!(calc, flags..., print=print)
+        push!(found_keys, t_...)
+    end
+    nfound = setdiff([k for (k, v) in flags], found_keys)
+    if print && length(nfound) > 0
+        f = length(nfound) == 1 ? "flag" : "flags"
+        dfprintln("$f '$(join(":" .* String.(setdiff(flagkeys, found_keys)),", "))' were not found in the allowed input variables of the specified inputs!")
+    end
 end
 
 Base.setindex!(input::DFInput, dat, key) = setflags!(input, key => dat; print=false)
@@ -205,11 +167,6 @@ Tries to correct common errors for different input types.
 """
 function sanitizeflags!(input::DFInput)
     cleanflags!(input)
-end
-function sanitizeflags!(input::DFInput{QE})
-    cleanflags!(input)
-    flag(input, :outdir) != fortstring(dir(input)) && setflags!(input, :outdir => fortstring(dir(input)), print=false)
-    #TODO add all the required flags
 end
 
 """
@@ -295,16 +252,17 @@ function setdataoption!(input::DFInput, name::Symbol, option::Symbol; print=true
     return input
 end
 
-isbandscalc(input::DFInput{QE}) = flag(input, :calculation) == "'bands'"
-isnscfcalc(input::DFInput{QE}) = flag(input, :calculation) == "'nscf'"
-isscfcalc(input::DFInput{QE}) = flag(input, :calculation) == "'scf'"
-isspincalc(input::DFInput{QE}) = all(flag(input, :nspin) .!= [nothing, 1])
+isbandscalc(input::DFInput) = false
+isnscfcalc(input::DFInput)  = false
+isscfcalc(input::DFInput)   = false
+isspincalc(input::DFInput)  = false
 
 outdata(input::DFInput) = input.outdata
 hasoutput(input::DFInput) = !isempty(outdata(input))
 
 hasoutfile(input::DFInput) = ispath(outpath(input))
 hasnewout(input::DFInput, time) = mtime(outpath(input)) > time
+readoutput(input::DFInput) = notimplemented("readoutput", input)
 
 "Returns the outputdata for the input."
 function outputdata(input::DFInput; print=true, overwrite=true)
@@ -319,8 +277,6 @@ function outputdata(input::DFInput; print=true, overwrite=true)
     return SymAnyDict()
 end
 
-readoutput(input::DFInput{QE}) = read_qe_output(outpath(input))
-readoutput(input::DFInput{Wannier90}) = SymAnyDict()
 
 function readbands(input::DFInput)
     to = readoutput(input)
@@ -330,3 +286,7 @@ function readbands(input::DFInput)
         error("No bands found in $(name(input)).")
     end
 end
+
+generate_waninputs(input::DFInput, Emin, Emax, nbnd, wanflags; kwargs...) = notimplemented("generate_waninputs", input)
+
+generate_jobinputs(::Type{T}, local_dir, structure, calculations, common_flags...) where T <: Package = notimplemented("generate_jobinputs", T)

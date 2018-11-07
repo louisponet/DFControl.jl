@@ -1,3 +1,4 @@
+import ..DFControl: fort2julia
 function read_wan_control_flags(filename::String)
     out = Dict{Symbol,Type}()
     open(filename, "r") do f
@@ -18,5 +19,5 @@ end
 
 const WannierControlFlags = read_wan_control_flags(joinpath(@__DIR__, "..", "..", "assets", "inputs", "wannier", "input_flags.txt"))
 
-flagtype(::Type{Wannier90}, flag) = haskey(WannierControlFlags, flag) ? WannierControlFlags[flag] : Nothing
-flagtype(::DFInput{Wannier90}, flag) = flagtype(Wannier90, flag)
+flagtype(::Type{Wan90}, flag) = haskey(WannierControlFlags, flag) ? WannierControlFlags[flag] : Nothing
+flagtype(::DFInput{Wan90}, flag) = flagtype(Wan90, flag)

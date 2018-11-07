@@ -1,4 +1,6 @@
 using DFControl, Test
+using DFControl.QuantumEspresso
+import DFControl.QuantumEspresso: QE
 
 testjobpath = joinpath(testdir, "testassets", "test_job")
 
@@ -24,7 +26,7 @@ bands_data = Dict(:k_points => [[0.5, 0.5, 0.5, 100.],
 nscf_data = merge(bands_data, Dict(:k_points => [10, 10, 10]))
 calculations = [:vc_relax => (excs, scf_data), :scf => (excs, scf_data), :bands => (excs, bands_data), :nscf =>(excs, nscf_data), :blabla => ([Exec(), Exec()], Dict())]
 
-job = DFJob(name, local_dir, joinpath(testjobpath, "Pt.cif"), calculations,
+job = DFJob(QE, name, local_dir, joinpath(testjobpath, "Pt.cif"), calculations,
       :prefix       => "'$name'",
       :restart_mode => "'from_scratch'",
       :ecutwfc      => 18.0,

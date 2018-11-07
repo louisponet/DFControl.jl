@@ -1,8 +1,7 @@
 # import Base: parse
 
-include("qe/fileio.jl")
+# include("qe/fileio.jl")
 include("abinit/fileio.jl")
-include("wannier90/fileio.jl")
 
 
 #--------------------Used by other file processing------------------#
@@ -405,16 +404,4 @@ function write_cell(f::IO, cell::AbstractMatrix)
     write(f, "$(cell[1, 1]) $(cell[1, 2]) $(cell[1, 3])\n")
     write(f, "$(cell[2, 1]) $(cell[2, 2]) $(cell[2, 3])\n")
     write(f, "$(cell[3, 1]) $(cell[3, 2]) $(cell[3, 3])\n")
-end
-
-"LOL this absolutely is impossible to do for QE"
-function writeabortfile(job::DFJob, input::DFInput{QE})
-    abortpath = joinpath(job.local_dir,"$(flag(input, :prefix)[2:end-1]).EXIT")
-    open(abortpath, "w") do f
-        write(f, " \n")
-    end
-    while ispath(abortpath)
-        continue
-    end
-    qdel(job)
 end
