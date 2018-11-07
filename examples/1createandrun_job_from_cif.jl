@@ -1,4 +1,5 @@
 using DFControl
+using DFControl.QuantumEspresso
 
 #This example goes through how one would create a job from scratch, using a .cif file for the Structure.
 
@@ -74,11 +75,11 @@ qstat()
 out = pulloutputs(job)
 
 #now the bandstructure can be plotted
-bands = read_qe_output(out[2])[:bands]
+bands = read_output(out[2])[:bands]
 #alt:
 bands = read_qe_bands_file(out[2])
 
-fermi = read_qe_output(out[1])[:fermi]
+fermi = read_output(out[1])[:fermi]
 #alt:
 fermi = read_fermi_from_qe_output(out[1])
 using Plots
