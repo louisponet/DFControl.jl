@@ -1,17 +1,22 @@
-
-@enum Orbital s p d f
-function orbital(s::Symbol)
-    t = 0
-    while Symbol(Orbital(t)) != s
-        t += 1
-        if t > Int(f)
-            error("Orbital $s not defined.")
-        end
-    end
-    return Orbital(t)
+struct Orbital
+    id::Symbol
+    size::Int
 end
-Base.convert(::Type{Symbol}, x::Orbital) = Symbol(x)
-orbsize(orb::Orbital) = Int(orb) * 2 + 1
+const orbitals = [
+    Orbital(:s, 1),
+    Orbital(:p, 3),
+    Orbital(:d, 5),
+    Orbital(:f, 7),
+    Orbital(:dz2, 1),
+    Orbital(:dxz, 1),
+    Orbital(:dyz, 1),
+    Orbital(Symbol("dx2-y2"), 1),
+    Orbital(:dxy,1),
+]
+orbital(s::Symbol) = getfirst(x->x.id==s, orbitals)
+
+Base.convert(::Type{Symbol}, x::Orbital) = x.id
+orbsize(orb::Orbital) = orb.size
 orbsize(orb::Symbol)  = orbsize(orbital(orb))
 
 @with_kw struct Projection

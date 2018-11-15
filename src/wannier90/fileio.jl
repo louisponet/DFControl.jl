@@ -246,10 +246,10 @@ function save(input::DFInput{Wannier90}, structure, filename::String=inpath(inpu
                 if isempty(prjs)
                     continue
                 end
-                write(f, "$(id(at)): $(prjs[1].orb)")
+                write(f, "$(id(at)): $(prjs[1].orb.id)")
                 if length(prjs) > 1
                     for proj in prjs[2:end]
-                        write(f, ";$(proj.orb)")
+                        write(f, ";$(proj.orb.id)")
                     end
                 end
                 write(f, "\n")
