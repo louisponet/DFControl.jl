@@ -271,17 +271,21 @@ function read_job_inputs(job_file::String)
                 runcommand, exec, inputfile, output, run = read_job_line(line)
                 only_exec = exec.exec
                 if only_exec in parseable_qe_execs
-                    input, structure = read_qe_input(joinpath(dir, inputfile), runcommand=runcommand, run=run, exec=exec)
+                    inpath = joinpath(dir, inputfile)
+                    input, structure = ispath(inpath) ? read_qe_input(inpath, runcommand=runcommand, run=run, exec=exec) : nothing, nothing
                 elseif only_exec == "wannier90.x"
-                    input, structure = read_wannier_input(joinpath(dir, splitext(inputfile)[1] * ".win"), runcommand=runcommand, run=run, exec=exec)
+                    inpath = joinpath(dir, splitext(inputfile)[1] * ".win")
+                    input, structure = ispath(inpath) ? read_wannier_input(inpath, runcommand=runcommand, run=run, exec=exec): nothing, nothing
                 end
-                id = findall(x-> infile(x) == inputfile, inputs)
-                if !isempty(id)
-                    inputs[id[1]] = input
-                    structures[id[1]] = structure
-                else
-                    push!(inputs, input)
-                    push!(structures, structure)
+                if input != nothing
+                    id = findall(x-> infile(x) == inputfile, inputs)
+                    if !isempty(id)
+                        inputs[id[1]] = input
+                        structures[id[1]] = structure
+                    else
+                        push!(inputs, input)
+                        push!(structures, structure)
+                    end
                 end
             #Incomplete: Handle abinit in the new way!
             # elseif occursin(line, "abinit ")
