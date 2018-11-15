@@ -219,7 +219,7 @@ function read_job_line(line)
                 continue
             end
             flag = Symbol(ts[2:end])
-            val  = parse(Int, spl[i + 1])
+            val  = tryparse(Int, spl[i + 1]) == nothing ? spl[i + 1] : parse(Int, spl[i+1])
             t_flags[flag] = val
             i += 2
         end
