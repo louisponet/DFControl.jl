@@ -273,7 +273,7 @@ function read_job_inputs(job_file::String)
                 if only_exec in parseable_qe_execs
                     inpath = joinpath(dir, inputfile)
                     input = ispath(inpath) ? read_qe_input(inpath, runcommand=runcommand, run=run, exec=exec) : (nothing, nothing)
-                elseif only_exec == "wannier90.x"
+                elseif occursin("wannier90.x", only_exec)
                     inpath = joinpath(dir, splitext(inputfile)[1] * ".win")
                     input = ispath(inpath) ? read_wannier_input(inpath, runcommand=runcommand, run=run, exec=exec) : (nothing, nothing)
                 else
