@@ -15,15 +15,17 @@ end
 Reads all the elements from the file.
 """
 const ELEMENTS = Element[]
-open(joinpath(@__DIR__, "..", "assets", "elements.txt"), "r") do f
-    while !eof(f)
-        line = split(readline(f))
-        push!(ELEMENTS, Element(Symbol(line[4]), Meta.parse(line[1]), line[9], Meta.parse(line[10]), (Meta.parse.(line[5:7],)...,)./65535))
+function fillelements()
+    open(joinpath(@__DIR__, "..", "assets", "elements.txt"), "r") do f
+        while !eof(f)
+            line = split(readline(f))
+            push!(ELEMENTS, Element(Symbol(line[4]), Meta.parse(line[1]), line[9], Meta.parse(line[10]), (Meta.parse.(line[5:7],)...,)./65535))
+        end
     end
-end
 
-#undefined element for when the atoms are not specified with a symbol
-push!(ELEMENTS, Element(:undef, 0, "undef", 0, (0.0,0.0,0.0)))
+    #undefined element for when the atoms are not specified with a symbol
+    push!(ELEMENTS, Element(:undef, 0, "undef", 0, (0.0,0.0,0.0)))
+end
 
 
 function element(sym::Symbol)
