@@ -276,6 +276,9 @@ function read_job_inputs(job_file::String)
                 elseif only_exec == "wannier90.x"
                     inpath = joinpath(dir, splitext(inputfile)[1] * ".win")
                     input = ispath(inpath) ? read_wannier_input(inpath, runcommand=runcommand, run=run, exec=exec) : (nothing, nothing)
+                else
+                    input = (nothing, nothing)
+
                 end
                 if input != (nothing, nothing)
                     id = findall(x-> infile(x) == inputfile, inputs)
