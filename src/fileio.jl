@@ -275,7 +275,7 @@ function read_job_inputs(job_file::String)
                     input, structure = ispath(inpath) ? read_qe_input(inpath, runcommand=runcommand, run=run, exec=exec) : nothing, nothing
                 elseif only_exec == "wannier90.x"
                     inpath = joinpath(dir, splitext(inputfile)[1] * ".win")
-                    input, structure = ispath(inpath) ? read_wannier_input(inpath, runcommand=runcommand, run=run, exec=exec): nothing, nothing
+                    input, structure = ispath(inpath) ? read_wannier_input(inpath, runcommand=runcommand, run=run, exec=exec) : nothing, nothing
                 end
                 if input != nothing
                     id = findall(x-> infile(x) == inputfile, inputs)
