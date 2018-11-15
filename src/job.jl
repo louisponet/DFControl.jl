@@ -83,6 +83,7 @@ end
 Loads and returns a local DFJob. If local_dir is not specified the job directory will be registered as the local one.
 """
 function DFJob(job_dir::String, T=Float64;
+                  package = QE,
                   job_fuzzy     = "job",
                   new_job_name  = "",
                   new_local_dir = nothing,
@@ -95,9 +96,9 @@ function DFJob(job_dir::String, T=Float64;
     structure.name = structure_name
 
     if new_local_dir != nothing
-        return DFJob(j_name, structure, inputs, new_local_dir, server, server_dir, header)
+        return DFJob(package, j_name, structure, inputs, new_local_dir, server, server_dir, header)
     else
-        return DFJob(j_name, structure, inputs, job_dir, server, server_dir, header)
+        return DFJob(package, j_name, structure, inputs, job_dir, server, server_dir, header)
     end
 end
 
