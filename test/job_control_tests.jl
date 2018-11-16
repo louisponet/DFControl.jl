@@ -149,7 +149,7 @@ job = undo(job)
 report = progressreport(job; onlynew=false, print=false)
 @test report[:fermi] == 17.4572
 @test length(report[:accuracy]) == 9
-newatompos = outputdata(job, "vc_relax", onlynew=false)["vc_relax"][:final_structure]
+newatompos = outputdata(job, "vc_relax", onlynew=false)[:final_structure]
 job.structure = newatompos
 
 rm.(inpath.(job.inputs))

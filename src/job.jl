@@ -744,8 +744,13 @@ end
 outputdata(job::DFJob; kwargs...) = outputdata(job, inputs(job); kwargs...)
 outputdata(job::DFJob, names::String...; kwargs...) =
     outputdata(job, inputs(job, names); kwargs...)
-outputdata(job::DFJob, name::String; fuzzy=true, kwargs...) =
-    outputdata(job, inputs(job, name, fuzzy); kwargs...)
+function outputdata(job::DFJob, n::String; fuzzy=true, kwargs...)
+    dat = outputdata(job, inputs(job, n, fuzzy); kwargs...)
+    if haskey(dat, name(input(job, n)))
+        return dat[name(input(job, n))]
+    end
+end
+
 
 function isrunning(job::DFJob)
     @assert haskey(job.metadata, :slurmid) error("No slurmid found for job $(job.name)")
