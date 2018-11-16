@@ -289,7 +289,7 @@ function setdataoption!(input::DFInput, name::Symbol, option::Symbol; print=true
         if data.name == name
             old_option  = data.option
             data.option = option
-            print && (@info("Option of InputData '$(data.name)' in input '$(name(input))' set from '$old_option' to '$option'")
+            print && (@info "Option of InputData '$(data.name)' in input '$(name(input))' set from '$old_option' to '$option'")
         end
     end
     return input
