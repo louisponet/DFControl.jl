@@ -56,7 +56,7 @@ function DFJob(job_name, local_dir, structure::AbstractStructure, calculations::
     merge!(req_flags, common_flags)
     for (calc, (excs, data)) in calculations
         calc_ = typeof(calc) == String ? Symbol(calc) : calc
-        if in(calc_, [Symbol("vc-relax"), :relax, :scf])
+        if in(calc_, [:vc_relax, :relax, :scf])
             k_points = get(data, :k_points, [1, 1, 1, 0, 0, 0])
             k_option = :automatic
         elseif calc_ == :nscf
@@ -469,9 +469,6 @@ function setatoms!(job::DFJob, atoms::Vector{<:AbstractAtom}; pseudoset=nothing,
     pseudoset!=nothing && setpseudos!(job, pseudoset, pseudospecifier)
     return job
 end
-setatoms!(job::DFJob, atoms::Dict{Symbol,<:Vector{<:Point3}}; kwargs...) =
-    setatoms!(job, convert_2atoms(atoms); kwargs...)
-
 """
     atoms(job::DFJob)
 

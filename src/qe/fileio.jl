@@ -44,6 +44,12 @@ function read_qe_output(filename::String, T=Float64)
                 out[:polarization] = Point3{T}(P * s_line[1], P * s_line[2], P * s_line[3])
                 out[:pol_mod]      = mod
 
+                #PseudoPot
+            elseif occursin("PseudoPot", line)
+                !haskey(out, :pseudos) && (out[:pseudos] = Dict{Symbol, String}())
+                pseudopath = readline(f) |> strip |> splitdir
+                out[:pseudos][Symbol(split(line)[5])] = pseudopath[2]
+                !haskey(out, :pseudodir) && (out[:pseudodir] = pseudopath[1])
                 #fermi energy
             elseif occursin("Fermi", line)
                 out[:fermi]        = parse(T, split(line)[5])
@@ -95,7 +101,6 @@ function read_qe_output(filename::String, T=Float64)
             elseif occursin("Begin final coordinates", line)
                 line = readline(f)
                 while !occursin("End final coordinates", line)
-
                     if occursin("CELL_PARAMETERS", line)
                         out[:alat]            = occursin("angstrom", line) ? :angstrom : parse(T, split(line)[end][1:end-1])
                         out[:cell_parameters] = reshape(T[parse.(T, split(readline(f))); parse.(T, split(readline(f))); parse.(T, split(readline(f)))], (3,3))'
@@ -109,11 +114,24 @@ function read_qe_output(filename::String, T=Float64)
                             push!(atoms, key=>Point3{T}(parse.(T, s_line[2:end])...))
                             line = readline(f)
                         end
-                        out[:atomic_positions] = atoms
+                        posdict = Dict{Symbol, Vector{Point3{T}}}()
+                        for (atsym, pos) in atoms
+                            if haskey(posdict, atsym)
+                                push!(posdict[atsym], pos)
+                            else
+                                posdict[atsym] = [pos]
+                            end
+                        end
+                        out[:atomic_positions] = posdict
                         break
                     end
                     line = readline(f)
                 end
+                pseudo_data = InputData(:atomic_species, :none, out[:pseudos])
+                tmp_flags = Dict(:ibrav => 0, :A => (out[:alat] == :angstrom ? 1 : conversions[:bohr2ang] * out[:alat]))
+                cell_data = InputData(:cell_parameters, :alat, Mat3(out[:cell_parameters]))
+                atoms_data = InputData(:atomic_positions, out[:pos_option], out[:atomic_positions])
+                out[:final_structure] = extract_structure!("newstruct", tmp_flags, cell_data, atoms_data, pseudo_data)
 
             elseif occursin("Total force", line)
                 force = parse(T, split(line)[4])
@@ -273,11 +291,11 @@ function extract_atoms!(control, atom_block, pseudo_block, cell)
     if option == :crystal || option == :crystal_sg
         primv = cell
     elseif option == :alat
-        primv = alat(control, true) * Mat3(eye(3))
+        primv = alat(control, true) * Mat3(Matrix(1.0I, 3, 3))
     elseif option == :bohr
-        primv = conversions[:bohr2ang] * Mat3(eye(3))
+        primv = conversions[:bohr2ang] * Mat3(Matrix(1.0I, 3, 3))
     else
-        primv = Mat3(Matrix(I, 3, 3))
+        primv = Mat3(Matrix(1.0I, 3, 3))
     end
 
     for (at_sym, positions) in atom_block.data
@@ -409,6 +427,9 @@ end
 Writes a Quantum Espresso input file.
 """
 function save(input::DFInput{QE}, structure, filename::String=inpath(input))
+    if haskey(flags(input), :calculation)
+        input[:calculation] = replace(input[:calculation], "_" => "-")
+    end
     open(filename, "w") do f
         write_flag(flag_data) = write_flag_line(f, flag_data[1], flag_data[2])
         write_dat(data)       = write_data(f, data)

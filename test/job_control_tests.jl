@@ -52,7 +52,7 @@ addwancalc!(job, "nscf",:Pt => [:s, :p, :d], Emin=fermi-7.0, Epad=5.0, wanflags=
 @test flag(job, "wan", :write_hr) == flag(job, "wan", :wannier_plot) == true
 
 
-job.inputs = job.inputs[1:3]
+job.inputs = job.inputs[1:4]
 
 setflags!(job, :nspin => 2, print=false)
 @test flag(job, "nscf", :nspin) == 2
@@ -149,6 +149,8 @@ job = undo(job)
 report = progressreport(job; onlynew=false, print=false)
 @test report[:fermi] == 17.4572
 @test length(report[:accuracy]) == 9
+newatompos = outputdata(job, "vc_relax", onlynew=false)["vc_relax"][:final_structure]
+job.structure = newatompos
 
 rm.(inpath.(job.inputs))
 rm(joinpath(job.local_dir, "job.tt"))
