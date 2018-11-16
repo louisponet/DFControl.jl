@@ -319,5 +319,5 @@ function writetojob(f, job, input::DFInput{Wan90})
     end
     writeexec.((f, ), execs(input))
     write(f, "$filename > $(outfile(input))\n")
-    return 2
+    return input, pw2wan
 end
