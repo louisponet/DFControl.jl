@@ -746,7 +746,7 @@ outputdata(job::DFJob, names::String...; kwargs...) =
     outputdata(job, inputs(job, names); kwargs...)
 function outputdata(job::DFJob, n::String; fuzzy=true, kwargs...)
     dat = outputdata(job, inputs(job, n, fuzzy); kwargs...)
-    if haskey(dat, name(input(job, n)))
+    if dat != nothing && haskey(dat, name(input(job, n)))
         return dat[name(input(job, n))]
     end
 end
