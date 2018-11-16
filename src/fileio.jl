@@ -136,33 +136,6 @@ function writetojob(f, job, input::DFInput)
     write(f, "< $filename > $(outfile(input))\n")
     return (input,)
 end
-
-function writetojob(f, job, input::DFInput{Wannier90})
-    filename    = infile(input)
-    should_run  = input.run
-    id = findfirst(isequal(input), job.inputs)
-    seedname = name(input)
-
-    pw2wanid = findfirst(x -> occursin("pw2wannier90.x", x.execs[2].exec), job.inputs[id+1:end])+id
-    pw2wan   = job.inputs[pw2wanid]
-    setflags!(pw2wan, :seedname => "'$seedname'", print=false)
-
-    if !pw2wan.run
-        write(f, "#")
-    end
-    writeexec.((f,), execs(input))
-    write(f, "-pp $filename > $(outfile(input))\n")
-
-    save(input, job.structure)
-    writetojob(f, job, pw2wan)
-
-    if !should_run
-        write(f, "#")
-    end
-    writeexec.((f, ), execs(input))
-    write(f, "$filename > $(outfile(input))\n")
-    return input, pw2wan
-end
 """
     writejobfiles(job::DFJob)
 
@@ -276,10 +249,10 @@ function read_job_inputs(job_file::String)
                 only_exec = exec.exec
                 if only_exec in QuantumEspresso.parseable_qe_execs
                     inpath = joinpath(dir, inputfile)
-                    input = ispath(inpath) ? read_qe_input(inpath, runcommand=runcommand, run=run, exec=exec) : (nothing, nothing)
+                    input = ispath(inpath) ? QuantumEspresso.read_input(inpath, runcommand=runcommand, run=run, exec=exec) : (nothing, nothing)
                 elseif only_exec == "wannier90.x"
                     inpath = joinpath(dir, splitext(inputfile)[1] * ".win")
-                    input = ispath(inpath) ? read_wannier_input(inpath, runcommand=runcommand, run=run, exec=exec) : (nothing, nothing)
+                    input = ispath(inpath) ? Wannier90.read_input(inpath, runcommand=runcommand, run=run, exec=exec) : (nothing, nothing)
                 else
                     input = (nothing, nothing)
 
