@@ -136,7 +136,7 @@ function writetojob(f, job, input::DFInput)
     end
     writeexec.((f, ), execs(input))
     write(f, "< $filename > $(outfile(input))\n")
-    return 1
+    return (input,)
 end
 
 function writetojob(f, job, input::DFInput{Wannier90})
@@ -163,7 +163,7 @@ function writetojob(f, job, input::DFInput{Wannier90})
     end
     writeexec.((f, ), execs(input))
     write(f, "$filename > $(outfile(input))\n")
-    return 2
+    return input, pw2wan
 end
 """
     writejobfiles(job::DFJob)
@@ -178,9 +178,15 @@ function writejobfiles(job::DFJob)
         write_job_header(f, job)
         abiinputs = Vector{DFInput{Abinit}}(filter(x -> package(x) == Abinit, inputs(job)))
         !isempty(abiinputs) && writetojob(f, job, abiinputs)
-        i = length(abiinputs) + 1
-        while i <= length(inputs(job))
-            i += writetojob(f, job, inputs(job)[i])
+        # i = length(abiinputs) + 1
+        # while i <= length(inputs(job))
+        #     i += writetojob(f, job, inputs(job)[i])
+        # end
+        written_inputs = DFInput[]
+        for i in inputs(job)
+            if i ∉ written_inputs
+                append!(written_inputs, writetojob(f, job, i))
+            end
         end
     end
 end
@@ -273,7 +279,7 @@ function read_job_inputs(job_file::String)
                 if only_exec in parseable_qe_execs
                     inpath = joinpath(dir, inputfile)
                     input = ispath(inpath) ? read_qe_input(inpath, runcommand=runcommand, run=run, exec=exec) : (nothing, nothing)
-                elseif split(only_exec,"/")[end] == "wannier90.x"
+                elseif only_exec == "wannier90.x"
                     inpath = joinpath(dir, splitext(inputfile)[1] * ".win")
                     input = ispath(inpath) ? read_wannier_input(inpath, runcommand=runcommand, run=run, exec=exec) : (nothing, nothing)
                 else

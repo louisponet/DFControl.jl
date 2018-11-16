@@ -185,7 +185,7 @@ function cleanflags!(input::DFInput)
             rmflags!(input, flag)
             continue
         end
-        if !(typeof(value) <: flagtype_)
+        if !(eltype(value) <: flagtype_)
             try
                 flags(input)[flag] = convertflag(flagtype_, value)
             catch

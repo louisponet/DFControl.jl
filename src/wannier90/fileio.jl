@@ -194,15 +194,19 @@ function read_wannier_input(filename::String, T=Float64; runcommand= Exec(""), r
                 else
                     split_line = strip_split(line, '=')
                     flag       = Symbol(split_line[1])
-                    value      = split_line[2]
-                    if  lowercase(value) == "t" || lowercase(value) == "true"
+                    value      = lowercase(split_line[2])
+                    if  any(value .== ("t", "true", ".true."))
                         flags[flag] = true
-                    elseif lowercase(value) == "f" || lowercase(value) == "false"
+                    elseif any(value .== ("f", "false", ".false."))
                         flags[flag] = false
                     elseif tryparse(Int, value) != nothing
                         flags[flag] = parse(Int, value)
                     elseif tryparse(T, value) != nothing
                         flags[flag] = parse(T, value)
+                    elseif all(tryparse.(Int, split(value, "-")) .!= nothing)
+                        flags[flag] = parse.(Int, split(value, "-"))
+                    elseif all(tryparse.(T, split(value, "-")) .!= nothing)
+                        flags[flag] = parse.(T, split(value, "-"))
                     else
                         flags[flag] = value
                     end
