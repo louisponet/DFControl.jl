@@ -234,7 +234,7 @@ function save(job::DFJob, local_dir=job.local_dir)
     local_dir = local_dir != "" ? local_dir : error("Please specify a valid local_dir!")
     if !ispath(local_dir)
         mkpath(local_dir)
-        info("$local_dir did not exist, it was created.")
+        @info "$local_dir did not exist, it was created."
     end
     sanitizeflags!(job)
     job.local_dir = local_dir
@@ -532,7 +532,7 @@ function setheaderword!(job::DFJob, word::String, new_word::String; print=true)
             New line:
             $(job.header[i])
             """
-            print && info(s)
+            print && (@info s)
         end
     end
     return job
@@ -574,7 +574,7 @@ function addwancalc!(job::DFJob, nscf::DFInput{QE}, projections_...;
     if spin
         pw2wannames = ["pw2wan_up", "pw2wan_dn"]
         wannames = ["wanup", "wandn"]
-        print && info("Spin polarized calculation found (inferred from nscf input).")
+        print && (@info "Spin polarized calculation found (inferred from nscf input).")
     else
         pw2wannames = ["pw2wan"]
         wannames = ["wan"]
@@ -582,13 +582,13 @@ function addwancalc!(job::DFJob, nscf::DFInput{QE}, projections_...;
 
     @assert flag(nscf, :calculation) == "'nscf'" error("Please provide a valid 'nscf' calculation.")
     if flag(nscf, :nosym) != true
-        print && info("'nosym' flag was not set in the nscf calculation.\nIf this was not intended please set it and rerun the nscf calculation.\nThis generally gives errors because of omitted kpoints, needed for pw2wannier90.x")
+        print && (@info "'nosym' flag was not set in the nscf calculation.\nIf this was not intended please set it and rerun the nscf calculation.\nThis generally gives errors because of omitted kpoints, needed for pw2wannier90.x")
     end
 
 
     setprojections!(job, projections_...)
     nbnd = sum(sum.(orbsize.(projections.(atoms(job))...)))
-    print && info("num_bands=$nbnd (inferred from provided projections).")
+    print && (@info "num_bands=$nbnd (inferred from provided projections).")
 
     wanflags = SymAnyDict(wanflags)
     wanflags[:dis_win_min], wanflags[:dis_froz_min], wanflags[:dis_froz_max], wanflags[:dis_win_max] = wanenergyranges(Emin, nbnd, bands, Epad)
@@ -597,7 +597,7 @@ function addwancalc!(job::DFJob, nscf::DFInput{QE}, projections_...;
     wanflags[:num_wann]  = nbnd
 
     wanflags[:mp_grid] = kakbkc(data(nscf, :k_points).data)
-    print && info("mp_grid=$(join(wanflags[:mp_grid]," ")) (inferred from nscf input).")
+    print && (@info "mp_grid=$(join(wanflags[:mp_grid]," ")) (inferred from nscf input).")
 
     pw2wanflags = SymAnyDict(:prefix => flag(nscf, :prefix), :outdir => flag(nscf, :outdir) == nothing ? "'./'" : flag(nscf, :outdir))
     if haskey(wanflags, :write_hr)
@@ -633,7 +633,7 @@ function setwanenergies!(job::DFJob, Emin::AbstractFloat, bands; Epad=5.0, print
     wancalcs = filter(x -> package(x) == Wannier90, job.inputs)
     @assert length(wancalcs) != 0 error("Job ($(job.name)) has no Wannier90 calculations, nothing todo.")
     nbnd = sum([sum(orbsize.(t)) for  t in projections(job)])
-    print && info("num_bands=$nbnd (inferred from provided projections).")
+    print && (@info "num_bands=$nbnd (inferred from provided projections).")
     winmin, frozmin, frozmax, winmax = wanenergyranges(Emin, nbnd, bands, Epad)
     map(x->setflags!(x, :dis_win_min => winmin, :dis_froz_min => frozmin, :dis_froz_max => frozmax, :dis_win_max => winmax, :num_wann => nbnd, :num_bands=>length(bands); print=false), wancalcs)
     return job

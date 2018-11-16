@@ -161,7 +161,7 @@ function mkserverdir(server, dir)
         run(`ssh -t $server rm $testfile`)
     catch
         run(`ssh -t $server mkdir -p $dir`)
-        info("$dir did not exist on $server, it was created.")
+        @info "$dir did not exist on $server, it was created."
     end
 end
 

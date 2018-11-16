@@ -136,8 +136,8 @@ function setkpoints!(input::DFInput{QE}, k_grid::Vector{NTuple{4, T}}; print=tru
     if num_k > 100.
         setflags!(input, :verbosity => "'high'", print=print)
         if print
-            info("Verbosity is set to high because num_kpoints > 100,\n
-                       otherwise bands won't get printed.")
+            @info "Verbosity is set to high because num_kpoints > 100,\n
+                       otherwise bands won't get printed."
         end
     end
     setdata!(input, :k_points, k_grid, option=k_option, print=print)
@@ -164,7 +164,7 @@ function setflags!(input::DFInput{T}, flags...; print=true) where T
             end
             old_data = haskey(input.flags, flag) ? input.flags[flag] : ""
             input.flags[flag] = value
-            print && info("$(name(input)):\n  -> $flag:\n      $old_data set to: $value\n")
+            print && (@info "$(name(input)):\n  -> $flag:\n      $old_data set to: $value\n")
         end
     end
     return found_keys, input
@@ -221,7 +221,7 @@ function rmflags!(input::DFInput, flags...; print=true)
     for flag in flags
         if haskey(input.flags, flag)
             pop!(input.flags, flag, false)
-            print && info("Removed flag '$flag' from input '$(name(input))'")
+            print && (@info "Removed flag '$flag' from input '$(name(input))'")
         end
     end
     return input
@@ -243,7 +243,7 @@ function setdata!(input::DFInput, block_name::Symbol, new_block_data; option=not
             data_block.data = new_block_data
             data_block.option = option == nothing ? data_block.option : option
             if print
-                info("Block data '$(data_block.name)' in input  '$(name(input))' is now:\n\t$(string(data_block.data)) \n\toption: $(data_block.option)\n")
+                @info "Block data '$(data_block.name)' in input  '$(name(input))' is now:\n\t$(string(data_block.data)) \n\toption: $(data_block.option)\n"
             end
             setd = true
         end
@@ -289,7 +289,7 @@ function setdataoption!(input::DFInput, name::Symbol, option::Symbol; print=true
         if data.name == name
             old_option  = data.option
             data.option = option
-            if print info("Option of InputData '$(data.name)' in input '$(name(input))' set from '$old_option' to '$option'") end
+            print && (@info("Option of InputData '$(data.name)' in input '$(name(input))' set from '$old_option' to '$option'")
         end
     end
     return input
