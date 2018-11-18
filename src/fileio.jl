@@ -46,8 +46,7 @@ function parse_flag_val(val, T=Float64)
     if T == String
         return val
     end
-
-    if occursin("d", val)
+    if occursin("d", val) && T <: Number
         val = replace(val, "d" => "e")
     end
 
