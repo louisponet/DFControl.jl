@@ -67,7 +67,7 @@ function generate_jobinputs(::Type{QE}, local_dir, structure, calculations, comm
     end
     for (calc, (excs, data)) in calculations
         calc_ = typeof(calc) == String ? Symbol(calc) : calc
-        if in(calc_, [Symbol("vc-relax"), :relax, :scf])
+        if in(calc_, [:vc_relax, :relax, :scf])
             k_points = get(data, :k_points, [1, 1, 1, 0, 0, 0])
             k_option = :automatic
         elseif calc_ == :nscf

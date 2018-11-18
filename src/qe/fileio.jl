@@ -2,7 +2,7 @@
 import Base: parse
 
 import ..DFControl: strip_split, parse_flag_val, save, write_flag_line, write_cell, write_data, parse_k_line, parse_line
-import ..DFControl: element, id, pseudo, position
+import ..DFControl: element, id, pseudo, position, flags, conversions
 const parseable_qe_execs = ["pw.x", "projwfc.x", "pw2wannier90.x", "pp.x"]
 #this is all pretty hacky with regards to the new structure and atom api. can for sure be a lot better!
 "Quantum espresso card option parser"
