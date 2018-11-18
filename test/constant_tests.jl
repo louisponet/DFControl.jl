@@ -2,7 +2,7 @@ using DFControl, Test
 import DFControl: searchdir
 import DFControl.QuantumEspresso: QEVariableInfo, QEControlBlockInfo, QEInputInfo, QEDataBlockInfo, qevariable
 
-qeassetpath = joinpath(dirname(pathof(DFControl)),"..", "assets","inputs", "qe")
+qeassetpath = joinpath(dirname(pathof(DFControl)),"qe", "assets")
 inputinfos = begin
     file_paths = joinpath.(Ref(qeassetpath), searchdir(qeassetpath, "INPUT"))
     QEInputInfo.(file_paths)
