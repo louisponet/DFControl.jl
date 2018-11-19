@@ -22,7 +22,7 @@ open(joinpath(@__DIR__, "..", "assets", "elements.txt"), "r") do f
     end
 end
 #undefined element
-push!(ELEMENTS, Element(:undef, 0, "undef", (0.0, 0.0, 0.0)))
+push!(ELEMENTS, Element(:undef, 0, "undef",0, (0.0, 0.0, 0.0)))
 function element(sym::Symbol)
     if tryparse(Int, String(sym)[end:end]) != nothing
         sym = Symbol(String(sym)[1:end-1])
