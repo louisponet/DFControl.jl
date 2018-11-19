@@ -21,14 +21,16 @@ open(joinpath(@__DIR__, "..", "assets", "elements.txt"), "r") do f
         push!(ELEMENTS, Element(Symbol(line[4]), Meta.parse(line[1]), line[9], Meta.parse(line[10]), (Meta.parse.(line[5:7],)...,)./65535))
     end
 end
-
+#undefined element
+push!(ELEMENTS, Element(:undef, 0, "undef", (0.0, 0.0, 0.0)))
 function element(sym::Symbol)
     if tryparse(Int, String(sym)[end:end]) != nothing
         sym = Symbol(String(sym)[1:end-1])
     end
     found = filter(x->x.symbol == sym, ELEMENTS)
     if isempty(found)
-        error("No element found with symbol '$sym'.")
+       @warn "No element found with symbol '$sym'."
+       return ELEMENTS[end]
     end
     return found[1]
 end
