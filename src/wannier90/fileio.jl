@@ -190,7 +190,7 @@ function read_wannier_input(filename::String, T=Float64; runcommand= Exec(""), r
 
             else
                 if occursin("mp_grid", line)
-                    flags[:mp_grid] = parse_string_array(Int, split(line)[end-2:end]))
+                    flags[:mp_grid] = parse_string_array(Int, split(line)[end-2:end])
                 else
                     split_line = strip_split(line, '=')
                     flag       = Symbol(split_line[1])
