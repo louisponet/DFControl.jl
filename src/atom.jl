@@ -34,8 +34,8 @@ function element(sym::Symbol)
     end
     found = filter(x->x.symbol == sym, ELEMENTS)
     if isempty(found)
-        @warn "No element found with symbol '$sym'."
-        return :undef
+       @warn "No element found with symbol '$sym'."
+       return ELEMENTS[end]
     end
     return found[1]
 end
