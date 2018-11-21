@@ -88,6 +88,9 @@ module DFControl
         #     include("display/printing_juno.jl")
         # end
         init_defaults(default_file)
+        init_QEInputInfos()
+        init_wan_control_flags()
+        init_mpiflags()
     end
 
 
