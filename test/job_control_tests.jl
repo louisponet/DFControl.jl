@@ -117,9 +117,9 @@ setwanenergies!(job, fermi-7.0, read_qe_bands_file(outpath(nscf)), Epad=3.0, pri
 @test flag(job, :dis_win_max) == 14.285699999999999 + 3.0
 
 setexecflags!(job, "pw.x", :nk => 230)
-@test execs(job, "nscf")[2].flags[:nk] == 230
+@test DFControl.getfirst(x->x.symbol==:nk, execs(job, "nscf")[2].flags).value == 230
 rmexecflags!(job, "pw.x", :nk)
-@test !haskey(execs(job, "nscf")[2].flags,:nk)
+@test isempty(filter(x->x.symbol == :nk, execs(job, "nscf")[2].flags))
 
 setexecdir!(job, "pw.x", joinpath(homedir(), "bin"))
 @test execs(job, "nscf")[2].dir == joinpath(homedir(), "bin")

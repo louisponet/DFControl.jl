@@ -1,6 +1,12 @@
 import Base: parse
 
-const parseable_qe_execs = ["pw.x", "projwfc.x", "pw2wannier90.x", "pp.x"]
+const QEEXECS = [
+    "pw.x",
+    "pw2wannier90.x",
+    "projwfc.x",
+    "pp.x"
+]
+
 #this is all pretty hacky with regards to the new structure and atom api. can for sure be a lot better!
 "Quantum espresso card option parser"
 cardoption(line) = Symbol(match(r"((?:[a-z][a-z0-9_]*))", split(line)[2]).match)

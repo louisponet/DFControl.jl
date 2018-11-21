@@ -171,7 +171,7 @@ OPTIONS
               return an error (without  beginning  execution
               of the application) otherwise.
 
-       —map-by ppr:N:<object>
+       --map-by, -map-by ppr:N:<object>
               Launch  N  times  the number of objects of the
               specified type on each node.
 
@@ -193,20 +193,6 @@ OPTIONS
 
        To map processes:
 
-       --map-by <foo>
-              Map  to  the  specified  object,  defaults  to
-              socket.  Supported   options   include   slot,
-              hwthread,  core,  L1cache,  L2cache,  L3cache,
-              socket, numa, board,  node,  sequential,  dis‐
-              tance,  and  ppr. Any object can include modi‐
-              fiers by adding a :  and  any  combination  of
-              PE=n  (bind  n  processing  elements  to  each
-              proc), SPAN (load balance the processes across
-              the  allocation),  OVERSUBSCRIBE  (allow  more
-              processes on a node than processing elements),
-              and NOOVERSUBSCRIBE.  This includes PPR, where
-              the pattern would  be  terminated  by  another
-              colon to separate it from the modifiers.
 
        -bycore, --bycore
               Map  processes by core (deprecated in favor of

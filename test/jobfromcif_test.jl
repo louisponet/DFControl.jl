@@ -1,5 +1,6 @@
 using DFControl, Test
 
+testdir = joinpath(dirname(dirname(pathof(DFControl))), "test")
 testjobpath = joinpath(testdir, "testassets", "test_job")
 
 name = "Pt"

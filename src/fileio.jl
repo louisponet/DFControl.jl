@@ -4,7 +4,6 @@ include("qe/fileio.jl")
 include("abinit/fileio.jl")
 include("wannier90/fileio.jl")
 
-
 #--------------------Used by other file processing------------------#
 function parse_k_line(line, T)
     splt = split(line)
@@ -119,9 +118,12 @@ end
 
 function writeexec(f, exec::Exec)
     direxec = joinpath(exec.dir, exec.exec)
-    write(f, "$direxec")
-    for (flag, value) in exec.flags
-        write(f," -$flag $value")
+    write(f, "$direxec ")
+    for flag in exec.flags
+        write(f, "-$(flag.symbol) ")
+        for v in flag.value
+            write(f,"$v")
+        end
     end
     write(f, " ")
 end
@@ -193,71 +195,60 @@ end
 function read_job_line(line)
     line = strip(line)
     line = replace(line, ['>', '<'] => " ")
-
     if line[1] == '#'
         run = false
         line = line[2:end]
     else
         run = true
     end
+    spl = strip_split(line)
 
-    spl          = strip_split(line)
-    run_commands = Exec[]
-    t_runcommand = ""
-    t_flags      = Dict{Symbol, Any}()
-    i = 1
-    while i <= length(spl) - 2
-        ts = spl[i]
-        if ts[1] != '-'
-            if t_runcommand == ""
-                t_runcommand = ts
-            else
-                dir, file = splitdir(t_runcommand)
-                push!(run_commands, Exec(file, dir, t_flags))
-                t_runcommand = ts
-                t_flags = Dict{Symbol, Any}()
-            end
-            i += 1
+    input = spl[end-1]
+    output = spl[end]
+    spl = spl[1:end-2]
+    exec_and_flags = Pair{String, Vector{SubString}}[]
+    for s in spl
+        if any(occursin.(allexecs(), (s,)))
+            push!(exec_and_flags, s => SubString[])
         else
-            if ts == "-pp"
-                i += 1
-                continue
-            end
-            flag = Symbol(ts[2:end])
-            val  = tryparse(Int, spl[i + 1]) == nothing ? spl[i + 1] : parse(Int, spl[i+1])
-            t_flags[flag] = val
-            i += 2
+            push!(last(exec_and_flags[end]), s)
         end
     end
-    dir, file = splitdir(t_runcommand)
-    push!(run_commands, Exec(file, dir, t_flags))
 
-    runcommand  = length(run_commands) == 1 ? Exec("") : run_commands[1]
-    exec         = run_commands[end]
-    input        = spl[end-1]
-    output       = spl[end]
-    return runcommand, exec, input, output, run
-end
-# TODO: make this work again
-function read_job_filenames(job_file::String)
-    input_files = String[]
-    output_files = String[]
-    open(job_file, "r") do f
-        readline(f)
-        while !eof(f)
-            line = readline(f)
-            if isempty(line)
-                continue
-            end
-            if occursin(".x", line)
-                runcommand, exec, input, output, run = read_job_line(line)
-                !in(input,  input_files)  && push!(input_files,  input)
-                !in(output, output_files) && push!(output_files, output)
-            end
+    execs = Exec[]
+    for (e, flags) in exec_and_flags
+        dir, efile = splitdir(e)
+        if occursin("mpirun", e)
+            push!(execs, Exec(efile, dir, parse_mpiflags(flags)))
+        elseif efile == "wannier90.x"
+            push!(execs, Exec(efile, dir, ExecFlag[]))
+        elseif any(occursin.(QEEXECS, (efile,)))
+            push!(execs, Exec(efile, dir, parse_qeflags(flags)))
         end
     end
-    return input_files, output_files
+    return execs, input, output, run
 end
+
+# TODO: make this work again
+# function read_job_filenames(job_file::String)
+#     input_files = String[]
+#     output_files = String[]
+#     open(job_file, "r") do f
+#         readline(f)
+#         while !eof(f)
+#             line = readline(f)
+#             if isempty(line)
+#                 continue
+#             end
+#             if occursin(".x", line)
+#                 runcommand, exec, input, output, run = read_job_line(line)
+#                 !in(input,  input_files)  && push!(input_files,  input)
+#                 !in(output, output_files) && push!(output_files, output)
+#             end
+#         end
+#     end
+#     return input_files, output_files
+# end
 
 function read_job_inputs(job_file::String)
     dir = splitdir(job_file)[1]
@@ -273,18 +264,26 @@ function read_job_inputs(job_file::String)
                 continue
             end
             if occursin(".x ", line)
-                runcommand, exec, inputfile, output, run = read_job_line(line)
-                only_exec = exec.exec
-                if only_exec in parseable_qe_execs
-                    inpath = joinpath(dir, inputfile)
-                    input = ispath(inpath) ? read_qe_input(inpath, runcommand=runcommand, run=run, exec=exec) : (nothing, nothing)
-                elseif only_exec == "wannier90.x"
-                    inpath = joinpath(dir, splitext(inputfile)[1] * ".win")
-                    input = ispath(inpath) ? read_wannier_input(inpath, runcommand=runcommand, run=run, exec=exec) : (nothing, nothing)
-                else
+                execs, inputfile, output, run = read_job_line(line)
+                inpath = joinpath(dir, inputfile)
+                if !ispath(inpath)
                     input = (nothing, nothing)
-
+                else
+                    calccommand = filter(isparseable, execs)[1]
+                    input = inputparser(calccommand)(inpath, run=run, runcommand=execs[1], exec=calccommand)
                 end
+
+                # only_exec = exec.exec
+                # if only_exec in parseable_qe_execs
+                #     inpath = joinpath(dir, inputfile)
+                #     input = ispath(inpath) ? read_qe_input( runcommand=runcommand, run=run, exec=exec) : (nothing, nothing)
+                # elseif only_exec == "wannier90.x"
+                #     inpath = joinpath(dir, splitext(inputfile)[1] * ".win")
+                #     input = ispath(inpath) ? read_wannier_input(inpath, runcommand=runcommand, run=run, exec=exec) : (nothing, nothing)
+                # else
+                #     input = (nothing, nothing)
+                #
+                # end
                 if input != (nothing, nothing)
                     id = findall(x-> infile(x) == inputfile, inputs)
                     if !isempty(id)
