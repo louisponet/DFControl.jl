@@ -80,7 +80,7 @@ setflow!(job, "nscf" => true, "bands" => true)
 @test inputs(job,["nscf"]) == inputs(job, "nscf")
 
 save(job)
-job2 = DFJob("/home/ponet/.julia/dev/DFControl/test/testassets/test_job/")
+job2 = DFJob(local_dir)
 
 begin
     for (calc, calc2) in zip(job.inputs, job2.inputs)
