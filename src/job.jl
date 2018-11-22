@@ -601,11 +601,11 @@ function addwancalc!(job::DFJob, nscf::DFInput{QE}, projections_...;
 
     wanflags[:num_bands] = length(bands)
     wanflags[:num_wann]  = nbnd
-
-    wanflags[:mp_grid] = kakbkc(data(nscf, :k_points).data)
+    kpoints = data(nscf, :k_points).data
+    wanflags[:mp_grid] = kakbkc(kpoints)
     print && (@info "mp_grid=$(join(wanflags[:mp_grid]," ")) (inferred from nscf input).")
 
-    kdata = InputData(:kpoints, :none, kgrid(wanflags[:mp_grid]..., :wan))
+    kdata = InputData(:kpoints, :none, [k[1:3] for k in kpoints])
 
     for (pw2wanfil, wanfil) in zip(pw2wannames, wannames)
         add!(job, DFInput{Wannier90}(wanfil, job.local_dir, copy(wanflags), [kdata], [Exec(), wanexec], true))
