@@ -339,7 +339,7 @@ function read_qe_input(filename; execs=[Exec("pw.x")], run=true, structure_name=
         x -> filter(!isempty, x) |>
         x -> filter(y -> !occursin("&", y), x) |>
         x -> filter(y -> !(occursin("/", y) && length(y) == 1), x) |>
-        x -> filter(y -> y[1] != "!", x)
+        x -> filter(y -> y[1] != '!', x)
 
     exec = getfirst(x->x.exec ∈ QEEXECS, execs)
     flaglines = strip_split.(filter(x -> occursin("=", x), lines), "=")
@@ -349,7 +349,7 @@ function read_qe_input(filename; execs=[Exec("pw.x")], run=true, structure_name=
         sym = Symbol(f)
         typ = flagtype(QE, exec, sym)
         if eltype(typ) <: Bool
-            v = strip(lowercase(v), ".")
+            v = strip(lowercase(v), '.')
         elseif eltype(typ) <: Number
             v = replace(v, "d" => "e")
         end
