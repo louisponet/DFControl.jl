@@ -121,8 +121,12 @@ function writeexec(f, exec::Exec)
     write(f, "$direxec")
     for flag in exec.flags
         write(f, " -$(flag.symbol)")
-        for v in flag.value
-            write(f," $v")
+        if !isa(flag.value, AbstractString)
+            for v in flag.value
+                write(f," $v")
+            end
+        else
+            write(f, " $(flag.value)")
         end
     end
     write(f, " ")

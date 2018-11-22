@@ -119,9 +119,9 @@ function parse_mpiflags(line::Vector{<:AbstractString})
         @assert mflag != nothing "$(strip(s, '-')) is not a recognized mpiflag"
         flagtype = mflag.type
         val = if flagtype ==  String
-                  val = line[i+1]
+                  v = line[i+1]
                   i+=2
-                  val
+                  v
               elseif flagtype == Vector{String}
                   tval = []
                   while i+1 <= length(line) && !occursin('-', line[i+1])
@@ -132,18 +132,19 @@ function parse_mpiflags(line::Vector{<:AbstractString})
                    tval
                elseif flagtype == Int
                    if line[i+1][1] == '\$'
-                       line[i+1]
+                       tval = line[i+1]
                    else
-                       parse(Int, line[i+1])
+                       tval = parse(Int, line[i+1])
                    end
                    i += 2
+                   tval
                elseif flagtype == Vector{Int}
                    tval = []
                    while i+1 <= length(line) && !occursin('-', line[i+1])
                        if line[i+1][1] == '\$'
                            push!(tval, line[i+1])
                        else
-                           push!(tval, parse(Int,line[i+1]))
+                           push!(tval, parse(Int, line[i+1]))
                        end
                        i += 1
                    end
