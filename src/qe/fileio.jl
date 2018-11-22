@@ -149,7 +149,7 @@ function read_qe_output(filename::String, T=Float64)
                 out[key] = T[]
                 line = readline(f)
                 while !isempty(line)
-                    push!(out[key], parse(Float64, split(line)[6]))
+                    push!(out[key], parse.(Float64, split(line)[6]))
                     line = readline(f)
                 end
             elseif occursin("estimated scf accuracy", line)
