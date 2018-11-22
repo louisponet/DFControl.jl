@@ -556,6 +556,7 @@ projections(job::DFJob, atsym::Symbol, i=1) = projections(atom(job, atsym, i))
 "Returns all the projections inside the job."
 projections(job::DFJob) = projections.(atoms(job))
 
+
 """
     addwancalc!(job::DFJob, nscf::DFInput{QE}, projections;
                      Emin=-5.0,
@@ -591,9 +592,8 @@ function addwancalc!(job::DFJob, nscf::DFInput{QE}, projections_...;
         print && (@info "'nosym' flag was not set in the nscf calculation.\nIf this was not intended please set it and rerun the nscf calculation.\nThis generally gives errors because of omitted kpoints, needed for pw2wannier90.x")
     end
 
-
     setprojections!(job, projections_...)
-    nbnd = sum(sum.(orbsize.(projections.(atoms(job))...)))
+    nbnd = nprojections(job.structure)
     print && (@info "num_bands=$nbnd (inferred from provided projections).")
 
     wanflags = SymAnyDict(wanflags)
@@ -605,26 +605,14 @@ function addwancalc!(job::DFJob, nscf::DFInput{QE}, projections_...;
     wanflags[:mp_grid] = kakbkc(data(nscf, :k_points).data)
     print && (@info "mp_grid=$(join(wanflags[:mp_grid]," ")) (inferred from nscf input).")
 
-    # pw2wanflags = SymAnyDict(:prefix => flag(nscf, :prefix), :outdir => flag(nscf, :outdir) == nothing ? "'./'" : flag(nscf, :outdir))
-    # if haskey(wanflags, :write_hr)
-    #     pw2wanflags[:write_amn] = true
-    #     pw2wanflags[:write_mmn] = true
-    # end
-    # if haskey(wanflags, :wannier_plot)
-    #     pw2wanflags[:write_unk] = true
-    # end
-
     kdata = InputData(:kpoints, :none, kgrid(wanflags[:mp_grid]..., :wan))
 
     for (pw2wanfil, wanfil) in zip(pw2wannames, wannames)
         add!(job, DFInput{Wannier90}(wanfil, job.local_dir, copy(wanflags), [kdata], [Exec(), wanexec], true))
-        # add!(job, DFInput{QE}(pw2wanfil, job.local_dir, copy(pw2wanflags), InputData[], [nscf.execs[1], pw2wanexec], true))
     end
 
     setfls!(job, name, flags...) = setflags!(job, name, flags..., print=false)
     if spin
-        # setfls!(job, "pw2wan_up", :spin_component => "'up'")
-        # setfls!(job, "pw2wan_dn", :spin_component => "'down'")
         setfls!(job, "wanup", :spin => "'up'")
         setfls!(job, "wandn", :spin => "'down'")
     end

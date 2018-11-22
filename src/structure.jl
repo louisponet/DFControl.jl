@@ -46,6 +46,17 @@ function emptyprojections!(str::Structure)
     end
 end
 
+function nprojections(structure)
+    n = 0
+    for at in atoms(structure)
+        projs = projections(at)
+        if !isempty(projs)
+            n += sum(orbsize.(projs))
+        end
+    end
+    return n
+end
+
 #TODO extend base.merge
 "Takes a vector of structures and merges all the attributes of the atoms."
 function mergestructures(structures::Vector{Union{<:AbstractStructure, Nothing}})
