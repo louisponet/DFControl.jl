@@ -333,6 +333,7 @@ function read_qe_input(filename; execs=[Exec("pw.x")], run=true, structure_name=
     lines = read(filename) |>
         String |>
         x -> replace(x, ", " => "\n") |>
+        x -> replace(x, "," => " ") |>
         x -> split(x, "\n") .|>
         strip |>
         x -> filter(!isempty, x) |>
