@@ -118,11 +118,11 @@ end
 
 function writeexec(f, exec::Exec)
     direxec = joinpath(exec.dir, exec.exec)
-    write(f, "$direxec ")
+    write(f, "$direxec")
     for flag in exec.flags
-        write(f, "-$(flag.symbol) ")
+        write(f, " -$(flag.symbol)")
         for v in flag.value
-            write(f,"$v")
+            write(f," $v")
         end
     end
     write(f, " ")
@@ -270,18 +270,6 @@ function read_job_inputs(job_file::String)
                     calccommand = getfirst(isparseable, execs)
                     input = calccommand != nothing ? inputparser(calccommand)(inpath, execs=execs, run=run) : (nothing, nothing)
                 end
-
-                # only_exec = exec.exec
-                # if only_exec in parseable_qe_execs
-                #     inpath = joinpath(dir, inputfile)
-                #     input = ispath(inpath) ? read_qe_input( runcommand=runcommand, run=run, exec=exec) : (nothing, nothing)
-                # elseif only_exec == "wannier90.x"
-                #     inpath = joinpath(dir, splitext(inputfile)[1] * ".win")
-                #     input = ispath(inpath) ? read_wannier_input(inpath, runcommand=runcommand, run=run, exec=exec) : (nothing, nothing)
-                # else
-                #     input = (nothing, nothing)
-                #
-                # end
                 if input != (nothing, nothing)
                     id = findall(x-> infile(x) == inputfile, inputs)
                     if !isempty(id)
@@ -292,26 +280,6 @@ function read_job_inputs(job_file::String)
                         push!(structures, input[2])
                     end
                 end
-            #Incomplete: Handle abinit in the new way!
-            # elseif occursin(line, "abinit ")
-            #     data[:abinit_pseudos] = Array{String,1}()
-            #     s_line         = split(line)
-            #     i, runcommand = read_job_line(s_line)
-            #     push!(data[:run_commands], strip(runcommand, '#'))
-            #     if occursin(line, "!EOF")
-            #         push!(data[:input_files],  strip(readline(f), '#'))
-            #         push!(data[:output_files], strip(readline(f), '#'))
-            #         push!(data[:should_run], true)
-            #         line = readline(f)
-            #         while !occursin(line, "EOF")
-            #             if occursin(line, ".xml")
-            #                 push!(data[:abinit_pseudos], strip(line, '#'))
-            #             end
-            #             line = readline(f)
-            #         end
-            #     end
-            #
-            #     #this is reading the sbatch lines
         elseif occursin("#SBATCH", line)
                 if occursin("-J", line)
                     name = split(line)[end]
