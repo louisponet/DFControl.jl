@@ -454,7 +454,7 @@ function qe_writeflag(f, flag, value)
             end
         end
     else
-        write(f, " $flag = $value\n")
+        write(f, "  $flag = $value\n")
     end
 end
 
