@@ -369,9 +369,9 @@ function read_qe_input(filename; execs=[Exec("pw.x")], run=true, structure_name=
         parsedval = parse.((eltype(typ),), split(v))
         if !haskey(parsed_flags, sym)
             if typ <: AbstractMatrix
-                parsed_flags[sym] = length(parsedval) == 1 ? zeros(eltype(typ), nat, 10) : fill(zeros(eltype(typ), length(parsedval)), nat, 10) #arbitrary limit
+                parsed_flags[sym] = length(parsedval) == 1 ? zeros(eltype(typ), ntyp, 10) : fill(zeros(eltype(typ), length(parsedval)), ntyp, 10) #arbitrary limit
             else
-                parsed_flags[sym] = length(parsedval) == 1 ? zeros(eltype(typ), nat) : fill(zeros(eltype(typ), length(parsedval)), nat)
+                parsed_flags[sym] = length(parsedval) == 1 ? zeros(eltype(typ), ntyp) : fill(zeros(eltype(typ), length(parsedval)), ntyp)
             end
         end
         if length(ids) == 1
