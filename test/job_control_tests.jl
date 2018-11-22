@@ -82,11 +82,15 @@ setflow!(job, "nscf" => true, "bands" => true)
 save(job)
 job2 = DFJob(local_dir)
 
+setpseudos!(job, "pseudos", :Pt => "Pt.UPF")
+@test job.structure.atoms[1].pseudo == "Pt.UPF"
+@test job["nscf"][:pseudo_dir] == "'pseudos'"
+
 begin
     for (calc, calc2) in zip(job.inputs, job2.inputs)
 
         for (f, v) in calc.flags
-            if f==:Hubbard_J
+            if f in (:Hubbard_J, :pseudo_dir)
                 continue
             else
                 @test v == calc2.flags[f]
@@ -108,7 +112,7 @@ rmflags!(job3, :lspinorb, print=false)
 begin
     for (calc, calc2) in zip(job.inputs, job3.inputs)
         for (f, v) in calc.flags
-            if f==:Hubbard_J
+            if f in (:Hubbard_J, :pseudo_dir)
                 continue
             else
                 @test v == calc2.flags[f]

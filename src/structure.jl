@@ -93,3 +93,10 @@ function setpseudos!(structure::AbstractStructure, pseudoset, pseudospecifier=no
         end
     end
 end
+function setpseudos!(structure::AbstractStructure, atpseudo::Pair{Symbol, String}...)
+    for (atsym, pseudo) in atpseudo
+        for at in atoms(structure, atsym)
+            setpseudo!(at, pseudo)
+        end
+    end
+end

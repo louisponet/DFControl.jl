@@ -515,6 +515,12 @@ function setpseudos!(job::DFJob, pseudoset, pseudospecifier="")
     return job
 end
 
+"sets the pseudopotentials to the specified one in the default pseudoset."
+function setpseudos!(job::DFJob, pseudodir, atpseudo::Pair{Symbol, String}...)
+    setpseudos!(job.structure, atpseudo...)
+    setflags!(job, :pseudo_dir => "'$pseudodir'", print=false)
+    return job
+end
 """
     setheaderword!(job::DFJob, word::String, new_word::String)
 
@@ -662,9 +668,9 @@ end
 
 
 "Creates a new `DFInput` from the template with the new flags and new data, then adds it to the inputs of the job at the specified index."
-addcalc!(job::DFJob, input::DFInput, index=length(job.inputs)+1) = insert!(job.inputs, index, index)
+addcalc!(job::DFJob, input::DFInput, index::Int=length(job.inputs)+1) = insert!(job.inputs, index, input)
 
-function addcalc!(job::DFJob, template::DFInput, name, newflags...; index=length(job.inputs)+1, run=true, newdata=nothing)
+function addcalc!(job::DFJob, template::DFInput, name::String, newflags...; index=length(job.inputs)+1, run=true, newdata=nothing)
     newcalc = DFInput(template, name, newflags..., data=newdata, run=run)
     addcalc!(job, newcalc, index)
     job
