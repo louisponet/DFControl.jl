@@ -50,7 +50,7 @@ function parse_flag_val(val, T=Float64)
     end
 
     val = strip(val, '.')
-    t = parse.(T, split(lowercase(val)))
+    t = parse.(eltype(T), split(lowercase(val)))
     #deal with abinit constants -> all flags that are read which are not part of the abi[:structure] get cast into the correct atomic units!
     if length(t) > 1 && typeof(t[end]) == Symbol
         t = t[1:end-1] .* abi_conversions[t[end]]
@@ -140,31 +140,29 @@ function writetojob(f, job, input::DFInput)
     return (input,)
 end
 
-function writetojob(f, job, input::DFInput{Wannier90})
-    filename    = infile(input)
-    should_run  = input.run
-    id = findfirst(isequal(input), job.inputs)
-    seedname = name(input)
-
-    pw2wanid = findfirst(x -> occursin("pw2wannier90.x", x.execs[2].exec), job.inputs[id+1:end])+id
-    pw2wan   = job.inputs[pw2wanid]
-    setflags!(pw2wan, :seedname => "'$seedname'", print=false)
-
-    if !pw2wan.run
-        write(f, "#")
-    end
-    writeexec.((f,), execs(input))
-    write(f, "-pp $filename > $(outfile(input))\n")
-
-    save(input, job.structure)
-    writetojob(f, job, pw2wan)
+function writetojob(f, job, _input::DFInput{Wannier90})
+    filename    = infile(_input)
+    should_run  = _input.run
+    id = findfirst(isequal(_input), job.inputs)
+    seedname = name(_input)
+    runexec = input(job, "nscf").execs
+    pw2waninput = qe_generate_pw2waninput(_input, "'$(job.name)'", runexec)
 
     if !should_run
         write(f, "#")
     end
-    writeexec.((f, ), execs(input))
-    write(f, "$filename > $(outfile(input))\n")
-    return input, pw2wan
+    writeexec.((f,), execs(_input))
+    write(f, "-pp $filename > $(outfile(_input))\n")
+
+    save(_input, job.structure)
+    writetojob(f, job, pw2waninput)
+
+    if !should_run
+        write(f, "#")
+    end
+    writeexec.((f, ), execs(_input))
+    write(f, "$filename > $(outfile(_input))\n")
+    return _input, pw2waninput
 end
 """
     writejobfiles(job::DFJob)
@@ -269,8 +267,8 @@ function read_job_inputs(job_file::String)
                 if !ispath(inpath)
                     input = (nothing, nothing)
                 else
-                    calccommand = filter(isparseable, execs)[1]
-                    input = inputparser(calccommand)(inpath, run=run, runcommand=execs[1], exec=calccommand)
+                    calccommand = getfirst(isparseable, execs)
+                    input = calccommand != nothing ? inputparser(calccommand)(inpath, execs=execs, run=run) : (nothing, nothing)
                 end
 
                 # only_exec = exec.exec

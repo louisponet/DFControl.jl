@@ -599,26 +599,26 @@ function addwancalc!(job::DFJob, nscf::DFInput{QE}, projections_...;
     wanflags[:mp_grid] = kakbkc(data(nscf, :k_points).data)
     print && (@info "mp_grid=$(join(wanflags[:mp_grid]," ")) (inferred from nscf input).")
 
-    pw2wanflags = SymAnyDict(:prefix => flag(nscf, :prefix), :outdir => flag(nscf, :outdir) == nothing ? "'./'" : flag(nscf, :outdir))
-    if haskey(wanflags, :write_hr)
-        pw2wanflags[:write_amn] = true
-        pw2wanflags[:write_mmn] = true
-    end
-    if haskey(wanflags, :wannier_plot)
-        pw2wanflags[:write_unk] = true
-    end
+    # pw2wanflags = SymAnyDict(:prefix => flag(nscf, :prefix), :outdir => flag(nscf, :outdir) == nothing ? "'./'" : flag(nscf, :outdir))
+    # if haskey(wanflags, :write_hr)
+    #     pw2wanflags[:write_amn] = true
+    #     pw2wanflags[:write_mmn] = true
+    # end
+    # if haskey(wanflags, :wannier_plot)
+    #     pw2wanflags[:write_unk] = true
+    # end
 
     kdata = InputData(:kpoints, :none, kgrid(wanflags[:mp_grid]..., :wan))
 
     for (pw2wanfil, wanfil) in zip(pw2wannames, wannames)
         add!(job, DFInput{Wannier90}(wanfil, job.local_dir, copy(wanflags), [kdata], [Exec(), wanexec], true))
-        add!(job, DFInput{QE}(pw2wanfil, job.local_dir, copy(pw2wanflags), InputData[], [nscf.execs[1], pw2wanexec], true))
+        # add!(job, DFInput{QE}(pw2wanfil, job.local_dir, copy(pw2wanflags), InputData[], [nscf.execs[1], pw2wanexec], true))
     end
 
     setfls!(job, name, flags...) = setflags!(job, name, flags..., print=false)
     if spin
-        setfls!(job, "pw2wan_up", :spin_component => "'up'")
-        setfls!(job, "pw2wan_dn", :spin_component => "'down'")
+        # setfls!(job, "pw2wan_up", :spin_component => "'up'")
+        # setfls!(job, "pw2wan_dn", :spin_component => "'down'")
         setfls!(job, "wanup", :spin => "'up'")
         setfls!(job, "wandn", :spin => "'down'")
     end

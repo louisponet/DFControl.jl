@@ -2,7 +2,6 @@ import Base: parse
 
 const QEEXECS = [
     "pw.x",
-    "pw2wannier90.x",
     "projwfc.x",
     "pp.x"
 ]
@@ -329,103 +328,129 @@ end
 Reads a Quantum Espresso input file. The exec get's used to find which flags are allowed in this input file, and convert the read values to the correct Types.
 Returns a `DFInput{QE}` and the `Structure` that is found in the input.
 """
-function read_qe_input(filename, T=Float64::Type; exec=Exec("pw.x"), runcommand=Exec(""), run=true, structure_name="NoName")
-    data    = Vector{InputData}()
-    flags   = Dict{Symbol, Any}()
-    atom_block     = nothing
-    cell_block     = nothing
-    pseudo_block   = nothing
-    open(filename) do f
-        line = readline(f)
-        while !eof(f)
-            @label start_label
-            if occursin("&", line)
-                line = readline(f)
-                while strip(line) != "/"
-                    if occursin("!", line)
-                        line = readline(f)
-                        continue
-                    end
-                    split_line = filter(x -> x != "", strip.(split(line, ",")))
-                    for s in split_line
-                        key, val = String.(strip.(split(s, "=")))
-                        qe_flag  = Symbol(replace(replace(key, "(" => "_"), ")" => ""))
-                        flag_type = flagtype(QE, exec, qe_flag)
-                        if flag_type != Nothing
-                            t_val = parse_flag_val(val, flag_type)
-                            flags[qe_flag] = eltype(t_val) == flag_type || flag_type == String ? t_val : error("Couldn't Meta.parse the value of flag '$key' in file '$filename'!")
-                        else
-                            error("Error reading $filename: flag '$key' not found in QE flag Dictionary for input $(exec.exec)!")
-                        end
-                    end
-                    line = readline(f)
-                end
-                @goto start_label
+function read_qe_input(filename; execs=[Exec("pw.x")], run=true, structure_name="noname")
+    @assert ispath(filename) "$filename is not a valid path."
+    lines = read(filename) |>
+        String |>
+        x -> replace(x, ", " => "\n") |>
+        x -> split(x, "\n") .|>
+        strip |>
+        x -> filter(!isempty, x) |>
+        x -> filter(y -> !occursin("&", y), x) |>
+        x -> filter(y -> !(occursin("/", y) && length(y) == 1), x) |>
+        x -> filter(y -> y[1] != "!", x)
 
-            elseif occursin("CELL_PARAMETERS", line) || occursin("cell_parameters", line)
-                cell_unit    = cardoption(line)
-                cell_        = Matrix{T}(undef, 3, 3)
-                cell_[1, 1:3] = parse.(T, split(readline(f)))
-                cell_[2, 1:3] = parse.(T, split(readline(f)))
-                cell_[3, 1:3] = parse.(T, split(readline(f)))
-                cell = Mat3(cell_)
-                line = readline(f)
-                cell_block = InputData(:cell_parameters, cell_unit, cell)
-                @goto start_label
+    exec = getfirst(x->x.exec ∈ QEEXECS, execs)
+    flaglines = strip_split.(filter(x -> occursin("=", x), lines), "=")
+    parsed_flags = Dict()
+    #easy flags
+    for (f, v) in filter(x-> !occursin("(", x[1]), flaglines)
+        sym = Symbol(f)
+        typ = flagtype(QE, exec, sym)
+        tval = typ != String ? parse.((typ,), split(v)) : v
+        parsed_flags[sym] = length(tval) == 1 ? tval[1] : tval
+    end
+    nat  = parsed_flags[:nat]
+    ntyp = parsed_flags[:ntyp]
+    #difficult flags
+    for (f, v) in filter(x-> occursin("(", x[1]), flaglines)
+        _s = split(replace(replace(replace(f, "(" => " "), ")" => " "), "," => " "))
 
-            elseif occursin("ATOMIC_SPECIES", line) || occursin("atomic_species", line)
-                line    = readline(f)
-                pseudos = Dict{Symbol,String}()
-                while length(split(line)) == 3
-                    pseudos[Symbol(split(line)[1])] = split(line)[end]
-                    line = readline(f)
-                end
-                pseudo_block = InputData(:atomic_species, :none, pseudos)
-                @goto start_label
-
-            elseif occursin("ATOMIC_POSITIONS", line) || occursin("atomic_positions", line)
-                option = cardoption(line)
-                atoms  = Dict{Symbol, Vector{Point3{T}}}()
-                line   = readline(f)
-                while length(split(line)) == 4
-                    s_line   = split(line)
-                    atom     = Symbol(s_line[1])
-                    position = Point3(parse(T, s_line[2]), parse(T, s_line[3]), parse(T, s_line[4]))
-                    if !haskey(atoms, atom)
-                        atoms[atom] = [position]
-                    else
-                        push!(atoms[atom], position)
-                    end
-                    line = readline(f)
-                end
-                atom_block = InputData(:atomic_positions, option, atoms)
-                @goto start_label
-
-            elseif occursin("K_POINTS", line) || occursin("k_points", line)
-                k_option = cardoption(line)
-                line     = readline(f)
-                if k_option == :automatic
-                    s_line = split(line)
-                    k_data = parse.(Int, s_line)
-                else
-                    nks    = parse(Int, line)
-                    k_data = Vector{Vector{T}}(undef, nks)
-                    for i = 1:nks
-                        k_data[i] = parse.(T, split(readline(f)))
-                    end
-                end
-                push!(data, InputData(:k_points, k_option, k_data))
-                @goto start_label
+        sym = Symbol(_s[1])
+        ids = parse.(Int, _s[2:end])
+        typ = flagtype(QE, exec, sym)
+        parsedval = parse.((eltype(typ),), split(v))
+        if !haskey(parsed_flags, sym)
+            if typ <: AbstractMatrix
+                parsed_flags[sym] = length(parsedval) == 1 ? zeros(eltype(typ), nat, 10) : fill(zeros(eltype(typ), length(parsedval)), nat, 10) #arbitrary limit
+            else
+                parsed_flags[sym] = length(parsedval) == 1 ? zeros(eltype(typ), nat) : fill(zeros(eltype(typ), length(parsedval)), nat)
             end
-            line = readline(f)
+        end
+        if length(ids) == 1
+            parsed_flags[sym][ids[1]] = length(parsedval) == 1 ? parsedval[1] : parsedval
+        else
+            parsed_flags[sym][ids[1], ids[2]] = length(parsedval) == 1 ? parsedval[1] : parsedval
         end
     end
 
-    structure = extract_structure!(structure_name, flags, cell_block, atom_block, pseudo_block)
-    pop!.((flags,), [:ibrav, :nat, :ntyp, :A, :celldm_1, :celldm], (nothing,))
+    findcard(s) = findfirst(l -> occursin(s, lowercase(l)), lines)
+    i = findcard("atomic_species")
+    pseudos = InputData(:atomic_species, :none, Dict{Symbol, String}())
+    for k=1:ntyp
+        sline = strip_split(lines[i+k])
+        pseudos.data[Symbol(sline[1])] = sline[end]
+    end
+
+    i = findcard("cell_parameters")
+    cell_block = InputData(:cell_parameters,
+                           cardoption(lines[i]),
+                           Mat3([parse(Float64, split(lines[i+k])[j]) for k=1:3, j=1:3]))
+
+    i = findcard("atomic_positions")
+    atom_block = InputData(:atomic_positions,
+                           cardoption(lines[i]),
+                           Dict{Symbol, Vector{Point3{Float64}}}() )
+    for k=1:nat
+        sline = split(lines[i+k])
+        atsym = Symbol(sline[1])
+        point = Point3(parse.(Float64, sline[2:4]))
+        if !haskey(atom_block.data, atsym)
+            atom_block.data[atsym] = [point]
+        else
+            push!(atom_block.data[atsym], point)
+        end
+    end
+
+    datablocks = InputData[]
+    i = findcard("k_points")
+    if i!=nothing
+        k_option = cardoption(lines[i])
+        if k_option == :automatic
+            s_line = split(lines[i+1])
+            k_data = parse.(Int, s_line)
+        else
+            nks    = parse(Int, lines[i+1])
+            k_data = Vector{Vector{Float64}}(undef, nks)
+            for k = 1:nks
+                k_data[k] = parse.(Float64, split(lines[i+1+k]))
+            end
+        end
+        push!(datablocks, InputData(:k_points, k_option, k_data))
+    end
+
+    structure = extract_structure!(structure_name, parsed_flags, cell_block, atom_block, pseudos)
+    delete!.((parsed_flags,), [:ibrav, :nat, :ntyp, :A, :celldm_1, :celldm])
     dir, file = splitdir(filename)
-    return DFInput{QE}(splitext(file)[1], dir, flags, data, [runcommand, exec], run), structure
+    return DFInput{QE}(splitext(file)[1], dir, parsed_flags, datablocks, execs, run), structure
 end
+
+function qe_writeflag(f, flag, value)
+    if isa(value, Matrix)
+        for i=1:size(value)[1], j=1:size(value)[2]
+            if !iszero(value[i,j])
+                write(f, "  $flag($i,$j) = $(value[i, j])\n")
+            end
+        end
+    elseif isa(value, Vector)
+        for i=1:length(value)
+            if !iszero(value[i])
+                if length(value[i]) == 1
+                    write(f, "  $flag($i) = $(value[i])\n")
+                else
+                    write(f, "  $flag($i) =")
+                    for v in value[i]
+                        write(f, " $v")
+                    end
+                    write(f, "\n")
+                end
+            end
+        end
+    else
+        write(f, " $flag = $value\n")
+    end
+end
+
 
 """
     save(input::DFInput{QE}, structure, filename::String=inpath(input))
@@ -437,7 +462,7 @@ function save(input::DFInput{QE}, structure, filename::String=inpath(input))
         input[:calculation] = replace(input[:calculation], "_" => "-")
     end
     open(filename, "w") do f
-        write_flag(flag_data) = write_flag_line(f, flag_data[1], flag_data[2])
+        writeflag(flag_data) = qe_writeflag(f, flag_data[1], flag_data[2])
         write_dat(data)       = write_data(f, data)
 
         controls = Dict{Symbol, Dict{Symbol, Any}}()
@@ -472,7 +497,7 @@ function save(input::DFInput{QE}, structure, filename::String=inpath(input))
                 write(f,"  nat = $nat\n")
                 write(f,"  ntyp = $ntyp\n")
             end
-            map(write_flag, [(flag, data) for (flag, data) in flags])
+            map(writeflag, [(flag, data) for (flag, data) in flags])
             write(f, "/\n\n")
         end
 
@@ -517,4 +542,25 @@ function write_structure(f, input::DFInput{QE}, structure)
     write(f, "ATOMIC_POSITIONS (angstrom) \n")
     write.((f, ), atom_lines)
     write(f, "\n")
+end
+
+function qe_generate_pw2waninput(input::DFInput{Wannier90}, qeprefix, runexecs)
+    flags = Dict()
+    flags[:prefix] = qeprefix
+    flags[:seedname] = name(input)
+    flags[:outdir] = "'$(dir(input))'"
+    flags[:wan_mode] = "'standalone'"
+    flags[:write_mmn] = true
+    flags[:write_amn] = true
+    if flag(input, :spin) != nothing
+        flags[:spin_component] = flag(input, :spin)
+    end
+    if flag(input, :wannier_plot) != nothing
+        flags[:write_unk] = flag(input, :wannier_plot)
+    end
+    if any(flag(input, :berry_task) .== ("morb", "'morb'"))
+        flags[:write_uHu] = true
+    end
+    pw2wanexec = Exec("pw2wannier90.x", runexecs[2].dir)
+    return DFInput{QE}("pw2wan_$(flags[:seedname])", dir(input), flags, InputData[], [runexecs[1], pw2wanexec], input.run)
 end

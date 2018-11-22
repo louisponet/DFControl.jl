@@ -23,6 +23,15 @@ end
 QEVariableInfo{T}(name::Symbol, description) where T = QEVariableInfo{T}(name, T, description)
 QEVariableInfo() = QEVariableInfo(:error, Nothing, String[])
 
+function vardim(line)
+    if all(occursin.(['(', ')'], (line,)))
+        dim = length(split(split(split(line, '(')[2], ')')[1], ','))
+    else
+        dim = 0
+    end
+    return dim
+end
+
 function read_qe_variable(lines, i)
     name = gensym()
     var_i = i
@@ -62,6 +71,14 @@ function read_qe_variable(lines, i)
     end
     @label break_label
     line = lines[var_i]
+    dim = vardim(line)
+    typ = if dim == 2
+            Matrix{typ}
+        elseif dim == 1
+            Vector{typ}
+        else
+            typ
+        end
     if occursin("Variables", line)
         spl = [split(x,"(")[1] for x in strip.(filter(x -> !occursin("=", x), split(line)[2:end]), ',')]
         names = Symbol.(spl)

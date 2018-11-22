@@ -73,7 +73,7 @@ end
 
 Reads a `DFInput{Wannier90}` and the included `Structure` from a WANNIER90 input file.
 """
-function read_wannier_input(filename::String, T=Float64; runcommand= Exec(""), run=true, exec=Exec("wannier90.x"), structure_name="NoName")
+function read_wannier_input(filename::String, T=Float64; execs=[Exec("wannier90.x")], run=true, structure_name="NoName")
     flags = Dict{Symbol,Any}()
     data  = Vector{InputData}()
     atoms_block = nothing
@@ -219,7 +219,7 @@ function read_wannier_input(filename::String, T=Float64; runcommand= Exec(""), r
     end
     structure = extract_structure(structure_name, cell_block, atoms_block, proj_block)
     dir, file = splitdir(filename)
-    return DFInput{Wannier90}(splitext(file)[1], dir, flags, data, [runcommand, exec], run), structure
+    return DFInput{Wannier90}(splitext(file)[1], dir, flags, data, execs, run), structure
 end
 
 """

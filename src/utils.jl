@@ -153,7 +153,6 @@ function parse_block(f, types...; to_strip=',')
     return output
 end
 
-convertflag(flagtype, flagvalue) = length(flagvalue) > 1 ? convert.(flagtype, flagvalue) : convert(flagtype, flagvalue)
 
 
 macro undoable(func)

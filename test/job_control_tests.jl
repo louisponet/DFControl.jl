@@ -62,28 +62,36 @@ job["nscf"][:nspin] = 3
 job[:nspin] = 10
 @test job["nscf"][:nspin] == 10
 
-job["nscf"][:Hubbard_U] = [1.0, 2.0]
-@test job["nscf"][:Hubbard_U] == [1.0, 2.0]
+job["nscf"][:Hubbard_U] = [1.0]
+@test job["nscf"][:Hubbard_U] == [1.0]
 
+job["nscf"][:starting_magnetization] = [[1.0, 2.0, 1.0]]
+@test job["nscf"][:starting_magnetization] == [[1.0, 2.0, 1.0]]
 
+job["nscf"][:Hubbard_J] = [0 1 2]
+@test job["nscf"][:Hubbard_J] == [0 1 2]
 addwancalc!(job, nscf,:Pt => [:s, :p, :d], Emin=fermi-7.0, Epad=5.0, wanflags=wanflags, print=false)
 
 setflow!(job, ""=>false)
 @test job.inputs[1].run == false
 setflow!(job, "nscf" => true, "bands" => true)
 @test job.inputs[3].run
-setflow!(job, "pw2wan" => true)
-@test job.inputs[end].run
 
 @test inputs(job,["nscf"]) == inputs(job, "nscf")
 
 save(job)
-
-job2 = DFJob(local_dir)
+job2 = DFJob("/home/ponet/.julia/dev/DFControl/test/testassets/test_job/")
 
 begin
     for (calc, calc2) in zip(job.inputs, job2.inputs)
-        @test calc.flags == calc2.flags
+
+        for (f, v) in calc.flags
+            if f==:Hubbard_J
+                continue
+            else
+                @test v == calc2.flags[f]
+            end
+        end
         for (b1, b2) in zip(calc.data, calc2.data)
             for n in fieldnames(typeof(b1))
                 @test getfield(b1, n) == getfield(b2, n)
@@ -99,7 +107,13 @@ rmflags!(job3, :lspinorb, print=false)
 
 begin
     for (calc, calc2) in zip(job.inputs, job3.inputs)
-        @test calc.flags == calc2.flags
+        for (f, v) in calc.flags
+            if f==:Hubbard_J
+                continue
+            else
+                @test v == calc2.flags[f]
+            end
+        end
         for (b1, b2) in zip(calc.data, calc2.data)
             for n in fieldnames(typeof(b1))
                 @test getfield(b1, n) == getfield(b2,n)
@@ -153,4 +167,7 @@ newatompos = outputdata(job, "vc_relax", onlynew=false)[:final_structure]
 job.structure = newatompos
 
 rm.(inpath.(job.inputs))
+
+rm(joinpath(splitdir(inpath(job.inputs[1]))[1], "pw2wan_wanup.in"))
+rm(joinpath(splitdir(inpath(job.inputs[1]))[1], "pw2wan_wandn.in"))
 rm(joinpath(job.local_dir, "job.tt"))

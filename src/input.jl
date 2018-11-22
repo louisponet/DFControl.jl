@@ -157,7 +157,11 @@ function setflags!(input::DFInput{T}, flags...; print=true) where T
         if flag_type != Nothing
             !(flag in found_keys) && push!(found_keys, flag)
             try
-                value = convertflag(flag_type, value)
+                if isa(value, AbstractVector{<:AbstractVector}) && flag_type <: AbstractVector
+                    value = [convert.(eltype(flag_type), v) for v in value] 
+                else
+                    value = convert(flag_type, value)
+                end
             catch
                 print && ( @warn "Filename '$(name(input))':\n  Could not convert '$value' into '$flag_type'.\n    Flag '$flag' not set.\n")
                 continue
@@ -170,7 +174,7 @@ function setflags!(input::DFInput{T}, flags...; print=true) where T
     return found_keys, input
 end
 
-Base.setindex!(input::DFInput, dat, key) = setflags!(input, key => dat; print=false)
+Base.setindex!(input::DFInput, dat, key) = setflags!(input, key => dat)
 function Base.setindex!(input::DFInput, dat::InputData, id)
     index = findfirst(x -> name(x)==id, data(input))
     data(input)[index] = dat
@@ -187,7 +191,7 @@ function cleanflags!(input::DFInput)
         end
         if !(eltype(value) <: flagtype_)
             try
-                flags(input)[flag] = convertflag(flagtype_, value)
+                flags(input)[flag] = convert(flagtype_, value)
             catch
                 error("Input $(name(input)): Could not convert :$flag of value $value to the correct type ($flagtype_), please set it to the correct type.")
             end
