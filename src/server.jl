@@ -150,7 +150,7 @@ function qsub(job::DFJob)
             error("Tried submitting on the local machine but got an error executing `qsub`.")
         end
     end
-    return Meta.parse(Int, chomp(outstr))
+    return parse(Int, chomp(outstr))
 end
 
 "Tests whether a directory exists on a server and if not, creates it."

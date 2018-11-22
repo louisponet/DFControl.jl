@@ -134,7 +134,7 @@ function getdefault_server()
     if isdefined(DFControl, :default_server)
         return DFControl.default_server
     else
-        return ""
+        return "localhost"
     end
 end
 

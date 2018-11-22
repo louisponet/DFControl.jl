@@ -199,7 +199,7 @@ function read_job_line(line)
     line = replace(line, ['>', '<'] => " ")
     if line[1] == '#'
         run = false
-        line = line[2:end]
+        line = strip(line[2:end], '#')
     else
         run = true
     end
