@@ -662,7 +662,7 @@ end
 
 
 "Creates a new `DFInput` from the template with the new flags and new data, then adds it to the inputs of the job at the specified index."
-addcalc!(job::DFJob, input::DFInput, index=length(job.inputs)+1) = insert!(job.inputs, index, input)
+addcalc!(job::DFJob, input::DFInput, index=length(job.inputs)+1) = insert!(job.inputs, index, index)
 
 function addcalc!(job::DFJob, template::DFInput, name, newflags...; index=length(job.inputs)+1, run=true, newdata=nothing)
     newcalc = DFInput(template, name, newflags..., data=newdata, run=run)
