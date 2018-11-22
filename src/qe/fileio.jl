@@ -348,6 +348,11 @@ function read_qe_input(filename; execs=[Exec("pw.x")], run=true, structure_name=
     for (f, v) in filter(x-> !occursin("(", x[1]), flaglines)
         sym = Symbol(f)
         typ = flagtype(QE, exec, sym)
+        if eltype(typ) <: Bool
+            v = strip(lowercase(v), ".")
+        elseif eltype(typ) <: Number
+            v = replace(v, "d" => "e")
+        end
         tval = typ != String ? parse.((typ,), split(v)) : v
         parsed_flags[sym] = length(tval) == 1 ? tval[1] : tval
     end
@@ -360,6 +365,7 @@ function read_qe_input(filename; execs=[Exec("pw.x")], run=true, structure_name=
         sym = Symbol(_s[1])
         ids = parse.(Int, _s[2:end])
         typ = flagtype(QE, exec, sym)
+        v = replace(v, "d" => "e")
         parsedval = parse.((eltype(typ),), split(v))
         if !haskey(parsed_flags, sym)
             if typ <: AbstractMatrix
