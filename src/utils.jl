@@ -34,14 +34,14 @@ function Emax(Emin, nbnd, bands)
     nbndfound = 0
     max = 0
     for b in bands
-        if minimum(b.eigvals) >= Emin && nbndfound <= nbnd
+        if maximum(b.eigvals) >= Emin && nbndfound <= nbnd
             nbndfound += 1
             #maximum of allowed frozen window is the minimum of the first band>nbnd
             max = minimum(b.eigvals)-0.005
         end
     end
 
-    nbndfound <= nbnd && error("num_bands ($nbnd) starting from Emin=$Emin exceeds the number of bands ($nbndfound).")
+    nbndfound <= nbnd && error("Number of needed bands for the projections ($nbnd) exceeds the amount of bands starting from \nEmin=$Emin ($nbndfound).")
     return max
 end
 
