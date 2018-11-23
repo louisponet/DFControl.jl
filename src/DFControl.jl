@@ -89,7 +89,6 @@ module DFControl
         #     include("display/printing_juno.jl")
         # end
         init_defaults(default_file)
-        init_QEInputInfos()
     end
 
     const UNDO_JOBS = DFJob[]

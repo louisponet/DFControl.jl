@@ -95,3 +95,190 @@ open(joinpath(@__DIR__, "wannier90flags.jl"), "w") do wf
     end
     write(wf, ")")
 end
+
+strip_split(line, args...) = strip.(split(line, args...))
+function read_block(f, startstr::String, endstr::String)
+    block = [startstr]
+    line = readline(f)
+    while !eof(f)
+        while !occursin(endstr, line)
+            line = readline(f)
+            push!(block, line)
+        end
+        return block
+    end
+    error("Block not found: start = $startstr, end = $endstr.")
+end
+
+function vardim(line)
+    if all(occursin.(['(', ')'], (line,)))
+        dim = length(split(split(split(line, '(')[2], ')')[1], ','))
+    else
+        dim = 0
+    end
+    return dim
+end
+
+function write_qe_variable(wf, indent, lines, i)
+    name = gensym()
+    var_i = i
+    i += 2
+    typ = fort2julia(strip_split(lines[i])[2])
+    description = String[]
+    # default = nothing
+    i += 1
+    line = lines[i]
+    while !occursin("+------", line)
+        # if occursin("Default", line)
+        #     _t = strip_split(line)[2]
+        #     _t = strip(strip(_t,'('),')')
+        #     if occursin("D", _t)
+        #         default = Meta.parse(typ, replace(_t,"D" => "e"))
+        #     else
+        #         _t = occursin("=",_t) ?split(_t,"=")[end] : _t
+        #         default = typ ==String ? _t : Meta.parse(_t)
+        #         println(_t)
+        #         if typeof(default) != Symbol
+        #             default = convert(typ, default)
+        #         end
+        #     end
+        if occursin("Description", line)
+            push!(description, strip_split(line,":")[2])
+            i += 1
+            line = lines[i]
+            while !occursin("+------", line)
+                push!(description, strip(lines[i]))
+                i += 1
+                line = lines[i]
+            end
+            @goto break_label
+        end
+        i += 1
+        line = lines[i]
+    end
+    @label break_label
+    line = lines[var_i]
+    dim = vardim(line)
+    typ = if dim == 2
+            Matrix{typ}
+        elseif dim == 1
+            Vector{typ}
+        else
+            typ
+        end
+    if occursin("Variables", line)
+        spl = [split(x,"(")[1] for x in strip.(filter(x -> !occursin("=", x), split(line)[2:end]), ',')]
+        names = Symbol.(spl)
+        for name in names
+            writefbodyline(wf, indent,  """QEVariableInfo{$typ}(Symbol("$name"), $description),""")
+        end
+        return i
+    else
+        if occursin("(", line) && occursin(")", line)
+            name = Symbol(split(strip_split(line, ":")[end],"(")[1])
+        else
+            name = Symbol(strip_split(line,":")[end])
+        end
+        writefbodyline(wf, indent, """QEVariableInfo{$typ}(Symbol("$name"), $description),""")
+        return i
+    end
+end
+
+function write_QEControlBlockInfo(wf, indent, lines)
+    name  = Symbol(lowercase(strip_split(lines[1], "&")[2]))
+    writefbodyline(wf, indent, """QEControlBlockInfo(Symbol("$name"), [""")
+    for i=1:length(lines)
+        line = lines[i]
+        if occursin("Variable", line)
+            i += write_qe_variable(wf, indent+1, lines, i)
+        end
+    end
+    writefbodyline(wf, indent + 1, "]),")
+    # writefbodyline(wf, indent, "),")
+end
+function write_QEDataBlockInfo(wf, indent, lines)
+    spl                 = split(lines[1])
+    name                = lowercase(spl[2])
+    options             = Symbol.(spl[4:2:end])
+    description         = String[]
+    options_description = String[]
+    writefbodyline(wf, indent, """QEDataBlockInfo(Symbol("$name"),""")
+    i = 2
+    while i <= length(lines) - 1
+        line = strip(lines[i])
+        if occursin("___________", line) && !occursin("+--", line)
+            i += 1
+            line = lines[i]
+            while !occursin("----------------", line)
+                push!(description, strip(line))
+                i += 1
+                line = lines[i]
+            end
+            writefbodyline(wf, indent+1, "$description, $options, $options_description, [")
+            i += 1
+
+        elseif occursin("Card's flags:", line)
+            i += 2
+            if !occursin("Description:", lines[i])
+                i += 1
+            end
+            push!(options_description,  join(split(lines[i])[2:end]," "))
+            i += 1
+            line = lines[i]
+            while !occursin("----------------", line)
+                push!(options_description, strip(line))
+                i += 1
+                line = lines[i]
+            end
+            # writefbodyline(wf, indent+1, "$options_description,")
+            i += 1
+        elseif occursin("Variable", line)
+            i = write_qe_variable(wf, indent+2, lines, i)
+        end
+        i += 1
+    end
+    writefbodyline(wf, indent+1, "]),")
+    # writefbodyline(wf, indent, "),")
+end
+function write_QEInputInfo(wf, filename, indent, exec)
+    writefbodyline(wf, indent, """QEInputInfo("$exec", [""")
+    allcontrolwritten = false
+    anydatawritten = false
+    open(filename, "r") do f
+        while !eof(f)
+            line = readline(f)
+            if occursin("NAMELIST", line)
+                write_QEControlBlockInfo(wf, indent+1, read_block(f, line, "END OF NAMELIST"))
+            elseif occursin("CARD:", line)
+                anydatawritten = true
+                if !allcontrolwritten
+                    writefbodyline(wf, indent+1, "],")
+                    writefbodyline(wf, indent+1, "[")
+                    allcontrolwritten = true
+                end
+                write_QEDataBlockInfo(wf, indent+1, read_block(f, line, "END OF CARD"))
+            end
+        end
+    end
+    if !anydatawritten
+        if !allcontrolwritten
+            writefbodyline(wf, indent+1, "],")
+        end
+        writefbodyline(wf, indent+1, "QEDataBlockInfo[]")
+    else
+        writefbodyline(wf, indent+1, "]")
+    end
+    writefbodyline(wf, indent, "),")
+end
+
+searchdir(path::String, key) = filter(x -> occursin(key, x), readdir(path))
+open(joinpath(@__DIR__, "qeflags.jl"), "w") do wf
+    write(wf, "_QEINPUTINFOS() = QEInputInfo[\n")
+    input_files = searchdir(joinpath(@__DIR__,  "..", "assets", "inputs", "qe"), "INPUT")
+    filepaths  = joinpath.(Ref(joinpath(@__DIR__, "..", "assets", "inputs", "qe")), input_files)
+    for _f in filepaths
+        exec_name = join([lowercase(splitext(split(_f, "_")[end])[1]),".x"],"")
+        write_QEInputInfo(wf, _f, 1, exec_name)
+    end
+    write(wf, "]")
+end

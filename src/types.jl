@@ -37,6 +37,7 @@ const QEFLAGS = ExecFlag[
 
 qeflag(flag::AbstractString) = getfirst(x -> x.name==flag, QEFLAGS)
 qeflag(flag::Symbol) = getfirst(x -> x.symbol==flag, QEFLAGS)
+
 function parse_qeflags(line::Vector{<:AbstractString})
     flags = ExecFlag[]
     i=1
