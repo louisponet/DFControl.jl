@@ -720,7 +720,7 @@ end
 outpath(job::DFJob, n::String) = outpath(input(job,n))
 
 "Finds the output files for each of the inputs of a job, and groups all found data into a dictionary."
-function outputdata(job::DFJob, inputs::Vector{DFInput}; print=true, onlynew=true)
+function outputdata(job::DFJob, inputs::Vector{DFInput}; print=true, onlynew=false)
     datadict = Dict()
     stime = starttime(job)
     for input in inputs
