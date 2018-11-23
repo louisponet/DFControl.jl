@@ -1,3 +1,4 @@
+using BinDeps
 if !isdir(joinpath(@__DIR__,"..", "user_defaults"))
     mkdir(joinpath(@__DIR__,"..", "user_defaults"))
 end
