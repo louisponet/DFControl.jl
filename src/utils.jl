@@ -6,7 +6,7 @@ searchdir(path::String, key) = filter(x -> occursin(key, x), readdir(path))
 """
 Parse an array of strings into an array of a type.
 """
-parse_string_array(T::Type, array) = map(x -> (v = tryparse(T, x); isnull(v) ? 0.0 : v), array)
+parse_string_array(T::Type, array) = map(x -> (v = tryparse(T, x); v==nothing ? 0.0 : v), array)
 
 """
 Parse a line for occurrences of type T.

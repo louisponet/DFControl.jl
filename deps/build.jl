@@ -1,6 +1,3 @@
-using Compat
-using BinDeps
-
 if !isdir(joinpath(@__DIR__,"..", "user_defaults"))
     mkdir(joinpath(@__DIR__,"..", "user_defaults"))
 end
@@ -21,31 +18,31 @@ if !ispath(pythonpath)
     end
     #From Conda installation
     url = "https://repo.continuum.io/miniconda/Miniconda2-latest-"
-    if Compat.Sys.isapple()
+    if Sys.isapple()
         url *= "MacOSX"
-    elseif Compat.Sys.islinux()
+    elseif Sys.islinux()
         url *= "Linux"
-    elseif Compat.Sys.iswindows()
+    elseif Sys.iswindows()
         url = "https://repo.continuum.io/miniconda/Miniconda2-4.5.4-"
         url *= "Windows"
     else
         error("Unsuported OS.")
     end
     url *= Sys.WORD_SIZE == 64 ? "-x86_64" : "-x86"
-    url *= Compat.Sys.iswindows() ? ".exe" : ".sh"
+    url *= Sys.iswindows() ? ".exe" : ".sh"
 
-    if Compat.Sys.isunix()
+    if Sys.isunix()
         installer = joinpath(dlpath, "installer.sh")
     end
-    if Compat.Sys.iswindows()
+    if Sys.iswindows()
         installer = joinpath(dlpath, "installer.exe")
     end
     download(url, installer)
-    if Compat.Sys.isunix()
+    if Sys.isunix()
         chmod(installer, 33261)  # 33261 corresponds to 755 mode of the 'chmod' program
         run(`$installer -b -f -p $pythonpath`)
     end
-    if Compat.Sys.iswindows()
+    if Sys.iswindows()
         run(Cmd(`$installer /S /AddToPath=0 /RegisterPython=0 /D=$pythonpath`, windows_verbatim=true))
     end
 
@@ -54,11 +51,11 @@ if !ispath(pythonpath)
     run(unpack_cmd("cif2cell.tar.gz", @__DIR__, ".gz",".tar"))
     cif2celldir = relpath("cif2cell-1.2.10")
     cd(cif2celldir)
-    pyex = Compat.Sys.iswindows() ? joinpath(pythonpath, "python") : joinpath(pythonpath, "bin", "python2")
+    pyex = Sys.iswindows() ? joinpath(pythonpath, "python") : joinpath(pythonpath, "bin", "python2")
     run(`$pyex setup.py install --prefix=$pythonpath`)
     cd("..")
 #stupid urlopen
-    starfile = Compat.Sys.iswindows() ? joinpath(pythonpath, "lib", "site-packages", "StarFile.py") : joinpath(pythonpath, "lib", "python2.7", "site-packages", "StarFile.py")
+    starfile = Sys.iswindows() ? joinpath(pythonpath, "lib", "site-packages", "StarFile.py") : joinpath(pythonpath, "lib", "python2.7", "site-packages", "StarFile.py")
     starsource = read(starfile, String)
     starsource = replace(starsource, "filestream = urlopen(filename)"=>"filestream = urlopen('file:' + filename)")
     write(starfile, starsource)

@@ -1,14 +1,16 @@
 module DFControl
-# using Reexport
-    using Compat
     using LinearAlgebra
     import Base.Iterators.flatten
-    using RecipesBase, GeometryTypes, Parameters, Nullables, Media
+    using RecipesBase
+    include("FixedSizeArrays.jl")
+    using .FixedSizeArrays
+    using Parameters
 
     abstract type Package end
     struct Wannier90 <: Package end
     struct QE <: Package end
     struct Abinit <: Package end
+
     const depsdir = joinpath(dirname(@__DIR__), "deps")
 
     include("atom.jl")
@@ -92,7 +94,7 @@ module DFControl
     end
 
     const UNDO_JOBS = DFJob[]
-    const pythonpath = Compat.Sys.iswindows() ? joinpath(depsdir, "python2", "python") : joinpath(dirname(@__DIR__), "deps", "python2", "bin", "python")
-    const cif2cellpath = Compat.Sys.iswindows() ? joinpath(depsdir, "python2", "Scripts", "cif2cell") : joinpath(dirname(@__DIR__), "deps", "python2", "bin", "cif2cell")
+    const pythonpath = Sys.iswindows() ? joinpath(depsdir, "python2", "python") : joinpath(dirname(@__DIR__), "deps", "python2", "bin", "python")
+    const cif2cellpath = Sys.iswindows() ? joinpath(depsdir, "python2", "Scripts", "cif2cell") : joinpath(dirname(@__DIR__), "deps", "python2", "bin", "cif2cell")
 
 end
