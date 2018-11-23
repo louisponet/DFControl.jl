@@ -59,7 +59,7 @@ end
 
 #TODO extend base.merge
 "Takes a vector of structures and merges all the attributes of the atoms."
-function mergestructures(structures::Vector{Union{<:AbstractStructure, Nothing}})
+function mergestructures(structures::Vector{<:AbstractStructure})
     nonvoid = filter(x -> x != nothing, structures)
     out = nonvoid[1]
     for structure in nonvoid[2:end]

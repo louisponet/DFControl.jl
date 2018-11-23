@@ -257,7 +257,7 @@ function read_job_inputs(job_file::String)
     name   = ""
     header = Vector{String}()
     inputs     = DFInput[]
-    structures = Union{AbstractStructure, Nothing}[]
+    structures = AbstractStructure[]
     open(job_file, "r") do f
         readline(f)
         while !eof(f)
