@@ -623,7 +623,7 @@ addwancalc!(job::DFJob, template::String="nscf", args...; kwargs...) =
     addwancalc!(job, input(job, template), args...; kwargs...)
 
 "Automatically calculates and sets the wannier energies. This uses the projections, `Emin` and the bands to infer the other limits.\n`Epad` allows one to specify the padding around the inner and outer energy windows"
-function setwanenergies!(job::DFJob, Emin::AbstractFloat, bands; Epad=5.0, print=true)
+function setwanenergies!(job::DFJob, bands, Emin::AbstractFloat; Epad=5.0, print=true)
     wancalcs = filter(x -> package(x) == Wannier90, job.inputs)
     @assert length(wancalcs) != 0 error("Job ($(job.name)) has no Wannier90 calculations, nothing todo.")
     nbnd = sum([sum(orbsize.(t)) for  t in projections(job)])

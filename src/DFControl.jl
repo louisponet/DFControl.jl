@@ -90,7 +90,6 @@ module DFControl
         # end
         init_defaults(default_file)
         init_QEInputInfos()
-        init_wan_control_flags()
     end
 
     const UNDO_JOBS = DFJob[]

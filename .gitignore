@@ -15,3 +15,5 @@ deps/python2/
 assets/mpirunflags\.jl
 
 deps/mpirunflags\.jl
+
+deps/wannier90flags\.jl
