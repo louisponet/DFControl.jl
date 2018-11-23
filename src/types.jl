@@ -48,57 +48,9 @@ function parse_qeflags(line::Vector{<:AbstractString})
     flags
 end
 
-const MPIFLAGS = ExecFlag[]
+include(joinpath(depsdir, "mpirunflags.jl"))
+const MPIFLAGS = _MPIFLAGS()
 
-function parse_manfile(file)
-    flags = ExecFlag[]
-    open(file, "r") do f
-        line = readline(f)
-        while line != "OPTIONS"
-            line = readline(f)
-        end
-        while line != "Environment Variables"
-            line = strip(readline(f))
-            if !isempty(line) && line[1] == '-'
-                name        = ""     #--
-                symbols     = Symbol[] #-
-                type        = Nothing
-                description = ""
-                sline = strip.(split(line), ',')
-                for s in sline
-                    if s[2] == '-' #--npernode
-                        name = strip(s, '-')
-                    elseif occursin('<', s) # <#persocket>
-                        type = if occursin("#", s)
-                                   occursin(',', s) ? Vector{Int} : Int
-                               elseif occursin("ppr", s) #ppr:N:<object>
-                                   Pair{Int, String}
-                               else
-                                   occursin(',', s) ? Vector{String} : String
-                               end
-                        break
-                    else  #-np
-                        push!(symbols, Symbol(strip(s, '-')))
-                    end
-                end
-                line = strip(readline(f))
-                while !isempty(line)
-                    description *= " " * line
-                    line = strip(readline(f))
-                end
-                if name != "" && isempty(symbols)
-                    symbols = [Symbol(name)]
-                end
-                for symbol in symbols
-                    push!(flags, ExecFlag(symbol, name, type, strip(description), nothing))
-                end
-            end
-        end
-    end
-    return flags
-end
-
-init_mpiflags() = append!(MPIFLAGS, parse_manfile(joinpath(@__DIR__, "..", "assets","mpirun_man.txt")))
 mpiflag(flag::AbstractString) = getfirst(x -> x.name==flag, MPIFLAGS)
 mpiflag(flag::Symbol) = getfirst(x -> x.symbol==flag, MPIFLAGS)
 

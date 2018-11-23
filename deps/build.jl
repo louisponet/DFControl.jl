@@ -67,3 +67,5 @@ if !ispath(pythonpath)
     rm(relpath("cif2cell-1.2.10"), recursive=true)
     rm(relpath("downloads"), recursive=true)
 end
+
+include("asset_init.jl")

@@ -11,3 +11,7 @@ deps/build.log
 wip
 
 deps/python2/
+
+assets/mpirunflags\.jl
+
+deps/mpirunflags\.jl
