@@ -27,6 +27,7 @@ function fort2julia(f_type)
         return Nothing
     end
 end
+indentabs(indent) = prod(["\t" for i=1:indent])
 
 open(joinpath(@__DIR__, "mpirunflags.jl"), "w") do wf
     write(wf, "_MPIFLAGS() = ExecFlag[\n")
@@ -62,7 +63,7 @@ open(joinpath(@__DIR__, "mpirunflags.jl"), "w") do wf
                 end
                 line = strip(readline(f))
                 while !isempty(line)
-                    description *= " " * line
+                    description *= join(split(line), " ") * "\n" * indentabs(2)
                     line = strip(readline(f))
                 end
                 description = replace(strip(description), "\"" => "'")
@@ -124,7 +125,7 @@ function write_qe_variable(wf, indent, lines, i)
     var_i = i
     i += 2
     typ = fort2julia(strip_split(lines[i])[2])
-    description = String[]
+    description = ""
     # default = nothing
     i += 1
     line = lines[i]
@@ -143,11 +144,11 @@ function write_qe_variable(wf, indent, lines, i)
         #         end
         #     end
         if occursin("Description", line)
-            push!(description, strip_split(line,":")[2])
+            description *= strip_split(line,":")[2] * "\n" * indentabs(indent+1)
             i += 1
             line = lines[i]
             while !occursin("+------", line)
-                push!(description, strip(lines[i]))
+                description *= strip(lines[i]) * "\n" * indentabs(indent+1)
                 i += 1
                 line = lines[i]
             end
@@ -166,11 +167,12 @@ function write_qe_variable(wf, indent, lines, i)
         else
             typ
         end
+    description = replace(description, "\"" => "'")
     if occursin("Variables", line)
         spl = [split(x,"(")[1] for x in strip.(filter(x -> !occursin("=", x), split(line)[2:end]), ',')]
         names = Symbol.(spl)
         for name in names
-            writefbodyline(wf, indent,  """QEVariableInfo{$typ}(Symbol("$name"), $description),""")
+            writefbodyline(wf, indent,  """QEVariableInfo{$typ}(Symbol("$name"), "$description"),""")
         end
         return i
     else
@@ -179,7 +181,7 @@ function write_qe_variable(wf, indent, lines, i)
         else
             name = Symbol(strip_split(line,":")[end])
         end
-        writefbodyline(wf, indent, """QEVariableInfo{$typ}(Symbol("$name"), $description),""")
+        writefbodyline(wf, indent, """QEVariableInfo{$typ}(Symbol("$name"), "$description"),""")
         return i
     end
 end
@@ -196,13 +198,14 @@ function write_QEControlBlockInfo(wf, indent, lines)
     writefbodyline(wf, indent + 1, "]),")
     # writefbodyline(wf, indent, "),")
 end
+
 function write_QEDataBlockInfo(wf, indent, lines)
     spl                 = split(lines[1])
     name                = lowercase(spl[2])
     options             = Symbol.(spl[4:2:end])
-    description         = String[]
-    options_description = String[]
-    writefbodyline(wf, indent, """QEDataBlockInfo(Symbol("$name"),""")
+    description         = ""
+    options_description = ""
+    # writefbodyline(wf, indent, """QEDataBlockInfo(Symbol("$name"),""")
     i = 2
     while i <= length(lines) - 1
         line = strip(lines[i])
@@ -210,11 +213,13 @@ function write_QEDataBlockInfo(wf, indent, lines)
             i += 1
             line = lines[i]
             while !occursin("----------------", line)
-                push!(description, strip(line))
+                description *= strip(line) * "\n" * indentabs(indent+2)
                 i += 1
                 line = lines[i]
             end
-            writefbodyline(wf, indent+1, "$description, $options, $options_description, [")
+            description = replace(description, "\"" => "'")
+            options_description = replace(options_description, "\"" => "'")
+            writefbodyline(wf, indent+1, """QEDataBlockInfo(Symbol("$name"),"$description", $options, "$options_description", [""")
             i += 1
 
         elseif occursin("Card's flags:", line)
@@ -222,15 +227,14 @@ function write_QEDataBlockInfo(wf, indent, lines)
             if !occursin("Description:", lines[i])
                 i += 1
             end
-            push!(options_description,  join(split(lines[i])[2:end]," "))
+            options_description *= split(lines[i])[2:end] * "\n" * indentabs(indent+2)
             i += 1
             line = lines[i]
             while !occursin("----------------", line)
-                push!(options_description, strip(line))
+                options_description *= strip(line) * "\n" * indentabs(indent+2)
                 i += 1
                 line = lines[i]
             end
-            # writefbodyline(wf, indent+1, "$options_description,")
             i += 1
         elseif occursin("Variable", line)
             i = write_qe_variable(wf, indent+2, lines, i)
@@ -238,7 +242,6 @@ function write_QEDataBlockInfo(wf, indent, lines)
         i += 1
     end
     writefbodyline(wf, indent+1, "]),")
-    # writefbodyline(wf, indent, "),")
 end
 function write_QEInputInfo(wf, filename, indent, exec)
     writefbodyline(wf, indent, """QEInputInfo("$exec", [""")
