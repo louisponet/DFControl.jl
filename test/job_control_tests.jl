@@ -131,8 +131,8 @@ setprojections!(job, :Pt => testorbs)
 @test convert.(Symbol, [p.orb for p in projections(job, :Pt)]) == testorbs
 setwanenergies!(job, fermi-7.0, read_qe_bands_file(outpath(nscf)), Epad=3.0, print=false)
 
-@test flag(job, :dis_froz_max) == 14.285699999999999
-@test flag(job, :dis_win_max) == 14.285699999999999 + 3.0
+@test flag(job, :dis_froz_max) == 13.2921
+@test flag(job, :dis_win_max) == 16.292099999999998
 
 setexecflags!(job, "pw.x", :nk => 230)
 @test DFControl.getfirst(x->x.symbol==:nk, execs(job, "nscf")[2].flags).value == 230
