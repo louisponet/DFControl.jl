@@ -26,18 +26,78 @@ end
 Base.show(io::IO, bands::Vector{<:DFBand}) = map(x->show(io,x),bands)
 
 function Base.show(io::IO, job::DFJob)
-    s = """--------------------
-    DFJob:      $(job.name)
-    Local_dir:  $(job.local_dir)
-    Server:     $(job.server)
-    Server_dir: $(job.server_dir)
-    $(length(job.inputs)) calculations
-    --------------------
-    """
-    dfprintln(io, s)
-    for i in inputs(job)
-        dfprintln(io, "\t$(name(i)) => runs=$(i.run)")
+    reset = crayon"reset"
+    fieldns  = [:name, :local_dir, :server, :server_dir]
+    fs   = string.(filter(x->!isempty(x), getfield.((job,), fieldns)))
+    fns = string.(fieldns)
+    lfns = 0
+    for (fn, f) in zip(fns, fs)
+        totlen = length(fn) + length(f) + 5
+        if totlen > lfns
+            lfns = totlen
+        end
+    end
+    line = "+"
+    for i=1:div(lfns,2)
+        line *= "-"
+    end
+    dfprint(io, crayon"cyan", line[1:end-2])
+    dfprint(io, crayon"cyan", "DFJOB")
+    for i=1:div(lfns,2)
+        line *= "-"
+    end
+    line *= "+"
+    totlen = length(line)
+    dfprintln(io, crayon"cyan", line[div(lfns, 2)+5:end],  reset)
+    lfns = maximum(length.(string.(fns)))
+    for (fn, f) in zip(fns, fs)
+        isname = fn == "name"
+        l = length(fn)
+        fn *= ":"
+        for i=1:lfns-l
+            fn *= " "
+        end
+        dfprint(crayon"cyan", "|", reset)
+        isname ? dfprint(" $fn ", crayon"magenta", "$f", reset) : dfprint(" $fn $f", reset)
+        for i=1:totlen - (length(fn) + 4 + length(f))
+            dfprint(" ")
+        end
+        dfprintln(crayon"cyan", "|", reset)
+    end
+    is = inputs(job)
+    !isempty(job.server_dir) && dfprintln(io, "Server_dir: $(job.server_dir)")
+    dfprintln(io, crayon"cyan", line, reset)
+    dfprintln(reset,"(", crayon"green", "scheduled", reset, ", ", crayon"red", "not scheduled", reset, ")")
+    ln = maximum(length.(string.(name.(is))))
+    for (si, i) in enumerate(is)
+        n = name(i)
+        l = length(n)
+        for j=1:ln-l
+            n *= " "
+        end
+        cr = i.run ? crayon"green" : crayon"red"
+        dfprint(io, cr, "\t\t$n\n")
     end
 end
 
 Base.show(io::IO, at::AbstractAtom) = dfprintln(io, "$(id(at)): $(position(at)[1]) $(position(at)[2]) $(position(at)[3])")
+
+function Base.show(io::IO, in::DFInput)
+    dfprintln(io, crayon"red", typeof(in), crayon"reset")
+    s = """name  = $(in.name)
+    dir   = $(in.dir)
+    execs = $(join([e.exec for e in in.execs],", "))
+    run   = $(in.run)
+    data  = $([e.name for e in data(in)])
+    $(crayon"cyan")flags$(crayon"reset"):"""
+    dfprintln(io, s)
+    fl = maximum(length.(string.(keys(flags(in)))))
+    for (f, v) in flags(in)
+        fs = string(f)
+        l = length(fs)
+        for i=1:fl - l
+            fs *= " "
+        end
+        dfprint(crayon"cyan", "\t$fs", crayon"yellow"," => ", crayon"magenta", "$v\n")
+    end
+end

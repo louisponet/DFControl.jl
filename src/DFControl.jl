@@ -85,11 +85,11 @@ module DFControl
     export getdefault_pseudodirs
     export removedefault
 
-    dfprintln(s::String) = println(s)
+    using Crayons
+    const dfprintln = println
+    const dfprint = print
+    include("display/overloads.jl")
     function __init__()
-        # if haskey(Pkg.installed(), "Atom")
-        #     include("display/printing_juno.jl")
-        # end
         init_defaults(default_file)
     end
 

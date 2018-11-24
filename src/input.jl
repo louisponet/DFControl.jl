@@ -6,7 +6,7 @@ mutable struct InputData
 end
 name(data::InputData) = data.name
 
-@with_kw mutable struct DFInput{P <: Package}
+@with_kw_noshow mutable struct DFInput{P <: Package}
     name     ::String
     dir      ::String
     flags    ::SymAnyDict
@@ -158,7 +158,7 @@ function setflags!(input::DFInput{T}, flags...; print=true) where T
             !(flag in found_keys) && push!(found_keys, flag)
             try
                 if isa(value, AbstractVector{<:AbstractVector}) && flag_type <: AbstractVector
-                    value = [convert.(eltype(flag_type), v) for v in value] 
+                    value = [convert.(eltype(flag_type), v) for v in value]
                 else
                     value = convert(flag_type, value)
                 end
