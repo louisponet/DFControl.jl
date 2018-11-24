@@ -20,7 +20,9 @@ mutable struct DFJob
         if server_dir != ""
             server_dir = server_dir
         end
-
+        if !isabspath(local_dir)
+            local_dir = abspath(local_dir)
+        end
         test = filter(x -> x.name == name,UNDO_JOBS)
         if length(test) == 1
             job = new(test[1].id, name, structure, calculations, local_dir, server, server_dir, header, Dict())
@@ -44,7 +46,7 @@ function DFJob(job_name, local_dir, structure::AbstractStructure, calculations::
                     header=getdefault_jobheader())
 
     @assert package==QE "Only implemented for Quantum Espresso!"
-    local_dir = local_dir
+
     job_calcs = DFInput[]
     if typeof(common_flags) != Dict
         common_flags = Dict(common_flags)
@@ -709,6 +711,9 @@ end
 Sets the local dir of the job.
 """
 function setlocaldir!(job, dir)
+    if !isabspath(dir)
+        dir = abspath(dir)
+    end
     job.local_dir = dir
     for i in inputs(job)
         setdir!(i, dir)
