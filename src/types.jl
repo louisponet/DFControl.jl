@@ -52,9 +52,63 @@ end
 include(joinpath(depsdir, "mpirunflags.jl"))
 const MPIFLAGS = _MPIFLAGS()
 
-mpiflag(flag::AbstractString) = getfirst(x -> x.name==flag, MPIFLAGS)
+mpiflag(flag::String) = getfirst(x -> x.name==flag, MPIFLAGS)
 mpiflag(flag::Symbol) = getfirst(x -> x.symbol==flag, MPIFLAGS)
 
+function mpi_flag_val(::Type{String}, line, i)
+    v = line[i+1]
+    i += 2
+    return v
+end
+
+function mpi_flag_val(::Type{Vector{String}}, line, i)
+    tval = String[]
+    while i+1 <= length(line) && !occursin('-', line[i+1])
+        push!(tval, line[i+1])
+        i += 1
+    end
+    return tval, i + 1
+end
+
+function mpi_flag_val(::Type{Int}, line, i)
+    if line[i+1][1] == '\$'
+        tval = line[i+1]
+    else
+        tval = parse(Int, line[i+1])
+    end
+    return tval, i + 2
+end
+
+function mpi_flag_val(::Type{Vector{Int}}, line, i)
+    tval = Union{Int, String}[]
+    while i+1 <= length(line) && !occursin('-', line[i+1])
+        if line[i+1][1] == '\$'
+            push!(tval, line[i+1])
+        else
+            push!(tval, parse(Int, line[i+1]))
+        end
+        i += 1
+    end
+    return tval, i + 1
+end
+
+function mpi_flag_val(::Type{Pair{Int, String}}, line, i)
+    tval = Union{Int, String}[]
+    while i+1<=length(line) && !occursin('-', line[i+1])
+        if line[i+1][1] == '\$'
+            push!(tval, line[i+1])
+        else
+            tparse = tryparse(Int, line[i+1])
+            if tparse != nothing
+                push!(tval, tparse)
+            else
+                push!(tval, string(line[i+1]))
+            end
+        end
+        i += 1
+    end
+    return tval, i + 1
+end
 function parse_mpiflags(line::Vector{<:AbstractString})
     eflags = ExecFlag[]
     i = 1
@@ -63,69 +117,14 @@ function parse_mpiflags(line::Vector{<:AbstractString})
         if s[1] != '-'
             break
         end
-        mflag = if s[2] == '-'
-            mpiflag(strip(s, '-'))
+        if s[2] == '-'
+            mflag = mpiflag(strip(s, '-'))
         else
-            mpiflag(Symbol(strip(s, '-')))
+            mflag = mpiflag(Symbol(strip(s, '-')))
         end
 
         @assert mflag != nothing "$(strip(s, '-')) is not a recognized mpiflag"
-        flagtype = mflag.type
-        val = if flagtype ==  String
-                  v = line[i+1]
-                  i+=2
-                  v
-              elseif flagtype == Vector{String}
-                  tval = []
-                  while i+1 <= length(line) && !occursin('-', line[i+1])
-                       push!(tval, line[i+1])
-                       i += 1
-                   end
-                   i+=1
-                   tval
-               elseif flagtype == Int
-                   if line[i+1][1] == '\$'
-                       tval = line[i+1]
-                   else
-                       tval = parse(Int, line[i+1])
-                   end
-                   i += 2
-                   tval
-               elseif flagtype == Vector{Int}
-                   tval = []
-                   while i+1 <= length(line) && !occursin('-', line[i+1])
-                       if line[i+1][1] == '\$'
-                           push!(tval, line[i+1])
-                       else
-                           push!(tval, parse(Int, line[i+1]))
-                       end
-                       i += 1
-                   end
-                   i+=1
-                   tval
-               elseif flagtype <: Pair
-                   tval = []
-                   while i+1<=length(line) && !occursin('-', line[i+1])
-                       if line[i+1][1] == '\$'
-                           push!(tval, line[i+1])
-                       else
-                           for p in flagtype.parameters
-                               if p <: AbstractString
-                                   push!(tval, line[i+1])
-                                   break
-                               end
-                               tparse = tryparse(p, line[i+1])
-                               if tparse != nothing
-                                   push!(tval, tparse)
-                                   break
-                               end
-                           end
-                       end
-                       i += 1
-                   end
-                   i+=1
-                   tval
-               end
+        val, i = mpi_flag_val(mflag.type, line, i)
         push!(eflags, ExecFlag(mflag, val))
     end
     eflags
