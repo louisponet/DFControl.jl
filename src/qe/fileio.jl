@@ -356,57 +356,66 @@ function read_qe_input(filename; execs=[Exec("pw.x")], run=true, structure_name=
         tval = typ != String ? parse.((typ,), split(v)) : v
         parsed_flags[sym] = length(tval) == 1 ? tval[1] : tval
     end
-    nat  = parsed_flags[:nat]
-    ntyp = parsed_flags[:ntyp]
-    #difficult flags
-    for (f, v) in filter(x-> occursin("(", x[1]), flaglines)
-        _s = split(replace(replace(replace(f, "(" => " "), ")" => " "), "," => " "))
-
-        sym = Symbol(_s[1])
-        ids = parse.(Int, _s[2:end])
-        typ = flagtype(QE, exec, sym)
-        v = replace(v, "d" => "e")
-        parsedval = parse.((eltype(typ),), split(v))
-        if !haskey(parsed_flags, sym)
-            if typ <: AbstractMatrix
-                parsed_flags[sym] = length(parsedval) == 1 ? zeros(eltype(typ), ntyp, 10) : fill(zeros(eltype(typ), length(parsedval)), ntyp, 10) #arbitrary limit
-            else
-                parsed_flags[sym] = length(parsedval) == 1 ? zeros(eltype(typ), ntyp) : fill(zeros(eltype(typ), length(parsedval)), ntyp)
-            end
-        end
-        if length(ids) == 1
-            parsed_flags[sym][ids[1]] = length(parsedval) == 1 ? parsedval[1] : parsedval
-        else
-            parsed_flags[sym][ids[1], ids[2]] = length(parsedval) == 1 ? parsedval[1] : parsedval
-        end
-    end
 
     findcard(s) = findfirst(l -> occursin(s, lowercase(l)), lines)
     i = findcard("atomic_species")
-    pseudos = InputData(:atomic_species, :none, Dict{Symbol, String}())
-    for k=1:ntyp
-        sline = strip_split(lines[i+k])
-        pseudos.data[Symbol(sline[1])] = sline[end]
-    end
+    if i!=nothing
+        nat  = parsed_flags[:nat]
+        ntyp = parsed_flags[:ntyp]
 
-    i = findcard("cell_parameters")
-    cell_block = InputData(:cell_parameters,
-                           cardoption(lines[i]),
-                           Mat3([parse(Float64, split(lines[i+k])[j]) for k=1:3, j=1:3]))
-
-    i = findcard("atomic_positions")
-    atom_block = InputData(:atomic_positions,
-                           cardoption(lines[i]),
-                           Dict{Symbol, Vector{Point3{Float64}}}() )
-    for k=1:nat
-        sline = split(lines[i+k])
-        atsym = Symbol(sline[1])
-        point = Point3(parse.(Float64, sline[2:4]))
-        if !haskey(atom_block.data, atsym)
-            atom_block.data[atsym] = [point]
-        else
-            push!(atom_block.data[atsym], point)
+        pseudos = InputData(:atomic_species, :none, Dict{Symbol, String}())
+        for k=1:ntyp
+            sline = strip_split(lines[i+k])
+            pseudos.data[Symbol(sline[1])] = sline[end]
         end
+
+        i = findcard("cell_parameters")
+        cell_block = InputData(:cell_parameters,
+                               cardoption(lines[i]),
+                               Mat3([parse(Float64, split(lines[i+k])[j]) for k=1:3, j=1:3]))
+
+        i = findcard("atomic_positions")
+        atom_block = InputData(:atomic_positions,
+                               cardoption(lines[i]),
+                               Dict{Symbol, Vector{Point3{Float64}}}() )
+
+        for k=1:nat
+            sline = split(lines[i+k])
+            atsym = Symbol(sline[1])
+            point = Point3(parse.(Float64, sline[2:4]))
+            if !haskey(atom_block.data, atsym)
+                atom_block.data[atsym] = [point]
+            else
+                push!(atom_block.data[atsym], point)
+            end
+        end
+        structure = extract_structure!(structure_name, parsed_flags, cell_block, atom_block, pseudos)
+        delete!.((parsed_flags,), [:ibrav, :nat, :ntyp, :A, :celldm_1, :celldm])
+
+        #the difficult flags, can only be present if atomic stuff is found
+        for (f, v) in filter(x-> occursin("(", x[1]), flaglines)
+            _s = split(replace(replace(replace(f, "(" => " "), ")" => " "), "," => " "))
+
+            sym = Symbol(_s[1])
+            ids = parse.(Int, _s[2:end])
+            typ = flagtype(QE, exec, sym)
+            v = replace(v, "d" => "e")
+            parsedval = parse.((eltype(typ),), split(v))
+            if !haskey(parsed_flags, sym)
+                if typ <: AbstractMatrix
+                    parsed_flags[sym] = length(parsedval) == 1 ? zeros(eltype(typ), ntyp, 10) : fill(zeros(eltype(typ), length(parsedval)), ntyp, 10) #arbitrary limit
+                else
+                    parsed_flags[sym] = length(parsedval) == 1 ? zeros(eltype(typ), ntyp) : fill(zeros(eltype(typ), length(parsedval)), ntyp)
+                end
+            end
+            if length(ids) == 1
+                parsed_flags[sym][ids[1]] = length(parsedval) == 1 ? parsedval[1] : parsedval
+            else
+                parsed_flags[sym][ids[1], ids[2]] = length(parsedval) == 1 ? parsedval[1] : parsedval
+            end
+        end
+    else
+        structure = nothing
     end
 
     datablocks = InputData[]
@@ -426,8 +435,6 @@ function read_qe_input(filename; execs=[Exec("pw.x")], run=true, structure_name=
         push!(datablocks, InputData(:k_points, k_option, k_data))
     end
 
-    structure = extract_structure!(structure_name, parsed_flags, cell_block, atom_block, pseudos)
-    delete!.((parsed_flags,), [:ibrav, :nat, :ntyp, :A, :celldm_1, :celldm])
     dir, file = splitdir(filename)
     return DFInput{QE}(splitext(file)[1], dir, parsed_flags, datablocks, execs, run), structure
 end

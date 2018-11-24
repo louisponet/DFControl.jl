@@ -57,17 +57,16 @@ function Base.show(io::IO, job::DFJob)
         for i=1:lfns-l
             fn *= " "
         end
-        dfprint(crayon"cyan", "|", reset)
-        isname ? dfprint(" $fn ", crayon"magenta", "$f", reset) : dfprint(" $fn $f", reset)
+        dfprint(io, crayon"cyan", "|", reset)
+        isname ? dfprint(io, " $fn ", crayon"magenta", "$f", reset) : dfprint(io, " $fn $f", reset)
         for i=1:totlen - (length(fn) + 4 + length(f))
-            dfprint(" ")
+            dfprint(io, " ")
         end
-        dfprintln(crayon"cyan", "|", reset)
+        dfprintln(io, crayon"cyan", "|", reset)
     end
     is = inputs(job)
-    !isempty(job.server_dir) && dfprintln(io, "Server_dir: $(job.server_dir)")
     dfprintln(io, crayon"cyan", line, reset)
-    dfprintln(reset,"(", crayon"green", "scheduled", reset, ", ", crayon"red", "not scheduled", reset, ")")
+    dfprintln(io, reset,"(", crayon"green", "scheduled", reset, ", ", crayon"red", "not scheduled", reset, ")")
     ln = maximum(length.(string.(name.(is))))
     for (si, i) in enumerate(is)
         n = name(i)
@@ -78,6 +77,7 @@ function Base.show(io::IO, job::DFJob)
         cr = i.run ? crayon"green" : crayon"red"
         dfprint(io, cr, "\t\t$n\n")
     end
+    dfprint(io, reset)
 end
 
 Base.show(io::IO, at::AbstractAtom) = dfprintln(io, "$(id(at)): $(position(at)[1]) $(position(at)[2]) $(position(at)[3])")
@@ -98,6 +98,7 @@ function Base.show(io::IO, in::DFInput)
         for i=1:fl - l
             fs *= " "
         end
-        dfprint(crayon"cyan", "\t$fs", crayon"yellow"," => ", crayon"magenta", "$v\n")
+        dfprint(io, crayon"cyan", "\t$fs", crayon"yellow"," => ", crayon"magenta", "$v\n")
     end
+    dfprint(io, crayon"reset")
 end

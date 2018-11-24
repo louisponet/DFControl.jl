@@ -40,6 +40,7 @@ job = DFJob(name, local_dir, joinpath(testjobpath, "Pt.cif"), calculations,
      )
 
 save(job)
+show(job)
 @test data(job, "scf", :k_points).data == [6, 6, 6, 1, 1, 1]
 @test data(job, "nscf", :k_points).data == DFControl.kgrid(10, 10, 10, :nscf)
 

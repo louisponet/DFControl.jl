@@ -89,7 +89,9 @@ module DFControl
     const dfprintln = println
     const dfprint = print
     include("display/overloads.jl")
+    using Requires
     function __init__()
+        @require Juno = "e5e0dc1b-0480-54bc-9374-aad01c23163d" include("display/printing_juno.jl")
         init_defaults(default_file)
     end
 

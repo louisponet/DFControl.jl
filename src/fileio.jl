@@ -281,7 +281,9 @@ function read_job_inputs(job_file::String)
                         structures[id[1]] = input[2]
                     else
                         push!(inputs, input[1])
-                        push!(structures, input[2])
+                        if input[2] != nothing
+                            push!(structures, input[2])
+                        end
                     end
                 end
         elseif occursin("#SBATCH", line)
