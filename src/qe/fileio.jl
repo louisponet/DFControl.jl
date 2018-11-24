@@ -317,6 +317,21 @@ function extract_structure!(name, control, cell_block, atom_block, pseudo_block)
     return Structure(name, cell, atoms)
 end
 
+function separate(f, A::AbstractVector{T}) where T
+    true_part = T[]
+    false_part = T[]
+    while length(A) > 0
+        t = pop!(A)
+        if f(t)
+            push!(true_part, t)
+        else
+            push!(false_part, t)
+        end
+    end
+    return reverse(true_part), reverse(false_part)
+end
+
+
 """
     read_qe_input(filename, T=Float64; exec="pw.x",  runcommand="", run=true, structure_name="NoName")
 
@@ -327,20 +342,27 @@ function read_qe_input(filename; execs=[Exec("pw.x")], run=true, structure_name=
     @assert ispath(filename) "$filename is not a valid path."
     lines = read(filename) |>
         String |>
+        x -> split(x, "\n") |>
+        x -> filter(!isempty, x) |>
+        x -> filter(y -> y[1] != '!', x) |>
+        x -> filter(y -> y[1] != '#', x) |>
+        x -> join(x, "\n") |>
         x -> replace(x, ", " => "\n") |>
         x -> replace(x, "," => " ") |>
         x -> split(x, "\n") .|>
         strip |>
-        x -> filter(!isempty, x) |>
         x -> filter(y -> !occursin("&", y), x) |>
-        x -> filter(y -> !(occursin("/", y) && length(y) == 1), x) |>
-        x -> filter(y -> y[1] != '!', x)
+        x -> filter(y -> !(occursin("/", y) && length(y) == 1), x)
+
 
     exec = getfirst(x->x.exec ∈ QEEXECS, execs)
-    flaglines = strip_split.(filter(x -> occursin("=", x), lines), "=")
+
+    flaglines, lines = separate(x -> occursin("=", x), lines)
+    flaglines = strip_split.(flaglines, "=")
+    easy_flaglines, difficult_flaglines = separate(x-> !occursin("(", x[1]), flaglines)
     parsed_flags = Dict()
     #easy flags
-    for (f, v) in filter(x-> !occursin("(", x[1]), flaglines)
+    for (f, v) in easy_flaglines
         sym = Symbol(f)
         typ = flagtype(QE, exec, sym)
         if eltype(typ) <: Bool
@@ -352,29 +374,35 @@ function read_qe_input(filename; execs=[Exec("pw.x")], run=true, structure_name=
         parsed_flags[sym] = length(tval) == 1 ? tval[1] : tval
     end
 
+    used_lineids = Int[]
     findcard(s) = findfirst(l -> occursin(s, lowercase(l)), lines)
     i = findcard("atomic_species")
     if i!=nothing
+        push!(used_lineids, i)
         nat  = parsed_flags[:nat]
         ntyp = parsed_flags[:ntyp]
 
         pseudos = InputData(:atomic_species, :none, Dict{Symbol, String}())
         for k=1:ntyp
+            push!(used_lineids, i + k)
             sline = strip_split(lines[i+k])
             pseudos.data[Symbol(sline[1])] = sline[end]
         end
 
         i = findcard("cell_parameters")
+        append!(used_lineids, [i, i+1, i+2, i+3])
         cell_block = InputData(:cell_parameters,
                                cardoption(lines[i]),
                                Mat3([parse(Float64, split(lines[i+k])[j]) for k=1:3, j=1:3]))
 
         i = findcard("atomic_positions")
+        push!(used_lineids, i)
         atom_block = InputData(:atomic_positions,
                                cardoption(lines[i]),
                                Dict{Symbol, Vector{Point3{Float64}}}() )
 
         for k=1:nat
+            push!(used_lineids, i+k)
             sline = split(lines[i+k])
             atsym = Symbol(sline[1])
             point = Point3(parse.(Float64, sline[2:4]))
@@ -388,7 +416,7 @@ function read_qe_input(filename; execs=[Exec("pw.x")], run=true, structure_name=
         delete!.((parsed_flags,), [:ibrav, :nat, :ntyp, :A, :celldm_1, :celldm])
 
         #the difficult flags, can only be present if atomic stuff is found
-        for (f, v) in filter(x-> occursin("(", x[1]), flaglines)
+        for (f, v) in difficult_flaglines
             _s = split(replace(replace(replace(f, "(" => " "), ")" => " "), "," => " "))
 
             sym = Symbol(_s[1])
@@ -416,6 +444,7 @@ function read_qe_input(filename; execs=[Exec("pw.x")], run=true, structure_name=
     datablocks = InputData[]
     i = findcard("k_points")
     if i!=nothing
+        append!(used_lineids, [i, i+1])
         k_option = cardoption(lines[i])
         if k_option == :automatic
             s_line = split(lines[i+1])
@@ -424,11 +453,24 @@ function read_qe_input(filename; execs=[Exec("pw.x")], run=true, structure_name=
             nks    = parse(Int, lines[i+1])
             k_data = Vector{Vector{Float64}}(undef, nks)
             for k = 1:nks
+                push!(used_lineids, i+1+k)
                 k_data[k] = parse.(Float64, split(lines[i+1+k]))
             end
         end
         push!(datablocks, InputData(:k_points, k_option, k_data))
     end
+    #Now we need to deal with lines that were not flaglines and not inside the usual cards.
+    #Ultimately the goal would be to actually take the info read from the documentation to
+    #understand the syntax of the cards, and read them accordingly. In the meantime we do
+    #it like this.
+    remlines = String[]
+    for i=1:length(lines)
+        if i ∈ used_lineids
+            continue
+        end
+        push!(remlines, lines[i])
+    end
+    !isempty(remlines) && push!(datablocks, InputData(:noname, :nooption, remlines))
 
     dir, file = splitdir(filename)
     return DFInput{QE}(splitext(file)[1], dir, parsed_flags, datablocks, execs, run), structure
