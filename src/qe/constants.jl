@@ -1,5 +1,10 @@
 const celldm_1 = Symbol("celldm(1)")
-
+const QEEXECS = [
+    "pw.x",
+    "projwfc.x",
+    "pp.x",
+    "ld1.x"
+]
 #this is both flags and variables, QE calls it variables so ok
 struct QEVariableInfo{T}
     name::Symbol

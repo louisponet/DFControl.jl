@@ -1,10 +1,5 @@
 import Base: parse
 
-const QEEXECS = [
-    "pw.x",
-    "projwfc.x",
-    "pp.x"
-]
 
 #this is all pretty hacky with regards to the new structure and atom api. can for sure be a lot better!
 "Quantum espresso card option parser"

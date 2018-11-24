@@ -201,7 +201,7 @@ end
 
 function write_QEDataBlockInfo(wf, indent, lines)
     spl                 = split(lines[1])
-    name                = lowercase(spl[2])
+    name                = length(spl) > 1 ? lowercase(spl[2]) : "noname"
     options             = Symbol.(spl[4:2:end])
     description         = ""
     options_description = ""
