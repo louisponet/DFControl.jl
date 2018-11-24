@@ -30,13 +30,7 @@ function Base.show(io::IO, job::DFJob)
     fieldns  = [:name, :local_dir, :server, :server_dir]
     fs   = string.(filter(x->!isempty(x), getfield.((job,), fieldns)))
     fns = string.(fieldns)
-    lfns = 0
-    for (fn, f) in zip(fns, fs)
-        totlen = length(fn) + length(f) + 5
-        if totlen > lfns
-            lfns = totlen
-        end
-    end
+    lfns = maximum(length.(fns)) + maximum(length.(fs)) + 3
     line = "+"
     for i=1:div(lfns,2)
         line *= "-"

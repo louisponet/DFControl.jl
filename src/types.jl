@@ -57,8 +57,7 @@ mpiflag(flag::Symbol) = getfirst(x -> x.symbol==flag, MPIFLAGS)
 
 function mpi_flag_val(::Type{String}, line, i)
     v = line[i+1]
-    i += 2
-    return v
+    return v, i + 2
 end
 
 function mpi_flag_val(::Type{Vector{String}}, line, i)
@@ -109,7 +108,7 @@ function mpi_flag_val(::Type{Pair{Int, String}}, line, i)
     end
     return tval, i + 1
 end
-function parse_mpiflags(line::Vector{<:AbstractString})
+function parse_mpiflags(line::Vector{<:SubString})
     eflags = ExecFlag[]
     i = 1
     while i <= length(line)
