@@ -179,8 +179,9 @@ function writetojob(f, job, _input::DFInput{Wannier90})
     seedname = name(_input)
     runexec = input(job, "nscf").execs
     pw2waninput = qe_generate_pw2waninput(_input, "'$(job.name)'", runexec)
+    preprocess  = pop!(flags(_input), :preprocess)
 
-    if !should_run
+    if !preprocess || !should_run
         write(f, "#")
     end
     writeexec.((f,), execs(_input))
@@ -194,6 +195,7 @@ function writetojob(f, job, _input::DFInput{Wannier90})
     end
     writeexec.((f, ), execs(_input))
     write(f, "$filename > $(outfile(_input))\n")
+    flags(_input)[:preprocess] = preprocess
     return _input, pw2waninput
 end
 """
@@ -251,9 +253,9 @@ function read_job_line(line)
         if occursin("mpirun", e)
             push!(execs, Exec(efile, dir, parse_mpiflags(flags)))
         elseif efile == "wannier90.x"
-            push!(execs, Exec(efile, dir, ExecFlag[]))
+            push!(execs, Exec(efile, dir, parse_wanexecflags(flags)))
         elseif any(occursin.(QEEXECS, (efile,)))
-            push!(execs, Exec(efile, dir, parse_qeflags(flags)))
+            push!(execs, Exec(efile, dir, parse_qeexecflags(flags)))
         end
     end
     return execs, input, output, run
@@ -304,9 +306,10 @@ function read_job_inputs(job_file::String)
                 end
                 if input != (nothing, nothing)
                     id = findall(x-> infile(x) == inputfile, inputs)
-                    if !isempty(id)
+                    if !isempty(id) #this can only happen for stuff that needs to get preprocessed
+                        merge!(flags(input[1]), flags(inputs[id[1]]))
                         inputs[id[1]] = input[1]
-                        structures[id[1]] = input[2]
+                        # structures[id[1]] = input[2]
                     else
                         push!(inputs, input[1])
                         if input[2] != nothing

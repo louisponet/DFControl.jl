@@ -605,6 +605,7 @@ function addwancalc!(job::DFJob, nscf::DFInput{QE}, projections_...;
     wanflags[:num_wann]  = nbnd
     kpoints = data(nscf, :k_points).data
     wanflags[:mp_grid] = kakbkc(kpoints)
+    wanflags[:preprocess] = true
     print && (@info "mp_grid=$(join(wanflags[:mp_grid]," ")) (inferred from nscf input).")
 
     kdata = InputData(:kpoints, :none, [k[1:3] for k in kpoints])

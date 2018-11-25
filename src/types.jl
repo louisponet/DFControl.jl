@@ -30,21 +30,38 @@ end
 ExecFlag(e::ExecFlag, value) = ExecFlag(e.symbol, e.name, e.type, e.description, value)
 ExecFlag(p::Pair{Symbol, T}) where T = ExecFlag(first(p), String(first(p)), T, "", last(p))
 
-const QEFLAGS = ExecFlag[
+const QEEXECFLAGS = ExecFlag[
     ExecFlag(:nk, "kpoint-pools", Int, "groups k-point parallelization into nk processor pools", 0),
     ExecFlag(:ntg, "task-groups", Int, "FFT task groups", 0)
 ]
 
-qeflag(flag::AbstractString) = getfirst(x -> x.name==flag, QEFLAGS)
-qeflag(flag::Symbol) = getfirst(x -> x.symbol==flag, QEFLAGS)
+qeexecflag(flag::AbstractString) = getfirst(x -> x.name==flag, QEEXECFLAGS)
+qeexecflag(flag::Symbol) = getfirst(x -> x.symbol==flag, QEEXECFLAGS)
 
-function parse_qeflags(line::Vector{<:AbstractString})
+function parse_qeexecflags(line::Vector{<:AbstractString})
     flags = ExecFlag[]
     i=1
     while i<=length(line)
         s = strip(line[i], '-')
-        push!(flags, ExecFlag(qeflag(Symbol(s)), parse(Int, line[i+1])))
+        push!(flags, ExecFlag(qeexecflag(Symbol(s)), parse(Int, line[i+1])))
         i += 2
+    end
+    flags
+end
+
+const WANEXECFLAGS = ExecFlag[
+    ExecFlag(:pp, "preprocess", Nothing, "Whether or not to preprocess the wannier input", nothing),
+]
+
+wanexecflag(flag::AbstractString) = getfirst(x -> x.name==flag, WANEXECFLAGS)
+wanexecflag(flag::Symbol) = getfirst(x -> x.symbol==flag, WANEXECFLAGS)
+function parse_wanexecflags(line::Vector{<:AbstractString})
+    flags = ExecFlag[]
+    i=1
+    while i<=length(line)
+        s = strip(line[i], '-')
+        push!(flags, ExecFlag(wanexecflag(Symbol(s)), nothing))
+        i += 1
     end
     flags
 end
@@ -180,5 +197,5 @@ function rmflags!(exec::Exec, flags...)
     end
     exec.flags
 end
-
+hasflag(exec::Exec, s::Symbol) = findfirst(x->x.symbol == s, exec.flags) != nothing
 setexecdir!(exec::Exec, dir) = exec.dir = dir

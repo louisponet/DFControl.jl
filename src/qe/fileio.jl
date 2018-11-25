@@ -613,5 +613,6 @@ function qe_generate_pw2waninput(input::DFInput{Wannier90}, qeprefix, runexecs)
         flags[:write_uHu] = true
     end
     pw2wanexec = Exec("pw2wannier90.x", runexecs[2].dir)
-    return DFInput{QE}("pw2wan_$(flags[:seedname])", dir(input), flags, InputData[], [runexecs[1], pw2wanexec], input.run)
+    run = get(input.flags, :preprocess, false) && input.run
+    return DFInput{QE}("pw2wan_$(flags[:seedname])", dir(input), flags, InputData[], [runexecs[1], pw2wanexec], run)
 end

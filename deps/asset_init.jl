@@ -94,6 +94,7 @@ open(joinpath(@__DIR__, "wannier90flags.jl"), "w") do wf
             end
         end
     end
+    writefbodyline(wf, 1, ":preprocess => Bool") #temporary hack
     write(wf, ")")
 end
 

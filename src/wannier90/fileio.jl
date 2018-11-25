@@ -218,6 +218,7 @@ function read_wannier_input(filename::String, T=Float64; execs=[Exec("wannier90.
     end
     structure = extract_structure(structure_name, cell_block, atoms_block, proj_block)
     dir, file = splitdir(filename)
+    flags[:preprocess] = hasflag(getfirst(x->x.exec == "wannier90.x", execs), :pp)  ? true : false
     return DFInput{Wannier90}(splitext(file)[1], dir, flags, data, execs, run), structure
 end
 
