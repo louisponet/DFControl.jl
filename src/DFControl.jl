@@ -58,6 +58,8 @@ module DFControl
     export read_qe_input
     export read_qe_output
     export read_wannier_input
+    export read_wannier_output
+    export readbands
 
     include("plotting.jl")
 

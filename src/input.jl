@@ -324,8 +324,13 @@ function outputdata(input::DFInput; print=true, overwrite=true)
 end
 
 readoutput(input::DFInput{QE}) = read_qe_output(outpath(input))
-readoutput(input::DFInput{Wannier90}) = SymAnyDict()
+readoutput(input::DFInput{Wannier90}) = read_wannier_output(outpath(input))
 
+"""
+    readbands(input::DFInput)
+
+Will try to read bands from the outputfile of the input. Errors when no bands are found
+"""
 function readbands(input::DFInput)
     to = readoutput(input)
     if haskey(to, :bands)

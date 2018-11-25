@@ -289,3 +289,52 @@ function save(input::DFInput{Wannier90}, structure, filename::String=inpath(inpu
         end
     end
 end
+
+"""
+    read_wannier_output(filename)
+
+Reads an outputfile for wannier.
+Parsed info:
+    :disentanglement,
+    :wannierise,
+    :final_state,
+"""
+function read_wannier_output(filename)
+    DisTuple = NamedTuple{(:Iter, :Ω_i_1, :Ω_i, :δ, :Time), Tuple{Int, Float64, Float64, Float64, Float64}}
+    WanTuple = NamedTuple{(:Iter, :δ_spread, :∇RMS, :Spread, :Time), Tuple{Int, Float64, Float64, Float64, Float64}}
+    WfcTuple = NamedTuple{(:index, :center, :Spread), Tuple{Int, Point3{Float64}, Float64}}
+    data = Dict{Symbol, Any}()
+    open(filename, "r") do f
+        sreadline() = readline(f) |> strip
+        line = sreadline()
+        while !eof(f)
+            if line == "Extraction of optimally-connected subspace"
+                data[:disentanglement] = DisTuple[]
+                for i = 1:4 readline(f) end
+                line = sreadline()
+                while !isempty(line)
+                    push!(data[:disentanglement], parse(DisTuple, split(line)[1:end-2]))
+                    line = sreadline()
+                end
+            elseif line == "Initial State"
+                data[:wannierise] = WanTuple[]
+                line = sreadline()
+                while !occursin("Final State", line)
+                    if occursin("CONV", line)
+                        push!(data[:wannierise], parse(WanTuple, split(line)[1:end-2]))
+                    end
+                    line = sreadline()
+                end
+                data[:final_state] = WfcTuple[]
+                line = sreadline()
+                while !occursin("Sum", line)
+                    line = replace(replace(replace(line, "(" => ""), ")" => ""), "," => "")
+                    push!(data[:final_state], parse(WfcTuple, split(line)[5:end]))
+                    line = sreadline()
+                end
+            end
+            line = sreadline()
+        end
+    end
+    return data
+end

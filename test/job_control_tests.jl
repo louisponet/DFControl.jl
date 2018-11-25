@@ -52,7 +52,9 @@ wanflags = [:write_hr => true, :wannier_plot => true]
 addwancalc!(job, "nscf",:Pt => [:s, :p, :d], Emin=fermi-7.0, Epad=5.0, wanflags=wanflags, print=false)
 @test flag(job, "wan", :write_hr) == flag(job, "wan", :wannier_plot) == true
 
-
+wanout = outputdata(job, "wan")
+@test length(wanout[:final_state]) == 20
+@test length(wanout[:wannierise]) == 203
 job.inputs = job.inputs[1:4]
 
 setflags!(job, :nspin => 2, print=false)
