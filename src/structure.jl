@@ -94,18 +94,18 @@ function cif2structure(cif_file::String; structure_name="NoName")
     return structure
 end
 
-function setpseudos!(structure::AbstractStructure, pseudoset, pseudospecifier=nothing)
+function setpseudos!(structure::AbstractStructure, set, specifier=nothing)
     for (i, at) in enumerate(atoms(structure))
-        pseudo = getdefault_pseudo(id(at), pseudoset, pseudospecifier=pseudospecifier)
+        pseudo = getdefault_pseudo(id(at), set, specifier=specifier)
         if pseudo == nothing
-            @warn "Pseudo for $(id(at)) at index $i not found in set $pseudoset."
+            @warn "Pseudo for $(id(at)) at index $i not found in set $set."
         else
             setpseudo!(at, pseudo)
         end
     end
 end
-function setpseudos!(structure::AbstractStructure, atpseudo::Pair{Symbol, String}...)
-    for (atsym, pseudo) in atpseudo
+function setpseudos!(structure::AbstractStructure, at_pseudos::Pair{Symbol, String}...)
+    for (atsym, pseudo) in at_pseudos
         for at in atoms(structure, atsym)
             setpseudo!(at, pseudo)
         end

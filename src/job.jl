@@ -90,7 +90,7 @@ function DFJob(job_name, local_dir, structure::AbstractStructure, calculations::
         push!(job_calcs, input_)
     end
     out = DFJob(job_name, structure, job_calcs, local_dir, server, server_dir, header)
-    setatoms!(out, structure.atoms, pseudoset = pseudoset, pseudospecifier= pseudospecifier)
+    setatoms!(out, structure.atoms, set = pseudoset, specifier= pseudospecifier)
     return DFJob(job_name, structure, job_calcs, local_dir, server, server_dir, header)
 end
 
@@ -110,9 +110,9 @@ function DFJob(job::DFJob, flagstoset...; cell_=copy(cell(job)), atoms_=copy(ato
     if pseudoset == nothing
         pseudoset, specifier = getpseudoset(job.structure.atoms[1])
         specifier = pseudospecifier == nothing ? specifier : pseudospecifier
-        setatoms!(newjob, atoms_, pseudoset = pseudoset, pseudospecifier=specifier)
+        setatoms!(newjob, atoms_, set = pseudoset, specifier=specifier)
     else
-        setatoms!(newjob, atoms_, pseudoset = pseudoset, pseudospecifier= pseudospecifier)
+        setatoms!(newjob, atoms_, set = pseudoset, specifier= pseudospecifier)
     end
     setserverdir!(newjob, server_dir)
     setlocaldir!(newjob, local_dir)
@@ -508,18 +508,17 @@ function setkpoints!(job::DFJob, n, k_points; print=true)
 end
 
 
-
 "sets the pseudopotentials to the specified one in the default pseudoset."
-function setpseudos!(job::DFJob, pseudoset, pseudospecifier="")
-    setpseudos!(job.structure, pseudoset, pseudospecifier)
-    dir = getdefault_pseudodir(pseudoset)
+function setpseudos!(job::DFJob, set, specifier="")
+    setpseudos!(job.structure, set, specifier)
+    dir = getdefault_pseudodir(set)
     dir != nothing && setflags!(job, :pseudo_dir => "'$dir'", print=false)
     return job
 end
 
 "sets the pseudopotentials to the specified one in the default pseudoset."
-function setpseudos!(job::DFJob, pseudodir, atpseudo::Pair{Symbol, String}...)
-    setpseudos!(job.structure, atpseudo...)
+function setpseudos!(job::DFJob, pseudodir, at_pseudos::Pair{Symbol, String}...)
+    setpseudos!(job.structure, at_pseudos...)
     setflags!(job, :pseudo_dir => "'$pseudodir'", print=false)
     return job
 end

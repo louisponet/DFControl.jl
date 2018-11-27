@@ -128,21 +128,21 @@ function configuredefault_pseudos(;server = getdefault_server(), pseudo_dirs=get
 end
 
 """
-    getdefault_pseudo(atom::Symbol, pseudo_setname=:default; pseudospecifier=nothing)
+    getdefault_pseudo(atom::Symbol, set=:default; specifier=nothing)
 
 Returns the pseudo potential string linked to the atom.
 """
-function getdefault_pseudo(atom::Symbol, pseudo_setname=:default; pseudospecifier="")
+function getdefault_pseudo(atom::Symbol, set=:default; specifier="")
     if tryparse(Int, String(atom)[end:end]) != nothing
         pp_atom = Symbol(String(atom)[1:end-1])
     else
         pp_atom = atom
     end
-    if haskey(default_pseudos[pp_atom], pseudo_setname)
-        if pseudospecifier != ""
-            return getfirst(x -> occursin(x, pseudospecifier), default_pseudos[pp_atom][pseudo_setname])
+    if haskey(default_pseudos[pp_atom], setname)
+        if specifier != ""
+            return getfirst(x -> occursin(pecifier, x), default_pseudos[pp_atom][setname])
         else
-            return default_pseudos[pp_atom][pseudo_setname][1]
+            return default_pseudos[pp_atom][setname][1]
         end
     end
 end
