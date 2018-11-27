@@ -1,5 +1,5 @@
 "File with all the user defaults inside it"
-const default_file = joinpath(@__DIR__, "..", "user_defaults", "user_defaults.jl")
+const default_file = abspath(first(DEPOT_PATH), "config","DFControl", "user_defaults.jl")
 const default_pseudodirs = Dict{Symbol, String}()
 const default_pseudos = Dict{Symbol, Dict{Symbol, Vector{String}}}()
 const default_jobheader = ""
@@ -94,9 +94,9 @@ function configuredefault_pseudos(;server = getdefault_server(), pseudo_dirs=get
         error("Either supply valid pseudo directories or setup a default pseudo dir through 'setdefault_pseudodir()'.")
     end
 
-    outputs = Dict{Symbol, String}()
+    outputs = Dict{Symbol, Vector{String}}()
     for (name, directory) in pseudo_dirs
-        outputs[name] = server == "localhost" ? readdir(directory) : read(`ssh -t $server ls $directory`, String)
+        outputs[name] = server == "localhost" ? readdir(directory) : split(read(`ssh -t $server ls $directory`, String), "\n")
     end
 
     elsyms = Symbol[el.symbol for el in ELEMENTS]
