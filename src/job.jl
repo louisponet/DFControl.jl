@@ -90,7 +90,7 @@ function DFJob(job_name, local_dir, structure::AbstractStructure, calculations::
         push!(job_calcs, input_)
     end
     out = DFJob(job_name, structure, job_calcs, local_dir, server, server_dir, header)
-    setatoms!(out, structure.atoms, set = pseudoset, specifier= pseudospecifier)
+    setatoms!(out, structure.atoms, pseudoset = pseudoset, pseudospecifier= pseudospecifier)
     return DFJob(job_name, structure, job_calcs, local_dir, server, server_dir, header)
 end
 
@@ -110,9 +110,9 @@ function DFJob(job::DFJob, flagstoset...; cell_=copy(cell(job)), atoms_=copy(ato
     if pseudoset == nothing
         pseudoset, specifier = getpseudoset(job.structure.atoms[1])
         specifier = pseudospecifier == nothing ? specifier : pseudospecifier
-        setatoms!(newjob, atoms_, set = pseudoset, specifier=specifier)
+        setatoms!(newjob, atoms_, pseudoset = pseudoset, pseudospecifier=specifier)
     else
-        setatoms!(newjob, atoms_, set = pseudoset, specifier= pseudospecifier)
+        setatoms!(newjob, atoms_, pseudoset = pseudoset, pseudospecifier= pseudospecifier)
     end
     setserverdir!(newjob, server_dir)
     setlocaldir!(newjob, local_dir)
