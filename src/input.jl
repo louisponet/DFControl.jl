@@ -15,7 +15,7 @@ name(data::InputData) = data.name
     run      ::Bool
     outdata  ::SymAnyDict=SymAnyDict()
 end
-DFInput{P}(name, dir, flags, data, execs, run) where P<:Package = DFInput{P}(name, dir, flags, data, execs, run, SymAnyDict())
+DFInput{P}(name, dir, flags, data, execs, run) where P<:Package = DFInput{P}(name, abspath(dir), flags, data, execs, run, SymAnyDict())
 
 """
     DFInput(template::DFInput, name, newflags...; runcommand=template.runcommand, run=true)

@@ -62,7 +62,7 @@ function DFJob(job_name, local_dir, structure::AbstractStructure, calculations::
             k_points = get(data, :k_points, [1, 1, 1, 0, 0, 0])
             k_option = :automatic
         elseif calc_ == :nscf
-            k_points = kgrid(get(data, :k_points, [1, 1, 1])..., :nscf)
+            k_points = kgrid(get(data, :k_points, [1, 1, 1])[1:3]..., QE)
             k_option = :crystal
         elseif calc_ == :bands
             k_points = get(data, :k_points, [[0., 0., 0., 1.]])
@@ -71,11 +71,14 @@ function DFJob(job_name, local_dir, structure::AbstractStructure, calculations::
                 num_k += point[4]
             end
             if num_k > 100.
+                if !haskey(data, :flags)
+                    data[:flags] = Pair{Symbol, Any}[]
+                end
                 push!(data[:flags], :verbosity => "'high'")
             end
             k_option = :crystal_b
         end
-        flags  = get(data, :flags, Dict{Symbol, Any}())
+        flags  = convert(Vector{Pair{Symbol, Any}}, get(data, :flags, Pair{Symbol, Any}[]))
         if excs[2].exec == "pw.x"
             push!(flags, :calculation => "'$(string(calc_))'")
             datablocks = [InputData(:k_points, k_option, k_points)]
