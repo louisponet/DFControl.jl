@@ -32,7 +32,8 @@ ExecFlag(p::Pair{Symbol, T}) where T = ExecFlag(first(p), String(first(p)), T, "
 
 const QEEXECFLAGS = ExecFlag[
     ExecFlag(:nk, "kpoint-pools", Int, "groups k-point parallelization into nk processor pools", 0),
-    ExecFlag(:ntg, "task-groups", Int, "FFT task groups", 0)
+    ExecFlag(:ntg, "task-groups", Int, "FFT task groups", 0),
+    ExecFlag(:ndiag, "diag", Int, "Number of processes for linear algebra", 0)
 ]
 
 qeexecflag(flag::AbstractString) = getfirst(x -> x.name==flag, QEEXECFLAGS)
