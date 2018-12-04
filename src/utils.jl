@@ -18,6 +18,14 @@ Splits a line using arguments, then strips spaces from the splits.
 """
 strip_split(line, args...) = strip.(split(line, args...))
 
+function replace_multiple(str, replacements::Pair{String, String}...)
+    tstr = deepcopy(str)
+    for r in replacements
+        tstr = replace(tstr, r)
+    end
+    return tstr
+end
+
 """
 Mutatatively applies the fermi level to all eigvals in the band. If fermi is a quantum espresso scf output file it will try to find it in there.
 """

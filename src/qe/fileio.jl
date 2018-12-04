@@ -219,7 +219,7 @@ function read_qe_kpdos(filename::String, column=1; fermi=0)
         end
     end
 
-    yticks    = collect(Int64(div(read_tmp[1, 2] - fermi, 1)):1:Int64(div(read_tmp[end, 2] - fermi, 1)))
+    yticks    = collect(Int(div(read_tmp[1, 2] - fermi, 1)):1:Int(div(read_tmp[end, 2] - fermi, 1)))
     ytickvals = [findfirst(x -> norm(yticks[1] + fermi - x) <= 0.1, read_tmp[:, 2])]
     for (i, tick) in enumerate(yticks[2:end])
         push!(ytickvals, findnext(x -> norm(tick + fermi - x) <= 0.1, read_tmp[:, 2], ytickvals[i]))
@@ -239,6 +239,58 @@ function read_qe_pdos(filename::String, column=1; fermi=0)
     values   = read_tmp[:,1+column]
 
     return energies, values
+end
+
+"""
+    read_qe_kprojwfc(filename::String)
+
+Reads the output file of a kresolved projwfc.x calculation.
+Each kpoint will have as many energy dos values as there are bands in the scf/nscf calculation that
+generated the density upon which the projwfc.x was called.
+Returns:
+    states: [(:atomi_id, :wfc_id, :l, :m),...]
+    kpdos : kpoint => [(:e, :ψ, :ψ²), ...] where ψ is the coefficient vector in terms of the states.
+"""
+function read_qe_kprojwfc(filename::String)
+    lines  = readlines(filename) .|> strip
+
+    state_tuple = NamedTuple{(:atom_id, :wfc_id, :l, :m), NTuple{4, Int}}
+    states = state_tuple[]
+    istart = findfirst(x -> x == "Atomic states used for projection", lines) + 3
+    istop  = findnext(isempty, lines, istart) - 1
+    for i = istart:istop
+        l = replace_multiple(lines[i], "(" => " ", ")" => " ", "," => "", "=" => " ", ":" => "", "#" => " ") |> split
+        push!(states, state_tuple(parse.(Int,(l[4], l[7], l[9], l[11]))))
+    end
+
+    ilowd = findnext(x -> x == "Lowdin Charges:", lines, istop)
+    ETuple = NamedTuple{(:e, :ψ, :ψ²), Tuple{Float64, Vector{Float64}, Float64}}
+    kdos  = Pair{Vec3{Float64}, Vector{ETuple}}[]
+    while istop < ilowd - 2
+        istart = findnext(x -> occursin("k = ", x), lines, istop)
+        istop  = findnext(isempty, lines, istart) - 1
+        k = Vec3(parse.(Float64, split(lines[istart])[3:end]))
+        etuples = ETuple[]
+        istop_ψ  = istart - 1
+        istart_ψ = istart
+        while istop_ψ < istop - 1
+            e = parse(Float64, split(lines[istop_ψ + 2])[3])
+            coeffs = zeros(length(states))
+            istart_ψ = findnext(x -> x[1:3] == "psi", lines, istop_ψ + 1)
+            istop_ψ  = findnext(x -> x[2:4] == "psi", lines, istart_ψ) - 1
+
+            for i=istart_ψ:istop_ψ
+                l = replace_multiple(lines[i], "psi =" => " ", "*[#" => " ", "]+" => " ") |> strip |> split
+                for k=1:2:length(l)
+                    coeffs[parse(Int, l[k+1])] = parse(Float64, l[k])
+                end
+            end
+            ψ² = parse(Float64, split(lines[istop_ψ + 1])[end])
+            push!(etuples, (e = e, ψ = coeffs, ψ² = ψ²))
+        end
+        push!(kdos, k => etuples)
+    end
+    return states, kdos
 end
 
 """
