@@ -44,12 +44,12 @@ name(input::DFInput) = input.name
 dir(input::DFInput)  = input.dir
 setdir!(input::DFInput, dir) = (input.dir = dir)
 namewext(input::DFInput, ext)      = name(input) * ext
-infile(input::DFInput{QE})         = namewext(input, ".in")
-infile(input::DFInput{Wannier90})  = namewext(input, ".win")
-outfile(input::DFInput{QE})        = namewext(input, ".out")
-outfile(input::DFInput{Wannier90}) = namewext(input, ".wout")
-inpath(input::DFInput)             = joinpath(dir(input), infile(input))
-outpath(input::DFInput)            = joinpath(dir(input), outfile(input))
+infilename(input::DFInput{QE})         = namewext(input, ".in")
+infilename(input::DFInput{Wannier90})  = namewext(input, ".win")
+outfilename(input::DFInput{QE})        = namewext(input, ".out")
+outfilename(input::DFInput{Wannier90}) = namewext(input, ".wout")
+inpath(input::DFInput)             = joinpath(dir(input),  infilename(input))
+outpath(input::DFInput)            = joinpath(dir(input), "outputs", outfilename(input))
 
 
 flags(input::DFInput)    = input.flags
@@ -212,7 +212,7 @@ function sanitizeflags!(input::DFInput)
 end
 function sanitizeflags!(input::DFInput{QE})
     cleanflags!(input)
-    setflags!(input, :outdir => "$(dir(input))", print=false)
+    setflags!(input, :outdir => "$(joinpath(dir(input), "outputs"))", print=false)
     #TODO add all the required flags
 end
 
@@ -304,6 +304,7 @@ isnscfcalc(input::DFInput{QE}) = flag(input, :calculation) == "nscf"
 isscfcalc(input::DFInput{QE}) = flag(input, :calculation) == "scf"
 isspincalc(input::DFInput{QE}) = all(flag(input, :nspin) .!= [nothing, 1])
 
+#TODO review this!
 outdata(input::DFInput) = input.outdata
 hasoutput(input::DFInput) = !isempty(outdata(input))
 

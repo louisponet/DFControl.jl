@@ -161,19 +161,19 @@ function writeexec(f, exec::Exec)
 end
 
 function writetojob(f, job, input::DFInput)
-    filename    = infile(input)
+    filename    = infilename(input)
     should_run  = input.run
     save(input, job.structure)
     if !should_run
         write(f, "#")
     end
     writeexec.((f, ), execs(input))
-    write(f, "< $filename > $(outfile(input))\n")
+    write(f, "< $filename > $(outfilename(input))\n")
     return (input,)
 end
 
 function writetojob(f, job, _input::DFInput{Wannier90})
-    filename    = infile(_input)
+    filename    = infilename(_input)
     should_run  = _input.run
     id = findfirst(isequal(_input), job.inputs)
     seedname = name(_input)
@@ -185,7 +185,7 @@ function writetojob(f, job, _input::DFInput{Wannier90})
         write(f, "#")
     end
     writeexec.((f,), execs(_input))
-    write(f, "-pp $filename > $(outfile(_input))\n")
+    write(f, "-pp $filename > $(outfilename(_input))\n")
 
     save(_input, job.structure)
     writetojob(f, job, pw2waninput)
@@ -194,7 +194,7 @@ function writetojob(f, job, _input::DFInput{Wannier90})
         write(f, "#")
     end
     writeexec.((f, ), execs(_input))
-    write(f, "$filename > $(outfile(_input))\n")
+    write(f, "$filename > $(outfilename(_input))\n")
     flags(_input)[:preprocess] = preprocess
     return _input, pw2waninput
 end
@@ -305,7 +305,7 @@ function read_job_inputs(job_file::String)
                     input = calccommand != nothing ? inputparser(calccommand)(inpath, execs=execs, run=run) : (nothing, nothing)
                 end
                 if input != (nothing, nothing)
-                    id = findall(x-> infile(x) == inputfile, inputs)
+                    id = findall(x-> infilename(x) == inputfile, inputs)
                     if !isempty(id) #this can only happen for stuff that needs to get preprocessed
                         merge!(flags(input[1]), flags(inputs[id[1]]))
                         inputs[id[1]] = input[1]

@@ -35,7 +35,7 @@ setkpoints!(nscf2, (3,3,3,0,0,1), print=false)
 @test data(nscf2, :k_points).data  == [3,3,3,0,0,1]
 
 fermi = read_qe_output(outpath(job, "nscf"))[:fermi]
-@test fermi == read_fermi_from_qe_output(joinpath(job.local_dir, "nscf.out"))
+@test fermi == read_fermi_from_qe_output(joinpath(job.local_dir, "outputs",   "nscf.out"))
 
 addcalc!(job, "bands", [(0.5,0.0,0.5,10.0),(0.0,0.0,0.0,10.0),(0.5,0.5,0.5,1.0)], name="bands2")
 @test flag(job, "bands2", :calculation) == "bands"
