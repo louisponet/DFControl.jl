@@ -32,11 +32,11 @@ header = ["#SBATCH -N 1", "#SBATCH --ntasks-per-node=24",
 #   - calculation specific flags and data are associated with the calculation they belong to
 #   - common flags can be defined as Pair{Symbol, Any} varargs at the end of the constructor call.
 
-scf_data = Dict(:k_points => [6, 6, 6, 1, 1, 1], :flags => [:verbosity => "'low'"])
+scf_data = Dict(:k_points => [6, 6, 6, 1, 1, 1], :flags => [:verbosity => "low"])
 bands_data = Dict(:k_points => [[0.5, 0.5, 0.5, 100.],
                                 [0.0, 0.0, 0.0, 100.],
                                 [0.0, 0.5, 0.0, 1.]],
-                  :flags => [:verbosity => "'high'", :nbnd => 8])
+                  :flags => [:verbosity => "high", :nbnd => 8])
 
 nscf_data = merge(bands_data, Dict(:k_points => (10, 10, 10)))
  #the order here is the order in which the calculations will run! The first string in the tuple is the executable name that will be ran, which should be in the bin dir.
@@ -44,10 +44,10 @@ nscf_data = merge(bands_data, Dict(:k_points => (10, 10, 10)))
 #Now we load the cif file and create a `DFJob` from it.
 
 job = DFJob(name, local_dir, "/home/ponet/Downloads/9011998.cif", calculations,
-      :prefix       => "'$name'",
-      :restart_mode => "'from_scratch'",
+      :prefix       => "$name",
+      :restart_mode => "from_scratch",
       :ecutwfc      => 18.0,
-      :mixing_mode  => "'plain'",
+      :mixing_mode  => "plain",
       :mixing_beta  => 0.7,
       :conv_thr     => 1.0e-8,
       #kwargs

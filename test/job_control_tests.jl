@@ -37,13 +37,13 @@ setkpoints!(nscf2, (3,3,3,0,0,1), print=false)
 fermi = read_qe_output(outpath(job, "nscf"))[:fermi]
 @test fermi == read_fermi_from_qe_output(joinpath(job.local_dir, "nscf.out"))
 
-addcalc!(job, [(0.5,0.0,0.5,10.0),(0.0,0.0,0.0,10.0),(0.5,0.5,0.5,1.0)], name="bands2")
-@test flag(job, "bands2", :calculation) == "'bands'"
+addcalc!(job, "bands", [(0.5,0.0,0.5,10.0),(0.0,0.0,0.0,10.0),(0.5,0.5,0.5,1.0)], name="bands2")
+@test flag(job, "bands2", :calculation) == "bands"
 @test data(job, "bands2", :k_points).data == [(0.5,0.0,0.5,10.0),(0.0,0.0,0.0,10.0),(0.5,0.5,0.5,1.0)]
-addcalc!(job, (10,10,10), name="nscf2")
-@test flag(job, "nscf2", :calculation) == "'nscf'"
-addcalc!(job, (5,5,5,1,1,1), name="1scf2")
-@test flag(job, "1scf2", :calculation) == "'scf'"
+addcalc!(job, "nscf", (10,10,10), name="nscf2")
+@test flag(job, "nscf2", :calculation) == "nscf"
+addcalc!(job, "scf", (5,5,5,1,1,1), name="1scf2")
+@test flag(job, "1scf2", :calculation) == "scf"
 @test job["nscf2"][:calculation] == flag(job, "nscf2", :calculation)
 
 
@@ -89,7 +89,7 @@ job2 = DFJob(local_dir)
 
 setpseudos!(job, "pseudos", :Pt => "Pt.UPF")
 @test job.structure.atoms[1].pseudo == "Pt.UPF"
-@test job["nscf"][:pseudo_dir] == "'pseudos'"
+@test job["nscf"][:pseudo_dir] == "pseudos"
 
 begin
     for (calc, calc2) in zip(job.inputs, job2.inputs)

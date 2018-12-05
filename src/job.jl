@@ -52,8 +52,8 @@ function DFJob(job_name, local_dir, structure::AbstractStructure, calculations::
         common_flags = Dict(common_flags)
     end
     bin_dir = bin_dir
-    req_flags = Dict(:prefix  => "'$job_name'",
-                     :outdir => "'$server_dir'",
+    req_flags = Dict(:prefix  => "$job_name",
+                     :outdir => "$server_dir",
                      :ecutwfc => 25.)
     merge!(req_flags, common_flags)
     for (calc, (excs, data)) in calculations
@@ -74,13 +74,13 @@ function DFJob(job_name, local_dir, structure::AbstractStructure, calculations::
                 if !haskey(data, :flags)
                     data[:flags] = Pair{Symbol, Any}[]
                 end
-                push!(data[:flags], :verbosity => "'high'")
+                push!(data[:flags], :verbosity => "high")
             end
             k_option = :crystal_b
         end
         flags  = convert(Vector{Pair{Symbol, Any}}, get(data, :flags, Pair{Symbol, Any}[]))
         if excs[2].exec == "pw.x"
-            push!(flags, :calculation => "'$(string(calc_))'")
+            push!(flags, :calculation => "$(string(calc_))")
             datablocks = [InputData(:k_points, k_option, k_points)]
         else
             datablocks =  InputData[]
@@ -168,8 +168,8 @@ starttime(job::DFJob) = mtime(scriptpath(job))
 
 runslocal(job::DFJob) = job.server=="localhost"
 structure(job::DFJob) = job.structure
-iswannierjob(job::DFJob) = any(x->package(x) == Wannier90, inputs(job)) && any(x->flag(x, :calculation) == "'nscf'", inputs(job))
-getnscfcalc(job::DFJob) = getfirst(x->flag(x, :calculation) == "'nscf'", inputs(job))
+iswannierjob(job::DFJob) = any(x->package(x) == Wannier90, inputs(job)) && any(x->flag(x, :calculation) == "nscf", inputs(job))
+getnscfcalc(job::DFJob) = getfirst(x->flag(x, :calculation) == "nscf", inputs(job))
 cell(job::DFJob) = cell(structure(job))
 
 input(job::DFJob, n::String) = getfirst(x -> occursin(n, name(x)), inputs(job))
@@ -248,8 +248,7 @@ end
 
 "Runs some checks on the set flags for the inputs in the job, and sets metadata (:prefix, :outdir etc) related flags to the correct ones. It also checks whether flags in the various inputs are allowed and set to the correct types."
 function sanitizeflags!(job::DFJob)
-    setflags!(job, :prefix => "'$(job.name)'", print=false)
-    # setflags!(job, :outdir => "'./'", print=false)
+    setflags!(job, :prefix => "$(job.name)", print=false)
     if iswannierjob(job)
         setflags!(job, :num_bands => flag(getnscfcalc(job), :nbnd), print=false)
     end
@@ -515,14 +514,14 @@ end
 function setpseudos!(job::DFJob, set, specifier="")
     setpseudos!(job.structure, set, specifier)
     dir = getdefault_pseudodir(set)
-    dir != nothing && setflags!(job, :pseudo_dir => "'$dir'", print=false)
+    dir != nothing && setflags!(job, :pseudo_dir => "$dir", print=false)
     return job
 end
 
 "sets the pseudopotentials to the specified one in the default pseudoset."
 function setpseudos!(job::DFJob, pseudodir, at_pseudos::Pair{Symbol, String}...)
     setpseudos!(job.structure, at_pseudos...)
-    setflags!(job, :pseudo_dir => "'$pseudodir'", print=false)
+    setflags!(job, :pseudo_dir => "$pseudodir", print=false)
     return job
 end
 """
@@ -590,7 +589,7 @@ function addwancalc!(job::DFJob, nscf::DFInput{QE}, Emin::Real, projections_...;
         wannames = ["wan"]
     end
 
-    @assert flag(nscf, :calculation) == "'nscf'" error("Please provide a valid 'nscf' calculation.")
+    @assert flag(nscf, :calculation) == "nscf" error("Please provide a valid 'nscf' calculation.")
     if flag(nscf, :nosym) != true
         print && (@info "'nosym' flag was not set in the nscf calculation.\nIf this was not intended please set it and rerun the nscf calculation.\nThis generally gives errors because of omitted kpoints, needed for pw2wannier90.x")
     end
@@ -617,8 +616,8 @@ function addwancalc!(job::DFJob, nscf::DFInput{QE}, Emin::Real, projections_...;
 
     setfls!(job, name, flags...) = setflags!(job, name, flags..., print=false)
     if spin
-        setfls!(job, "wanup", :spin => "'up'")
-        setfls!(job, "wandn", :spin => "'down'")
+        setfls!(job, "wanup", :spin => "up")
+        setfls!(job, "wandn", :spin => "down")
     end
     return job
 end
@@ -708,40 +707,40 @@ function addcalc!(job::DFJob, template::DFInput, name::String, newflags...; inde
     addcalc!(job, newcalc, index)
     job
 end
+
+"""
+    addcalc!(job::DFJob, template::DFInput, kpoints::Vector{NTuple{4}}, newflags...; name="bands", run=true, template="scf")
+
+Searches for the given template and creates a bands calculation from it.
+"""
+function addcalc!(job::DFJob, template::DFInput, kpoints::Vector{<:NTuple{4}}, args...; name="bands", kwargs...)
+    addcalc!(job, template, name, :calculation => "bands",args...; kwargs...)
+    setkpoints!(job, name, kpoints, print=false)
+    job
+end
+
+"""
+    addcalc!(job::DFJob, template::DFInput, kpoints::NTuple{3}, newflags...; name="nscf", run=true, template="scf")
+
+Searches for the given template and creates a bands calculation from it.
+"""
+function addcalc!(job::DFJob, template::DFInput, kpoints::NTuple{3}, args...; name="nscf", kwargs...)
+    addcalc!(job, template, name, :calculation => "nscf",args...; kwargs...)
+    setkpoints!(job, name, kpoints, print=false)
+    job
+end
+"""
+    addcalc!(job::DFJob, template::DFInput, kpoints::NTuple{6}, newflags...; name="scf", run=true, template="nscf")
+
+Searches for the given template and creates a bands calculation from it.
+"""
+function addcalc!(job::DFJob, template::DFInput, kpoints::NTuple{6}, args...; name="scf", kwargs...)
+    addcalc!(job, template, name, :calculation => "scf", args...; kwargs...)
+    setkpoints!(job, name, kpoints, print=false)
+    job
+end
+
 addcalc!(job::DFJob, template::String, args...; kwargs...) = addcalc!(job, input(job, template), args...; kwargs...)
-
-"""
-    addcalc!(job::DFJob, kpoints::Vector{NTuple{4}}, newflags...; name="bands", run=true, template="scf")
-
-Searches for the given template and creates a bands calculation from it.
-"""
-function addcalc!(job::DFJob, kpoints::Vector{<:NTuple{4}},args...; name="bands", template="scf", kwargs...)
-    addcalc!(job, template, name, :calculation => "'bands'",args...; kwargs...)
-    setkpoints!(job, name, kpoints, print=false)
-    job
-end
-
-"""
-    addcalc!(job::DFJob, kpoints::NTuple{3}, newflags...; name="nscf", run=true, template="scf")
-
-Searches for the given template and creates a bands calculation from it.
-"""
-function addcalc!(job::DFJob, kpoints::NTuple{3}, args...; name="nscf", template="scf", kwargs...)
-    addcalc!(job, template, name, :calculation => "'nscf'",args...; kwargs...)
-    setkpoints!(job, name, kpoints, print=false)
-    job
-end
-"""
-    addcalc!(job::DFJob, kpoints::NTuple{6}, newflags...; name="scf", run=true, template="nscf")
-
-Searches for the given template and creates a bands calculation from it.
-"""
-function addcalc!(job::DFJob, kpoints::NTuple{6}, args...; name="scf", template="nscf", kwargs...)
-    addcalc!(job, template, name, :calculation => "'scf'",args...; kwargs...)
-    setkpoints!(job, name, kpoints, print=false)
-    job
-end
-
 """
 Sets the server dir of the job.
 """

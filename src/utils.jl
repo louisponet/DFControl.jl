@@ -186,5 +186,3 @@ macro undoable(func)
         end
     end
 end
-
-fortstring(s::AbstractString) = "'$s'"

@@ -178,7 +178,7 @@ function writetojob(f, job, _input::DFInput{Wannier90})
     id = findfirst(isequal(_input), job.inputs)
     seedname = name(_input)
     runexec = input(job, "nscf").execs
-    pw2waninput = qe_generate_pw2waninput(_input, "'$(job.name)'", runexec)
+    pw2waninput = qe_generate_pw2waninput(_input, "$(job.name)", runexec)
     preprocess  = pop!(flags(_input), :preprocess)
 
     if !preprocess || !should_run

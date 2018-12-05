@@ -108,23 +108,23 @@ end
 function setkpoints!(input::DFInput{QE}, k_grid::NTuple{3, Int}; print=true) #nscf
 
     calc = flag(input, :calculation)
-    print && calc != "'nscf'" && (@warn "Expected calculation to be 'nscf'.\nGot $calc.")
+    print && calc != "nscf" && (@warn "Expected calculation to be 'nscf'.\nGot $calc.")
     setdata!(input, :k_points, kgrid(k_grid..., :nscf), option = :crystal, print=print)
-    prod(k_grid) > 100 && setflags!(input, :verbosity => "'high'", print=print)
+    prod(k_grid) > 100 && setflags!(input, :verbosity => "high", print=print)
     return input
 end
 
 function setkpoints!(input::DFInput{QE}, k_grid::NTuple{6, Int}; print=true) #scf
     calc = flag(input, :calculation)
-    print && (calc != "'scf'" || !occursin("relax", calc)) && (@warn "Expected calculation to be 'scf', 'vc-relax', 'relax'.\nGot $calc.")
+    print && (calc != "scf" || !occursin("relax", calc)) && (@warn "Expected calculation to be scf, vc-relax, relax.\nGot $calc.")
     setdata!(input, :k_points, [k_grid...], option = :automatic, print=print)
-    prod(k_grid[1:3]) > 100 && setflags!(input, :verbosity => "'high'", print=print)
+    prod(k_grid[1:3]) > 100 && setflags!(input, :verbosity => "high", print=print)
     return input
 end
 
 function setkpoints!(input::DFInput{QE}, k_grid::Vector{NTuple{4, T}}; print=true, k_option=:crystal_b) where T<:AbstractFloat
     calc = flag(input, :calculation)
-    print && calc != "'bands'" && (@warn "Expected calculation to be 'bands', got $calc.")
+    print && calc != "bands" && (@warn "Expected calculation to be bands, got $calc.")
     @assert in(k_option, [:tpiba_b, :crystal_b, :tpiba_c, :crystal_c]) error("Only $([:tpiba_b, :crystal_b, :tpiba_c, :crystal_c]...) are allowed as a k_option, got $k_option.")
     if k_option in [:tpiba_c, :crystal_c]
         @assert length(k_grid) == 3 error("If $([:tpiba_c, :crystal_c]...) is selected the length of the k_points needs to be 3, got length: $(length(k_grid)).")
@@ -134,7 +134,7 @@ function setkpoints!(input::DFInput{QE}, k_grid::Vector{NTuple{4, T}}; print=tru
         num_k += k[4]
     end
     if num_k > 100.
-        setflags!(input, :verbosity => "'high'", print=print)
+        setflags!(input, :verbosity => "high", print=print)
         if print
             @info "Verbosity is set to high because num_kpoints > 100,\n
                        otherwise bands won't get printed."
@@ -212,7 +212,7 @@ function sanitizeflags!(input::DFInput)
 end
 function sanitizeflags!(input::DFInput{QE})
     cleanflags!(input)
-    flag(input, :outdir) != fortstring(dir(input)) && setflags!(input, :outdir => fortstring(dir(input)), print=false)
+    flag(input, :outdir) != "$(dir(input))" && setflags!(input, :outdir => "$(dir(input))", print=false)
     #TODO add all the required flags
 end
 
@@ -299,9 +299,9 @@ function setdataoption!(input::DFInput, name::Symbol, option::Symbol; print=true
     return input
 end
 
-isbandscalc(input::DFInput{QE}) = flag(input, :calculation) == "'bands'"
-isnscfcalc(input::DFInput{QE}) = flag(input, :calculation) == "'nscf'"
-isscfcalc(input::DFInput{QE}) = flag(input, :calculation) == "'scf'"
+isbandscalc(input::DFInput{QE}) = flag(input, :calculation) == "bands"
+isnscfcalc(input::DFInput{QE}) = flag(input, :calculation) == "nscf"
+isscfcalc(input::DFInput{QE}) = flag(input, :calculation) == "scf"
 isspincalc(input::DFInput{QE}) = all(flag(input, :nspin) .!= [nothing, 1])
 
 outdata(input::DFInput) = input.outdata

@@ -413,18 +413,19 @@ Returns a `DFInput{QE}` and the `Structure` that is found in the input.
 """
 function read_qe_input(filename; execs=[Exec("pw.x")], run=true, structure_name="noname")
     @assert ispath(filename) "$filename is not a valid path."
-    lines = read(filename) |>
-        String |>
-        x -> split(x, "\n") |>
-        x -> filter(!isempty, x) .|>
-        strip |>
+    lines = read(filename)               |>
+        String                           |>
+        x -> split(x, "\n")              |>
+        x -> filter(!isempty, x)        .|>
+        strip                            |>
         x -> filter(y -> y[1] != '!', x) |>
         x -> filter(y -> y[1] != '#', x) |>
-        x -> join(x, "\n") |>
-        x -> replace(x, ", " => "\n") |>
-        x -> replace(x, "," => " ") |>
-        x -> split(x, "\n") .|>
-        strip |>
+        x -> join(x, "\n")               |>
+        x -> replace(x, ", " => "\n")    |>
+        x -> replace(x, "," => " ")      |>
+        x -> replace(x, "'" => " ")      |>
+        x -> split(x, "\n")             .|>
+        strip                            |>
         x -> filter(y -> !occursin("&", y), x) |>
         x -> filter(y -> !(occursin("/", y) && length(y) == 1), x)
 
@@ -571,6 +572,8 @@ function qe_writeflag(f, flag, value)
                 end
             end
         end
+    elseif isa(value, String)
+        write(f, "  $flag = '$value'\n")
     else
         write(f, "  $flag = $value\n")
     end
@@ -673,9 +676,9 @@ end
 function qe_generate_pw2waninput(input::DFInput{Wannier90}, qeprefix, runexecs)
     flags = Dict()
     flags[:prefix] = qeprefix
-    flags[:seedname] = "'$(name(input))'"
-    flags[:outdir] = "'$(dir(input))'"
-    flags[:wan_mode] = "'standalone'"
+    flags[:seedname] = "$(name(input))"
+    flags[:outdir] = "$(dir(input))"
+    flags[:wan_mode] = "standalone"
     flags[:write_mmn] = true
     flags[:write_amn] = true
     if flag(input, :spin) != nothing
@@ -684,7 +687,7 @@ function qe_generate_pw2waninput(input::DFInput{Wannier90}, qeprefix, runexecs)
     if flag(input, :wannier_plot) != nothing
         flags[:write_unk] = flag(input, :wannier_plot)
     end
-    if any(flag(input, :berry_task) .== ("morb", "'morb'"))
+    if any(flag(input, :berry_task) .== ("morb"))
         flags[:write_uHu] = true
     end
     pw2wanexec = Exec("pw2wannier90.x", runexecs[2].dir)
