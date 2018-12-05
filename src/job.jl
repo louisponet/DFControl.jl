@@ -677,8 +677,6 @@ function Emin_from_projwfc(job::DFJob, projwfc::String, threshold::Number, proje
     end
     return Emin
 end
-Emin_from_projwfc(job::DFJob, projwfc::String, threshold::Number, projection::Pair) =
-    Emin_from_projwfc(job, projwfc, threshold, [projection])
 
 """
     undo!(job::DFJob)
