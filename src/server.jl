@@ -94,7 +94,7 @@ function pulloutputs(job::DFJob, server="", server_dir="", local_dir=""; job_fuz
     # inputs, pulloutputs= read_job_filenames(job.local_dir * job_file)
     pulled_outputs = String[]
     for calc in job.inputs
-        ofile = outfile(calc)
+        ofile = outfilename(calc)
         if any(occursin.(ignore, ofile)) || (ispath(outpath(calc)) && !overwrite)
             continue
         end
