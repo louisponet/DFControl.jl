@@ -672,7 +672,7 @@ end
 function qe_generate_pw2waninput(input::DFInput{Wannier90}, qeprefix, runexecs)
     flags = Dict()
     flags[:prefix] = qeprefix
-    flags[:seedname] = name(input)
+    flags[:seedname] = "'$(name(input))'"
     flags[:outdir] = "'$(dir(input))'"
     flags[:wan_mode] = "'standalone'"
     flags[:write_mmn] = true
