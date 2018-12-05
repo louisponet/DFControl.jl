@@ -631,7 +631,7 @@ can be used together with a `threshold` to determine the minimum energy such tha
 projections to the DOS is above the `threshold`.
 """
 function addwancalc!(job::DFJob, nscf::DFInput, projwfc::DFInput, threshold::Real, projections...; kwargs...)
-    @assert hasoutput(projwfc) @error "Please provide a projwfc Input that has an output file."
+    @assert hasoutfile(projwfc) @error "Please provide a projwfc Input that has an output file."
     Emin = Emin_from_projwfc(job, outfile(projwfc), threshold, projections...)
     addwancalc!(job, nscf, Emin, projections...; kwargs...)
 end
@@ -640,7 +640,7 @@ addwancalc!(job::DFJob, nscf_name::String, Emin::Real, projections...; kwargs...
     addwancalc!(job, input(job, nscf_name), Emin, projections...; kwargs...)
 
 addwancalc!(job::DFJob, nscf_name::String, projwfc_name::String, threshold::Real, projections...; kwargs...) =
-    addwancalc!(job, input(job, template), input(job, projwfc_name), threshold, projections...; kwargs...)
+    addwancalc!(job, input(job, nscf_name), input(job, projwfc_name), threshold, projections...; kwargs...)
 
 
 "Automatically calculates and sets the wannier energies. This uses the projections, `Emin` and the bands to infer the other limits.\n`Epad` allows one to specify the padding around the inner and outer energy windows"
@@ -679,7 +679,7 @@ function Emin_from_projwfc(job::DFJob, projwfc::String, threshold::Number, proje
 end
 Emin_from_projwfc(job::DFJob, projwfc::String, threshold::Number, projection::Pair) =
     Emin_from_projwfc(job, projwfc, threshold, [projection])
-    
+
 """
     undo!(job::DFJob)
 
