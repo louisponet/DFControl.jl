@@ -49,7 +49,7 @@ infilename(input::DFInput{Wannier90})  = namewext(input, ".win")
 outfilename(input::DFInput{QE})        = namewext(input, ".out")
 outfilename(input::DFInput{Wannier90}) = namewext(input, ".wout")
 inpath(input::DFInput)             = joinpath(dir(input),  infilename(input))
-outpath(input::DFInput)            = joinpath(dir(input), "outputs", outfilename(input))
+outpath(input::DFInput)            = joinpath(dir(input),  outfilename(input))
 
 
 flags(input::DFInput)    = input.flags
