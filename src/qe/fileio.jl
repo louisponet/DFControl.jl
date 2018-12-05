@@ -242,16 +242,16 @@ function read_qe_pdos(filename::String, column=1; fermi=0)
 end
 
 """
-    read_qe_kprojwfc(filename::String)
+    read_qe_projwfc(filename::String)
 
-Reads the output file of a kresolved projwfc.x calculation.
+Reads the output file of a projwfc.x calculation.
 Each kpoint will have as many energy dos values as there are bands in the scf/nscf calculation that
 generated the density upon which the projwfc.x was called.
 Returns:
-    states: [(:atomi_id, :wfc_id, :l, :m),...]
+    states: [(:atom_id, :wfc_id, :l, :m),...]
     kpdos : kpoint => [(:e, :ψ, :ψ²), ...] where ψ is the coefficient vector in terms of the states.
 """
-function read_qe_kprojwfc(filename::String)
+function read_qe_projwfc(filename::String)
     lines  = readlines(filename) .|> strip
 
     state_tuple = NamedTuple{(:atom_id, :wfc_id, :l, :m), NTuple{4, Int}}

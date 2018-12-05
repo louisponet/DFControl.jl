@@ -57,7 +57,7 @@ module DFControl
     export read_qe_polarization
     export read_qe_input
     export read_qe_output
-    export read_qe_kprojwfc
+    export read_qe_projwfc
     export read_wannier_input
     export read_wannier_output
     export readbands
