@@ -632,7 +632,7 @@ projections to the DOS is above the `threshold`.
 """
 function addwancalc!(job::DFJob, nscf::DFInput, projwfc::DFInput, threshold::Real, projections::Pair...; kwargs...)
     @assert hasoutfile(projwfc) @error "Please provide a projwfc Input that has an output file."
-    Emin = Emin_from_projwfc(job, outfile(projwfc), threshold, projections...)
+    Emin = Emin_from_projwfc(job, outpath(projwfc), threshold, projections...)
     addwancalc!(job, nscf, Emin, projections...; kwargs...)
 end
 
@@ -655,7 +655,7 @@ function setwanenergies!(job::DFJob, bands, Emin::Real; Epad=5.0, print=true)
 end
 
 function Emin_from_projwfc(job::DFJob, projwfc::String, threshold::Number, projections::Pair...)
-    states, bands = read_qe_projwfc("projwfc.out")
+    states, bands = read_qe_projwfc(projwfc)
     mask = zeros(length(states))
     for (atsym, projs) in projections
         atids = findall(x -> x.id == atsym, atoms(job))
