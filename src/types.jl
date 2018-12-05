@@ -1,4 +1,4 @@
-const SymAnyDict = Dict{Symbol, <:Any}
+const SymAnyDict = Dict{Symbol, Any}
 
 Base.convert(::Type{Point3{T}}, x::Vector{T}) where T<:AbstractFloat = Point3{T}(x[1], x[2], x[3])
 
