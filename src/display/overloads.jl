@@ -30,9 +30,9 @@ function Base.show(io::IO, job::DFJob)
     fieldns  = [:name, :local_dir, :server, :server_dir]
     fs   = string.(filter(x->!isempty(x), getfield.((job,), fieldns)))
     fns = string.(fieldns)
-    lfns = maximum(length.(fns)) + maximum(length.(fs)) + 3
+    lfns = maximum(length.(fns)) + maximum(length.(fs)) + 4
     line = "+"
-    for i=1:div(lfns,2)
+    for i=1:div(lfns,2) + 1
         line *= "-"
     end
     dfprint(io, crayon"cyan", line[1:end-2])
@@ -42,7 +42,7 @@ function Base.show(io::IO, job::DFJob)
     end
     line *= "+"
     totlen = length(line)
-    dfprintln(io, crayon"cyan", line[div(lfns, 2)+5:end],  reset)
+    dfprintln(io, crayon"cyan", line[div(lfns, 2)+6:end],  reset)
     lfns = maximum(length.(string.(fns)))
     for (fn, f) in zip(fns, fs)
         isname = fn == "name"
