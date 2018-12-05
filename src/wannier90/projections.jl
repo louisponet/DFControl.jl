@@ -1,17 +1,18 @@
 struct Orbital
-    id::Symbol
+    id  ::Symbol
     size::Int
+    l   ::Int
 end
 const orbitals = [
-    Orbital(:s, 1),
-    Orbital(:p, 3),
-    Orbital(:d, 5),
-    Orbital(:f, 7),
-    Orbital(:dz2, 1),
-    Orbital(:dxz, 1),
-    Orbital(:dyz, 1),
-    Orbital(Symbol("dx2-y2"), 1),
-    Orbital(:dxy,1),
+    Orbital(:s, 1, 0),
+    Orbital(:p, 3, 1),
+    Orbital(:d, 5, 2),
+    Orbital(:f, 7, 3),
+    Orbital(:dz2, 1, 2),
+    Orbital(:dxz, 1, 2),
+    Orbital(:dyz, 1, 2),
+    Orbital(Symbol("dx2-y2"), 1, 2),
+    Orbital(:dxy, 1, 2),
 ]
 orbital(s::Symbol) = getfirst(x->x.id==s, orbitals)
 

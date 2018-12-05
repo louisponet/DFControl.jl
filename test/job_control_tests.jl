@@ -49,7 +49,7 @@ addcalc!(job, (5,5,5,1,1,1), name="1scf2")
 
 wanflags = [:write_hr => true, :wannier_plot => true]
 
-addwancalc!(job, "nscf",:Pt => [:s, :p, :d], Emin=fermi-7.0, Epad=5.0, wanflags=wanflags, print=false)
+addwancalc!(job, "nscf",fermi-7.0, :Pt => [:s, :p, :d], Epad=5.0, wanflags=wanflags, print=false)
 @test flag(job, "wan", :write_hr) == flag(job, "wan", :wannier_plot) == true
 
 wanout = outputdata(job, "wan")
@@ -73,7 +73,9 @@ job["nscf"][:starting_magnetization] = [[1.0, 2.0, 1.0]]
 
 job["nscf"][:Hubbard_J] = [0 1 2]
 @test job["nscf"][:Hubbard_J] == [0 1 2]
-addwancalc!(job, nscf,:Pt => [:s, :p, :d], Emin=fermi-7.0, Epad=5.0, wanflags=wanflags, print=false)
+addwancalc!(job, nscf, fermi-7.0, :Pt => [:s, :p, :d], Epad=5.0, wanflags=wanflags, print=false)
+
+#TODO: add test with the new wancalc from projwfc
 
 setflow!(job, ""=>false)
 @test job.inputs[1].run == false

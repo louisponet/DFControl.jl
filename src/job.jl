@@ -562,7 +562,7 @@ projections(job::DFJob) = projections.(atoms(job))
 
 
 """
-    addwancalc!(job::DFJob, nscf::DFInput{QE}, projections;
+    addwancalc!(job::DFJob, nscf::DFInput{QE}, Emin::Real, projections;
                      Emin=-5.0,
                      Epad=5.0,
                      wanflags=SymAnyDict(),
@@ -572,8 +572,7 @@ projections(job::DFJob) = projections.(atoms(job))
 
 Adds a wannier calculation to a job. For now only works with QE.
 """
-function addwancalc!(job::DFJob, nscf::DFInput{QE}, projections_...;
-                     Emin=-5.0,
+function addwancalc!(job::DFJob, nscf::DFInput{QE}, Emin::Real, projections_...;
                      Epad=5.0,
                      wanflags=SymAnyDict(),
                      pw2wanexec=Exec("pw2wannier90.x", nscf.execs[2].dir),
@@ -624,11 +623,28 @@ function addwancalc!(job::DFJob, nscf::DFInput{QE}, projections_...;
     return job
 end
 
-addwancalc!(job::DFJob, template::String="nscf", args...; kwargs...) =
-    addwancalc!(job, input(job, template), args...; kwargs...)
+"""
+    addwancalc!(job::DFJob, nscf::DFInput, projwfc::DFInput, threshold::Real, projections...; kwargs...)
+
+Adds a wannier calculation to the job, but instead of passing Emin manually, the output of a projwfc.x run
+can be used together with a `threshold` to determine the minimum energy such that the contribution of the
+projections to the DOS is above the `threshold`.
+"""
+function addwancalc!(job::DFJob, nscf::DFInput, projwfc::DFInput, threshold::Real, projections...; kwargs...)
+    @assert hasoutput(projwfc) @error "Please provide a projwfc Input that has an output file."
+    Emin = Emin_from_projwfc(job, outfile(projwfc), threshold, projections...)
+    addwancalc!(job, nscf, Emin, projections...; kwargs...)
+end
+
+addwancalc!(job::DFJob, nscf_name::String, Emin::Real, projections...; kwargs...) =
+    addwancalc!(job, input(job, nscf_name), Emin, projections...; kwargs...)
+
+addwancalc!(job::DFJob, nscf_name::String, projwfc_name::String, threshold::Real, projections...; kwargs...) =
+    addwancalc!(job, input(job, template), input(job, projwfc_name), threshold, projections...; kwargs...)
+
 
 "Automatically calculates and sets the wannier energies. This uses the projections, `Emin` and the bands to infer the other limits.\n`Epad` allows one to specify the padding around the inner and outer energy windows"
-function setwanenergies!(job::DFJob, bands, Emin::AbstractFloat; Epad=5.0, print=true)
+function setwanenergies!(job::DFJob, bands, Emin::Real; Epad=5.0, print=true)
     wancalcs = filter(x -> package(x) == Wannier90, job.inputs)
     @assert length(wancalcs) != 0 error("Job ($(job.name)) has no Wannier90 calculations, nothing todo.")
     nbnd = sum([sum(orbsize.(t)) for  t in projections(job)])
@@ -638,6 +654,32 @@ function setwanenergies!(job::DFJob, bands, Emin::AbstractFloat; Epad=5.0, print
     return job
 end
 
+function Emin_from_projwfc(job::DFJob, projwfc::String, threshold::Number, projections::Pair...)
+    states, results = read_qe_projwfc("projwfc.out")
+    mask = zeros(length(states))
+    for (atsym, projs) in projections
+        atids = findall(x -> x.id == atsym, atoms(job))
+        stateids = Int[]
+        for proj in projs
+            orb = orbital(proj)
+            push!.((stateids,), findall(x -> x.atom_id ∈ atids && x.l == orb.l, states))
+        end
+        mask[stateids] .= 1.0
+    end
+    Emin = 1000.0
+    for (k, energies) in results
+        for r in energies
+            tot_relevant_occupation = dot(mask, r.ψ)
+            if tot_relevant_occupation > threshold && r.e < Emin
+                Emin = r.e
+            end
+        end
+    end
+    return Emin
+end
+Emin_from_projwfc(job::DFJob, projwfc::String, threshold::Number, projection::Pair) =
+    Emin_from_projwfc(job, projwfc, threshold, [projection])
+    
 """
     undo!(job::DFJob)
 
