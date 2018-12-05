@@ -625,8 +625,9 @@ function save(input::DFInput{QE}, structure, filename::String=inpath(input))
             map(writeflag, [(flag, data) for (flag, data) in flags])
             write(f, "/\n\n")
         end
-
-        write_structure(f, input, structure)
+        if exec(input, "pw.x") != nothing
+            write_structure(f, input, structure)
+        end
         for dat in input.data
             if dat.option != :none
                 write(f, "$(uppercase(String(dat.name))) ($(dat.option))\n")
