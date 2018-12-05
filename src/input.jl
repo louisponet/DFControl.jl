@@ -211,8 +211,8 @@ function sanitizeflags!(input::DFInput)
     cleanflags!(input)
 end
 function sanitizeflags!(input::DFInput{QE})
-    cleanflags!(input)
     setflags!(input, :outdir => "$(joinpath(dir(input), "outputs"))", print=false)
+    cleanflags!(input)
     #TODO add all the required flags
 end
 
