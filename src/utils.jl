@@ -38,6 +38,8 @@ function apply_fermi_level!(band::Band, fermi::Union{String,AbstractFloat})
     end
 end
 
+#TODO: there is probably a slightly more optimal way for the frozen window, by checking max and min
+#      such that every k-point has nbands inbetween.
 function Emax(Emin, nbnd, bands)
     nbndfound = 0
     max = 0

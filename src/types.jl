@@ -73,7 +73,7 @@ end
 include(joinpath(depsdir, "mpirunflags.jl"))
 const MPIFLAGS = _MPIFLAGS()
 
-mpiflag(flag::String) = getfirst(x -> x.name==flag, MPIFLAGS)
+mpiflag(flag::AbstractString) = getfirst(x -> x.name==flag, MPIFLAGS)
 mpiflag(flag::Symbol) = getfirst(x -> x.symbol==flag, MPIFLAGS)
 
 function mpi_flag_val(::Type{String}, line, i)
