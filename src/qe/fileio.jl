@@ -416,7 +416,8 @@ function read_qe_input(filename; execs=[Exec("pw.x")], run=true, structure_name=
     lines = read(filename) |>
         String |>
         x -> split(x, "\n") |>
-        x -> filter(!isempty, x) |>
+        x -> filter(!isempty, x) .|>
+        strip |>
         x -> filter(y -> y[1] != '!', x) |>
         x -> filter(y -> y[1] != '#', x) |>
         x -> join(x, "\n") |>

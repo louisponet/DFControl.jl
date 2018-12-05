@@ -630,16 +630,16 @@ Adds a wannier calculation to the job, but instead of passing Emin manually, the
 can be used together with a `threshold` to determine the minimum energy such that the contribution of the
 projections to the DOS is above the `threshold`.
 """
-function addwancalc!(job::DFJob, nscf::DFInput, projwfc::DFInput, threshold::Real, projections...; kwargs...)
+function addwancalc!(job::DFJob, nscf::DFInput, projwfc::DFInput, threshold::Real, projections::Pair...; kwargs...)
     @assert hasoutfile(projwfc) @error "Please provide a projwfc Input that has an output file."
     Emin = Emin_from_projwfc(job, outfile(projwfc), threshold, projections...)
     addwancalc!(job, nscf, Emin, projections...; kwargs...)
 end
 
-addwancalc!(job::DFJob, nscf_name::String, Emin::Real, projections...; kwargs...) =
+addwancalc!(job::DFJob, nscf_name::String, Emin::Real, projections::Pair...; kwargs...) =
     addwancalc!(job, input(job, nscf_name), Emin, projections...; kwargs...)
 
-addwancalc!(job::DFJob, nscf_name::String, projwfc_name::String, threshold::Real, projections...; kwargs...) =
+addwancalc!(job::DFJob, nscf_name::String, projwfc_name::String, threshold::Real, projections::Pair...; kwargs...) =
     addwancalc!(job, input(job, nscf_name), input(job, projwfc_name), threshold, projections...; kwargs...)
 
 

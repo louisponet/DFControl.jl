@@ -10,7 +10,7 @@ name(data::InputData) = data.name
     name     ::String
     dir      ::String
     flags    ::SymAnyDict
-    data     ::Vector{InputData}
+    data     ::Vector{InputData} = InputData[]
     execs    ::Vector{Exec}
     run      ::Bool
     outdata  ::SymAnyDict=SymAnyDict()
