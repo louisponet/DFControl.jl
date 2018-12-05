@@ -212,7 +212,7 @@ function sanitizeflags!(input::DFInput)
 end
 function sanitizeflags!(input::DFInput{QE})
     cleanflags!(input)
-    flag(input, :outdir) != "$(dir(input))" && setflags!(input, :outdir => "$(dir(input))", print=false)
+    setflags!(input, :outdir => "$(dir(input))", print=false)
     #TODO add all the required flags
 end
 
