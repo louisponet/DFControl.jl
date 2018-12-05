@@ -254,13 +254,19 @@ Returns:
 function read_qe_projwfc(filename::String)
     lines  = readlines(filename) .|> strip
 
+    iinfo = findfirst(x->x=="Problem Sizes", lines)
+    natomwfc = parse(Int, split(lines[iinfo+1])[end])
+    nbnd     = parse(Int, split(lines[iinfo+2])[end])
+    nkstot   = parse(Int, split(lines[iinfo+3])[end])
+    npwx     = parse(Int, split(lines[iinfo+4])[end])
+    nkb      = parse(Int, split(lines[iinfo+5])[end])
     state_tuple = NamedTuple{(:atom_id, :wfc_id, :l, :m), NTuple{4, Int}}
-    states = state_tuple[]
+    states = Vector{state_tuple}(undef, natomwfc)
     istart = findfirst(x -> x == "Atomic states used for projection", lines) + 3
     istop  = findnext(isempty, lines, istart) - 1
     for i = istart:istop
         l = replace_multiple(lines[i], "(" => " ", ")" => " ", "," => "", "=" => " ", ":" => "", "#" => " ") |> split
-        push!(states, state_tuple(parse.(Int,(l[4], l[7], l[9], l[11]))))
+        states[i - istart + 1] = state_tuple(parse.(Int,(l[4], l[7], l[9], l[11])))
     end
 
     ilowd = findnext(x -> x == "Lowdin Charges:", lines, istop)
@@ -290,7 +296,22 @@ function read_qe_projwfc(filename::String)
         end
         push!(kdos, k => etuples)
     end
-    return states, kdos
+    bands = [DFBand(nkstot) for i =1:nbnd]
+    for b in bands
+        b.extra[:ψ]  = Vector{Vector{Float64}}(undef, nkstot)
+        b.extra[:ψ²] = Vector{Float64}(undef, nkstot)
+    end
+
+    for (i, (k, energies)) in enumerate(kdos)
+        for (ie, etuple) in enumerate(energies)
+            bands[ie].k_points_cryst[i] = zero(Vec{3, Float64})
+            bands[ie].k_points_cart[i]  = k
+            bands[ie].eigvals[i]    = etuple.e
+            bands[ie].extra[:ψ][i]  = etuple.ψ
+            bands[ie].extra[:ψ²][i] = etuple.ψ²
+        end
+    end
+    return states, bands
 end
 
 """

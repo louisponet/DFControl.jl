@@ -655,7 +655,7 @@ function setwanenergies!(job::DFJob, bands, Emin::Real; Epad=5.0, print=true)
 end
 
 function Emin_from_projwfc(job::DFJob, projwfc::String, threshold::Number, projections::Pair...)
-    states, results = read_qe_projwfc("projwfc.out")
+    states, bands = read_qe_projwfc("projwfc.out")
     mask = zeros(length(states))
     for (atsym, projs) in projections
         atids = findall(x -> x.id == atsym, atoms(job))
@@ -666,13 +666,13 @@ function Emin_from_projwfc(job::DFJob, projwfc::String, threshold::Number, proje
         end
         mask[stateids] .= 1.0
     end
-    Emin = 1000.0
-    for (k, energies) in results
-        for r in energies
-            tot_relevant_occupation = dot(mask, r.ψ)
-            if tot_relevant_occupation > threshold && r.e < Emin
-                Emin = r.e
-            end
+    Emin = 0.0
+    for b in bands
+        ψ = mean(b.extra[:ψ])
+        tot_relevant_occupation = dot(mask, ψ)
+        if tot_relevant_occupation > threshold
+            Emin = minimum(b.eigvals)
+            break
         end
     end
     return Emin

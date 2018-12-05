@@ -1,5 +1,6 @@
 module DFControl
     using LinearAlgebra
+    using Statistics
     import Base.Iterators.flatten
     using RecipesBase
     include("FixedSizeArrays.jl")

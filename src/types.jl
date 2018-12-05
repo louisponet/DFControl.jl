@@ -15,6 +15,9 @@ mutable struct DFBand{T<:AbstractFloat} <: Band
     extra          ::Dict{Symbol, Any}
 end
 DFBand(k_points_cart, k_points_cryst, eigvals) = DFBand(k_points_cart, k_points_cryst, eigvals, Dict{Symbol,Any}())
+DFBand(::Type{T}, vlength::Int) where T = DFBand(Vector{Vec3{T}}(undef, vlength), Vector{Vec3{T}}(undef, vlength), Vector{T}(undef, vlength), SymAnyDict())
+DFBand(vlength::Int) = DFBand(Float64, vlength)
+
 
 kpoints(band::DFBand, kind=:cryst) = kind == :cart ? band.k_points_cart : band.k_points_cryst
 
