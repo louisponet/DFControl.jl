@@ -588,7 +588,7 @@ Writes a Quantum Espresso input file.
 """
 function save(input::DFInput{QE}, structure, filename::String=inpath(input))
     if haskey(flags(input), :calculation)
-        input[:calculation] = replace(input[:calculation], "_" => "-")
+        setflags!(input, :calculation => replace(input[:calculation], "_" => "-"), print=false)
     end
     open(filename, "w") do f
         writeflag(flag_data) = qe_writeflag(f, flag_data[1], flag_data[2])
