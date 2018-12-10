@@ -168,7 +168,7 @@ function write_qe_variable(wf, indent, lines, i)
         else
             typ
         end
-    description = replace(description, "\"" => "'")
+    description = replace(replace(replace(description, "\"" => "'"), "\\" => "\\\\"), "\$" => "\\\$")
     if occursin("Variables", line)
         spl = [split(x,"(")[1] for x in strip.(filter(x -> !occursin("=", x), split(line)[2:end]), ',')]
         names = Symbol.(spl)
@@ -201,7 +201,7 @@ function write_QEControlBlockInfo(wf, indent, lines)
 end
 
 function write_QEDataBlockInfo(wf, indent, lines)
-    spl                 = split(lines[1])
+    spl                 = split(strip(lines[1]))
     name                = length(spl) > 1 ? lowercase(spl[2]) : "noname"
     options             = Symbol.(spl[4:2:end])
     description         = ""
@@ -213,7 +213,7 @@ function write_QEDataBlockInfo(wf, indent, lines)
         if occursin("___________", line) && !occursin("+--", line)
             i += 1
             line = lines[i]
-            while !occursin("----------------", line)
+            while !occursin("----------------", line) 
                 description *= strip(line) * "\n" * indentabs(indent+2)
                 i += 1
                 line = lines[i]
