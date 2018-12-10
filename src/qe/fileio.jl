@@ -254,19 +254,17 @@ Returns:
 function read_qe_projwfc(filename::String)
     lines  = readlines(filename) .|> strip
 
-    iinfo = findfirst(x->x=="Problem Sizes", lines)
-    natomwfc = parse(Int, split(lines[iinfo+1])[end])
-    nbnd     = parse(Int, split(lines[iinfo+2])[end])
-    nkstot   = parse(Int, split(lines[iinfo+3])[end])
-    npwx     = parse(Int, split(lines[iinfo+4])[end])
-    nkb      = parse(Int, split(lines[iinfo+5])[end])
-    state_tuple = NamedTuple{(:atom_id, :wfc_id, :l, :m), NTuple{4, Int}}
-    states = Vector{state_tuple}(undef, natomwfc)
+    state_tuple = NamedTuple{(:atom_id, :wfc_id, :l, :m, :s), Tuple{Int, Int, Int, Int, Float64}}
+    states = state_tuple[]
     istart = findfirst(x -> x == "Atomic states used for projection", lines) + 3
     istop  = findnext(isempty, lines, istart) - 1
     for i = istart:istop
         l = replace_multiple(lines[i], "(" => " ", ")" => " ", "," => "", "=" => " ", ":" => "", "#" => " ") |> split
-        states[i - istart + 1] = state_tuple(parse.(Int,(l[4], l[7], l[9], l[11])))
+        if length(l) == 11
+            push!(states, state_tuple((parse.(Int,(l[4], l[7], l[9], l[11]))...,0.0)))
+        else
+            push!(states, state_tuple((parse.(Int,(l[4], l[7], l[9], l[11]))...,parse(Float64,l[13]))))
+        end
     end
 
     ilowd = findnext(x -> x == "Lowdin Charges:", lines, istop)
@@ -280,7 +278,8 @@ function read_qe_projwfc(filename::String)
         istop_ψ  = istart - 1
         istart_ψ = istart
         while istop_ψ < istop - 1
-            e = parse(Float64, split(lines[istop_ψ + 2])[3])
+            eline = replace_multiple(lines[istop_ψ + 2], "="=>"", "(" => " ", ")"=>" ")
+            e = parse(Float64, split(eline)[end-1])
             coeffs = zeros(length(states))
             istart_ψ = findnext(x -> x[1:3] == "psi", lines, istop_ψ + 1)
             istop_ψ  = findnext(x -> x[2:4] == "psi", lines, istart_ψ) - 1
@@ -296,7 +295,9 @@ function read_qe_projwfc(filename::String)
         end
         push!(kdos, k => etuples)
     end
-    bands = [DFBand(nkstot) for i =1:nbnd]
+    nkstot = length(kdos)
+    nbnd   = length(last(kdos[1]))
+    bands = [DFBand(nkstot) for i = 1:nbnd]
     for b in bands
         b.extra[:ψ]  = Vector{Vector{Float64}}(undef, nkstot)
         b.extra[:ψ²] = Vector{Float64}(undef, nkstot)
