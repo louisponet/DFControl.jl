@@ -206,38 +206,36 @@ function write_QEDataBlockInfo(wf, indent, lines)
     options             = Symbol.(spl[4:2:end])
     description         = ""
     options_description = ""
+    istop = findfirst(x -> occursin("DESCRIPTION", x), lines)
+    for i=1:istop-1
+        line = strip(replace(replace(lines[i], "_" => ""), "-" => ""))
+        if isempty(line)
+            continue
+        end
+        description *= strip(line) * "\n" * indentabs(indent+2)
+    end
+    description = replace(description, "\"" => "'")
+
+
+    istart = findnext(x -> occursin("Card's flags", x), lines, istop)
+    if istart != nothing
+        istop = findnext(x -> occursin("+------", x), lines, istart)
+        for i=istart+1:istop - 1
+            line = lines[i]
+            if occursin("Default", line) || occursin("Description", line)
+                continue
+            end
+            options_description *= strip(line) * "\n" * indentabs(indent+2)
+        end
+    end
+
+    options_description = replace(options_description, "\"" => "'")
+    writefbodyline(wf, indent+1, """QEDataBlockInfo(Symbol("$name"),"$description", $options, "$options_description", [""")
     # writefbodyline(wf, indent, """QEDataBlockInfo(Symbol("$name"),""")
-    i = 2
+    i = istop
     while i <= length(lines) - 1
         line = strip(lines[i])
-        if occursin("___________", line) && !occursin("+--", line)
-            i += 1
-            line = lines[i]
-            while !occursin("----------------", line) 
-                description *= strip(line) * "\n" * indentabs(indent+2)
-                i += 1
-                line = lines[i]
-            end
-            description = replace(description, "\"" => "'")
-            options_description = replace(options_description, "\"" => "'")
-            writefbodyline(wf, indent+1, """QEDataBlockInfo(Symbol("$name"),"$description", $options, "$options_description", [""")
-            i += 1
-
-        elseif occursin("Card's flags:", line)
-            i += 2
-            if !occursin("Description:", lines[i])
-                i += 1
-            end
-            options_description *= split(lines[i])[2:end] * "\n" * indentabs(indent+2)
-            i += 1
-            line = lines[i]
-            while !occursin("----------------", line)
-                options_description *= strip(line) * "\n" * indentabs(indent+2)
-                i += 1
-                line = lines[i]
-            end
-            i += 1
-        elseif occursin("Variable", line)
+        if occursin("Variable", line)
             i = write_qe_variable(wf, indent+2, lines, i)
         end
         i += 1
