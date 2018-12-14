@@ -304,9 +304,6 @@ end
 Adds a calculation to the job, at the specified index.
 """
 function add!(job::DFJob, input::DFInput, index::Int=length(job.inputs)+1; n=name(input))
-
-    UNDO_JOBS[job.id] = deepcopy(job)
-
     input.name = n
     insert!(job.inputs, index, input)
     return job
@@ -322,7 +319,6 @@ If necessary the correct control block will be added to the calculation (e.g. fo
 The values that are supplied will be checked whether they are valid.
 """
 function setflags!(job::DFJob, inputs::Vector{<:DFInput}, flags...; print=true)
-    UNDO_JOBS[job.id] = deepcopy(job)
     found_keys = Symbol[]
 
     for calc in inputs
@@ -381,8 +377,6 @@ Looks through the calculation filenames and sets the data of the datablock with 
 if option is specified it will set the block option to it.
 """
 function setdata!(job::DFJob, inputs::Vector{<:DFInput}, dataname::Symbol, data; kwargs...)
-    UNDO_JOBS[job.id] = deepcopy(job)
-
     setdata!.(inputs, dataname, data; kwargs...)
     return job
 end
@@ -395,7 +389,6 @@ setdata!(job::DFJob, name::String, dataname::Symbol, data; fuzzy=true, kwargs...
 sets the option of specified data in the specified inputs.
 """
 function setdataoption!(job::DFJob, names::Vector{String}, dataname::Symbol, option::Symbol; kwargs...)
-    UNDO_JOBS[job.id] = deepcopy(job)
     setdataoption!.(inputs(job, names), dataname, option; kwargs...)
     return job
 end
@@ -416,8 +409,6 @@ setdataoption!(job::DFJob, n::Symbol, option::Symbol; kw...) =
 Looks through the input names and removes the specified flags.
 """
 function rmflags!(job::DFJob, inputs::Vector{<:DFInput}, flags...; kwargs...)
-    UNDO_JOBS[job.id] = deepcopy(job)
-
     rmflags!.(inputs, flags...; kwargs...)
     return job
 end
@@ -432,8 +423,6 @@ rmflags!(job::DFJob, flags...; kwargs...) =
 Sets whether or not calculations should be run. Calculations are specified using their indices.
 """
 function setflow!(job::DFJob, should_runs...)
-    UNDO_JOBS[job.id] = deepcopy(job)
-
     for (name, run) in should_runs
         for input in inputs(job, name)
             input.run = run
@@ -467,8 +456,6 @@ These pseudospotentials are then set in all the calculations that need it.
 All flags which specify the number of atoms inside the calculation also gets set to the correct value.
 """
 function setatoms!(job::DFJob, atoms::Vector{<:AbstractAtom}; pseudoset=nothing, pseudospecifier="")
-    UNDO_JOBS[job.id] = deepcopy(job)
-
     job.structure.atoms = atoms
     pseudoset!=nothing && setpseudos!(job, pseudoset, pseudospecifier)
     return job
@@ -490,8 +477,6 @@ atom(job::DFJob, atsym::Symbol, i=1) = filter(x -> x.id == atsym, atoms(job))[i]
 sets the cell parameters of the structure in the job.
 """
 function setcell!(job::DFJob, cell_::Mat3)
-    UNDO_JOBS[job.id] = deepcopy(job)
-
     job.structure.cell = cell_
     return job
 end
@@ -502,7 +487,6 @@ end
 sets the data in the k point `DataBlock` inside the specified inputs.
 """
 function setkpoints!(job::DFJob, n, k_points; print=true)
-    UNDO_JOBS[job.id] = deepcopy(job)
     for calc in inputs(job, n)
         setkpoints!(calc, k_points, print=print)
     end
@@ -531,8 +515,6 @@ end
 Replaces the specified word in the header with the new word.
 """
 function setheaderword!(job::DFJob, word::String, new_word::String; print=true)
-    UNDO_JOBS[job.id] = deepcopy(job)
-
     for (i, line) in enumerate(job.header)
         if occursin(word, line)
             job.header[i] = replace(line, word => new_word)
@@ -676,28 +658,6 @@ function Emin_from_projwfc(job::DFJob, projwfc::String, threshold::Number, proje
     end
     return Emin
 end
-
-"""
-    undo!(job::DFJob)
-
-Undos the last set to the calculations of the job.
-"""
-function undo!(job::DFJob)
-    for field in fieldnames(DFJob)
-        setfield!(job, field, deepcopy(getfield(UNDO_JOBS[job.id], field)))
-    end
-    return job
-end
-
-"""
-    undo(job::DFJob)
-
-Returns the previous state of the job.
-"""
-function undo(job::DFJob)
-    return deepcopy(UNDO_JOBS[job.id])
-end
-
 
 "Creates a new `DFInput` from the template with the new flags and new data, then adds it to the inputs of the job at the specified index."
 addcalc!(job::DFJob, input::DFInput, index::Int=length(job.inputs)+1) = insert!(job.inputs, index, input)

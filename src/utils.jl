@@ -162,27 +162,3 @@ function parse_block(f, types...; to_strip=',')
     end
     return output
 end
-
-
-
-macro undoable(func)
-    if isa(func, Expr) && func.head === :function
-
-        if func.args[1].args[2].head !== :parameters
-            # println(func.args[1].args[2])
-            @assert func.args[1].args[2].args[2] == :DFJob error("This macro only works for `DFJob`.")
-            j = func.args[1].args[2].args[1]
-            bod = quote UNDO_JOBS[$(j).id]=deepcopy($(j))
-                $(func.args[2])
-                end
-            Core.@__doc__ Expr(func.head, func.args[1], bod)
-        else
-            @assert func.args[1].args[3].args[2] == :DFJob error("This macro only works for `DFJob`.")
-            j = func.args[1].args[3].args[1]
-            bod = quote UNDO_JOBS[$(j).id]=deepcopy($(j))
-                $(func.args[2])
-                end
-            Core.@__doc__ Expr(func.head, func.args[1], bod)
-        end
-    end
-end

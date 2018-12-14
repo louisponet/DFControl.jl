@@ -100,7 +100,6 @@ module DFControl
         init_defaults(default_file)
     end
 
-    const UNDO_JOBS = DFJob[]
     const pythonpath = Sys.iswindows() ? joinpath(depsdir, "python2", "python") : joinpath(dirname(@__DIR__), "deps", "python2", "bin", "python")
     const cif2cellpath = Sys.iswindows() ? joinpath(depsdir, "python2", "Scripts", "cif2cell") : joinpath(dirname(@__DIR__), "deps", "python2", "bin", "cif2cell")
 
