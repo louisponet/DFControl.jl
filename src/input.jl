@@ -340,3 +340,8 @@ function readbands(input::DFInput)
         error("No bands found in $(name(input)).")
     end
 end
+
+pseudodir(input::DFInput{QE}) = flag(input, :pseudo_dir)
+
+setcutoffs!(input::DFInput, args...) = @warn "Setting cutoffs is not implemented for package $(package(input))"
+setcutoffs!(input::DFInput{QE}, ecutwfc, ecutrho) = setflags!(input, :ecutwfc => ecutwfc, :ecutrho=>ecutrho)

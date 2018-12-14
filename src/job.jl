@@ -136,7 +136,6 @@ function DFJob(job_dir::String, T=Float64;
                   new_local_dir = nothing,
                   server        = getdefault_server(),
                   server_dir    = "")
-
     name, header, inputs, structure = read_job_inputs(joinpath(job_dir, searchdir(job_dir, job_fuzzy)[1]))
     j_name = isempty(new_job_name) ? name : new_job_name
     structure_name = split(j_name, "_")[1]
@@ -182,6 +181,7 @@ Returns an array of the inputs that match the names.
 """
 inputs(job::DFJob, names::Vector, fuzzy=true) = fuzzy ? filter(x -> any(occursin.(names, name(x))), inputs(job)) : input.(job, names)
 inputs(job::DFJob, n::String, fuzzy=true) = inputs(job, [n], fuzzy)
+inputs(job::DFJob, package_::Package) = filter(x->package(x)==package_, inputs(job))
 
 function Base.getindex(job::DFJob, id::String)
     tmp = getfirst(x -> name(x)==id, inputs(job))
@@ -823,4 +823,39 @@ function progressreport(job::DFJob; kwargs...)
         end
     end
     return plotdat
+end
+
+"Reads throught the pseudo files and tries to figure out the correct cutoffs"
+function setcutoffs!(job::DFJob)
+    @assert job.server == "localhost" "Cutoffs can only be automatically set if the pseudo files live on the local machine."
+    pseudofiles = filter(!isempty, [pseudo(at) for at in atoms(job)])
+    pseudodirs  = String[]
+    for i in inputs(job)
+        if package(i) == QE
+            dr = pseudodir(i)
+            if dr != nothing && ispath(dr) #absolute paths only allowed in QE
+                push!(pseudodirs, dr)
+            end
+        end
+    end
+    @assert !isempty(pseudofiles) "No atoms with pseudo files found."
+    @assert !isempty(pseudodirs) "No valid pseudo directories found in the inputs."
+    maxecutwfc = 0.0
+    maxecutrho = 0.0
+    for d in pseudodirs
+        for f in pseudofiles
+            pth = joinpath(d, f)
+            if ispath(pth)
+                println(pth)
+                ecutwfc, ecutrho = read_cutoffs_from_pseudofile(pth)
+                show(ecutwfc)
+                show(ecutrho)
+                if ecutwfc != nothing && ecutrho != nothing
+                    maxecutwfc = ecutwfc > maxecutwfc ? ecutwfc : maxecutwfc
+                    maxecutrho = ecutrho > maxecutrho ? ecutrho : maxecutrho
+                end
+            end
+        end
+    end
+    setcutoffs!.(inputs(job), maxecutwfc, maxecutrho)
 end

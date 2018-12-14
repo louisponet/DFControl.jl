@@ -420,3 +420,22 @@ function writeabortfile(job::DFJob, input::DFInput{QE})
     end
     qdel(job)
 end
+
+function read_cutoffs_from_pseudofile(file::AbstractString)
+    ecutwfc = 0.0
+    ecutrho = 0.0
+    open(file, "r") do f
+        line = readline(f)
+        i = 1
+        while i < 100 #semi arbitrary cutoff to amount of lines read
+            line = readline(f)
+            if occursin("Suggested minimum cutoff for wavefunctions:", line)
+                ecutwfc = parse(Float64, split(line)[end-1])
+                ecutrho = parse(Float64, split(readline(f))[end-1])
+                break
+            end
+            i += 1
+        end
+    end
+    return ecutwfc, ecutrho
+end

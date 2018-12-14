@@ -87,9 +87,6 @@ setflow!(job, "nscf" => true, "bands" => true)
 save(job)
 job2 = DFJob(local_dir)
 
-setpseudos!(job, "pseudos", :Pt => "Pt.UPF")
-@test job.structure.atoms[1].pseudo == "Pt.UPF"
-@test job["nscf"][:pseudo_dir] == "pseudos"
 
 begin
     for (calc, calc2) in zip(job.inputs, job2.inputs)
@@ -131,6 +128,12 @@ begin
     end
 end
 
+setcutoffs!(job)
+@test job["scf"][:ecutwfc] == 32.0
+
+setpseudos!(job, "pseudos", :Pt => "Pt.UPF")
+@test job.structure.atoms[1].pseudo == "Pt.UPF"
+@test job["nscf"][:pseudo_dir] == "pseudos"
 testorbs = [:s, :p]
 setprojections!(job, :Pt => testorbs)
 @test convert.(Symbol, [p.orb for p in projections(job, :Pt)]) == testorbs
@@ -174,6 +177,7 @@ report = progressreport(job; onlynew=false, print=false)
 @test length(report[:accuracy]) == 9
 newatompos = outputdata(job, "vc_relax", onlynew=false)[:final_structure]
 job.structure = newatompos
+
 
 rm.(inpath.(job.inputs))
 

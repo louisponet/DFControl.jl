@@ -32,7 +32,7 @@ module DFControl
            setflow!,
            execs, setexecflags!, setexecdir!, rmexecflags!,
            input, inputs,
-           inpath, outpath, setname!, setkpoints!, setdataoption!, setpseudos!,
+           inpath, outpath, setname!, setkpoints!, setdataoption!, setpseudos!, setcutoffs!,
            atoms, atom, setatoms!, setprojections!, projections,
            addwancalc!, addcalc!,
            setwanenergies!,
