@@ -185,7 +185,11 @@ end
 searchinputs(job::DFJob, fuzzy::AbstractString) = inputs(job, fuzzy, true)
 
 "Fuzzily search the first input in the job whose name contains the fuzzy."
-searchinput(job::DFJob,  fuzzy::AbstractString) = input(job, fuzzy, true)
+searchinput(job::DFJob,  fuzzy::AbstractString) = input(job, fuzzy)
+
+"Returns all inputs from a certain package."
+searchinputs(job::DFJob, ::Type{P}) where {P <: Package} = filter(x->package(x) == P, inputs(job))
+
 
 """
     setflags!(job::DFJob, inputs::Vector{<:DFInput}, flags...; print=true)
@@ -360,101 +364,18 @@ function setcutoffs!(job::DFJob)
     setcutoffs!.(inputs(job), maxecutwfc, maxecutrho)
 end
 
-"""
-    addwancalc!(job::DFJob, nscf::DFInput{QE}, Emin::Real, projections;
-                     Emin=-5.0,
-                     Epad=5.0,
-                     wanflags=SymAnyDict(),
-                     pw2wanexec=Exec("pw2wannier90.x", nscf.execs[2].dir, nscf.execs[2].flags),
-                     wanexec=Exec("wannier90.x", nscf.execs[2].dir),
-                     bands=readbands(nscf))
 
-Adds a wannier calculation to a job. For now only works with QE.
-"""
-function addwancalc!(job::DFJob, nscf::DFInput{QE}, Emin::Real, projections_...;
-                     Epad=5.0,
-                     wanflags=SymAnyDict(),
-                     pw2wanexec=Exec("pw2wannier90.x", nscf.execs[2].dir),
-                     wanexec=Exec("wannier90.x", nscf.execs[2].dir),
-                     bands=readbands(nscf),
-                     print=true)
-
-    spin = isspincalc(nscf)
-    if spin
-        pw2wannames = ["pw2wan_up", "pw2wan_dn"]
-        wannames = ["wanup", "wandn"]
-        print && (@info "Spin polarized calculation found (inferred from nscf input).")
-    else
-        pw2wannames = ["pw2wan"]
-        wannames = ["wan"]
-    end
-
-    @assert flag(nscf, :calculation) == "nscf" error("Please provide a valid 'nscf' calculation.")
-    if flag(nscf, :nosym) != true
-        print && (@info "'nosym' flag was not set in the nscf calculation.\n
-                         If this was not intended please set it and rerun the nscf calculation.\n
-                         This generally gives errors because of omitted kpoints, needed for pw2wannier90.x")
-    end
-
-    setprojections!(job, projections_...)
-    nbnd = nprojections(job.structure)
-    print && (@info "num_bands=$nbnd (inferred from provided projections).")
-
-    wanflags = SymAnyDict(wanflags)
-    wanflags[:dis_win_min], wanflags[:dis_froz_min], wanflags[:dis_froz_max], wanflags[:dis_win_max] = wanenergyranges(Emin, nbnd, bands, Epad)
-
-    wanflags[:num_bands] = length(bands)
-    wanflags[:num_wann]  = nbnd
-    kpoints = data(nscf, :k_points).data
-    wanflags[:mp_grid] = kakbkc(kpoints)
-    wanflags[:preprocess] = true
-    print && (@info "mp_grid=$(join(wanflags[:mp_grid]," ")) (inferred from nscf input).")
-
-    kdata = InputData(:kpoints, :none, [k[1:3] for k in kpoints])
-
-    for (pw2wanfil, wanfil) in zip(pw2wannames, wannames)
-        push!(job, DFInput{Wannier90}(wanfil, job.local_dir, copy(wanflags), [kdata], [Exec(), wanexec], true))
-    end
-
-    setfls!(job, name, flags...) = setflags!(job, name, flags..., print=false)
-    if spin
-        setfls!(job, "wanup", :spin => "up")
-        setfls!(job, "wandn", :spin => "down")
-    end
-    return job
-end
-
-"""
-    addwancalc!(job::DFJob, nscf::DFInput, projwfc::DFInput, threshold::Real, projections...; kwargs...)
-
-Adds a wannier calculation to the job, but instead of passing Emin manually, the output of a projwfc.x run
-can be used together with a `threshold` to determine the minimum energy such that the contribution of the
-projections to the DOS is above the `threshold`.
-"""
-function addwancalc!(job::DFJob, nscf::DFInput, projwfc::DFInput, threshold::Real, projections::Pair...; kwargs...)
-    @assert hasoutfile(projwfc) @error "Please provide a projwfc Input that has an output file."
-    Emin = Emin_from_projwfc(job, outpath(projwfc), threshold, projections...)
-    addwancalc!(job, nscf, Emin, projections...; kwargs...)
-end
-
-addwancalc!(job::DFJob, nscf_name::String, Emin::Real, projections::Pair...; kwargs...) =
-    addwancalc!(job, input(job, nscf_name), Emin, projections...; kwargs...)
-
-addwancalc!(job::DFJob, nscf_name::String, projwfc_name::String, threshold::Real, projections::Pair...; kwargs...) =
-    addwancalc!(job, input(job, nscf_name), input(job, projwfc_name), threshold, projections...; kwargs...)
-
-
-"Automatically calculates and sets the wannier energies. This uses the projections, `Emin` and the bands to infer the other limits.\n`Epad` allows one to specify the padding around the inner and outer energy windows"
-function setwanenergies!(job::DFJob, bands, Emin::Real; Epad=5.0, print=true)
-    wancalcs = filter(x -> package(x) == Wannier90, job.inputs)
-    @assert length(wancalcs) != 0 error("Job ($(job.name)) has no Wannier90 calculations, nothing todo.")
-    nbnd = sum([sum(orbsize.(t)) for  t in projections(job)])
-    print && (@info "num_bands=$nbnd (inferred from provided projections).")
+function setwanenergies!(job::DFJob, nscf::DFInput{QE}, Emin::Real; Epad=5.0)
+    nscfassertions(nscf)
+    bands = readbands(nscf)
+    wancalcs = searchinputs(job, Wannier90)
+    @assert length(wancalcs) != 0 "Job ($(job.name)) has no Wannier90 calculations, nothing to do."
+    nbnd = nprojections(structure(job))
+    @info "num_bands=$nbnd (inferred from provided projections)."
     winmin, frozmin, frozmax, winmax = wanenergyranges(Emin, nbnd, bands, Epad)
-    map(x->setflags!(x, :dis_win_min => winmin, :dis_froz_min => frozmin, :dis_froz_max => frozmax, :dis_win_max => winmax, :num_wann => nbnd, :num_bands=>length(bands); print=false), wancalcs)
+    map(x->setflags!(x, :dis_win_min => winmin, :dis_froz_min => frozmin, :dis_froz_max => frozmax, :dis_win_max => winmax, :num_wann => nbnd, :num_bands=>length(bands)), wancalcs)
     return job
 end
-
 #--------------- Interacting with the Structure inside the DFJob ---------------#
 "Returns the ith atom with id `atsym`."
 atom(job::DFJob, atsym::Symbol, i=1) = filter(x -> x.id == atsym, atoms(job))[i]

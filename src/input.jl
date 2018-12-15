@@ -147,3 +147,9 @@ pseudodir(input::DFInput{QE}) = flag(input, :pseudo_dir)
 
 setcutoffs!(input::DFInput, args...) = @warn "Setting cutoffs is not implemented for package $(package(input))"
 setcutoffs!(input::DFInput{QE}, ecutwfc, ecutrho) = setflags!(input, :ecutwfc => ecutwfc, :ecutrho=>ecutrho)
+
+
+function nscfassertions(nscf::DFInput{QE})
+    @assert flag(nscf, :calculation) == "nscf" "Please provide a valid 'nscf' calculation."
+    @assert hasoutput(nscf) "Please specify an nscf input that has an output."
+end

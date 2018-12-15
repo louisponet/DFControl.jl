@@ -48,7 +48,8 @@ push!(job, gencalc_scf(job["scf"], (5,5,5,1,1,1), name="1scf2"))
 
 wanflags = [:write_hr => true, :wannier_plot => true]
 
-addwancalc!(job, "nscf",fermi-7.0, :Pt => [:s, :p, :d], Epad=5.0, wanflags=wanflags, print=false)
+wancalc = gencalc_wan(structure(job), searchinput(job, "nscf"), fermi-7.0, :Pt => [:s, :p, :d]; Epad=5.0, wanflags=wanflags)
+push!.((job,), wancalc)
 @test job["wan"][:write_hr] == job["wan"][:wannier_plot] == true
 
 wanout = outputdata(job, "wan")
@@ -72,7 +73,7 @@ job["nscf"][:starting_magnetization] = [[1.0, 2.0, 1.0]]
 
 job["nscf"][:Hubbard_J] = [0 1 2]
 @test job["nscf"][:Hubbard_J] == [0 1 2]
-addwancalc!(job, nscf, fermi-7.0, :Pt => [:s, :p, :d], Epad=5.0, wanflags=wanflags, print=false)
+push!.((job,), gencalc_wan(structure(job), nscf, fermi-7.0, :Pt => [:s, :p, :d], Epad=5.0, wanflags=wanflags))
 
 #TODO: add test with the new wancalc from projwfc
 
@@ -106,7 +107,7 @@ end
 
 job3 = DFJob(job2, :lspinorb => true)
 @test all(atoms(job3).==atoms(job2))
-@test length(job3[:lspinorb]) == length(filter(x->DFControl.package(x) == DFControl.QE, job3.inputs))
+@test length(job3[:lspinorb]) == length(searchinputs(job3, QE))
 rmflags!(job3, :lspinorb, print=false)
 
 begin
@@ -135,7 +136,7 @@ setpseudos!(job, "pseudos", :Pt => "Pt.UPF")
 testorbs = [:s, :p]
 setprojections!(job, :Pt => testorbs)
 @test convert.(Symbol, [p.orb for p in projections(job, :Pt)]) == testorbs
-setwanenergies!(job, readbands(nscf), fermi-7.0,  Epad=3.0, print=false)
+setwanenergies!(job, nscf, fermi-7.0, Epad=3.0)
 
 @test job["wanup"][:dis_froz_max] == 13.2921
 @test job["wanup"][:dis_win_max] == 16.292099999999998

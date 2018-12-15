@@ -12,6 +12,7 @@ module DFControl
     struct Wannier90 <: Package end
     struct QE <: Package end
     struct Abinit <: Package end
+    export QE, Wannier90, Abinit
 
     const depsdir = joinpath(dirname(@__DIR__), "deps")
 

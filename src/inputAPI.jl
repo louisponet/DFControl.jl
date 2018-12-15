@@ -191,6 +191,23 @@ function readbands(input::DFInput)
     end
 end
 
+"""
+    setwanenergies!(waninput::DFInput{Wannier90}, structure::AbstractStructure, nscf::DFInput , Emin::Real; Epad=5.0)
+
+Automatically calculates and sets the wannier energies. This uses the projections,
+`Emin` and the output of the nscf calculation to infer the other limits.
+`Epad` allows one to specify the padding around the inner and outer energy windows
+"""
+function setwanenergies!(input::DFInput{Wannier90}, structure::AbstractStructure, nscf::DFInput, Emin::Real; Epad=5.0)
+    nscfassertions(nscf)
+    nbnd = nprojections(structure)
+    print && (@info "num_bands=$nbnd (inferred from provided projections).")
+    bands = readbands(nscf)
+    winmin, frozmin, frozmax, winmax = wanenergyranges(Emin, nbnd, bands, Epad)
+    setflags!(input, :dis_win_min => winmin, :dis_froz_min => frozmin, :dis_froz_max => frozmax, :dis_win_max => winmax, :num_wann => nbnd, :num_bands=>length(bands))
+    return input
+end
+
 #-------- Generating new DFInputs ---------- #
 
 function input_from_kpoints(template::DFInput, newname, kpoints, newflags...)
@@ -224,3 +241,76 @@ Searches for the given template and creates an nscf calculation from it.
 """
 gencalc_nscf(template::DFInput, kpoints::NTuple{3, Int}, newflags...; name="nscf") =
     input_from_kpoints(template, name, kpoints, :calculation => "nscf", newflags...)
+
+
+"""
+    gencalc_wan(structure::AbstractStructure, nscf::DFInput{QE}, Emin, projections...;
+                Epad     = 5.0,
+                wanflags = nothing,
+                wanexec  = Exec("wannier90.x", ""))
+
+Generates a Wannier90 input from the supplied Structure, Emin, nscf calculation and projections.
+The nscf needs to have an output because it will be used to find the energy range
+for the frozen window of the Wannier90 calculation.
+Currently only works with QE.
+"""
+function gencalc_wan(structure::AbstractStructure, nscf::DFInput{QE}, Emin, projections...;
+                     Epad     = 5.0,
+                     wanflags = nothing,
+                     wanexec  = Exec("wannier90.x", ""))
+
+    nscfassertions(nscf)
+    if isspincalc(nscf)
+        wannames = ["wanup", "wandn"]
+        @info "Spin polarized calculation found (inferred from nscf input)."
+    else
+        wannames = ["wan"]
+    end
+
+    if flag(nscf, :nosym) != true
+        @info "'nosym' flag was not set in the nscf calculation.\n
+                If this was not intended please set it and rerun the nscf calculation.\n
+                This generally gives errors because of omitted kpoints, needed for pw2wannier90.x"
+    end
+
+    setprojections!(structure, projections...)
+    nbnd = nprojections(structure)
+    @info "num_bands=$nbnd (inferred from provided projections)."
+
+    bands = readbands(nscf)
+    wanflags = wanflags != nothing ? SymAnyDict(wanflags) : SymAnyDict()
+    wanflags[:dis_win_min], wanflags[:dis_froz_min], wanflags[:dis_froz_max], wanflags[:dis_win_max] = wanenergyranges(Emin, nbnd, bands, Epad)
+
+    wanflags[:num_bands] = length(bands)
+    wanflags[:num_wann]  = nbnd
+    kpoints = data(nscf, :k_points).data
+    wanflags[:mp_grid] = kakbkc(kpoints)
+    wanflags[:preprocess] = true
+    @info "mp_grid=$(join(wanflags[:mp_grid]," ")) (inferred from nscf input)."
+
+    kdata = InputData(:kpoints, :none, [k[1:3] for k in kpoints])
+
+    waninputs = DFInput{Wannier90}[]
+    for  wanfil in wannames
+        push!(waninputs, DFInput{Wannier90}(wanfil, dir(nscf), copy(wanflags), [kdata], [Exec(), wanexec], true))
+    end
+
+    if length(waninputs) > 1
+        setflags!(waninputs[1], :spin => "up")
+        setflags!(waninputs[2], :spin => "down")
+    end
+    return waninputs
+end
+
+"""
+    gencalc_wan(structure::AbstractStructure, nscf::DFInput, projwfc::DFInput, threshold::Real, projections...; kwargs...)
+
+Generates a wannier calculation. Instead of passing Emin manually, the output of a projwfc.x run
+can be used together with a `threshold` to determine the minimum energy such that the contribution of the
+projections to the DOS is above the `threshold`.
+"""
+function gencalc_wan(structure::AbstractStructure, nscf::DFInput, projwfc::DFInput, threshold::Real, projections::Pair...; kwargs...)
+    @assert hasoutfile(projwfc) @error "Please provide a projwfc Input that has an output file."
+    Emin = Emin_from_projwfc(structure, outpath(projwfc), threshold, projections...)
+    gencalc_wan(structure, nscf, Emin, projections...; kwargs...)
+end
