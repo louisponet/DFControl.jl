@@ -41,15 +41,15 @@ job = DFJob(name, local_dir, joinpath(testjobpath, "Pt.cif"), calculations,
 
 save(job)
 show(job)
-@test data(job, "scf", :k_points).data == [6, 6, 6, 1, 1, 1]
+@test data(job["scf"], :k_points).data == [6, 6, 6, 1, 1, 1]
 @test data(job, "nscf", :k_points).data == DFControl.kgrid(10, 10, 10, :nscf)
 
-@test flag(job, "scf", :prefix) == flag(job, "nscf", :prefix) == "$name"
-@test flag(job, "bands", :verbosity) == "high"
+@test job["scf"][:prefix] == job["nscf"][:prefix] == "$name"
+@test job["bands"][:verbosity] == "high"
 
 setflags!(job, :prefix => "blabla", print=false)
-@test flag(job, "scf", :prefix) == flag(job, "nscf", :prefix) == "blabla"
+@test job["scf"][:prefix] == job["nscf"][:prefix] == "blabla"
 setflags!(job, :Hubbard_U => [4], print=false)
 setflags!(job, :Hubbard_J => [4 4 5], print=false)
-@test flag(job, "scf", :Hubbard_U) == flag(job, "nscf", :Hubbard_U) == [4.0]
-@test flag(job, "scf", :Hubbard_J) == flag(job, "nscf", :Hubbard_J) == [4.0  4.0  5.0]
+@test job["scf"][:Hubbard_U] == job["nscf"][:Hubbard_U] == [4.0]
+@test job["scf"][:Hubbard_J] == job["nscf"][:Hubbard_J] == [4.0  4.0  5.0]

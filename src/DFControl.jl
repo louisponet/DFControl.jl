@@ -18,60 +18,21 @@ module DFControl
     include("atom.jl")
     include("structure.jl")
     include("types.jl")
-    export kpoints
 
     include("input.jl")
     include("utils.jl")
-    export kgrid
     include("job.jl")
 
     export DFJob, Exec, DFInput
-    export flag, setflags!, rmflags!,
-           data, setdata!,
-           cell, setcell!,
-           setflow!,
-           execs, setexecflags!, setexecdir!, rmexecflags!,
-           input, inputs,
-           inpath, outpath, setname!, setkpoints!, setdataoption!, setpseudos!, setcutoffs!,
-           atoms, atom, setatoms!, setprojections!, projections,
-           addwancalc!, addcalc!,
-           setwanenergies!,
-           outputdata,
-
-           setheaderword!, setserverdir!, setlocaldir!,
-           save, submit, abort, isrunning, progressreport,
-           undo, undo!
+    include("API.jl")
 
     include("constants.jl")
-    export qe_input_flags
 
     include("fileio.jl")
-    # export read_abi_input
-    export read_abi_output
-    # export read_abi_fatbands
-    export read_abi_ebands
-    # export read_abi_eig
-    export read_qe_bands_file
-    export read_ks_from_qe_output
-    export read_fermi_from_qe_output
-    export read_qe_kpdos
-    export read_qe_pdos
-    export read_qe_polarization
-    export read_qe_input
-    export read_qe_output
-    export read_qe_projwfc
-    export read_wannier_input
-    export read_wannier_output
-    export readbands
-
     include("plotting.jl")
 
     include("server.jl")
-    export pulloutputs
-    export pullfile
-    export pullfiles
     export qstat
-    export watch_qstat
 
     include("defaults.jl")
     export setdefault_pseudodir

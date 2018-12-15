@@ -17,13 +17,13 @@ nscf2 = DFInput(nscf, "nscf2", data=[:testdata => (:testoption, "test"), :k_poin
 @test data(nscf2, :testdata).name   == :testdata
 @test data(nscf2, :k_points).option == :blabla
 @test data(nscf2, :k_points).data   == [1,1,1,1,1,1]
-@test job["scf"][:k_points].option == :automatic
+@test data(job["scf"], :k_points).option == :automatic
 @test_throws ErrorException job["bladbsflk"]
-@test_throws ErrorException job["nscf"][:bladkfj]
+@test_throws ErrorException nscf2[:bladkfj]
 
 
 setkpoints!(nscf2, (3,3,3), print=false)
-@test data(nscf2, :k_points).data  == kgrid(3, 3, 3, :nscf)
+@test data(nscf2, :k_points).data  == DFControl.kgrid(3, 3, 3, :nscf)
 
 
 setkpoints!(nscf2, [(3.,3.,3.,1.), (3.,3.,3.,1.)], print=false)
@@ -34,23 +34,22 @@ setkpoints!(nscf2, (3,3,3,0,0,1), print=false)
 @test data(nscf2, :k_points).option  == :automatic
 @test data(nscf2, :k_points).data  == [3,3,3,0,0,1]
 
-fermi = read_qe_output(outpath(job, "nscf"))[:fermi]
-@test fermi == read_fermi_from_qe_output(joinpath(job.local_dir, "nscf.out"))
+fermi = outputdata(job, "nscf")[:fermi]
+@test fermi == 17.4572
 
-addcalc!(job, "bands", [(0.5,0.0,0.5,10.0),(0.0,0.0,0.0,10.0),(0.5,0.5,0.5,1.0)], name="bands2")
-@test flag(job, "bands2", :calculation) == "bands"
+push!(job, gencalc_bands(job["bands"], [(0.5,0.0,0.5,10.0),(0.0,0.0,0.0,10.0),(0.5,0.5,0.5,1.0)], name="bands2"))
+@test job["bands2"][:calculation] == "bands"
 @test data(job, "bands2", :k_points).data == [(0.5,0.0,0.5,10.0),(0.0,0.0,0.0,10.0),(0.5,0.5,0.5,1.0)]
-addcalc!(job, "nscf", (10,10,10), name="nscf2")
-@test flag(job, "nscf2", :calculation) == "nscf"
-addcalc!(job, "scf", (5,5,5,1,1,1), name="1scf2")
-@test flag(job, "1scf2", :calculation) == "scf"
-@test job["nscf2"][:calculation] == flag(job, "nscf2", :calculation)
+push!(job, gencalc_nscf(job["nscf"], (10,10,10), name="nscf2"))
+@test job["nscf2"][:calculation] == "nscf"
+push!(job, gencalc_scf(job["scf"], (5,5,5,1,1,1), name="1scf2"))
+@test job["1scf2"][:calculation] == "scf"
 
 
 wanflags = [:write_hr => true, :wannier_plot => true]
 
 addwancalc!(job, "nscf",fermi-7.0, :Pt => [:s, :p, :d], Epad=5.0, wanflags=wanflags, print=false)
-@test flag(job, "wan", :write_hr) == flag(job, "wan", :wannier_plot) == true
+@test job["wan"][:write_hr] == job["wan"][:wannier_plot] == true
 
 wanout = outputdata(job, "wan")
 @test length(wanout[:final_state]) == 20
@@ -58,7 +57,7 @@ wanout = outputdata(job, "wan")
 job.inputs = job.inputs[1:4]
 
 setflags!(job, :nspin => 2, print=false)
-@test flag(job, "nscf", :nspin) == 2
+@test job["nscf"][:nspin] == 2
 job["nscf"][:nspin] = 3
 @test job["nscf"][:nspin] == 3
 
@@ -82,7 +81,6 @@ setflow!(job, ""=>false)
 setflow!(job, "nscf" => true, "bands" => true)
 @test job.inputs[3].run
 
-@test inputs(job,["nscf"]) == inputs(job, "nscf")
 
 save(job)
 job2 = DFJob(local_dir)
@@ -108,7 +106,7 @@ end
 
 job3 = DFJob(job2, :lspinorb => true)
 @test all(atoms(job3).==atoms(job2))
-@test flag(job3, :lspinorb)
+@test length(job3[:lspinorb]) == length(filter(x->DFControl.package(x) == DFControl.QE, job3.inputs))
 rmflags!(job3, :lspinorb, print=false)
 
 begin
@@ -137,10 +135,10 @@ setpseudos!(job, "pseudos", :Pt => "Pt.UPF")
 testorbs = [:s, :p]
 setprojections!(job, :Pt => testorbs)
 @test convert.(Symbol, [p.orb for p in projections(job, :Pt)]) == testorbs
-setwanenergies!(job, read_qe_bands_file(outpath(nscf)), fermi-7.0,  Epad=3.0, print=false)
+setwanenergies!(job, readbands(nscf), fermi-7.0,  Epad=3.0, print=false)
 
-@test flag(job, :dis_froz_max) == 13.2921
-@test flag(job, :dis_win_max) == 16.292099999999998
+@test job["wanup"][:dis_froz_max] == 13.2921
+@test job["wanup"][:dis_win_max] == 16.292099999999998
 
 setexecflags!(job, "pw.x", :nk => 230)
 @test DFControl.getfirst(x->x.symbol==:nk, execs(job, "nscf")[2].flags).value == 230
@@ -151,7 +149,7 @@ setexecdir!(job, "pw.x", joinpath(homedir(), "bin"))
 @test execs(job, "nscf")[2].dir == joinpath(homedir(), "bin")
 
 setname!(job, "nscf", "test")
-@test inpath(job, "test") == joinpath(job.local_dir, "test.in")
+@test DFControl.inpath(job, "test") == joinpath(job.local_dir, "test.in")
 setname!(job, "test", "nscf")
 
 setserverdir!(job, "localhost")
@@ -160,17 +158,11 @@ setserverdir!(job, "localhost")
 setheaderword!(job, "defpart", "frontend", print=false)
 @test any(occursin.("frontend",job.header))
 
-undo!(job)
-@test any(occursin.("defpart", job.header))
-
-
 setdataoption!(job, "nscf",:k_points, :blabla, print=false)
 @test data(job, "nscf", :k_points).option == :blabla
 setdataoption!(job, :k_points, :test, print=false)
 @test data(job, "nscf", :k_points).option == :test
 
-job = undo(job)
-@test data(job, "nscf", :k_points).option == :blabla
 
 report = progressreport(job; onlynew=false, print=false)
 @test report[:fermi] == 17.4572
@@ -179,8 +171,8 @@ newatompos = outputdata(job, "vc_relax", onlynew=false)[:final_structure]
 job.structure = newatompos
 
 
-rm.(inpath.(job.inputs))
+rm.(DFControl.inpath.(job.inputs))
 
-rm(joinpath(splitdir(inpath(job.inputs[1]))[1], "pw2wan_wanup.in"))
-rm(joinpath(splitdir(inpath(job.inputs[1]))[1], "pw2wan_wandn.in"))
+rm(joinpath(splitdir(DFControl.inpath(job.inputs[1]))[1], "pw2wan_wanup.in"))
+rm(joinpath(splitdir(DFControl.inpath(job.inputs[1]))[1], "pw2wan_wandn.in"))
 rm(joinpath(job.local_dir, "job.tt"))

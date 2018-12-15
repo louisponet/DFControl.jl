@@ -166,6 +166,32 @@ function mkserverdir(server, dir)
 end
 
 """
+    pulljob(server::String, server_dir::String, local_dir::String; job_fuzzy="*job*")
+
+Pulls job from server. If no specific inputs are supplied it pulls all .in and .tt files.
+"""
+function pulljob(server::String, server_dir::String, local_dir::String; job_fuzzy="*job*")
+    server_dir = server_dir
+    local_dir  = local_dir
+    if !ispath(local_dir)
+        mkpath(local_dir)
+    end
+
+    pull_server_file(filename) = pullfile(server, server_dir, local_dir, filename)
+    pull_server_file(job_fuzzy)
+    job_file = searchdir(local_dir, strip(job_fuzzy, '*'))[1]
+
+    if job_file != nothing
+        input_files, output_files = read_job_filenames(joinpath(local_dir, job_file))
+        for file in input_files
+            pull_server_file(file)
+        end
+    end
+end
+
+pulljob(args...; kwargs...) = pulljob(getdefault_server(), args..., kwargs...)
+
+"""
     push(job::DFJob)
 
 Pushes a DFJob from it's local directory to its server side directory.

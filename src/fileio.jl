@@ -415,10 +415,7 @@ function writeabortfile(job::DFJob, input::DFInput{QE})
     open(abortpath, "w") do f
         write(f, " \n")
     end
-    while ispath(abortpath)
-        continue
-    end
-    qdel(job)
+    return abortpath
 end
 
 function read_cutoffs_from_pseudofile(file::AbstractString)

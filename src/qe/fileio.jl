@@ -315,6 +315,30 @@ function read_qe_projwfc(filename::String)
     return states, bands
 end
 
+function Emin_from_projwfc(job::DFJob, projwfc::String, threshold::Number, projections::Pair...)
+    states, bands = read_qe_projwfc(projwfc)
+    mask = zeros(length(states))
+    for (atsym, projs) in projections
+        atids = findall(x -> x.id == atsym, atoms(job))
+        stateids = Int[]
+        for proj in projs
+            orb = orbital(proj)
+            push!.((stateids,), findall(x -> x.atom_id ∈ atids && x.l == orb.l, states))
+        end
+        mask[stateids] .= 1.0
+    end
+    Emin = 0.0
+    for b in bands
+        ψ = mean(b.extra[:ψ])
+        tot_relevant_occupation = dot(mask, ψ)
+        if tot_relevant_occupation > threshold
+            Emin = minimum(b.eigvals)
+            break
+        end
+    end
+    return Emin
+end
+
 """
     read_qe_polarization(filename::String, T=Float64)
 
