@@ -162,3 +162,8 @@ function parse_block(f, types...; to_strip=',')
     end
     return output
 end
+
+
+yesterday() = today() - Day(1)
+lastweek()  = today() - Week(1)
+lastmonth() = today() - Month(1)

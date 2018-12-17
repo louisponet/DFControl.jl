@@ -205,12 +205,12 @@ function push(job::DFJob)
     scp("job.tt")
 end
 
-function slurm_history_jobdir(startdate::AbstractString) #format of startdate = yyyy-mm-dd
-    history = reverse(split(read(`sacct --starttime $startdate --format=Workdir%30`, String), "\n"))
-    output = []
+function slurm_history_jobdir(startdate) #format of startdate = yyyy-mm-dd
+    history = strip.(reverse(split(read(`sacct --starttime $startdate --format=Workdir%100`, String), "\n")))
+    output = String[]
     for h in history
-        if h ∉ output
-            push!(h, output)
+        if h ∉ output && ispath(h)
+            push!(output, h)
         end
     end
     return reverse(output)

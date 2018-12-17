@@ -2,6 +2,7 @@ module DFControl
     using LinearAlgebra
     using Statistics
     using Media
+    using Dates
     import Base.Iterators.flatten
     using RecipesBase
     include("FixedSizeArrays.jl")
@@ -22,6 +23,8 @@ module DFControl
 
     include("input.jl")
     include("utils.jl")
+    export yesterday, lastweek, lastmonth
+    
     include("job.jl")
 
     export DFJob, Exec, DFInput
