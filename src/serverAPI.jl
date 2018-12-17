@@ -29,7 +29,7 @@ function slurm_history_jobdir(startdate=yesterday()) #format of startdate = yyyy
             push!(output, h)
         end
     end
-    return reverse(output)
+    return output
 end
 
 """
@@ -76,3 +76,22 @@ function slurm_isrunning(job::DFJob)
         return false
     end
 end
+
+
+"""
+    slurm_mostrecent(jobfile="job.tt", startdate=lastmonth(), args...; kwargs...)
+
+Returns whether the most recent job with job script `jobfile`.
+Extra args and kwargs will be passed to the `DFJob` constructor.
+"""
+function slurm_mostrecent(jobfile="job.tt", startdate=lastmonth(), args...; kwargs...)
+    dirs = slurm_history_jobdir(stardate)
+    for d in dirs
+        if ispath(joinpath(d, jobfile))
+            return DFJob(d, args...; job_fuzzy=jobfile, kwargs...)
+        end
+    end
+end
+
+
+    

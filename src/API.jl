@@ -24,4 +24,4 @@ include("serverAPI.jl")
 export qstat, watch_qstat
 
 #Slurm interactions
-export slurm_history_jobdir, slurm_jobid, slurm_isrunning
+export slurm_history_jobdir, slurm_jobid, slurm_isrunning, slurm_mostrecent
