@@ -13,7 +13,19 @@ if !ispath(abspath(first(DEPOT_PATH), "config","DFControl", "user_defaults.jl"))
 end
 
 relpath = x -> joinpath(@__DIR__, x)
+
 pythonpath = relpath("python2")
+prevpythfound = false
+package_basepath = joinpath(@__DIR__, "../../")
+for d in readdir(package_basepath)
+    test_pythonpath = joinpath(d, "deps/python2/")
+    if ispath(test_pythonpath)
+        @info "Previous python2 found at $test_pythonpath."
+        cp(test_pythonpath, pythonpath)
+        prevpythonfound = true
+    end
+end
+
 if !ispath(pythonpath)
     mkdir(pythonpath)
     dlpath = relpath("downloads")
