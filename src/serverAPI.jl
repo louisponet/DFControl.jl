@@ -53,6 +53,8 @@ function slurm_jobid(job::DFJob, startdate=yesterday())
     if id_ == -1
         @info "Job in directory $(job.local_dir) was not found in the slurm jobs since
         $startdate"
+    else
+        job.metadata[:slurmid] = id_
     end
     return id_
 end
