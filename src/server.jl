@@ -205,7 +205,13 @@ function push(job::DFJob)
     scp("job.tt")
 end
 
-function slurm_history_jobdir(startdate) #format of startdate = yyyy-mm-dd
+"""
+    slurm_history_jobdir(stardate=yesterday())
+
+Returns the unique job directories of the jobs that ran since the `startdate`.
+Startdate should be printed in following format: yyyy-mm-dd.
+"""
+function slurm_history_jobdir(startdate=yesterday()) #format of startdate = yyyy-mm-dd
     history = strip.(reverse(split(read(`sacct --starttime $startdate --format=Workdir%100`, String), "\n")))
     output = String[]
     for h in history
