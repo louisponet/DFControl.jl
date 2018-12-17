@@ -48,9 +48,6 @@ function abort(job::DFJob)
         end
         qdel(job)
     else
-        if !haskey(job.metadata, :slurmid)
-            error("No slurm id found for this job.")
-        end
         qdel(job)
     end
 end
