@@ -8,6 +8,7 @@ out = outputdata(job;print=false,onlynew=false);
 @test haskey(out, "nscf")
 @test haskey(out["nscf"], :fermi)
 
+@test isconverged(job["scf"])
 nscf = DFControl.input(job, "nscf")
 show(nscf)
 nscf2 = DFInput(nscf, "nscf2", data=[:testdata => (:testoption, "test"), :k_points => (:blabla, [1,1,1,1,1,1])])

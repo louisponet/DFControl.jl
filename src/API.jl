@@ -4,7 +4,7 @@ export flag, setflags!, rmflags!, data, setdata!, setdataoption!, exec, execs,
        setexecflags!, rmexecflags!, setexecdir!, runcommand, outputdata
 
 #Extended Interaction with DFInputs
-export setkpoints!, readbands, setwanenergies!
+export setkpoints!, readbands, setwanenergies!, isconverged
 
 #generating new DFInputs
 export gencalc_scf, gencalc_nscf, gencalc_bands, gencalc_wan

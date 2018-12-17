@@ -366,7 +366,8 @@ end
 
 
 function setwanenergies!(job::DFJob, nscf::DFInput{QE}, Emin::Real; Epad=5.0)
-    nscfassertions(nscf)
+    hasoutput_assert(nscf)
+    iscalc_assert(nscf, "nscf")
     bands = readbands(nscf)
     wancalcs = searchinputs(job, Wannier90)
     @assert length(wancalcs) != 0 "Job ($(job.name)) has no Wannier90 calculations, nothing to do."

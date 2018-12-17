@@ -190,7 +190,7 @@ end
 
 "Checks the last created output file for a certain job."
 function runninginput(job::DFJob)
-    @assert job.server = "localhost" "Intended use for now is locally."
+    @assert job.server == "localhost" "Intended use for now is locally."
     t = mtime(scriptpath(job))
     for i in reverse(inputs(job))
         p = outpath(i)

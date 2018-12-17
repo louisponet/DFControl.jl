@@ -158,7 +158,7 @@ function read_qe_output(filename::String, T=Float64)
                 end
             elseif occursin("convergence NOT achieved", line)
                 out[:converged] = false
-            elseif occusin("convergence has been achieved", line)
+            elseif occursin("convergence has been achieved", line)
                 out[:converged] = true
             end
         end
