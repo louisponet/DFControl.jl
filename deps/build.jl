@@ -19,6 +19,7 @@ prevpythfound = false
 package_basepath = joinpath(@__DIR__, "../../")
 for d in readdir(package_basepath)
     test_pythonpath = joinpath(d, "deps/python2/")
+    println(test_pythonpath)
     if ispath(test_pythonpath)
         @info "Previous python2 found at $test_pythonpath."
         cp(test_pythonpath, pythonpath)
