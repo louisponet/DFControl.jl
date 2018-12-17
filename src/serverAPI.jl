@@ -42,7 +42,7 @@ function slurm_jobid(job::DFJob, startdate=yesterday())
     if haskey(job.metadata, :slurmid)
         return job.metadata[:slurmid]
     end
-    id_dir = split.(slurm_process_command(`sacct --starttime $startdate --format=JobID,Workdir%100`))
+    id_dir = filter(x->length(x) ==2, split.(slurm_process_command(`sacct --starttime $startdate --format=JobID,Workdir%100`)))
     id_ = -1
     for (id, dir) in id_dir
         if dir == job.local_dir
