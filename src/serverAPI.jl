@@ -21,7 +21,6 @@ Returns the unique job directories of the jobs that ran since the `startdate`.
 Startdate should be printed in following format: yyyy-mm-dd.
 """
 function slurm_history_jobdir(startdate=yesterday()) #format of startdate = yyyy-mm-dd
-    runslocal_assert(job)
     history = slurm_process_command(`sacct --starttime $startdate --format=Workdir%100`)
     output = String[]
     for h in history
