@@ -85,13 +85,10 @@ Returns whether the most recent job with job script `jobfile`.
 Extra args and kwargs will be passed to the `DFJob` constructor.
 """
 function slurm_mostrecent(jobfile="job.tt", startdate=lastmonth(), args...; kwargs...)
-    dirs = slurm_history_jobdir(stardate)
+    dirs = slurm_history_jobdir(startdate)
     for d in dirs
         if ispath(joinpath(d, jobfile))
             return DFJob(d, args...; job_fuzzy=jobfile, kwargs...)
         end
     end
 end
-
-
-    
