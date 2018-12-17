@@ -19,3 +19,9 @@ export searchinput, searchinputs, setcutoffs!, setname!
 
 #Interacting with the Structure inside DFJob
 export atom, atoms, setatoms!, setpseudos!, projections, setprojections!
+
+include("serverAPI.jl")
+export qstat, watch_qstat
+
+#Slurm interactions
+export slurm_history_jobdir, slurm_jobid, slurm_isrunning

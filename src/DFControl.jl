@@ -24,20 +24,17 @@ module DFControl
     include("input.jl")
     include("utils.jl")
     export yesterday, lastweek, lastmonth
-    
+
     include("job.jl")
 
     export DFJob, Exec, DFInput
+    include("server.jl")
     include("API.jl")
 
     include("constants.jl")
 
     include("fileio.jl")
     include("plotting.jl")
-
-    include("server.jl")
-    export qstat
-    export slurm_history_jobdir
 
     include("defaults.jl")
     export setdefault_pseudodir

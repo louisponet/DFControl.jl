@@ -89,24 +89,6 @@ function setheaderword!(job::DFJob, word::String, new_word::String; print=true)
     end
     return job
 end
-
-function isrunning(job::DFJob)
-    @assert haskey(job.metadata, :slurmid) error("No slurmid found for job $(job.name)")
-    cmd = `qstat -f $(job.metadata[:slurmid])`
-    if runslocal(job)
-        str = read(cmd, String)
-    else
-        str = sshreadstring(job.server, cmd)
-    end
-    isempty(str) && return false
-    splstr = split(str)
-    for (i,s) in enumerate(splstr)
-        if s=="job_state"
-            return any(splstr[i+2] .== ["Q","R"])
-        end
-    end
-end
-
 function progressreport(job::DFJob; kwargs...)
     dat = outputdata(job; kwargs...)
     plotdat = SymAnyDict(:fermi=>0.0)
