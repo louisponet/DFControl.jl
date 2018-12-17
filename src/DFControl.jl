@@ -34,6 +34,7 @@ module DFControl
 
     include("server.jl")
     export qstat
+    export slurm_history_jobdir
 
     include("defaults.jl")
     export setdefault_pseudodir

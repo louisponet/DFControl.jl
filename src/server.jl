@@ -204,3 +204,14 @@ function push(job::DFJob)
     end
     scp("job.tt")
 end
+
+function slurm_history_jobdir(startdate::AbstractString) #format of startdate = yyyy-mm-dd
+    history = reverse(split(read(`sacct --starttime $startdate --format=Workdir%30`, String), "\n"))
+    output = []
+    for h in history
+        if h ∉ output
+            push!(h, output)
+        end
+    end
+    return reverse(output)
+end
