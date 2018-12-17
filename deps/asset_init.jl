@@ -168,7 +168,7 @@ function write_qe_variable(wf, indent, lines, i)
         else
             typ
         end
-    description = replace(replace(replace(description, "\"" => "'"), "\\" => "\\\\"), "\$" => "\\\$")
+    description = replace(replace(replace(replace(replace(description, "\"" => "'"), "\\" => "\\\\"), "\$" => "\\\$"), "\\\\t" => "\\t"), "\\\\n" => "\\n")
     if occursin("Variables", line)
         spl = [split(x,"(")[1] for x in strip.(filter(x -> !occursin("=", x), split(line)[2:end]), ',')]
         names = Symbol.(spl)
