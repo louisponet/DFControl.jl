@@ -23,6 +23,7 @@ for d in readdir(package_basepath)
         @info "Previous python2 found at $test_pythonpath."
         cp(test_pythonpath, pythonpath)
         prevpythonfound = true
+        break
     end
 end
 
