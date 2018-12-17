@@ -54,7 +54,7 @@ function slurm_jobid(job::DFJob, startdate=yesterday())
         @info "Job in directory $(job.local_dir) was not found in the slurm jobs since
         $startdate"
     end
-    return id
+    return id_
 end
 
 """
