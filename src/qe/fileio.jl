@@ -23,6 +23,7 @@ Possible keys:
  - `:colin_mag_moments`
  - `:bands`
  - `:accuracy`
+ - `:converged`
 """
 function read_qe_output(filename::String, T=Float64)
     out = Dict{Symbol,Any}()
@@ -155,6 +156,10 @@ function read_qe_output(filename::String, T=Float64)
                 else
                     out[key] = [acc]
                 end
+            elseif occursin("convergence NOT achieved", line)
+                out[:converged] = false
+            elseif occusin("convergence has been achieved", line)
+                out[:converged] = true
             end
         end
 

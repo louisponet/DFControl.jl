@@ -149,7 +149,10 @@ setcutoffs!(input::DFInput, args...) = @warn "Setting cutoffs is not implemented
 setcutoffs!(input::DFInput{QE}, ecutwfc, ecutrho) = setflags!(input, :ecutwfc => ecutwfc, :ecutrho=>ecutrho)
 
 
-function nscfassertions(nscf::DFInput{QE})
-    @assert flag(nscf, :calculation) == "nscf" "Please provide a valid 'nscf' calculation."
-    @assert hasoutput(nscf) "Please specify an nscf input that has an output."
+function iscalc_assert(i::DFInput{QE}, calc)
+    @assert flag(i, :calculation) == calc "Please provide a valid '$calc' calculation."
+end
+
+function hasoutput_assert(i::DFInput)
+    @assert hasoutput(i) "Please specify an input that has an outputfile."
 end

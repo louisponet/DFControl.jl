@@ -199,7 +199,8 @@ Automatically calculates and sets the wannier energies. This uses the projection
 `Epad` allows one to specify the padding around the inner and outer energy windows
 """
 function setwanenergies!(input::DFInput{Wannier90}, structure::AbstractStructure, nscf::DFInput, Emin::Real; Epad=5.0)
-    nscfassertions(nscf)
+    hasoutput_assert(nscf)
+    iscalc_assert(nscf, "nscf")
     nbnd = nprojections(structure)
     print && (@info "num_bands=$nbnd (inferred from provided projections).")
     bands = readbands(nscf)
@@ -259,7 +260,8 @@ function gencalc_wan(structure::AbstractStructure, nscf::DFInput{QE}, Emin, proj
                      wanflags = nothing,
                      wanexec  = Exec("wannier90.x", ""))
 
-    nscfassertions(nscf)
+    hasoutput_assert(nscf)
+    iscalc_assert(nscf, "nscf")
     if isspincalc(nscf)
         wannames = ["wanup", "wandn"]
         @info "Spin polarized calculation found (inferred from nscf input)."
@@ -313,4 +315,15 @@ function gencalc_wan(structure::AbstractStructure, nscf::DFInput, projwfc::DFInp
     @assert hasoutfile(projwfc) @error "Please provide a projwfc Input that has an output file."
     Emin = Emin_from_projwfc(structure, outpath(projwfc), threshold, projections...)
     gencalc_wan(structure, nscf, Emin, projections...; kwargs...)
+end
+
+"""
+    isconverged(input::DFInput{QE})
+
+Returns whether an `scf` calculation was converged.
+"""
+function isconverged(input::DFInput{QE})
+    hasoutput_assert(input)
+    iscalc_assert(input, "scf")
+    return outputdata(input)[:converged]
 end
