@@ -46,10 +46,6 @@ function DFJob(job_name, local_dir, structure::AbstractStructure, calculations::
         common_flags = Dict(common_flags)
     end
     bin_dir = bin_dir
-    req_flags = Dict(:prefix  => "$job_name",
-                     :outdir => "$server_dir",
-                     :ecutwfc => 25.)
-    merge!(req_flags, common_flags)
     for (calc, (excs, data)) in calculations
         calc_ = typeof(calc) == String ? Symbol(calc) : calc
         if in(calc_, [:vc_relax, :relax, :scf])
@@ -82,13 +78,17 @@ function DFJob(job_name, local_dir, structure::AbstractStructure, calculations::
         input_ = DFInput{package}(string(calc_), local_dir,
                          Dict{Symbol, Any}(),
                          datablocks, excs, true)
-        setflags!(input_, req_flags..., print=false)
+        setflags!(input_, common_flags..., print=false) #This could be changed to use suppressor
         setflags!(input_, flags..., print=false)
         push!(job_calcs, input_)
     end
     out = DFJob(job_name, structure, job_calcs, local_dir, server, server_dir, header)
     setatoms!(out, structure.atoms, pseudoset = pseudoset, pseudospecifier= pseudospecifier)
-    return DFJob(job_name, structure, job_calcs, local_dir, server, server_dir, header)
+    if !haskey(common_flags, :ecutwfc)
+        @info "No :ecutwfc specified in the flags, determining minimum cutoff from pseudos."
+        setcutoffs!(out)
+    end
+    return out
 end
 
 function DFJob(job_name, local_dir, ciffile::String, calculations::Vector, args...; kwargs...)

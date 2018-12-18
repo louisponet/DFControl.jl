@@ -28,7 +28,6 @@ calculations = [:vc_relax => (excs, scf_data), :scf => (excs, scf_data), :bands 
 job = DFJob(name, local_dir, joinpath(testjobpath, "Pt.cif"), calculations,
       :prefix       => "$name",
       :restart_mode => "from_scratch",
-      :ecutwfc      => 18.0,
       :mixing_mode  => "plain",
       :mixing_beta  => 0.7,
       :conv_thr     => 1.0e-8,
@@ -43,7 +42,7 @@ save(job)
 show(job)
 @test data(job["scf"], :k_points).data == [6, 6, 6, 1, 1, 1]
 @test data(job, "nscf", :k_points).data == DFControl.kgrid(10, 10, 10, :nscf)
-
+@test all(values(job[:ecutwfc]) .== 32.0)
 @test job["scf"][:prefix] == job["nscf"][:prefix] == "$name"
 @test job["bands"][:verbosity] == "high"
 

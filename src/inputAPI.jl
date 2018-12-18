@@ -270,8 +270,8 @@ function gencalc_wan(structure::AbstractStructure, nscf::DFInput{QE}, Emin, proj
     end
 
     if flag(nscf, :nosym) != true
-        @info "'nosym' flag was not set in the nscf calculation.\n
-                If this was not intended please set it and rerun the nscf calculation.\n
+        @info "'nosym' flag was not set in the nscf calculation.
+                If this was not intended please set it and rerun the nscf calculation.
                 This generally gives errors because of omitted kpoints, needed for pw2wannier90.x"
     end
 
