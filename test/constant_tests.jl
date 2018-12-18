@@ -1,5 +1,5 @@
 using DFControl, Test
-import DFControl: searchdir, QEVariableInfo, QEControlBlockInfo, QEInputInfo, QEDataBlockInfo, qevariable, QEInputInfos
+import DFControl: searchdir, QEFlagInfo, QEControlBlockInfo, QEInputInfo, QEDataBlockInfo, qe_flaginfo, QEInputInfos
 
-@test qevariable(Exec("projwfc.x"), :calculation).typ == Nothing
-@test qevariable(Exec("pw.x"), :calculation).typ == qevariable(:calculation).typ
+@test qe_flaginfo(Exec("projwfc.x"), :calculation).typ == Nothing
+@test qe_flaginfo(Exec("pw.x"), :calculation).typ == qe_flaginfo(:calculation).typ

@@ -121,7 +121,7 @@ function vardim(line)
     return dim
 end
 
-function write_qe_variable(wf, indent, lines, i)
+function qe_write_variable(wf, indent, lines, i)
     name = gensym()
     var_i = i
     i += 2
@@ -173,7 +173,7 @@ function write_qe_variable(wf, indent, lines, i)
         spl = [split(x,"(")[1] for x in strip.(filter(x -> !occursin("=", x), split(line)[2:end]), ',')]
         names = Symbol.(spl)
         for name in names
-            writefbodyline(wf, indent,  """QEVariableInfo{$typ}(Symbol("$name"), "$description"),""")
+            writefbodyline(wf, indent,  """QEFlagInfo{$typ}(Symbol("$name"), "$description"),""")
         end
         return i
     else
@@ -182,7 +182,7 @@ function write_qe_variable(wf, indent, lines, i)
         else
             name = Symbol(strip_split(line,":")[end])
         end
-        writefbodyline(wf, indent, """QEVariableInfo{$typ}(Symbol("$name"), "$description"),""")
+        writefbodyline(wf, indent, """QEFlagInfo{$typ}(Symbol("$name"), "$description"),""")
         return i
     end
 end
@@ -193,7 +193,7 @@ function write_QEControlBlockInfo(wf, indent, lines)
     for i=1:length(lines)
         line = lines[i]
         if occursin("Variable", line)
-            i += write_qe_variable(wf, indent+1, lines, i)
+            i += qe_write_variable(wf, indent+1, lines, i)
         end
     end
     writefbodyline(wf, indent + 1, "]),")
@@ -236,7 +236,7 @@ function write_QEDataBlockInfo(wf, indent, lines)
     while i <= length(lines) - 1
         line = strip(lines[i])
         if occursin("Variable", line)
-            i = write_qe_variable(wf, indent+2, lines, i)
+            i = qe_write_variable(wf, indent+2, lines, i)
         end
         i += 1
     end

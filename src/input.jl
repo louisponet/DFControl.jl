@@ -140,7 +140,7 @@ hasoutput(input::DFInput) = !isempty(outdata(input))
 hasoutfile(input::DFInput) = ispath(outpath(input))
 hasnewout(input::DFInput, time) = mtime(outpath(input)) > time
 
-readoutput(input::DFInput{QE}) = read_qe_output(outpath(input))
+readoutput(input::DFInput{QE}) = qe_read_output(outpath(input))
 readoutput(input::DFInput{Wannier90}) = read_wannier_output(outpath(input))
 
 pseudodir(input::DFInput{QE}) = flag(input, :pseudo_dir)

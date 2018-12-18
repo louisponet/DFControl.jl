@@ -176,7 +176,7 @@ isparseable(exec::Exec) = exec.exec ∈ parseable_execs()
 
 function inputparser(exec::Exec)
     if exec.exec ∈ QEEXECS
-        read_qe_input
+        qe_read_input
     elseif exec.exec ∈ WANEXECS
         read_wannier_input
     end

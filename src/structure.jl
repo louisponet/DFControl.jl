@@ -89,7 +89,7 @@ function cif2structure(cif_file::String; structure_name="NoName")
     @assert splitext(cif_file)[2] == ".cif" error("Please specify a valid cif input file")
     run(`$pythonpath $cif2cellpath $cif_file -p quantum-espresso -o $tmpfile`)
 
-    bla, structure = read_qe_input(tmpfile, structure_name = structure_name)
+    bla, structure = qe_read_input(tmpfile, structure_name = structure_name)
     rm(tmpfile)
     return structure
 end

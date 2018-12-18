@@ -74,13 +74,13 @@ qstat()
 out = pulloutputs(job)
 
 #now the bandstructure can be plotted
-bands = read_qe_output(out[2])[:bands]
+bands = qe_read_output(out[2])[:bands]
 #alt:
-bands = read_qe_bands_file(out[2])
+bands = qe_read_bands_file(out[2])
 
-fermi = read_qe_output(out[1])[:fermi]
+fermi = qe_read_output(out[1])[:fermi]
 #alt:
-fermi = read_fermi_from_qe_output(out[1])
+fermi = qe_read_fermi_from_output(out[1])
 using Plots
 
 plot(bands, fermi=fermi)

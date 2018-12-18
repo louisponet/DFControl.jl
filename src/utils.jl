@@ -31,7 +31,7 @@ Mutatatively applies the fermi level to all eigvals in the band. If fermi is a q
 """
 function apply_fermi_level!(band::Band, fermi::Union{String,AbstractFloat})
     if typeof(fermi) == String
-        fermi = read_fermi_from_qe_output(fermi)
+        fermi = qe_read_fermi_from_output(fermi)
     end
     for i = 1:size(band.eigvals)[1]
         band.eigvals[i] -= fermi
@@ -66,7 +66,7 @@ Applies the fermi level to all eigvals in the band. If fermi is a quantum espres
 function apply_fermi_level(band::Band, fermi)
     T = typeof(band.eigvals[1])
     if typeof(fermi) == String
-        fermi = read_fermi_from_qe_output(fermi)
+        fermi = qe_read_fermi_from_output(fermi)
     end
     out = deepcopy(band)
     for i1 = 1:size(band.eigvals)[1]

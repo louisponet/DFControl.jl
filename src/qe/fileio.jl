@@ -6,7 +6,7 @@ import Base: parse
 cardoption(line) = Symbol(match(r"((?:[a-z][a-z0-9_]*))", split(line)[2]).match)
 
 """
-    read_qe_output(filename::String, T=Float64)
+    qe_read_output(filename::String, T=Float64)
 
 Reads a generic quantum espresso input, returns a dictionary with all found data in the file.
 Possible keys:
@@ -25,7 +25,7 @@ Possible keys:
  - `:accuracy`
  - `:converged`
 """
-function read_qe_output(filename::String, T=Float64)
+function qe_read_output(filename::String, T=Float64)
     out = Dict{Symbol,Any}()
     open(filename, "r") do f
         prefac_k     = nothing
@@ -179,34 +179,34 @@ function read_qe_output(filename::String, T=Float64)
 end
 
 """
-    read_qe_bands(filename::String, T=Float64)
+    qe_read_bands(filename::String, T=Float64)
 
 Reads the output file of a 'bands' calculation in Quantum Espresso.
 Returns an array of DFBands each with the same k_points and their respective energies.
 """
-read_qe_bands_file(filename::String, T=Float64) = read_qe_output(filename, T)[:bands]
+qe_read_bands_file(filename::String, T=Float64) = qe_read_output(filename, T)[:bands]
 
 """
-    read_ks_from_qe_output(filename::String, T=Float64)
+    qe_read_ks_from_output(filename::String, T=Float64)
 
 Read k-points from a Quantum Espresso bands output file in cartesian (2pi/alat in Angstrom^-1!) and crystalline coordinates.
 Returns (k_points_cart,k_points_cryst).
 """
-function read_ks_from_qe_output(filename::String, T=Float64)
-    t = read_qe_output(filename, T)
+function qe_read_ks_from_output(filename::String, T=Float64)
+    t = qe_read_output(filename, T)
     return t[:k_cart], t[:k_cryst]
 end
 
 """
-    read_fermi_from_qe_output(filename::String,T=Float64)
+    qe_read_fermi_from_output(filename::String,T=Float64)
 
 Reads the Fermi level from a Quantum Espresso scf calculation output file
 (if there is one).
 """
-read_fermi_from_qe_output(filename::String, T=Float64) = read_qe_output(filename, T)[:fermi]
+qe_read_fermi_from_output(filename::String, T=Float64) = qe_read_output(filename, T)[:fermi]
 
 """
-    read_qe_kpdos(filename::String,column=1;fermi=0)
+    qe_read_kpdos(filename::String,column=1;fermi=0)
 
 Reads the k_resolved partial density of states from a Quantum Espresso projwfc output file.
 Only use this if the flag kresolveddos=true in the projwfc input file!! The returned matrix can be readily plotted using heatmap() from Plots.jl!
@@ -215,7 +215,7 @@ fermi  = 0 (possible fermi offset of the read energy values)
 Return:         Array{Float64,2}(length(k_points),length(energies)) ,
 (ytickvals,yticks)
 """
-function read_qe_kpdos(filename::String, column=1; fermi=0)
+function qe_read_kpdos(filename::String, column=1; fermi=0)
     read_tmp = readdlm(filename)
     zmat     = zeros(typeof(read_tmp[1]), Int64(read_tmp[end, 1]), size(read_tmp)[1] / Int64(read_tmp[end, 1]))
     for i1 = 1:size(zmat)[1]
@@ -234,11 +234,11 @@ function read_qe_kpdos(filename::String, column=1; fermi=0)
 end
 
 """
-    read_qe_pdos(filename::String, column=1; fermi=0)
+    qe_read_pdos(filename::String, column=1; fermi=0)
 
 Reads partial dos file. One can specify the column of values to read.
 """
-function read_qe_pdos(filename::String, column=1; fermi=0)
+function qe_read_pdos(filename::String, column=1; fermi=0)
     read_tmp = readdlm(filename)
     energies = read_tmp[:,1] .- fermi
     values   = read_tmp[:,1+column]
@@ -247,7 +247,7 @@ function read_qe_pdos(filename::String, column=1; fermi=0)
 end
 
 """
-    read_qe_projwfc(filename::String)
+    qe_read_projwfc(filename::String)
 
 Reads the output file of a projwfc.x calculation.
 Each kpoint will have as many energy dos values as there are bands in the scf/nscf calculation that
@@ -256,7 +256,7 @@ Returns:
     states: [(:atom_id, :wfc_id, :l, :m),...]
     kpdos : kpoint => [(:e, :ψ, :ψ²), ...] where ψ is the coefficient vector in terms of the states.
 """
-function read_qe_projwfc(filename::String)
+function qe_read_projwfc(filename::String)
     lines  = readlines(filename) .|> strip
 
     state_tuple = NamedTuple{(:atom_id, :wfc_id, :l, :m, :s), Tuple{Int, Int, Int, Int, Float64}}
@@ -321,7 +321,7 @@ function read_qe_projwfc(filename::String)
 end
 
 function Emin_from_projwfc(structure::AbstractStructure, projwfc::String, threshold::Number, projections::Pair...)
-    states, bands = read_qe_projwfc(projwfc)
+    states, bands = qe_read_projwfc(projwfc)
     mask = zeros(length(states))
     for (atsym, projs) in projections
         atids = findall(x -> x.id == atsym, atoms(structure))
@@ -345,16 +345,16 @@ function Emin_from_projwfc(structure::AbstractStructure, projwfc::String, thresh
 end
 
 """
-    read_qe_polarization(filename::String, T=Float64)
+    qe_read_polarization(filename::String, T=Float64)
 
 Returns the polarization and modulus.
 """
-function read_qe_polarization(filename::String, T=Float64)
-    t = read_qe_output(filename, T)
+function qe_read_polarization(filename::String, T=Float64)
+    t = qe_read_output(filename, T)
     return t[:polarization], t[:pol_mod]
 end
 
-read_qe_vcrel(filename::String, T=Float64) = read_qe_output(filename, T) do x
+qe_read_vcrel(filename::String, T=Float64) = qe_read_output(filename, T) do x
                                                 return x[:cell_parameters], x[:alat], x[:atomic_positions], x[:pos_option]
                                             end
 
@@ -436,12 +436,12 @@ end
 
 
 """
-    read_qe_input(filename, T=Float64; exec="pw.x",  runcommand="", run=true, structure_name="NoName")
+    qe_read_input(filename, T=Float64; exec="pw.x",  runcommand="", run=true, structure_name="NoName")
 
 Reads a Quantum Espresso input file. The exec get's used to find which flags are allowed in this input file, and convert the read values to the correct Types.
 Returns a `DFInput{QE}` and the `Structure` that is found in the input.
 """
-function read_qe_input(filename; execs=[Exec("pw.x")], run=true, structure_name="noname")
+function qe_read_input(filename; execs=[Exec("pw.x")], run=true, structure_name="noname")
     @assert ispath(filename) "$filename is not a valid path."
     lines = read(filename)               |>
         String                           |>
