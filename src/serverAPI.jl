@@ -80,16 +80,15 @@ end
 
 
 """
-    slurm_mostrecent(jobfile="job.tt", startdate=lastmonth(), args...; kwargs...)
+    slurm_mostrecent(index=1, jobfile="job.tt", startdate=lastmonth(), args...; kwargs...)
 
-Returns whether the most recent job with job script `jobfile`.
+Returns whether the `index`th most recent job with job script `jobfile`.
 Extra args and kwargs will be passed to the `DFJob` constructor.
 """
-function slurm_mostrecent(jobfile="job.tt", startdate=lastmonth(), args...; kwargs...)
+function slurm_mostrecent(index=1, jobfile="job.tt", startdate=lastmonth(), args...; kwargs...)
     dirs = slurm_history_jobdir(startdate)
-    for d in dirs
-        if ispath(joinpath(d, jobfile))
-            return DFJob(d, args...; job_fuzzy=jobfile, kwargs...)
-        end
-    end
+    @assert length(dirs) >= index "There are less recent jobs since startdate $startdate than the index $index."
+    jobpath = joinpath(dirs[index], jobfile)
+    @assert ispath(jobpath) "The directory $(dirs[index]) does not have a job file with filename $jobfile."
+    return DFJob(d, args...; job_fuzzy=jobfile, kwargs...)
 end
