@@ -9,13 +9,11 @@ const QEEXECS = [
 #QE calls these flags
 struct QEFlagInfo{T}
     name::Symbol
-    typ::Type{T}
     # default::Union{T,Nothing,Symbol}  #check again v0.7 Some
     description::String
 end
-QEFlagInfo{T}(name::Symbol, description) where T = QEFlagInfo{T}(name, T, description)
-QEFlagInfo() = QEFlagInfo(:error, Nothing, "")
-
+QEFlagInfo() = QEFlagInfo{Nothing}(:error, "")
+Base.eltype(x::QEFlagInfo{T}) where T = T
 
 abstract type AbstractBlockInfo end
 
@@ -73,7 +71,7 @@ qe_input_flags(exec::AbstractString) = allflags(qe_input_info(exec))
 function qe_flaginfo(input_info::QEInputInfo, variable_name::Symbol)
     for block in vcat(input_info.control, input_info.data)
         var = qe_flaginfo(block, variable_name)
-        if var.typ != Nothing
+        if eltype(var) != Nothing
             return var
         end
     end
@@ -83,7 +81,7 @@ end
 function qe_flaginfo(variable_name::Symbol)
     for info in QEInputInfos
         var = qe_flaginfo(info, variable_name)
-        if var.typ != Nothing
+        if eltype(var) != Nothing
             return var
         end
     end
@@ -93,7 +91,7 @@ end
 function qe_block_variable(input_info::QEInputInfo, variable_name)
     for block in vcat(input_info.control, input_info.data)
         var = qe_flaginfo(block, variable_name)
-        if var.typ != Nothing
+        if eltype(var) != Nothing
             return block, var
         end
     end
@@ -135,5 +133,5 @@ end
 
 qe_block_variable(input::DFInput, flagname) = qe_block_variable(execs(input)[2].exec, flagname)
 
-flagtype(input::DFInput{QE}, flag) = qe_flaginfo(execs(input)[2], flag).typ
-flagtype(::Type{QE}, exec, flag) = qe_flaginfo(exec, flag).typ
+flagtype(input::DFInput{QE}, flag) = eltype(qe_flaginfo(execs(input)[2], flag))
+flagtype(::Type{QE}, exec, flag) = eltype(qe_flaginfo(exec, flag))

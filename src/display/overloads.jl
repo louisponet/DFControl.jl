@@ -1,7 +1,10 @@
 #printing that is not needed in Atom
+import Base: show
+df_show_type(io::IO, ::Type{T}) where T = dfprintln(io, crayon"red", "$T:", crayon"reset")
+df_show_type(io::IO, x) = df_show_type(io, typeof(x))
 
 
-function Base.show(io::IO, block::InputData)
+function show(io::IO, block::InputData)
     s = """Block name: $(block.name)
     Block option: $(block.option)
     Block data:
@@ -10,10 +13,11 @@ function Base.show(io::IO, block::InputData)
     dfprintln(io, string(block.data) * "\n\n")
 end
 
-Base.show(io::IO, data::Vector{InputData}) = map(x-> show(io, x), data)
+show(io::IO, data::Vector{InputData}) = map(x-> show(io, x), data)
 
-function Base.show(io::IO, band::DFBand{T}) where T <: AbstractFloat
-    string = """DFBand{$T}:
+function show(io::IO, band::DFBand{T}) where T <: AbstractFloat
+    df_show_type(io, band)
+    string = """
     k_points of length $(length(band.k_points_cryst)):
     cart:    $(band.k_points_cart[1]) -> $(band.k_points_cart[end])
     cryst:   $(band.k_points_cryst[1]) -> $(band.k_points_cryst[end])
@@ -23,9 +27,9 @@ function Base.show(io::IO, band::DFBand{T}) where T <: AbstractFloat
     dfprintln(io, string)
 end
 
-Base.show(io::IO, bands::Vector{<:DFBand}) = map(x->show(io,x),bands)
+show(io::IO, bands::Vector{<:DFBand}) = map(x->show(io,x),bands)
 
-function Base.show(io::IO, job::DFJob)
+function show(io::IO, job::DFJob)
     reset = crayon"reset"
     fieldns  = [:name, :local_dir, :server, :server_dir]
     fs   = string.(filter(x->!isempty(x), getfield.((job,), fieldns)))
@@ -74,10 +78,10 @@ function Base.show(io::IO, job::DFJob)
     dfprint(io, reset)
 end
 
-Base.show(io::IO, at::AbstractAtom) = dfprintln(io, "$(id(at)): $(position(at)[1]) $(position(at)[2]) $(position(at)[3])")
+show(io::IO, at::AbstractAtom) = dfprintln(io, "$(id(at)): $(position(at)[1]) $(position(at)[2]) $(position(at)[3])")
 
-function Base.show(io::IO, in::DFInput)
-    dfprintln(io, crayon"red", typeof(in), crayon"reset")
+function show(io::IO, in::DFInput)
+    df_show_type(io, in)
     s = """name  = $(in.name)
     dir   = $(in.dir)
     execs = $(join([e.exec for e in in.execs],", "))
@@ -95,4 +99,11 @@ function Base.show(io::IO, in::DFInput)
         dfprint(io, crayon"cyan", "\t$fs", crayon"yellow"," => ", crayon"magenta", "$v\n")
     end
     dfprint(io, crayon"reset")
+end
+
+function show(io::IO, flag_info::QEFlagInfo{T}) where T
+    df_show_type(io, flag_info)
+    dfprintln(io, "name = $(flag_info.name)")
+    dfprintln(io, crayon"cyan", "description:", crayon"reset")
+    dfprint(io, "\t"*replace(flag_info.description, "\n" => "\n\t"))
 end

@@ -145,11 +145,11 @@ function qe_write_variable(wf, indent, lines, i)
         #         end
         #     end
         if occursin("Description", line)
-            description *= strip_split(line,":")[2] * "\n" * indentabs(indent+1)
+            description *= strip_split(line,":")[2] * "\n"
             i += 1
             line = lines[i]
             while !occursin("+------", line)
-                description *= strip(lines[i]) * "\n" * indentabs(indent+1)
+                description *= strip(lines[i]) * "\n"
                 i += 1
                 line = lines[i]
             end
