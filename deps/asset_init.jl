@@ -231,7 +231,6 @@ function write_QEDataBlockInfo(wf, indent, lines)
 
     options_description = replace(options_description, "\"" => "'")
     writefbodyline(wf, indent+1, """QEDataBlockInfo(Symbol("$name"),"$description", $options, "$options_description", [""")
-    # writefbodyline(wf, indent, """QEDataBlockInfo(Symbol("$name"),""")
     i = istop
     while i <= length(lines) - 1
         line = strip(lines[i])
@@ -283,4 +282,13 @@ open(joinpath(@__DIR__, "qeflags.jl"), "w") do wf
         write_QEInputInfo(wf, _f, 1, exec_name)
     end
     write(wf, "]")
+end
+
+open(joinpath(@__DIR__, "abinitflags.jl"), "w") do wf
+    flaglines = split.(readlines(joinpath(@__DIR__,  "..", "assets", "inputs", "abinit", "input_variables.txt")))
+    write(wf, "_ABINITFLAGS() = Dict{Symbol, Type}(\n")
+    for (fl, typ) in flaglines
+        write(wf, "\t:$fl => $typ,\n")
+    end
+    write(wf, ")")
 end

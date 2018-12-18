@@ -35,6 +35,8 @@
 #     return out
 # end
 #
-# const AbinitFlags  = construct_abi_flags()
+
+include(joinpath(depsdir, "abinitflags.jl"))
+const AbinitFlags  = _ABINITFLAGS()
 #
 # flagtype(input::DFInput{Abinit}, flag) = haskey(AbinitFlags, flag) ? AbinitFlags[flag] : Nothing
