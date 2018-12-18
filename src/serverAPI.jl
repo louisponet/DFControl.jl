@@ -90,5 +90,5 @@ function slurm_mostrecent(index=1, jobfile="job.tt", startdate=lastmonth(), args
     @assert length(dirs) >= index "There are less recent jobs since startdate $startdate than the index $index."
     jobpath = joinpath(dirs[index], jobfile)
     @assert ispath(jobpath) "The directory $(dirs[index]) does not have a job file with filename $jobfile."
-    return DFJob(d, args...; job_fuzzy=jobfile, kwargs...)
+    return DFJob(jobpath, args...; job_fuzzy=jobfile, kwargs...)
 end
