@@ -64,7 +64,7 @@ package(::DFInput{P}) where P = P
 data(input::DFInput)  = input.data
 
 execs(input::DFInput) = input.execs
-
+hasexec(input::DFInput, ex::AbstractString) = exec(input, ex) != nothing
 setflow!(input::DFInput, run) = input.run = run
 
 "Runs through all the set flags and checks if they are allowed and set to the correct value"
@@ -148,11 +148,59 @@ pseudodir(input::DFInput{QE}) = flag(input, :pseudo_dir)
 setcutoffs!(input::DFInput, args...) = @warn "Setting cutoffs is not implemented for package $(package(input))"
 setcutoffs!(input::DFInput{QE}, ecutwfc, ecutrho) = setflags!(input, :ecutwfc => ecutwfc, :ecutrho=>ecutrho)
 
+function Emin_from_projwfc(structure::AbstractStructure, projwfc::DFInput{QE}, threshold::Number)
+    hasoutput_assert(projwfc)
+    hasexec_assert(projwfc, "projwfc.x")
+    if !haskey(outdata(projwfc), :states)
+        states, bands = qe_read_projwfc(outpath(projwfc))
+        outdata(projwfc)[:states] = states
+        outdata(projwfc)[:bands]  = bands
+    else
+        states, bands = outdata(projwfc)[:states], outdata(projwfc)[:bands]
+    end
 
+    mask = zeros(length(states))
+    for (atid, at) in enumerate(atoms(structure))
+        projs = projections(at)
+
+        if isempty(projs)
+            continue
+        end
+
+        stateids = Int[]
+        for proj in projs
+            orb = orbital(proj)
+            push!.((stateids,), findall(x -> x.atom_id == atid && x.l == orb.l, states))
+        end
+        mask[stateids] .= 1.0
+
+    end
+    Emin = -10000.0
+    for b in bands
+        ψ = mean(b.extra[:ψ])
+        tot_relevant_occupation = dot(mask, ψ)
+
+        if tot_relevant_occupation > threshold
+            Emin = minimum(b.eigvals)
+            break
+        end
+
+    end
+    if Emin == -10000.0
+        error("Couldn't find any band with occupation of relevant projections above $threshold.")
+    end
+    return Emin
+end
+
+#asserts
 function iscalc_assert(i::DFInput{QE}, calc)
     @assert flag(i, :calculation) == calc "Please provide a valid '$calc' calculation."
 end
 
 function hasoutput_assert(i::DFInput)
     @assert hasoutfile(i) "Please specify an input that has an outputfile."
+end
+
+function hasexec_assert(i::DFInput, exec::String)
+    @assert hasexec(i, exec) "Please specify an input with $exec as it's executable."
 end

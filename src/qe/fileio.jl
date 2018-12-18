@@ -320,29 +320,6 @@ function qe_read_projwfc(filename::String)
     return states, bands
 end
 
-function Emin_from_projwfc(structure::AbstractStructure, projwfc::String, threshold::Number, projections::Pair...)
-    states, bands = qe_read_projwfc(projwfc)
-    mask = zeros(length(states))
-    for (atsym, projs) in projections
-        atids = findall(x -> x.id == atsym, atoms(structure))
-        stateids = Int[]
-        for proj in projs
-            orb = orbital(proj)
-            push!.((stateids,), findall(x -> x.atom_id ∈ atids && x.l == orb.l, states))
-        end
-        mask[stateids] .= 1.0
-    end
-    Emin = 0.0
-    for b in bands
-        ψ = mean(b.extra[:ψ])
-        tot_relevant_occupation = dot(mask, ψ)
-        if tot_relevant_occupation > threshold
-            Emin = minimum(b.eigvals)
-            break
-        end
-    end
-    return Emin
-end
 
 """
     qe_read_polarization(filename::String, T=Float64)

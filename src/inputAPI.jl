@@ -180,14 +180,30 @@ end
 """
     readbands(input::DFInput)
 
-Will try to read bands from the outputfile of the input. Errors when no bands are found
+Tries to read bands from the outputfile of the input.
 """
 function readbands(input::DFInput)
+    hasoutput_assert(input)
     to = readoutput(input)
     if haskey(to, :bands)
         return to[:bands]
     else
         error("No bands found in $(name(input)).")
+    end
+end
+
+"""
+    readfermi(input::DFInput)
+
+Tries to read the fermi level from the outputfile of the input.
+"""
+function readfermi(input::DFInput)
+    hasoutput_assert(input)
+    to = readoutput(input)
+    if haskey(to, :fermi)
+        return to[:fermi]
+    else
+        error("No fermi found in $(name(input)).")
     end
 end
 
@@ -245,7 +261,7 @@ gencalc_nscf(template::DFInput, kpoints::NTuple{3, Int}, newflags...; name="nscf
 
 
 """
-    gencalc_wan(structure::AbstractStructure, nscf::DFInput{QE}, Emin, projections...;
+    gencalc_wan(structure::AbstractStructure, nscf::DFInput{QE}, Emin;
                 Epad     = 5.0,
                 wanflags = nothing,
                 wanexec  = Exec("wannier90.x", ""))
@@ -255,13 +271,14 @@ The nscf needs to have an output because it will be used to find the energy rang
 for the frozen window of the Wannier90 calculation.
 Currently only works with QE.
 """
-function gencalc_wan(structure::AbstractStructure, nscf::DFInput{QE}, Emin, projections...;
+function gencalc_wan(structure::AbstractStructure, nscf::DFInput{QE}, Emin;
                      Epad     = 5.0,
                      wanflags = nothing,
                      wanexec  = Exec("wannier90.x", ""))
 
     hasoutput_assert(nscf)
     iscalc_assert(nscf, "nscf")
+    hasprojections_assert(structure)
     if isspincalc(nscf)
         wannames = ["wanup", "wandn"]
         @info "Spin polarized calculation found (inferred from nscf input)."
@@ -275,7 +292,6 @@ function gencalc_wan(structure::AbstractStructure, nscf::DFInput{QE}, Emin, proj
                 This generally gives errors because of omitted kpoints, needed for pw2wannier90.x"
     end
 
-    setprojections!(structure, projections...)
     nbnd = nprojections(structure)
     @info "num_bands=$nbnd (inferred from provided projections)."
 
@@ -305,16 +321,17 @@ function gencalc_wan(structure::AbstractStructure, nscf::DFInput{QE}, Emin, proj
 end
 
 """
-    gencalc_wan(structure::AbstractStructure, nscf::DFInput, projwfc::DFInput, threshold::Real, projections...; kwargs...)
+    gencalc_wan(structure::AbstractStructure, nscf::DFInput{QE}, projwfc::DFInput{QE}, threshold::Real; kwargs...)
 
 Generates a wannier calculation. Instead of passing Emin manually, the output of a projwfc.x run
 can be used together with a `threshold` to determine the minimum energy such that the contribution of the
 projections to the DOS is above the `threshold`.
 """
-function gencalc_wan(structure::AbstractStructure, nscf::DFInput, projwfc::DFInput, threshold::Real, projections::Pair...; kwargs...)
-    @assert hasoutfile(projwfc) @error "Please provide a projwfc Input that has an output file."
-    Emin = Emin_from_projwfc(structure, outpath(projwfc), threshold, projections...)
-    gencalc_wan(structure, nscf, Emin, projections...; kwargs...)
+function gencalc_wan(structure::AbstractStructure, nscf::DFInput{QE}, projwfc::DFInput{QE}, threshold::Real; kwargs...)
+    hasexec_assert(prowjfc, "projwfc.x")
+    hasoutput_assert(projwfc)
+    Emin = Emin_from_projwfc(structure, projwfc, threshold)
+    gencalc_wan(structure, nscf, Emin; kwargs...)
 end
 
 """

@@ -49,7 +49,8 @@ push!(job, gencalc_scf(job["scf"], (5,5,5,1,1,1), name="1scf2"))
 
 wanflags = [:write_hr => true, :wannier_plot => true]
 
-wancalc = gencalc_wan(structure(job), searchinput(job, "nscf"), fermi-7.0, :Pt => [:s, :p, :d]; Epad=5.0, wanflags=wanflags)
+setprojections!(job, :Pt => [:s, :p, :d])
+wancalc = gencalc_wan(structure(job), searchinput(job, "nscf"), fermi-7.0; Epad=5.0, wanflags=wanflags)
 push!.((job,), wancalc)
 @test job["wan"][:write_hr] == job["wan"][:wannier_plot] == true
 
@@ -74,7 +75,7 @@ job["nscf"][:starting_magnetization] = [[1.0, 2.0, 1.0]]
 
 job["nscf"][:Hubbard_J] = [0 1 2]
 @test job["nscf"][:Hubbard_J] == [0 1 2]
-push!.((job,), gencalc_wan(structure(job), nscf, fermi-7.0, :Pt => [:s, :p, :d], Epad=5.0, wanflags=wanflags))
+push!.((job,), gencalc_wan(structure(job), nscf, fermi-7.0, Epad=5.0, wanflags=wanflags))
 
 #TODO: add test with the new wancalc from projwfc
 

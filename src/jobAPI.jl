@@ -343,10 +343,19 @@ function setcutoffs!(job::DFJob)
     setcutoffs!.(inputs(job), maxecutwfc, maxecutrho)
 end
 
+"""
+    setwanenergies!(job::DFJob, nscf::DFInput{QE}, Emin::Real; Epad=5.0)
 
+Will set the energy window limits correctly according to the projections specified in the
+structure of the job and the specified Emin. The output of `nscf` will be used to determine the
+DOS, and what the size of the frozen window needs to be to fit enough bands inside it,
+depending on the projections.
+"""
 function setwanenergies!(job::DFJob, nscf::DFInput{QE}, Emin::Real; Epad=5.0)
     hasoutput_assert(nscf)
     iscalc_assert(nscf, "nscf")
+    hasprojections_assert(structure(job))
+
     bands = readbands(nscf)
     wancalcs = searchinputs(job, Wannier90)
     @assert length(wancalcs) != 0 "Job ($(job.name)) has no Wannier90 calculations, nothing to do."
@@ -356,6 +365,23 @@ function setwanenergies!(job::DFJob, nscf::DFInput{QE}, Emin::Real; Epad=5.0)
     map(x->setflags!(x, :dis_win_min => winmin, :dis_froz_min => frozmin, :dis_froz_max => frozmax, :dis_win_max => winmax, :num_wann => nbnd, :num_bands=>length(bands)), wancalcs)
     return job
 end
+
+"""
+    setwanenergies!(job::DFJob, nscf::DFInput{QE}, projwfc::DFInput{QE}, threshold::Real; Epad=5.0)
+
+Will set the energy window limits correctly according to the projections specified in the
+structure of the job. The output of `projwfc` and the `threshold` will be used to determine
+the minimum limit of the frozen energy window such that the interesting DOS of inside it exceeds
+the threshold. `nscf` will be used to determine the DOS, and what the upper limit of the frozen window
+needs to be to fit enough bands inside it, depending on the projections.
+"""
+function setwanenergies!(job::DFJob, nscf::DFInput{QE}, projwfc::DFInput{QE}, threshold::Real; Epad=5.0)
+    hasoutput_assert(projwfc)
+    hasexec_assert(projwfc, "projwfc.x")
+    Emin = Emin_from_projwfc(job.structure, projwfc, threshold)
+    setwanenergies!(job, nscf, Emin; Epad=Epad)
+end
+
 #--------------- Interacting with the Structure inside the DFJob ---------------#
 "Returns the ith atom with id `atsym`."
 atom(job::DFJob, atsym::Symbol, i=1) = filter(x -> x.id == atsym, atoms(job))[i]
@@ -411,7 +437,7 @@ end
 "Returns the projections inside the job for the specified `i`th atom in the job with id `atsym`."
 projections(job::DFJob, atsym::Symbol, i=1) = projections(atom(job, atsym, i))
 "Returns all the projections inside the job."
-projections(job::DFJob) = projections.(atoms(job))
+projections(job::DFJob) = projections(structure(job))
 
 """
 sets the projections of the specified atoms inside the job structure.

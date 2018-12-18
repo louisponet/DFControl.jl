@@ -23,11 +23,11 @@ orbsize(orb::Symbol)  = orbsize(orbital(orb))
 @with_kw struct Projection
     orb   ::Orbital = s
     start ::Int = 0
-    size  ::Int = 0
     last  ::Int = 0
 end
 
-orbsize(proj::Projection) = proj.size
+orbital(proj::Projection) = proj.orb
+orbsize(proj::Projection) = orbsize(orbital(proj))
 
 """
 Adds projections to atoms.
@@ -42,7 +42,7 @@ function addprojections!(projections_, atoms)
             for proj in projs
                 if id(at) == proj_at
                     size = orbsize(proj)
-                    t_proj = Projection(orbital(proj), t_start, size, t_start + size - 1)
+                    t_proj = Projection(orbital(proj), t_start, t_start + size - 1)
                     push!(projections(at), t_proj)
                     t_start += size
                 end

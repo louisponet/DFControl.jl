@@ -26,10 +26,20 @@ function atoms(str::AbstractStructure, atsym::Symbol)
 end
 atoms(str::AbstractStructure) = structure(str).atoms
 cell(str::AbstractStructure) = structure(str).cell
+
+projections(str::AbstractStructure) = projections.(atoms(str))
+hasprojections(str::AbstractStructure) = !all(isempty, projections(str))
+hasprojections_assert(str::AbstractStructure) =
+    @assert hasprojections(str) "No projections found in structure $(str.name).
+    Please set the projections for the atoms inside the structure first using `setprojections!`."
+
 """
-sets the projections of the specified atoms.
+    setprojections!(str::Structure, projs::Pair...)
+
+Sets the projections of the specified atoms. `projs` has to be of form `:atsym => [:proj]`,
+where proj = :s, :p, :d, :f, etc.
 """
-function setprojections!(str::Structure, projs...)
+function setprojections!(str::Structure, projs::Pair...)
     projdict = Dict(projs)
     for at in unique(str.atoms)
         if !haskey(projdict, id(at))
