@@ -154,5 +154,5 @@ function iscalc_assert(i::DFInput{QE}, calc)
 end
 
 function hasoutput_assert(i::DFInput)
-    @assert hasoutput(i) "Please specify an input that has an outputfile."
+    @assert hasoutfile(i) "Please specify an input that has an outputfile."
 end
