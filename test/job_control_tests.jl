@@ -173,6 +173,13 @@ report = progressreport(job; onlynew=false, print=false)
 newatompos = outputdata(job, "vc_relax", onlynew=false)[:final_structure]
 job.structure = newatompos
 
+job["nscf"][:occupations] = "smearing"
+job["nscf"][:degauss] = 2.0
+job["nscf"][:smearing] = "mp"
+projwfc = gencalc_projwfc(job["nscf"], -20, 10, 0.05)
+@test projwfc[:Emin] == -20
+@test projwfc[:degauss] == job["nscf"][:degauss]
+@test projwfc[:ngauss] == 1
 
 rm.(DFControl.inpath.(job.inputs))
 
