@@ -21,7 +21,7 @@ orbsize(orb::Orbital) = orb.size
 orbsize(orb::Symbol)  = orbsize(orbital(orb))
 
 @with_kw struct Projection
-    orb   ::Orbital = s
+    orb   ::Orbital = orbitals[1]
     start ::Int = 0
     last  ::Int = 0
 end
