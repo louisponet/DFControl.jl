@@ -1,4 +1,3 @@
-
 #THIS IS THE MOST HORRIBLE FUNCTION I HAVE EVER CREATED!!!
 function extract_atoms(atoms_block::T, proj_block::T, cell) where T <: InputData
     if atoms_block.name == :atoms_cart

@@ -298,10 +298,8 @@ function read_job_inputs(job_file::String)
             if line == ""
                 continue
             end
-            # println(line)
             if occursin(".x ", line)
                 execs, inputfile, output, run = read_job_line(line)
-                println(inputfile)
                 inpath = joinpath(dir, inputfile)
                 if !ispath(inpath)
                     input = (nothing, nothing)

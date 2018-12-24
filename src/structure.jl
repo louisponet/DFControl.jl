@@ -81,11 +81,11 @@ function mergestructures(structures::Vector{<:AbstractStructure})
                     if name in [:id, :element, :position]
                         continue
                     end
-                    field =getfield(at2, name)
+                    field = getfield(at2, name)
                     if field == nothing || isempty(field)
                         continue
                     else
-                        setfield!(at1, name, getfield(at2,name))
+                        setfield!(at1, name, field)
                     end
                 end
             end
