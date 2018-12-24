@@ -25,6 +25,8 @@ function atoms(str::AbstractStructure, atsym::Symbol)
     return out
 end
 atoms(str::AbstractStructure) = structure(str).atoms
+
+Base.length(str::AbstractStructure) = length(atoms(str))
 cell(str::AbstractStructure) = structure(str).cell
 
 projections(str::AbstractStructure) = projections.(atoms(str))

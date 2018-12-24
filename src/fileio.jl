@@ -239,10 +239,13 @@ function read_job_line(line)
     output = spl[end]
     spl = spl[1:end-2]
     exec_and_flags = Pair{String, Vector{SubString}}[]
+    #TODO This is not really nice, we don't handle execs that are unparseable...
+    #     Not sure how we can actually do this
     for s in spl
         if any(occursin.(allexecs(), (s,)))
             push!(exec_and_flags, s => SubString[])
-        else
+        elseif !isempty(exec_and_flags)
+        # else
             push!(last(exec_and_flags[end]), s)
         end
     end
@@ -295,8 +298,10 @@ function read_job_inputs(job_file::String)
             if line == ""
                 continue
             end
+            # println(line)
             if occursin(".x ", line)
                 execs, inputfile, output, run = read_job_line(line)
+                println(inputfile)
                 inpath = joinpath(dir, inputfile)
                 if !ispath(inpath)
                     input = (nothing, nothing)

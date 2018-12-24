@@ -341,9 +341,12 @@ function alat(flags, pop=false)
     elseif haskey(flags, :celldm_1)
         alat = pop ? pop!(flags, :celldm_1) : flags[:celldm_1]
         alat *= conversions[:bohr2ang]
+    elseif haskey(flags, :celldm)
+        alat = pop ? pop!(flags, :celldm)[1] : flags[:celldm][1]
+        alat *= conversions[:bohr2ang]
     else
         error("Cell option 'alat' was found, but no matching flag was set. \n
-               The 'alat' has to  be specified through 'A' and 'celldm(1)'.")
+               The 'alat' has to  be specified through 'A' or 'celldm(1)'.")
     end
     return alat
 end
@@ -494,8 +497,6 @@ function qe_read_input(filename; execs=[Exec("pw.x")], run=true, structure_name=
                 push!(atom_block.data[atsym], point)
             end
         end
-        structure = extract_structure!(structure_name, parsed_flags, cell_block, atom_block, pseudos)
-        delete!.((parsed_flags,), [:ibrav, :nat, :ntyp, :A, :celldm_1, :celldm])
 
         #the difficult flags, can only be present if atomic stuff is found
         for (f, v) in difficult_flaglines
@@ -519,6 +520,8 @@ function qe_read_input(filename; execs=[Exec("pw.x")], run=true, structure_name=
                 parsed_flags[sym][ids[1], ids[2]] = length(parsedval) == 1 ? parsedval[1] : parsedval
             end
         end
+        structure = extract_structure!(structure_name, parsed_flags, cell_block, atom_block, pseudos)
+        delete!.((parsed_flags,), [:ibrav, :nat, :ntyp, :A, :celldm_1, :celldm])
     else
         structure = nothing
     end
