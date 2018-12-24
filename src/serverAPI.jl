@@ -45,7 +45,7 @@ function slurm_jobid(job::DFJob, startdate=yesterday())
     id_dir = filter(x->length(x) ==2, split.(slurm_process_command(`sacct --starttime $startdate --format=JobID,Workdir%100`)))
     id_ = -1
     for (id, dir) in id_dir
-        if dir == job.local_dir
+        if dir == job.local_dir[1:end-1]
             id_ = parse(Int, id)
             break
         end
