@@ -25,9 +25,9 @@ function atoms(str::AbstractStructure, atsym::Symbol)
     return out
 end
 atoms(str::AbstractStructure) = structure(str).atoms
+cell(str::AbstractStructure) = structure(str).cell
 
 Base.length(str::AbstractStructure) = length(atoms(str))
-cell(str::AbstractStructure) = structure(str).cell
 
 projections(str::AbstractStructure) = projections.(atoms(str))
 hasprojections(str::AbstractStructure) = !all(isempty, projections(str))
@@ -36,14 +36,14 @@ hasprojections_assert(str::AbstractStructure) =
     Please set the projections for the atoms inside the structure first using `setprojections!`."
 
 """
-    setprojections!(str::Structure, projs::Pair...)
+    setprojections!(str::AbstractStructure, projs::Pair...)
 
 Sets the projections of the specified atoms. `projs` has to be of form `:atsym => [:proj]`,
 where proj = :s, :p, :d, :f, etc.
 """
-function setprojections!(str::Structure, projs::Pair...)
+function setprojections!(str::AbstractStructure, projs::Pair...)
     projdict = Dict(projs)
-    for at in unique(str.atoms)
+    for at in unique(atoms(str))
         if !haskey(projdict, id(at))
             projdict[id(at)] = [proj.orb for proj in projections(at)]
         end
@@ -52,13 +52,13 @@ function setprojections!(str::Structure, projs::Pair...)
     addprojections!(projdict, str.atoms)
 end
 
-function emptyprojections!(str::Structure)
+function emptyprojections!(str::AbstractStructure)
     for at in str.atoms
         empty!(projections(at))
     end
 end
 
-function nprojections(structure)
+function nprojections(structure::AbstractStructure)
     n = 0
     for at in atoms(structure)
         projs = projections(at)
