@@ -7,7 +7,7 @@ export flag, setflags!, rmflags!, data, setdata!, setdataoption!, exec, execs,
 export setkpoints!, readbands, readfermi, setwanenergies!, isconverged
 
 #generating new DFInputs
-export gencalc_scf, gencalc_nscf, gencalc_bands, gencalc_wan
+export gencalc_scf, gencalc_nscf, gencalc_bands, gencalc_projwfc, gencalc_wan
 
 include("jobAPI.jl")
 #Basic Job Control Functionality

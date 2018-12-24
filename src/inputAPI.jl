@@ -245,7 +245,8 @@ gencalc_scf(template::DFInput, kpoints::NTuple{6, Int}, newflags...; name="scf")
 """
     gencalc_bands(template::DFInput, kpoints::Vector{NTuple{4}}, newflags...; name="bands")
 
-Searches for the given template and creates a bands calculation from it.
+Uses the information from the template and supplied kpoints to generate a bands input.
+Extra flags can be supplied which will be set for the generated input.
 """
 gencalc_bands(template::DFInput, kpoints::Vector{<:NTuple{4}}, newflags...; name="bands") =
     input_from_kpoints(template, name, kpoints, :calculation => "bands", newflags...)
@@ -254,11 +255,46 @@ gencalc_bands(template::DFInput, kpoints::Vector{<:NTuple{4}}, newflags...; name
 """
     gencalc_nscf(template::DFInput, kpoints::NTuple{3, Int}, newflags...; name="nscf")
 
-Searches for the given template and creates an nscf calculation from it.
+Uses the information from the template and supplied kpoints to generate an nscf input.
+Extra flags can be supplied which will be set for the generated input.
 """
 gencalc_nscf(template::DFInput, kpoints::NTuple{3, Int}, newflags...; name="nscf") =
     input_from_kpoints(template, name, kpoints, :calculation => "nscf", newflags...)
 
+"""
+    gencalc_projwfc(template::DFInput, Emin, Emax, DeltaE, newflags...; name="projwfc")
+
+Uses the information from the template and supplied kpoints to generate a projwfc.x input.
+Extra flags can be supplied which will be set for the generated input.
+"""
+function gencalc_projwfc(template::DFInput, Emin, Emax, DeltaE, extraflags...; name="projwfc")
+    occflag = flag(template, :occupations)
+    ngauss  = 0
+    if occflag == "smearing"
+        smearingflag = flag(template, :smearing)
+        if smearingflag ∈ ("methfessel-paxton", "m-p", "mp")
+            ngauss = 1
+        elseif smearingflag ∈ ("marzari-vanderbilt", "cold", "m-v", "mv")
+            ngauss = -1
+        elseif smearingflag ∈ ("fermi-dirac", "f-d", "fd")
+            ngauss = -99
+        end
+    end
+    tdegaussflag = flag(template, :degauss)
+    degauss = tdegaussflag != nothing ? tdegaussflag : 0.0
+    if hasexec(template, "mpirun")
+        excs = [exec(template, "mpirun"), Exec("projwfc.x", execs(template)[end].dir)]
+    else
+        excs = [Exec("projwfc.x", execs(template)[end].dir)]
+    end
+
+    out = DFInput(template, name, excs=excs)
+    empty!(out.flags)
+    setflags!(out, :Emin => Emin, :Emax => Emax, :DeltaE => DeltaE,
+              :ngauss => ngauss, :degauss => degauss, print=false)
+    setflags!(out, extraflags...)
+    return out
+end
 
 """
     gencalc_wan(structure::AbstractStructure, nscf::DFInput{QE}, Emin;
@@ -267,7 +303,7 @@ gencalc_nscf(template::DFInput, kpoints::NTuple{3, Int}, newflags...; name="nscf
                 wanexec  = Exec("wannier90.x", ""))
 
 Generates a Wannier90 input from the supplied Structure, Emin, nscf calculation and projections.
-The nscf needs to have an output because it will be used to find the energy range
+The nscf needs to have an bandsoutput because it will be used to find the energy range
 for the frozen window of the Wannier90 calculation.
 Currently only works with QE.
 """
