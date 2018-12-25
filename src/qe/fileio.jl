@@ -400,21 +400,6 @@ function extract_structure!(name, control, cell_block, atom_block, pseudo_block)
     return Structure(name, cell, atoms)
 end
 
-function separate(f, A::AbstractVector{T}) where T
-    true_part = T[]
-    false_part = T[]
-    while length(A) > 0
-        t = pop!(A)
-        if f(t)
-            push!(true_part, t)
-        else
-            push!(false_part, t)
-        end
-    end
-    return reverse(true_part), reverse(false_part)
-end
-
-
 """
     qe_read_input(filename, T=Float64; exec="pw.x",  runcommand="", run=true, structure_name="NoName")
 
@@ -440,9 +425,9 @@ function qe_read_input(filename; execs=[Exec("pw.x")], run=true, structure_name=
 
     exec = getfirst(x->x.exec ∈ QEEXECS, execs)
 
-    flaglines, lines = separate(x -> occursin("=", x), lines)
+    flaglines, lines = separate!(x -> occursin("=", x), lines)
     flaglines = strip_split.(flaglines, "=")
-    easy_flaglines, difficult_flaglines = separate(x-> !occursin("(", x[1]), flaglines)
+    easy_flaglines, difficult_flaglines = separate!(x-> !occursin("(", x[1]), flaglines)
     parsed_flags = Dict()
     #easy flags
     for (f, v) in easy_flaglines

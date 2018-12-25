@@ -77,5 +77,12 @@ if !ispath(pythonpath)
     rm(relpath("cif2cell-1.2.10"), recursive=true)
     rm(relpath("downloads"), recursive=true)
 end
+using PyCall
+try
+    pyimport("abipy")
+catch
+    @info "abipy not found in the `PyCall` python libs, installing it using `pip`"
+    run(`pip install abipy`)
+end
 
 include("asset_init.jl")

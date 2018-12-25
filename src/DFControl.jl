@@ -12,8 +12,8 @@ module DFControl
     abstract type Package end
     struct Wannier90 <: Package end
     struct QE <: Package end
-    struct Abinit <: Package end
-    export QE, Wannier90, Abinit
+    struct ABINIT <: Package end
+    export QE, Wannier90, ABINIT
 
     const depsdir = joinpath(dirname(@__DIR__), "deps")
 
@@ -57,6 +57,9 @@ module DFControl
     const dfprintln = println
     const dfprint = print
     include("display/overloads.jl")
+
+    include("abinit/Abinit.jl")
+
     using Requires
     function __init__()
         @require Juno = "e5e0dc1b-0480-54bc-9374-aad01c23163d" include("display/printing_juno.jl")

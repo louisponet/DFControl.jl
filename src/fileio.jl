@@ -1,7 +1,6 @@
 # import Base: parse
 
 include("qe/fileio.jl")
-include("abinit/fileio.jl")
 include("wannier90/fileio.jl")
 
 #--------------------Used by other file processing------------------#
@@ -127,7 +126,7 @@ function write_job_header(f, job::DFJob)
     end
 end
 
-function writetojob(f, job, inputs::Vector{DFInput{Abinit}})
+function writetojob(f, job, inputs::Vector{DFInput{ABINIT}})
     abinit_jobfiles   = write_abi_datasets(inputs, job.local_dir)
     abifiles = String[]
     num_abi = 0
@@ -209,7 +208,7 @@ function writejobfiles(job::DFJob)
         write(f, "#!/bin/bash\n")
         write_job_name(f, job)
         write_job_header(f, job)
-        abiinputs = Vector{DFInput{Abinit}}(filter(x -> package(x) == Abinit, inputs(job)))
+        abiinputs = Vector{DFInput{ABINIT}}(filter(x -> package(x) == ABINIT, inputs(job)))
         !isempty(abiinputs) && writetojob(f, job, abiinputs)
         # i = length(abiinputs) + 1
         # while i <= length(inputs(job))
@@ -263,27 +262,6 @@ function read_job_line(line)
     end
     return execs, input, output, run
 end
-
-# TODO: make this work again
-# function read_job_filenames(job_file::String)
-#     input_files = String[]
-#     output_files = String[]
-#     open(job_file, "r") do f
-#         readline(f)
-#         while !eof(f)
-#             line = readline(f)
-#             if isempty(line)
-#                 continue
-#             end
-#             if occursin(".x", line)
-#                 runcommand, exec, input, output, run = read_job_line(line)
-#                 !in(input,  input_files)  && push!(input_files,  input)
-#                 !in(output, output_files) && push!(output_files, output)
-#             end
-#         end
-#     end
-#     return input_files, output_files
-# end
 
 function read_job_inputs(job_file::String)
     dir = splitdir(job_file)[1]

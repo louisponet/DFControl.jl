@@ -38,7 +38,32 @@ function cut_after(line, c)
     end
 end
 
+"""
+    separate!(f, A::AbstractVector{T}) where T
 
+Separates the true part from `A`, leaving the false part in `A`.
+Single values get passed into `f`.
+"""
+function separate!(f, A::AbstractVector{T}) where T
+    trues = f.(A)
+    return A[trues], deleteat!(A, trues)
+end
+
+"""
+    separate!(f, A::Dict{F, V}) where {F, V}
+
+Separate the true part from `A`, leaving the false part in `A`.
+Key value Pairs get passed into `f`.
+"""
+function separate!(f, A::Dict{F, V}) where {F, V}
+    true_part = Dict{F,V}()
+    for kv in A
+        if f(kv)
+            true_part[first(kv)] = pop!(A, first(kv))
+        end
+    end
+    return true_part, A
+end
 #--------------------------------------------------------------------------------------#
 """
 Mutatatively applies the fermi level to all eigvals in the band. If fermi is a quantum espresso scf output file it will try to find it in there.
