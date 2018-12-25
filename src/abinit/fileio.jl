@@ -1,16 +1,3 @@
-# @inline function filter_comment(line)
-#     for c in ['#', '!']
-#         t = findfirst(line,c)
-#         if t == 0
-#             line = line
-#         elseif t == 1
-#             return ""
-#         else
-#             line = line[1:t - 1]
-#         end
-#     end
-#     return line
-# end
 #
 # function expand_star_syntax(s::String)
 #     s = strip(s)

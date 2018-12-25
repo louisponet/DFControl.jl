@@ -423,22 +423,20 @@ Returns a `DFInput{QE}` and the `Structure` that is found in the input.
 """
 function qe_read_input(filename; execs=[Exec("pw.x")], run=true, structure_name="noname")
     @assert ispath(filename) "$filename is not a valid path."
-    lines = read(filename)               |>
-        String                           |>
-        x -> split(x, "\n")              |>
-        x -> filter(!isempty, x)        .|>
-        strip                            |>
-        x -> filter(y -> y[1] != '!', x) |>
-        x -> filter(y -> y[1] != '#', x) |>
-        x -> join(x, "\n")               |>
-        x -> replace(x, ", " => "\n")    |>
-        x -> replace(x, "," => " ")      |>
-        x -> replace(x, "'" => " ")      |>
-        x -> split(x, "\n")             .|>
-        strip                            |>
+    t_lines = read(filename)          |>
+        String                        |>
+        x -> split(x, "\n")          .|>
+        x -> cut_after(x, '!')       .|>
+        x -> cut_after(x, '#')
+    lines = join(t_lines, "\n")       |>
+        x -> replace(x, ", " => "\n") |>
+        x -> replace(x, "," => " ")   |>
+        x -> replace(x, "'" => " ")   |>
+        x -> split(x, "\n")          .|>
+        strip                         |>
         x -> filter(y -> !occursin("&", y), x) |>
-        x -> filter(y -> !(occursin("/", y) && length(y) == 1), x)
-
+        x -> filter(y -> !(occursin("/", y) && length(y) == 1), x) |>
+        x -> filter(!isempty, x)
 
     exec = getfirst(x->x.exec ∈ QEEXECS, execs)
 
@@ -642,10 +640,12 @@ function save(input::DFInput{QE}, structure, filename::String=inpath(input))
             write_structure(f, input, structure)
         end
         for dat in input.data
-            if dat.option != :none
-                write(f, "$(uppercase(String(dat.name))) ($(dat.option))\n")
-            else
-                write(f, "$(uppercase(String(dat.name)))\n")
+            if dat.name != :noname
+                if dat.option != :none
+                    write(f, "$(uppercase(String(dat.name))) ($(dat.option))\n")
+                else
+                    write(f, "$(uppercase(String(dat.name)))\n")
+                end
             end
             if dat.name == :k_points && dat.option != :automatic
                 write(f, "$(length(dat.data))\n")

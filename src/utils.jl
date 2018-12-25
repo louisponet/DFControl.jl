@@ -1,3 +1,4 @@
+#---------------------Parse utils-----------------------------------------------------#
 """
 Searches a directory for all files containing the key.
 """
@@ -26,6 +27,19 @@ function replace_multiple(str, replacements::Pair{String, String}...)
     return tstr
 end
 
+function cut_after(line, c)
+    t = findfirst(isequal(c), line)
+    if t == nothing
+        return line
+    elseif t == 1
+        return ""
+    else
+        return line[1:t - 1]
+    end
+end
+
+
+#--------------------------------------------------------------------------------------#
 """
 Mutatatively applies the fermi level to all eigvals in the band. If fermi is a quantum espresso scf output file it will try to find it in there.
 """
