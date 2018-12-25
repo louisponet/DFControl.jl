@@ -37,6 +37,7 @@ function abi_extract_kpoints!(flagdict::Dict)
 end
 
 function abi_read_input(filename; execs=[Exec("abinit")], run=true, structure_name="noname")
+    abi_works_assert()
     t_ = abilab_opt[:abiopen](filename)
     datasets = [filter(x -> first(x) ∉ ABI_STRUCTURE_FLAGS, t) for t in t_[:datasets]]
     structure = Structure(t_[:structure], name=structure_name)

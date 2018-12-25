@@ -81,8 +81,13 @@ using PyCall
 try
     pyimport("abipy")
 catch
-    @info "abipy not found in the `PyCall` python libs, installing it using `pip`"
-    run(`pip install abipy`)
+    @info "abipy not found in the `PyCall` python libs, trying to install it using `pip`"
+    try
+        run(`pip install abipy`)
+    catch
+        @info "Couldn't install `abipy` with `pip`.
+        If you want to use `DFControl` with Abinit support, you will have to install `abipy` yourself such that `PyCall` has access to it."
+    end
 end
 
 include("asset_init.jl")
