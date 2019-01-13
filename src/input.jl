@@ -76,9 +76,17 @@ function cleanflags!(input::DFInput)
             rmflags!(input, flag)
             continue
         end
-        if !(eltype(value) <: flagtype_)
+        if !(isa(value, flagtype_) || eltype(value) <: flagtype_)
             try
-                flags(input)[flag] = convert(flagtype_, value)
+                if isbitstype(eltype(value))
+                    if length(value) > 1
+                        flags(input)[flag] = convert(flagtype_, value)
+                    else
+                        flags(input)[flag] = convert(eltype(flagtype_), value)
+                    end
+                else
+                    flags(input)[flag] = convert.(flagtype_, value)
+                end
             catch
                 error("Input $(name(input)): Could not convert :$flag of value $value to the correct type ($flagtype_), please set it to the correct type.")
             end

@@ -47,15 +47,18 @@ function DFJob(job_name, local_dir, structure::AbstractStructure, calculations::
     end
     bin_dir = bin_dir
     for (calc, (excs, data)) in calculations
+        if !isa(data, SymAnyDict)
+            data = SymAnyDict(data)
+        end
         calc_ = typeof(calc) == String ? Symbol(calc) : calc
         if in(calc_, [:vc_relax, :relax, :scf])
-            k_points = get(data, :k_points, [1, 1, 1, 0, 0, 0])
+            k_points = get(data, :kpoints, [1, 1, 1, 0, 0, 0])
             k_option = :automatic
         elseif calc_ == :nscf
-            k_points = kgrid(get(data, :k_points, [1, 1, 1])[1:3]..., QE)
+            k_points = kgrid(get(data, :kpoints, [1, 1, 1])[1:3]..., QE)
             k_option = :crystal
         elseif calc_ == :bands
-            k_points = get(data, :k_points, [[0., 0., 0., 1.]])
+            k_points = get(data, :kpoints, [[0., 0., 0., 1.]])
             num_k = 0.0
             for point in k_points
                 num_k += point[4]

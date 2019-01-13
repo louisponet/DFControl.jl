@@ -25,6 +25,8 @@ function atoms(str::AbstractStructure, atsym::Symbol)
     return out
 end
 atoms(str::AbstractStructure) = structure(str).atoms
+name(str::AbstractStructure) = structure(str).name
+data(str::AbstractStructure) = structure(str).data
 
 Base.length(str::AbstractStructure) = length(atoms(str))
 cell(str::AbstractStructure) = structure(str).cell
@@ -122,4 +124,27 @@ function setpseudos!(structure::AbstractStructure, at_pseudos::Pair{Symbol, Stri
             setpseudo!(at, pseudo)
         end
     end
+end
+
+"""
+    create_supercell(structure::AbstractStructure, na::Int, nb::Int, nc::Int)
+
+Takes a structure and creates a supercell from it with the given amount of extra cells (`na, nb, nc`) along the a, b, c direction.
+"""
+function create_supercell(structure::AbstractStructure, na::Int, nb::Int, nc::Int)
+    orig_ats   = atoms(structure)
+    orig_cell  = cell(structure)
+    scale_mat  = diagm(0 => 1 .+ [na, nb, nc])
+    new_cell   = scale_mat * orig_cell
+    new_atoms  = deepcopy(orig_ats)
+    for ia=0:na, ib=0:nb, ic=0:nc
+        if all((ia, ib, ic) .== 0)
+            continue
+        end
+        transl_vec = orig_cell'*[ia, ib, ic]
+        for at in orig_ats
+            push!(new_atoms, Atom(at, position(at)+transl_vec))
+        end
+    end
+    return Structure(name(structure), Mat3(new_cell), new_atoms, data(structure))
 end

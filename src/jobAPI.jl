@@ -67,15 +67,15 @@ function setflow!(job::DFJob, should_runs...)
 end
 
 """
-    setheaderword!(job::DFJob, word::String, new_word::String)
+    setheaderword!(job::DFJob, old_new::Pair{String, String})
 
 
 Replaces the specified word in the header with the new word.
 """
-function setheaderword!(job::DFJob, word::String, new_word::String; print=true)
+function setheaderword!(job::DFJob, old_new::Pair{String, String}; print=true)
     for (i, line) in enumerate(job.header)
-        if occursin(word, line)
-            job.header[i] = replace(line, word => new_word)
+        if occursin(first(old_new), line)
+            job.header[i] = replace(line, old_new)
             s = """Old line:
             $line
             New line:
@@ -259,10 +259,15 @@ execs(job::DFJob, name) =
 """
     setexecflags!(job::DFJob, exec, flags...)
 
-Goes through the calculations of the job and if the name contains any of the `inputnames` it sets the exec flags to the specified ones.
+Goes through the calculations of the job and sets the exec flags to the specified ones.
 """
 setexecflags!(job::DFJob, exec, flags...) =
     setexecflags!.(job.inputs, (exec, flags)...)
+"""
+    rmexecflags!(job::DFJob, exec, flags...)
+
+Goes through the calculations of the job and removes the specified `exec` flags.
+"""
 rmexecflags!(job::DFJob, exec, flags...) =
     rmexecflags!.(job.inputs, (exec, flags)...)
 
@@ -299,11 +304,11 @@ end
 
 #------------ Specialized Interaction with DFInputs inside DFJob --------------#
 """
-    setkpoints!(job::DFJob, n, k_points)
+    setkpoints!(job::DFJob, name::String, k_points)
 
 sets the data in the k point `DataBlock` inside the specified inputs.
 """
-function setkpoints!(job::DFJob, n, k_points; print=true)
+function setkpoints!(job::DFJob, name::String, k_points; print=true)
     for calc in inputs(job, n)
         setkpoints!(calc, k_points, print=print)
     end

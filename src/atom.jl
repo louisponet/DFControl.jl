@@ -69,7 +69,7 @@ end
 
 Atom(id::Symbol, el::Element, pos::Point3; kwargs...)  = Atom(id=id, element=el, position=pos; kwargs...)
 Atom(id::Symbol, el::Symbol, pos::Point3; kwargs...)  = Atom(id=id, element=element(el), position=pos; kwargs...)
-
+Atom(orig_at::Atom, new_pos::Point3) = Atom(id(orig_at), element(orig_at), new_pos, pseudo(orig_at), projections(orig_at))
 #Easiest way to implement a new abstractatom is to provide a way to access
 #the struct holding `id`, `position`, `element`, `pseudo`, `projection` fields
 atom(at::Atom) = at
