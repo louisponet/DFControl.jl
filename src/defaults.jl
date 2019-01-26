@@ -1,5 +1,6 @@
 "File with all the user defaults inside it"
-const default_file = abspath(first(DEPOT_PATH), "config","DFControl", "user_defaults.jl")
+# const default_file = abspath(homedir(),".julia","config","DFControl", "user_defaults.jl")
+const default_file = occursin("cache", first(Base.DEPOT_PATH)) ? abspath(Base.DEPOT_PATH[2], "config","DFControl", "user_defaults.jl") : abspath(Base.DEPOT_PATH[1], "config","DFControl", "user_defaults.jl")
 const default_pseudodirs = Dict{Symbol, String}()
 const default_pseudos = Dict{Symbol, Dict{Symbol, Vector{String}}}()
 const default_jobheader = ""

@@ -238,7 +238,7 @@ function save(input::DFInput{Wannier90}, structure, filename::String=inpath(inpu
 
         if structure != nothing
             write(f,"begin unit_cell_cart\n")
-            write_cell(f, structure.cell)
+            write_cell(f, cell(structure))
             write(f,"end unit_cell_cart\n")
             write(f, "\n")
         end
@@ -266,7 +266,7 @@ function save(input::DFInput{Wannier90}, structure, filename::String=inpath(inpu
 
         write(f, "\n")
         write(f, "begin atoms_cart\n")
-        for at in structure.atoms
+        for at in atoms(structure)
             pos = position(at)
             write(f, "$(id(at))  $(pos[1]) $(pos[2]) $(pos[3])\n")
         end

@@ -9,6 +9,7 @@ mutable struct Structure{T <: AbstractFloat, AA<:AbstractAtom{T}} <: AbstractStr
 end
 
 Structure(name, cell::Mat3{T}, atoms::Vector{Atom{T}}) where T <: AbstractFloat = Structure{T, Atom{T}}(name, cell, atoms, Dict{Symbol, Any}())
+Structure(str::AbstractStructure{T}, atoms::Vector{AT}) where {T <: AbstractFloat, AT<:AbstractAtom{T}} = Structure{T, AT}(name(str), cell(str), atoms, data(str))
 Structure(cell::Matrix{T}, atoms::Vector{Atom{T}}) where T <: AbstractFloat = Structure{T, Atom{T}}("NoName", cell, atoms, Dict{Symbol, Any}())
 Structure() = Structure("NoName", eye(3), Atom[], Dict{Symbol, Any}())
 Structure(cif_file::String; name="NoName") = cif2structure(cif_file, structure_name = name)

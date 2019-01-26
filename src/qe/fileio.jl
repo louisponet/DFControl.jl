@@ -128,11 +128,18 @@ function qe_read_output(filename::String, T=Float64)
                     end
                     line = readline(f)
                 end
-                pseudo_data = InputData(:atomic_species, :none, out[:pseudos])
-                tmp_flags = Dict(:ibrav => 0, :A => (out[:alat] == :angstrom ? 1 : conversions[:bohr2ang] * out[:alat]))
-                cell_data = InputData(:cell_parameters, :alat, Mat3(out[:cell_parameters]))
-                atoms_data = InputData(:atomic_positions, out[:pos_option], out[:atomic_positions])
-                out[:final_structure] = extract_structure!("newstruct", tmp_flags, cell_data, atoms_data, pseudo_data)
+                if haskey(out, :alat) && haskey(out, :cell_parameters)
+                    pseudo_data = InputData(:atomic_species, :none, out[:pseudos])
+                    tmp_flags = Dict{Symbol, Any}(:ibrav => 0)
+                    if haskey(out, :alat)
+                        tmp_flags[:A] = out[:alat] == :angstrom ? 1.0 : conversions[:bohr2ang] * out[:alat]
+                    else
+                        tmp_flags[:A] = 1.0
+                    end
+                    cell_data = InputData(:cell_parameters, :alat, Mat3(out[:cell_parameters]))
+                    atoms_data = InputData(:atomic_positions, out[:pos_option], out[:atomic_positions])
+                    out[:final_structure] = extract_structure!("newstruct", tmp_flags, cell_data, atoms_data, pseudo_data)
+                end
 
             elseif occursin("Total force", line)
                 force = parse(T, split(line)[4])
@@ -178,6 +185,34 @@ function qe_read_output(filename::String, T=Float64)
     end
 end
 
+function qe_read_output(input::DFInput{QE}, args...; kwargs...)
+    out = Dict{Symbol, Any}()
+    if isprojwfccalc(input)
+        if flag(input, :kresolveddos) == true
+            pdos_files = searchdir(dir(input), ".pdos_")
+            out[:heatmaps]   = Vector{Matrix{Float64}}()
+            out[:ytickvals] = Vector{Vector{Float64}}()
+            out[:yticks]    = Vector{Vector{Float64}}()
+            for f in pdos_files
+                th, vals, ticks = qe_read_kpdos(joinpath(dir(input), f), args...; kwargs...)
+                push!(out[:heatmaps], th)
+                push!(out[:ytickvals], vals)
+                push!(out[:yticks], ticks)
+            end
+        else
+            out[:energies] = Vector{Vector{Float64}}()
+            out[:values]   = Vector{Vector{Float64}}()
+            for f in pdos_files
+                energs, vals = qe_read_pdos(joinpath(dir(input), f), args...; kwargs...)
+                push!(out[:energies], energs)
+                push!(out[:vals], vals)
+            end
+        end
+        return out
+    else
+        return qe_read_output(outpath(input))
+    end
+end
 """
     qe_read_bands(filename::String, T=Float64)
 
@@ -216,8 +251,8 @@ Return:         Array{Float64,2}(length(k_points),length(energies)) ,
 (ytickvals,yticks)
 """
 function qe_read_kpdos(filename::String, column=1; fermi=0)
-    read_tmp = readdlm(filename)
-    zmat     = zeros(typeof(read_tmp[1]), Int64(read_tmp[end, 1]), size(read_tmp)[1] / Int64(read_tmp[end, 1]))
+    read_tmp = readdlm(filename, Float64, comments=true)
+    zmat     = zeros(typeof(read_tmp[1]), Int64(read_tmp[end, 1]), div(size(read_tmp)[1], Int64(read_tmp[end, 1])))
     for i1 = 1:size(zmat)[1]
         for i2 = 1:size(zmat)[2]
             zmat[i1, i2] = read_tmp[size(zmat)[2] * (i1 - 1) + i2, 2 + column]
@@ -230,7 +265,7 @@ function qe_read_kpdos(filename::String, column=1; fermi=0)
         push!(ytickvals, findnext(x -> norm(tick + fermi - x) <= 0.1, read_tmp[:, 2], ytickvals[i]))
     end
 
-    return  zmat', (ytickvals, yticks)
+    return  zmat', ytickvals, yticks
 end
 
 """
@@ -624,8 +659,8 @@ function save(input::DFInput{QE}, structure, filename::String=inpath(input))
         for (name, flags) in blocks2file
             write(f, "&$name\n")
             if name == :system
-                nat   = length(structure.atoms)
-                ntyp  = length(unique(structure.atoms))
+                nat   = length(atoms(structure))
+                ntyp  = length(unique(atoms(structure)))
                 # A     = 1.0
                 ibrav = 0
                 write(f,"  ibrav = $ibrav\n")
@@ -659,13 +694,13 @@ function save(input::DFInput{QE}, structure, filename::String=inpath(input))
 end
 
 function write_structure(f, input::DFInput{QE}, structure)
-    unique_at = unique(structure.atoms)
+    unique_at = unique(atoms(structure))
     pseudo_lines = String[]
     atom_lines   = String[]
     for at in unique_at
         push!(pseudo_lines, "$(id(at)) $(element(at).atomic_weight)   $(pseudo(at))\n")
     end
-    for at in structure.atoms
+    for at in atoms(structure)
         pos = position(at)
         push!(atom_lines, "$(id(at))  $(pos[1]) $(pos[2]) $(pos[3])\n")
     end
@@ -675,7 +710,7 @@ function write_structure(f, input::DFInput{QE}, structure)
 
     write(f, "\n")
     write(f, "CELL_PARAMETERS (angstrom)\n")
-    write_cell(f, structure.cell)
+    write_cell(f, cell(structure))
     write(f, "\n")
 
     write(f, "ATOMIC_POSITIONS (angstrom) \n")

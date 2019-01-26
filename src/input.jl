@@ -136,10 +136,12 @@ function setdata!(input::DFInput, data::InputData)
     return input
 end
 
+#QE specific
 isbandscalc(input::DFInput{QE}) = flag(input, :calculation) == "bands"
 isnscfcalc(input::DFInput{QE}) = flag(input, :calculation) == "nscf"
 isscfcalc(input::DFInput{QE}) = flag(input, :calculation) == "scf"
 isspincalc(input::DFInput{QE}) = all(flag(input, :nspin) .!= [nothing, 1])
+isprojwfccalc(input::DFInput{QE}) = hasexec(input, "projwfc.x")
 
 #TODO review this!
 outdata(input::DFInput) = input.outdata
@@ -148,7 +150,7 @@ hasoutput(input::DFInput) = !isempty(outdata(input))
 hasoutfile(input::DFInput) = ispath(outpath(input))
 hasnewout(input::DFInput, time) = mtime(outpath(input)) > time
 
-readoutput(input::DFInput{QE}) = qe_read_output(outpath(input))
+readoutput(input::DFInput{QE}) = qe_read_output(input)
 readoutput(input::DFInput{Wannier90}) = read_wannier_output(outpath(input))
 
 pseudodir(input::DFInput{QE}) = flag(input, :pseudo_dir)

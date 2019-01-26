@@ -24,5 +24,5 @@ end
 end
 
 @render i::Inline x::AbstractStructure begin
-    Tree(x.name , [SubTree(Text("$f → "), getfield(x, f)) for f in fieldnames(typeof(x))])
+    Tree(name(x) , [SubTree(Text("$f → "), getfield(x, f)) for f in fieldnames(typeof(x))])
 end

@@ -3,6 +3,7 @@ module DFControl
     using Statistics
     using Media
     using Dates
+    using DelimitedFiles
     import Base.Iterators.flatten
     using RecipesBase
     include("FixedSizeArrays.jl")

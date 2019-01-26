@@ -364,7 +364,7 @@ can be used together with a `threshold` to determine the minimum energy such tha
 projections to the DOS is above the `threshold`.
 """
 function gencalc_wan(structure::AbstractStructure, nscf::DFInput{QE}, projwfc::DFInput{QE}, threshold::Real; kwargs...)
-    hasexec_assert(prowjfc, "projwfc.x")
+    hasexec_assert(projwfc, "projwfc.x")
     hasoutput_assert(projwfc)
     Emin = Emin_from_projwfc(structure, projwfc, threshold)
     gencalc_wan(structure, nscf, Emin; kwargs...)
