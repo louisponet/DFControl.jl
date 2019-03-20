@@ -88,9 +88,11 @@ open(joinpath(@__DIR__, "wannier90flags.jl"), "w") do wf
                 continue
             else
                 s_line    = split(line, "::")
+                flagpart = s_line[end]
                 flag      = Symbol(strip(strip(split(split(split(s_line[end], "=")[1],"(")[1],"!")[1], ':')))
                 fl_type   = fort2julia(strip(split(s_line[1])[1],','))
-                writefbodyline(wf, 1, """Symbol("$flag") => $fl_type,""")
+                flagstring = occursin("(", flagpart) && occursin(")", flagpart) ? """Symbol("$flag") => Vector{$fl_type},""" : """Symbol("$flag") => $fl_type,"""
+                writefbodyline(wf, 1, flagstring)
             end
         end
     end

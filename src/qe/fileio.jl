@@ -294,16 +294,16 @@ Returns:
 function qe_read_projwfc(filename::String)
     lines  = readlines(filename) .|> strip
 
-    state_tuple = NamedTuple{(:atom_id, :wfc_id, :l, :m, :s), Tuple{Int, Int, Int, Int, Float64}}
+    state_tuple = NamedTuple{(:atom_id, :wfc_id, :l, :m, :s), Tuple{Int, Int, Float64, Float64, Float64}}
     states = state_tuple[]
     istart = findfirst(x -> x == "Atomic states used for projection", lines) + 3
     istop  = findnext(isempty, lines, istart) - 1
     for i = istart:istop
         l = replace_multiple(lines[i], "(" => " ", ")" => " ", "," => "", "=" => " ", ":" => "", "#" => " ") |> split
         if length(l) == 11
-            push!(states, state_tuple((parse.(Int,(l[4], l[7], l[9], l[11]))...,0.0)))
+            push!(states, state_tuple((parse.(Int,(l[4], l[7]))..., parse.(Float64,( l[9], l[11]))...,0.0)))
         else
-            push!(states, state_tuple((parse.(Int,(l[4], l[7], l[9], l[11]))...,parse(Float64,l[13]))))
+            push!(states, state_tuple((parse.(Int,(l[4], l[7]))..., parse.(Float64, (l[9], l[11], l[13]))...)))
         end
     end
 
