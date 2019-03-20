@@ -315,7 +315,7 @@ function gencalc_wan(structure::AbstractStructure, nscf::DFInput{QE}, Emin;
     hasoutput_assert(nscf)
     iscalc_assert(nscf, "nscf")
     hasprojections_assert(structure)
-    if isspincalc(nscf)
+    if iscolincalc(nscf)
         wannames = ["wanup", "wandn"]
         @info "Spin polarized calculation found (inferred from nscf input)."
     else
@@ -328,7 +328,7 @@ function gencalc_wan(structure::AbstractStructure, nscf::DFInput{QE}, Emin;
                 This generally gives errors because of omitted kpoints, needed for pw2wannier90.x"
     end
 
-    nbnd = nprojections(structure)
+    nbnd = isnoncolincalc(nscf) ? 2 * nprojections(structure) : nprojections(structure)
     @info "num_bands=$nbnd (inferred from provided projections)."
 
     bands = readbands(nscf)
@@ -341,6 +341,8 @@ function gencalc_wan(structure::AbstractStructure, nscf::DFInput{QE}, Emin;
     wanflags[:mp_grid] = kakbkc(kpoints)
     wanflags[:preprocess] = true
     @info "mp_grid=$(join(wanflags[:mp_grid]," ")) (inferred from nscf input)."
+
+	isnoncolincalc(nscf) && (wanflags[:nspinor] = 2)
 
     kdata = InputData(:kpoints, :none, [k[1:3] for k in kpoints])
 

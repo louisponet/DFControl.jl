@@ -140,7 +140,8 @@ end
 isbandscalc(input::DFInput{QE}) = flag(input, :calculation) == "bands"
 isnscfcalc(input::DFInput{QE}) = flag(input, :calculation) == "nscf"
 isscfcalc(input::DFInput{QE}) = flag(input, :calculation) == "scf"
-isspincalc(input::DFInput{QE}) = all(flag(input, :nspin) .!= [nothing, 1])
+iscolincalc(input::DFInput{QE}) = all(flag(input, :nspin) .!= [nothing, 1])
+isnoncolincalc(input::DFInput{QE}) = flag(input, :noncolin) == true 
 isprojwfccalc(input::DFInput{QE}) = hasexec(input, "projwfc.x")
 
 #TODO review this!
