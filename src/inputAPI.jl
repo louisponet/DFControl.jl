@@ -217,7 +217,7 @@ Automatically calculates and sets the wannier energies. This uses the projection
 function setwanenergies!(input::DFInput{Wannier90}, structure::AbstractStructure, nscf::DFInput, Emin::Real; Epad=5.0)
     hasoutput_assert(nscf)
     iscalc_assert(nscf, "nscf")
-    nbnd = nprojections(structure)
+    nbnd = isnoncolincalc(nscf) ? 2 * nprojections(structure) : nprojections(structure)
     print && (@info "num_bands=$nbnd (inferred from provided projections).")
     bands = readbands(nscf)
     winmin, frozmin, frozmax, winmax = wanenergyranges(Emin, nbnd, bands, Epad)
