@@ -1,4 +1,12 @@
 const SymAnyDict = Dict{Symbol, Any}
+const Vec{N, T} = SVector{N, T}
+const Point = Vec
+const Point3 = Point{3}
+const Vec3   = Vec{3}
+const Mat3{T} = SMatrix{3, 3, T}
+const Mat4{T} = SMatrix{4, 4, T}
+
+Point{N, T}(x::T) where {N, T} = Point{N, T}(x, x, x)
 
 Base.convert(::Type{Point3{T}}, x::Vector{T}) where T<:AbstractFloat = Point3{T}(x[1], x[2], x[3])
 

@@ -6,8 +6,7 @@ module DFControl
     using DelimitedFiles
     import Base.Iterators.flatten
     using RecipesBase
-    include("FixedSizeArrays.jl")
-    using .FixedSizeArrays
+    using StaticArrays
     using Parameters
 
     abstract type Package end
@@ -17,10 +16,9 @@ module DFControl
     export QE, Wannier90, Abinit
 
     const depsdir = joinpath(dirname(@__DIR__), "deps")
-
+    include("types.jl")
     include("atom.jl")
     include("structure.jl")
-    include("types.jl")
 
     include("input.jl")
     include("utils.jl")
