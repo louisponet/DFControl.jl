@@ -1,156 +1,230 @@
-integer,           public, save :: iprint
+!Input
+integer, public, save :: iprint
+!! Controls the verbosity of the output
 character(len=20), public, save :: energy_unit
+!! Units for energy
 character(len=20), public, save :: length_unit
-logical,           public, save :: wvfn_formatted
-logical,           public, save :: spn_formatted
-logical,           public, save :: berry_uHu_formatted
-character(len=20), public, save :: spin
-integer,           public, save :: num_bands
-integer,           public, save :: num_dump_cycles
-integer,           public, save :: num_print_cycles
+!! Units for length
+logical, public, save :: wvfn_formatted
+!! Read the wvfn from fortran formatted file
+logical, public, save :: spn_formatted
+!! Read the spin from fortran formatted file
+logical, public, save :: uHu_formatted
+logical, public, save :: berry_uHu_formatted
+!! Read the uHu from fortran formatted file
+integer, public, save :: spin
+!! Spin up=1 down=2
+integer, public, save :: num_bands
+!! Number of bands
+integer, public, save :: num_dump_cycles
+!! Number of steps before writing checkpoint
+integer, public, save :: num_print_cycles
+!! Number of steps between writing output
+integer, public, save :: slwf_num
+!! Number of objective Wannier functions (others excluded from spread functional)
+logical, public, save :: selective_loc
+!! Selective localization
+logical, public, save :: slwf_constrain
+!! Constrained centres
+real(kind=dp), allocatable, public, save :: ccentres_frac(:, :)
+real(kind=dp), allocatable, public, save :: ccentres_cart(:, :)
+real(kind=dp), public, save :: slwf_lambda
+!! Centre constraints for each Wannier function. Co-ordinates of centre constraint defaults
+!! to centre of trial orbital. Individual Lagrange multipliers, lambdas, default to global Lagrange multiplier.
 character(len=50), public, save :: devel_flag
+! Adaptive vs. fixed smearing stuff [GP, Jul 12, 2012]
+! Only internal, always use the local variables defined by each module
+! that take this value as default
 logical                         :: adpt_smr
 real(kind=dp)                   :: adpt_smr_fac
 real(kind=dp)                   :: adpt_smr_max
 real(kind=dp)                   :: smr_fixed_en_width
-logical,                    public, save :: spin_moment
-real(kind=dp),              public, save :: spin_axis_polar
-real(kind=dp),              public, save :: spin_axis_azimuth
-logical,                    public, save :: use_degen_pert
-real(kind=dp),              public, save :: degen_thr
-logical,                    public, save :: spin_decomp
-integer,                    public, save :: num_valence_bands
+! GP: added a flag to check if this is the first run of param_read in library mode or not
+logical, public, save :: library_param_read_first_pass
+!IVO
+logical, public, save :: spin_moment
+real(kind=dp), public, save :: spin_axis_polar
+real(kind=dp), public, save :: spin_axis_azimuth
+logical, public, save :: use_degen_pert
+real(kind=dp), public, save :: degen_thr
+logical, public, save :: spin_decomp
+integer, public, save :: num_valence_bands
 logical                                  :: found_fermi_energy
-real(kind=dp),              public, save :: scissors_shift
-
+real(kind=dp), public, save :: scissors_shift
+!IVO_END
+! [gp-begin, Apr 20, 2012] Smearing type
+! The prefactor is given with the above parameters smr_...
+! This is an internal variable, obtained from the input string smr_type
+! Only internal, always use the local variables defined by each module
+! that take this value as default
 integer                          :: smr_index
-integer, allocatable, public,save :: exclude_bands(:)  
-integer,           public, save :: num_wann
-integer,           public, save :: mp_grid(3)
-logical,           public, save :: gamma_only  
-real(kind=dp),     public, save :: dis_win_min
-real(kind=dp),     public, save :: dis_win_max
-real(kind=dp),     public, save :: dis_froz_min
-real(kind=dp),     public, save :: dis_froz_max
-integer,           public, save :: dis_num_iter
+! [gp-end]
+integer, allocatable, public, save :: exclude_bands(:)
+integer, public, save :: num_wann
+!! number of wannier functions
+integer, public, save :: mp_grid(3)
+!! Dimensions of the Monkhorst-Pack grid
+! logical,           public, save :: automatic_mp_grid
+logical, public, save :: gamma_only
+!! Use the special Gamma-point routines
+real(kind=dp), public, save :: dis_win_min
+!! lower bound of the disentanglement outer window
+real(kind=dp), public, save :: dis_win_max
+!! upper bound of the disentanglement outer window
+real(kind=dp), public, save :: dis_froz_min
+!! lower bound of the disentanglement inner (frozen) window
+real(kind=dp), public, save :: dis_froz_max
+!! upper bound of the disentanglement inner (frozen) window
+integer, public, save :: dis_num_iter
 !! number of disentanglement iteration steps
-real(kind=dp),     public, save :: dis_mix_ratio
+real(kind=dp), public, save :: dis_mix_ratio
 !! Mixing ratio for the disentanglement routine
-real(kind=dp),     public, save :: dis_conv_tol
-!! Convergence tolerance for the disentanglement 
-integer,           public, save :: dis_conv_window
+real(kind=dp), public, save :: dis_conv_tol
+!! Convergence tolerance for the disentanglement
+integer, public, save :: dis_conv_window
 !! Size of the convergence window for disentanglement
 ! GS-start
-integer,           public, save :: dis_spheres_first_wann
-integer,           public, save :: dis_spheres_num
-real(kind=dp), allocatable, public, save :: dis_spheres(:,:)
+integer, public, save :: dis_spheres_first_wann
+integer, public, save :: dis_spheres_num
+real(kind=dp), allocatable, public, save :: dis_spheres(:, :)
 ! GS-end
-integer,           public, save :: num_iter
+integer, public, save :: num_iter
 !! Number of wannierisation iterations
-integer,           public, save :: num_cg_steps
+integer, public, save :: num_cg_steps
 !! Number of Conjugate Gradient steps
-real(kind=dp),     public, save :: conv_tol
-integer,           public, save :: conv_window
-logical,           public, save :: wannier_plot
-integer, allocatable, public,save :: wannier_plot_list(:)
-integer,           public, save :: wannier_plot_supercell(3)
+real(kind=dp), public, save :: conv_tol
+integer, public, save :: conv_window
+logical, public, save :: wannier_plot
+integer, allocatable, public, save :: wannier_plot_list(:)
+integer, public, save :: wannier_plot_supercell(3)
 character(len=20), public, save :: wannier_plot_format
 character(len=20), public, save :: wannier_plot_mode
-logical,           public, save :: write_u_matrices
-logical,           public, save :: bands_plot
-integer,           public, save :: bands_num_points
+character(len=20), public, save :: wannier_plot_spinor_mode
+logical, public, save :: wannier_plot_spinor_phase
+logical, public, save :: write_u_matrices
+logical, public, save :: bands_plot
+logical, public, save :: write_bvec
+integer, public, save :: bands_num_points
 character(len=20), public, save :: bands_plot_format
 character(len=20), public, save :: bands_plot_mode
 integer, allocatable, public, save :: bands_plot_project(:)
-integer,           public, save :: bands_plot_dim         
-logical,           public, save :: write_hr
-logical,           public, save :: write_rmn
-logical,           public, save :: write_tb
-real(kind=dp),     public, save :: hr_cutoff
-real(kind=dp),     public, save :: dist_cutoff
+integer, public, save :: bands_plot_dim
+logical, public, save :: write_hr
+logical, public, save :: write_rmn
+logical, public, save :: write_tb
+real(kind=dp), public, save :: hr_cutoff
+real(kind=dp), public, save :: dist_cutoff
 character(len=20), public, save :: dist_cutoff_mode
-real(kind=dp),     public, save :: dist_cutoff_hc
+real(kind=dp), public, save :: dist_cutoff_hc
 character(len=20), public, save :: one_dim_axis
-logical,           public, save :: use_ws_distance
-logical,           public, save :: fermi_surface_plot
-integer,           public, save :: fermi_surface_num_points
+logical, public, save :: use_ws_distance
+real(kind=dp), public, save :: ws_distance_tol
+!! absolute tolerance for the distance to equivalent positions
+integer, public, save :: ws_search_size(3)
+!! maximum extension in each direction of the supercell of the BvK cell
+!! to search for points inside the Wigner-Seitz cell
+logical, public, save :: fermi_surface_plot
+integer, public, save :: fermi_surface_num_points
 character(len=20), public, save :: fermi_surface_plot_format
-real(kind=dp),             save :: fermi_energy
+real(kind=dp), save :: fermi_energy
 
 ! module  k p a t h
-logical,                    public, save :: kpath
-character(len=20),          public, save :: kpath_task
-integer,                    public, save :: kpath_num_points
-character(len=20),          public, save :: kpath_bands_colour
+logical, public, save :: kpath
+character(len=20), public, save :: kpath_task
+integer, public, save :: kpath_num_points
+character(len=20), public, save :: kpath_bands_colour
 
 ! module  k s l i c e
-logical,           public, save :: kslice
+logical, public, save :: kslice
 character(len=20), public, save :: kslice_task
-real(kind=dp),     public, save :: kslice_corner(3)
-real(kind=dp),     public, save :: kslice_b1(3)
-real(kind=dp),     public, save :: kslice_b2(3)
-integer,           public, save :: kslice_2dkmesh(2)
+real(kind=dp), public, save :: kslice_corner(3)
+real(kind=dp), public, save :: kslice_b1(3)
+real(kind=dp), public, save :: kslice_b2(3)
+integer, public, save :: kslice_2dkmesh(2)
 character(len=20), public, save :: kslice_fermi_lines_colour
 
 ! module  d o s
-logical,           public, save    :: dos
-! No need to save 'dos_plot', only used here (introduced 'dos_task')
-logical,           public          :: dos_plot
-character(len=20), public, save    :: dos_task 
-logical,           public, save    :: dos_adpt_smr
-real(kind=dp),     public, save    :: dos_adpt_smr_fac
-integer,           public, save    :: dos_smr_index
-real(kind=dp),     public, save    :: dos_smr_fixed_en_width
-real(kind=dp),     public, save    :: dos_adpt_smr_max
-real(kind=dp),     public, save    :: dos_energy_max
-real(kind=dp),     public, save    :: dos_energy_min
-real(kind=dp),     public, save    :: dos_energy_step
-integer,           public, save    :: num_dos_project
+logical, public, save    :: dos
+!No need to save 'dos_plot', only used here (introduced 'dos_task')
+logical, public          :: dos_plot
+character(len=20), public, save    :: dos_task
+logical, public, save    :: dos_adpt_smr
+real(kind=dp), public, save    :: dos_adpt_smr_fac
+integer, public, save    :: dos_smr_index
+real(kind=dp), public, save    :: dos_smr_fixed_en_width
+real(kind=dp), public, save    :: dos_adpt_smr_max
+real(kind=dp), public, save    :: dos_energy_max
+real(kind=dp), public, save    :: dos_energy_min
+real(kind=dp), public, save    :: dos_energy_step
+integer, public, save    :: num_dos_project
 integer, allocatable, public, save :: dos_project(:)
-!  character(len=20), public, save    :: dos_plot_format
-real(kind=dp),     public, save    :: dos_kmesh_spacing
-integer,           public, save    :: dos_kmesh(3)
-!  real(kind=dp),     public, save :: dos_gaussian_width
+! character(len=20), public, save    :: dos_plot_format
+real(kind=dp), public, save    :: dos_kmesh_spacing
+integer, public, save    :: dos_kmesh(3)
+! real(kind=dp),     public, save :: dos_gaussian_width
 
-! Module  b e r r y
-logical,           public, save :: berry
-character(len=20), public, save :: berry_task
-real(kind=dp),     public, save :: berry_kmesh_spacing
-integer,           public, save :: berry_kmesh(3)
+!Module  b e r r y
+logical, public, save :: berry
+character(len=120), public, save :: berry_task
+real(kind=dp), public, save :: berry_kmesh_spacing
+integer, public, save :: berry_kmesh(3)
 ! --------------remove eventually----------------
-!  integer,           public, save :: alpha
-!  integer,           public, save :: beta
-!  integer,           public, save :: gamma
+! integer,           public, save :: alpha
+! integer,           public, save :: beta
+! integer,           public, save :: gamma
 ! --------------remove eventually----------------
-integer,           public, save :: berry_curv_adpt_kmesh
-real(kind=dp),     public, save :: berry_curv_adpt_kmesh_thresh
+integer, public, save :: berry_curv_adpt_kmesh
+real(kind=dp), public, save :: berry_curv_adpt_kmesh_thresh
 character(len=20), public, save :: berry_curv_unit
-logical,           public, save :: kubo_adpt_smr
-real(kind=dp),     public, save :: kubo_adpt_smr_fac
-integer,           public, save :: kubo_smr_index
-real(kind=dp),     public, save :: kubo_smr_fixed_en_width
-real(kind=dp),     public, save :: kubo_adpt_smr_max
-logical,           public, save :: wanint_kpoint_file
-!  logical,           public, save :: sigma_abc_onlyorb
-logical,           public, save :: transl_inv
+logical, public, save :: kubo_adpt_smr
+real(kind=dp), public, save :: kubo_adpt_smr_fac
+integer, public, save :: kubo_smr_index
+real(kind=dp), public, save :: kubo_smr_fixed_en_width
+real(kind=dp), public, save :: kubo_adpt_smr_max
+integer, public, save :: sc_phase_conv
+real(kind=dp), public, save :: sc_eta
+real(kind=dp), public, save :: sc_w_thr
+logical, public, save :: wanint_kpoint_file
+! logical,           public, save :: sigma_abc_onlyorb
+logical, public, save :: transl_inv
+
+logical, public, save :: gyrotropic
+character(len=120), public, save :: gyrotropic_task
+integer, public, save :: gyrotropic_kmesh(3)
+real(kind=dp), public, save :: gyrotropic_kmesh_spacing
+integer, public, save :: gyrotropic_smr_index
+real(kind=dp), public, save :: gyrotropic_smr_fixed_en_width
+real(kind=dp)                               :: gyrotropic_freq_min
+real(kind=dp)                               :: gyrotropic_freq_max
+real(kind=dp)                               :: gyrotropic_freq_step
+integer, public, save :: gyrotropic_nfreq
+complex(kind=dp), allocatable, public, save :: gyrotropic_freq_list(:)
+real(kind=dp), public, save :: gyrotropic_box_corner(3), gyrotropic_box(3, 3)
+real(kind=dp)                   :: gyrotropic_box_tmp(3)
+real(kind=dp), public, save :: gyrotropic_degen_thresh
+integer, allocatable, public, save :: gyrotropic_band_list(:)
+integer, public, save :: gyrotropic_num_bands
+real(kind=dp)                   :: smr_max_arg
+real(kind=dp), public, save :: gyrotropic_smr_max_arg
+real(kind=dp), public, save :: gyrotropic_eigval_max
 
 logical                                  :: fermi_energy_scan
 real(kind=dp)                            :: fermi_energy_min
 real(kind=dp)                            :: fermi_energy_max
 real(kind=dp)                            :: fermi_energy_step
-integer,                    public, save :: nfermi
+integer, public, save :: nfermi
 real(kind=dp), allocatable, public, save :: fermi_energy_list(:)
 
 real(kind=dp)                               :: kubo_freq_min
 real(kind=dp)                               :: kubo_freq_max
 real(kind=dp)                               :: kubo_freq_step
-integer,                       public, save :: kubo_nfreq
+integer, public, save :: kubo_nfreq
 complex(kind=dp), allocatable, public, save :: kubo_freq_list(:)
-real(kind=dp),                 public, save :: kubo_eigval_max
+real(kind=dp), public, save :: kubo_eigval_max
 
-! Module  s p i n
-real(kind=dp),     public, save :: spin_kmesh_spacing
-integer,           public, save :: spin_kmesh(3)
+!Module  s p i n
+real(kind=dp), public, save :: spin_kmesh_spacing
+integer, public, save :: spin_kmesh(3)
 
 ! [gp-begin, Apr 13, 2012]
 ! Global interpolation k mesh variables
@@ -163,159 +237,179 @@ logical, save                   :: global_kmesh_set
 
 ! [gp-begin, Jun 1, 2012]
 ! GeneralInterpolator variables
-logical,           public, save :: geninterp
-logical,           public, save :: geninterp_alsofirstder
-logical,           public, save :: geninterp_single_file
+logical, public, save :: geninterp
+logical, public, save :: geninterp_alsofirstder
+logical, public, save :: geninterp_single_file
 ! [gp-end, Jun 1, 2012]
 
 ! [gp-begin, Apr 12, 2012]
 ! BoltzWann variables
-logical,           public, save :: boltzwann
-logical,           public, save :: boltz_calc_also_dos
-integer,           public, save :: boltz_2d_dir_num
-character(len=4),          save :: boltz_2d_dir
-real(kind=dp),     public, save :: boltz_dos_energy_step
-real(kind=dp),     public, save :: boltz_dos_energy_min
-real(kind=dp),     public, save :: boltz_dos_energy_max
-logical,           public, save :: boltz_dos_adpt_smr
-real(kind=dp),     public, save :: boltz_dos_smr_fixed_en_width
-real(kind=dp),     public, save :: boltz_dos_adpt_smr_fac
-real(kind=dp),     public, save :: boltz_dos_adpt_smr_max
-real(kind=dp),     public, save :: boltz_mu_min
-real(kind=dp),     public, save :: boltz_mu_max
-real(kind=dp),     public, save :: boltz_mu_step
-real(kind=dp),     public, save :: boltz_temp_min
-real(kind=dp),     public, save :: boltz_temp_max
-real(kind=dp),     public, save :: boltz_temp_step
-real(kind=dp),     public, save :: boltz_kmesh_spacing
-integer,           public, save :: boltz_kmesh(3)
-real(kind=dp),     public, save :: boltz_tdf_energy_step
-integer,           public, save :: boltz_TDF_smr_index
-integer,           public, save :: boltz_dos_smr_index
-real(kind=dp),     public, save :: boltz_relax_time
-real(kind=dp),     public, save :: boltz_TDF_smr_fixed_en_width
-logical,           public, save :: boltz_bandshift
-integer,           public, save :: boltz_bandshift_firstband
-real(kind=dp),     public, save :: boltz_bandshift_energyshift
+logical, public, save :: boltzwann
+logical, public, save :: boltz_calc_also_dos
+integer, public, save :: boltz_2d_dir_num
+character(len=4), save :: boltz_2d_dir
+real(kind=dp), public, save :: boltz_dos_energy_step
+real(kind=dp), public, save :: boltz_dos_energy_min
+real(kind=dp), public, save :: boltz_dos_energy_max
+logical, public, save :: boltz_dos_adpt_smr
+real(kind=dp), public, save :: boltz_dos_smr_fixed_en_width
+real(kind=dp), public, save :: boltz_dos_adpt_smr_fac
+real(kind=dp), public, save :: boltz_dos_adpt_smr_max
+real(kind=dp), public, save :: boltz_mu_min
+real(kind=dp), public, save :: boltz_mu_max
+real(kind=dp), public, save :: boltz_mu_step
+real(kind=dp), public, save :: boltz_temp_min
+real(kind=dp), public, save :: boltz_temp_max
+real(kind=dp), public, save :: boltz_temp_step
+real(kind=dp), public, save :: boltz_kmesh_spacing
+integer, public, save :: boltz_kmesh(3)
+real(kind=dp), public, save :: boltz_tdf_energy_step
+integer, public, save :: boltz_TDF_smr_index
+integer, public, save :: boltz_dos_smr_index
+real(kind=dp), public, save :: boltz_relax_time
+real(kind=dp), public, save :: boltz_TDF_smr_fixed_en_width
+logical, public, save :: boltz_bandshift
+integer, public, save :: boltz_bandshift_firstband
+real(kind=dp), public, save :: boltz_bandshift_energyshift
 ! [gp-end, Apr 12, 2012]
 
-logical,           public, save :: transport
-logical,           public, save :: tran_easy_fix
+logical, public, save :: transport
+logical, public, save :: tran_easy_fix
 character(len=20), public, save :: transport_mode
-real(kind=dp),     public, save :: tran_win_min
-real(kind=dp),     public, save :: tran_win_max
-real(kind=dp),     public, save :: tran_energy_step
-integer,           public, save :: tran_num_bb
-integer,           public, save :: tran_num_ll
-integer,           public, save :: tran_num_rr
-integer,           public, save :: tran_num_cc
-integer,           public, save :: tran_num_lc
-integer,           public, save :: tran_num_cr
-integer,           public, save :: tran_num_bandc
-logical,           public, save :: tran_write_ht
-logical,           public, save :: tran_read_ht 
-logical,           public, save :: tran_use_same_lead
-integer,           public, save :: tran_num_cell_ll      
-integer,           public, save :: tran_num_cell_rr     
-real(kind=dp),     public, save :: tran_group_threshold  
-real(kind=dp),     public, save :: translation_centre_frac(3)
-integer,           public, save :: num_shells    
+real(kind=dp), public, save :: tran_win_min
+real(kind=dp), public, save :: tran_win_max
+real(kind=dp), public, save :: tran_energy_step
+integer, public, save :: tran_num_bb
+integer, public, save :: tran_num_ll
+integer, public, save :: tran_num_rr
+integer, public, save :: tran_num_cc
+integer, public, save :: tran_num_lc
+integer, public, save :: tran_num_cr
+integer, public, save :: tran_num_bandc
+logical, public, save :: tran_write_ht
+logical, public, save :: tran_read_ht
+logical, public, save :: tran_use_same_lead
+integer, public, save :: tran_num_cell_ll
+integer, public, save :: tran_num_cell_rr
+real(kind=dp), public, save :: tran_group_threshold
+real(kind=dp), public, save :: translation_centre_frac(3)
+integer, public, save :: num_shells
 !! no longer an input keyword
-logical,           public, save :: skip_B1_tests
-!! do not check the B1 condition 
-logical,           public, save :: explicit_nnkpts 
+logical, public, save :: skip_B1_tests
+!! do not check the B1 condition
+logical, public, save :: explicit_nnkpts
 !! nnkpts block is in the input file (allowed only for post-proc setup)
-integer, allocatable, public,save :: shell_list(:)
-real(kind=dp), allocatable,    public, save :: kpt_latt(:,:)   
+integer, allocatable, public, save :: shell_list(:)
+real(kind=dp), allocatable, public, save :: kpt_latt(:, :)
 !! kpoints in lattice vecs
-real(kind=dp),     public, save :: real_lattice(3,3)
-logical,           public, save :: postproc_setup
-logical,           public, save :: cp_pp 
+real(kind=dp), public, save :: real_lattice(3, 3)
+logical, public, save :: postproc_setup
+logical, public, save :: cp_pp
 !! Car-Parinello post-proc flag/transport
 
-logical,           public, save :: calc_only_A
-logical,           public, save :: use_bloch_phases
+logical, public, save :: calc_only_A
+logical, public, save :: use_bloch_phases
 character(len=20), public, save :: restart
-logical,           public, save :: write_r2mn
-logical,           public, save :: guiding_centres
-integer,           public, save :: num_guide_cycles
-integer,           public, save :: num_no_guide_iter
-real(kind=dp),     public, save :: fixed_step
-real(kind=dp),     public, save :: trial_step
-logical,           public, save :: write_proj
-integer,           public, save :: timing_level
-logical,           public, save :: spinors   !are our WF spinors?
-integer,           public, save :: num_elec_per_state
-logical,           public, save :: translate_home_cell
-logical,           public, save :: write_xyz
-logical,           public, save :: write_hr_diag
-real(kind=dp),     public, save :: conv_noise_amp
-integer,           public, save :: conv_noise_num
-real(kind=dp),     public, save :: wannier_plot_radius
-integer,           public, save :: search_shells   !for kmesh
-real(kind=dp),     public, save :: kmesh_tol
-integer,           public, save :: optimisation
-! aam: for WF-based calculation of vdW C6 coefficients 
-logical,           public, save :: write_vdw_data
+logical, public, save :: write_r2mn
+logical, public, save :: guiding_centres
+integer, public, save :: num_guide_cycles
+integer, public, save :: num_no_guide_iter
+real(kind=dp), public, save :: fixed_step
+real(kind=dp), public, save :: trial_step
+logical, public, save :: precond
+logical, public, save :: write_proj
+integer, public, save :: timing_level
+logical, public, save :: spinors   !are our WF spinors?
+integer, public, save :: num_elec_per_state
+logical, public, save :: translate_home_cell
+logical, public, save :: write_xyz
+logical, public, save :: write_hr_diag
+real(kind=dp), public, save :: conv_noise_amp
+integer, public, save :: conv_noise_num
+real(kind=dp), public, save :: wannier_plot_radius
+real(kind=dp), public, save :: wannier_plot_scale
+integer, public, save :: search_shells   !for kmesh
+real(kind=dp), public, save :: kmesh_tol
+integer, public, save :: optimisation
+! aam: for WF-based calculation of vdW C6 coefficients
+logical, public, save :: write_vdw_data
 
 ! Restarts
-real(kind=dp),     public, save :: omega_invariant
+real(kind=dp), public, save :: omega_invariant
 character(len=20), public, save :: checkpoint
-logical,           public, save :: have_disentangled
+logical, public, save :: have_disentangled
 
 ! Atom sites
-real(kind=dp), allocatable,     public, save :: atoms_pos_frac(:,:,:)
-real(kind=dp), allocatable,     public, save :: atoms_pos_cart(:,:,:)
-integer, allocatable,           public, save :: atoms_species_num(:)  
-character(len=maxlen), allocatable,  public, save :: atoms_label(:)
-character(len=2), allocatable,  public, save :: atoms_symbol(:)
-integer,                        public, save :: num_atoms
-integer,                        public, save :: num_species
+real(kind=dp), allocatable, public, save :: atoms_pos_frac(:, :, :)
+real(kind=dp), allocatable, public, save :: atoms_pos_cart(:, :, :)
+integer, allocatable, public, save :: atoms_species_num(:)
+character(len=maxlen), allocatable, public, save :: atoms_label(:)
+character(len=2), allocatable, public, save :: atoms_symbol(:)
+integer, public, save :: num_atoms
+integer, public, save :: num_species
 
 ! Projections
-real(kind=dp), allocatable,     public, save :: proj_site(:,:)
-integer, allocatable,           public, save :: proj_l(:)  
-integer, allocatable,           public, save :: proj_m(:)
-integer, allocatable,           public, save :: proj_s(:)  
-real(kind=dp), allocatable,     public, save :: proj_s_qaxis(:,:)
-real(kind=dp), allocatable,     public, save :: proj_z(:,:)
-real(kind=dp), allocatable,     public, save :: proj_x(:,:)
-integer, allocatable,           public, save :: proj_radial(:)  
-real(kind=dp), allocatable,     public, save :: proj_zona(:)
-integer,                        public, save :: num_proj
+logical, public, save :: lhasproj
+real(kind=dp), allocatable, public, save :: input_proj_site(:, :)
+integer, allocatable, public, save :: input_proj_l(:)
+integer, allocatable, public, save :: input_proj_m(:)
+integer, allocatable, public, save :: input_proj_s(:)
+real(kind=dp), allocatable, public, save :: input_proj_s_qaxis(:, :)
+real(kind=dp), allocatable, public, save :: input_proj_z(:, :)
+real(kind=dp), allocatable, public, save :: input_proj_x(:, :)
+integer, allocatable, public, save :: input_proj_radial(:)
+real(kind=dp), allocatable, public, save :: input_proj_zona(:)
+real(kind=dp), allocatable, public, save :: proj_site(:, :)
+integer, allocatable, public, save :: proj_l(:)
+integer, allocatable, public, save :: proj_m(:)
+integer, allocatable, public, save :: proj_s(:)
+real(kind=dp), allocatable, public, save :: proj_s_qaxis(:, :)
+real(kind=dp), allocatable, public, save :: proj_z(:, :)
+real(kind=dp), allocatable, public, save :: proj_x(:, :)
+integer, allocatable, public, save :: proj_radial(:)
+real(kind=dp), allocatable, public, save :: proj_zona(:)
+integer, public, save :: num_proj
+! projections selection
+logical, public, save :: lselproj
+integer, public, save :: num_select_projections
+integer, allocatable, public, save :: select_projections(:)
+integer, allocatable, public, save :: proj2wann_map(:)
+! a u t o m a t i c   p r o j e c t i o n s
+! vv: Writes a new block in .nnkp
+logical, public, save :: auto_projections
 
 !parameters dervied from input
-integer,           public, save :: num_kpts
-real(kind=dp),     public, save :: recip_lattice(3,3)
-real(kind=dp),     public, save :: cell_volume
-real(kind=dp),     public, save :: real_metric(3,3)
-real(kind=dp),     public, save :: recip_metric(3,3)
-integer,           public, save :: bands_num_spec_points  
-character(len=1), allocatable,    public, save ::bands_label(:)
-real(kind=dp), allocatable,    public, save ::bands_spec_points(:,:)
-real(kind=dp), allocatable,    public, save ::kpt_cart(:,:) !kpoints in cartesians
-logical,           public, save :: disentanglement
-real(kind=dp),     public, save :: lenconfac
-integer,           public, save :: num_wannier_plot
-integer,           public, save :: num_bands_project
-integer,           public, save :: num_exclude_bands
-logical,           public, save :: lfixstep
+integer, public, save :: num_kpts
+real(kind=dp), public, save :: recip_lattice(3, 3)
+real(kind=dp), public, save :: cell_volume
+real(kind=dp), public, save :: real_metric(3, 3)
+real(kind=dp), public, save :: recip_metric(3, 3)
+integer, public, save :: bands_num_spec_points
+character(len=20), allocatable, public, save ::bands_label(:)
+real(kind=dp), allocatable, public, save ::bands_spec_points(:, :)
+real(kind=dp), allocatable, public, save ::kpt_cart(:, :) !kpoints in cartesians
+logical, public, save :: disentanglement
+real(kind=dp), public, save :: lenconfac
+integer, public, save :: num_wannier_plot
+integer, public, save :: num_bands_project
+integer, public, save :: num_exclude_bands
+logical, public, save :: lfixstep
 
 ! kmesh parameters (set in kmesh)
 
-integer,       public, save              :: nnh           ! the number of b-directions (bka)
-integer,       public, save              :: nntot         ! total number of neighbours for each k-point
-integer,       public, save, allocatable :: nnlist(:,:)   ! list of neighbours for each k-point
-integer,       public, save, allocatable :: neigh(:,:)    
-integer,       public, save, allocatable :: nncell(:,:,:) ! gives BZ of each neighbour of each k-point
+integer, public, save              :: nnh           ! the number of b-directions (bka)
+integer, public, save              :: nntot         ! total number of neighbours for each k-point
+integer, public, save, allocatable :: nnlist(:, :)   ! list of neighbours for each k-point
+integer, public, save, allocatable :: neigh(:, :)
+integer, public, save, allocatable :: nncell(:, :, :) ! gives BZ of each neighbour of each k-point
 real(kind=dp), public, save              :: wbtot
 real(kind=dp), public, save, allocatable :: wb(:)         ! weights associated with neighbours of each k-point
-real(kind=dp), public, save, allocatable :: bk(:,:,:)     ! the b-vectors that go from each k-point to its neighbours
-real(kind=dp), public, save, allocatable :: bka(:,:)      ! the b-directions from 1st k-point to its neighbours
+real(kind=dp), public, save, allocatable :: bk(:, :, :)     ! the b-vectors that go from each k-point to its neighbours
+real(kind=dp), public, save, allocatable :: bka(:, :)      ! the b-directions from 1st k-point to its neighbours
 
 ! disentangle parameters
 integer, public, save, allocatable :: ndimwin(:)
-logical, public, save, allocatable :: lwindow(:,:)
+logical, public, save, allocatable :: lwindow(:, :)
 logical, public, save :: frozen_states
 
 ! a_matrix and m_matrix_orig can be calculated internally from bloch states
@@ -323,36 +417,38 @@ logical, public, save :: frozen_states
 ! a_matrix      = projection of trial orbitals on bloch states
 ! m_matrix_orig = overlap of bloch states
 
-complex(kind=dp), allocatable, save, public :: a_matrix(:,:,:)
-complex(kind=dp), allocatable, save, public :: m_matrix_orig(:,:,:,:)
-real(kind=dp),    allocatable, save, public :: eigval(:,:)
-logical,                       save, public :: eig_found
+complex(kind=dp), allocatable, save, public :: a_matrix(:, :, :)
+complex(kind=dp), allocatable, save, public :: m_matrix_orig(:, :, :, :)
+complex(kind=dp), allocatable, save, public :: m_matrix_orig_local(:, :, :, :)
+real(kind=dp), allocatable, save, public :: eigval(:, :)
+logical, save, public :: eig_found
 
-! $![ysl-b]
-! $  ! ph_g = phase factor of Bloch functions at Gamma
-! $  !  assuming that Bloch functions at Gamma are real except this phase factor
-! $  complex(kind=dp), allocatable, save, public :: ph_g(:)
-! $![ysl-e]
+!$![ysl-b]
+!$  ! ph_g = phase factor of Bloch functions at Gamma
+!$  !  assuming that Bloch functions at Gamma are real except this phase factor
+!$  complex(kind=dp), allocatable, save, public :: ph_g(:)
+!$![ysl-e]
 
 ! u_matrix_opt gives the num_wann dimension optimal subspace from the
 ! original bloch states
 
-complex(kind=dp), allocatable, save, public :: u_matrix_opt(:,:,:)
+complex(kind=dp), allocatable, save, public :: u_matrix_opt(:, :, :)
 
 ! u_matrix gives the unitary rotations from the optimal subspace to the
-! optimally smooth states. 
+! optimally smooth states.
 ! m_matrix we store here, becuase it is needed for restart of wannierise
 
-complex(kind=dp), allocatable, save, public :: u_matrix(:,:,:)
-complex(kind=dp), allocatable, save, public :: m_matrix(:,:,:,:)
+complex(kind=dp), allocatable, save, public :: u_matrix(:, :, :)
+complex(kind=dp), allocatable, save, public :: m_matrix(:, :, :, :)
+complex(kind=dp), allocatable, save, public :: m_matrix_local(:, :, :, :)
 
 ! RS: symmetry-adapted Wannier functions
-logical,       public, save :: lsitesymmetry=.false.
-real(kind=dp), public, save :: symmetrize_eps=1.d-3
+logical, public, save :: lsitesymmetry = .false.
+real(kind=dp), public, save :: symmetrize_eps = 1.d-3
 
 ! The maximum number of shells we need to satisfy B1 condition in kmesh
-integer, parameter, public :: max_shells=6
-integer, parameter, public :: num_nnmax=12
+integer, parameter, public :: max_shells = 6
+integer, parameter, public :: num_nnmax = 12
 
 ! Are we running as a library
 logical, save, public :: library = .false.
@@ -365,18 +461,34 @@ logical, save, public :: ispostw90 = .false.
 logical, save, public :: effective_model = .false.
 
 ! Wannier centres and spreads
-real(kind=dp), public, save, allocatable :: wannier_centres(:,:)
+real(kind=dp), public, save, allocatable :: wannier_centres(:, :)
 real(kind=dp), public, save, allocatable :: wannier_spreads(:)
 real(kind=dp), public, save :: omega_total
 real(kind=dp), public, save :: omega_tilde
 ! [ omega_invariant is declared above ]
 
 ! For Hamiltonian matrix in WF representation
-logical,          public, save              :: automatic_translation
-integer,          public, save              :: one_dim_dir
+logical, public, save              :: automatic_translation
+integer, public, save              :: one_dim_dir
 
 ! Private data
 integer                            :: num_lines
 character(len=maxlen), allocatable :: in_data(:)
 character(len=maxlen)              :: ctmp
 logical                            :: ltmp
+! AAM_2016-09-15: hr_plot is a deprecated input parameter. Replaced by write_hr.
+logical                            :: hr_plot
+
+public :: param_read
+public :: param_write
+public :: param_postw90_write
+public :: param_dealloc
+public :: param_write_header
+public :: param_write_chkpt
+public :: param_read_chkpt
+public :: param_lib_set_atoms
+public :: param_memory_estimate
+public :: param_get_smearing_type
+public :: param_get_convention_type
+public :: param_dist
+public :: param_chkpt_dist

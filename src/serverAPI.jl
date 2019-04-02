@@ -78,6 +78,26 @@ function slurm_isrunning(job::DFJob)
     end
 end
 
+"""
+    slurm_isqueued(job::DFJob)
+
+Returns whether the job is running.
+"""
+function slurm_isqueued(job::DFJob)
+    runslocal_assert(job)
+    id = slurm_jobid(job)
+    if id != -1
+        if slurm_process_command(`sacct -j $id --format=state`)[1] == "PENDING"
+            return true
+        else
+            return false
+        end
+    else
+        return false
+    end
+end
+
+
 
 """
     slurm_mostrecent(index=1, jobfile="job.tt", startdate=lastmonth(), args...; kwargs...)
