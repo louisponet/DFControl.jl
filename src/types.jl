@@ -10,7 +10,6 @@ Point{N, T}(x::T) where {N, T} = Point{N, T}(x, x, x)
 
 Base.convert(::Type{Point3{T}}, x::Vector{T}) where T<:AbstractFloat = Point3{T}(x[1], x[2], x[3])
 
-
 abstract type Band end
 
 """

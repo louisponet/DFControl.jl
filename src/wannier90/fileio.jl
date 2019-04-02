@@ -1,5 +1,5 @@
 #THIS IS THE MOST HORRIBLE FUNCTION I HAVE EVER CREATED!!!
-function extract_atoms(atoms_block::T, proj_block::T, cell) where T <: InputData
+function extract_atoms(atoms_block::T, proj_block::T, cell, spinors=false) where T <: InputData
     if atoms_block.name == :atoms_cart
         cell = Mat3(Matrix(I, 3, 3))
     end
@@ -16,7 +16,7 @@ function extract_atoms(atoms_block::T, proj_block::T, cell) where T <: InputData
                         continue
                     end
                     for proj in projs
-                        size = orbsize(proj)
+                        size = spinors ? 2*orbsize(proj) : orbsize(proj)
                         push!(t_ats, Atom(pos_at, element(pos_at), cell' * ps, projections=[Projection(orbital(proj), t_start, t_start + size - 1)]))
                         t_start += size
                     end
@@ -52,7 +52,7 @@ function extract_atoms(atoms_block::T, proj_block::T, cell) where T <: InputData
     return out_ats
 end
 
-function extract_structure(name, cell_block::T, atoms_block::T, projections_block::T) where T <: Union{InputData, Nothing}
+function extract_structure(name, cell_block::T, atoms_block::T, projections_block::T, spinors=false) where T <: Union{InputData, Nothing}
     if atoms_block == nothing || cell_block == nothing
         return nothing
     end
@@ -62,7 +62,7 @@ function extract_structure(name, cell_block::T, atoms_block::T, projections_bloc
         cell = conversions[:bohr2ang] * cell_block.data
     end
 
-    atoms = extract_atoms(atoms_block, projections_block, cell)
+    atoms = extract_atoms(atoms_block, projections_block, cell, spinors)
     return Structure(name, Mat3(cell), atoms)
 end
 
@@ -217,7 +217,7 @@ function read_wannier_input(filename::String, T=Float64; execs=[Exec("wannier90.
             line = readline(f)
         end
     end
-    structure = extract_structure(structure_name, cell_block, atoms_block, proj_block)
+    structure = extract_structure(structure_name, cell_block, atoms_block, proj_block, get(flags, :spinors, false))
     dir, file = splitdir(filename)
     flags[:preprocess] = hasflag(getfirst(x->x.exec == "wannier90.x", execs), :pp)  ? true : false
     return DFInput{Wannier90}(splitext(file)[1], dir, flags, data, execs, run), structure
