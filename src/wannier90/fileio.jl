@@ -253,10 +253,10 @@ function save(input::DFInput{Wannier90}, structure, filename::String=inpath(inpu
                 if isempty(prjs)
                     continue
                 end
-                write(f, "$(id(at)): $(prjs[1].orb.id)")
+                write(f, "$(name(at)): $(prjs[1].orb.name)")
                 if length(prjs) > 1
                     for proj in prjs[2:end]
-                        write(f, ";$(proj.orb.id)")
+                        write(f, ";$(proj.orb.name)")
                     end
                 end
                 write(f, "\n")
@@ -268,7 +268,7 @@ function save(input::DFInput{Wannier90}, structure, filename::String=inpath(inpu
         write(f, "begin atoms_cart\n")
         for at in atoms(structure)
             pos = position(at)
-            write(f, "$(id(at))  $(pos[1]) $(pos[2]) $(pos[3])\n")
+            write(f, "$(name(at))  $(pos[1]) $(pos[2]) $(pos[3])\n")
         end
         write(f, "end atoms_cart\n")
         write(f, "\n")

@@ -73,13 +73,13 @@ Atom(orig_at::Atom, new_pos::Point3) = Atom(id(orig_at), element(orig_at), new_p
 #Easiest way to implement a new abstractatom is to provide a way to access
 #the struct holding `id`, `position`, `element`, `pseudo`, `projection` fields
 atom(at::Atom) = at
-id(at::AbstractAtom)          = atom(at).id
+name(at::AbstractAtom)          = atom(at).name
 position(at::AbstractAtom)    = atom(at).position
 element(at::AbstractAtom)     = atom(at).element
 pseudo(at::AbstractAtom)      = atom(at).pseudo
 projections(at::AbstractAtom) = atom(at).projections
 
-setid!(at::AbstractAtom, id::Symbol) = (atom(at).id = id)
+setid!(at::AbstractAtom, id::Symbol) = (atom(at).name = id)
 setposition!(at::AbstractAtom{T}, position::Point3) where T =
     (atom(at).position = convert(Point3{T}, position))
 setpseudo!(at::AbstractAtom, pseudo) = (atom(at).pseudo = pseudo)
