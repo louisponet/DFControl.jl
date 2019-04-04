@@ -288,7 +288,7 @@
 #     write(f, "typat\n")
 #     i = 1
 #     for at in structure.atoms
-#         write(f, "$(findfirst(x->id(x) == id(at), unique)) ")
+#         write(f, "$(findfirst(x->name(x) == name(at), unique)) ")
 #         if i == 3
 #             i=0
 #             write(f,"\n")

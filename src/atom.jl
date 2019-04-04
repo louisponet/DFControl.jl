@@ -42,16 +42,16 @@ abstract type AbstractAtom{T} end
 #Definition of the AbstractAtom interface, each AbstractAtom needs to provide a method `atom(...)` that returns a datastructure with the Atom fields.
 elsym(atom::AbstractAtom) = element(atom).symbol
 "Extracts all the positions of the atoms and puts them in a vector."
-positions(atoms::Vector{<:AbstractAtom}, id::Symbol) = [position(x) for x in filter(y -> id(y) == id, atoms)]
+positions(atoms::Vector{<:AbstractAtom}, name::Symbol) = [position(x) for x in filter(y -> name(y) == name, atoms)]
 getpseudoset(at::AbstractAtom) = getpseudoset(elsym(at), pseudo(at))
 
 "Takes a Vector of atoms and returns a Vector with the atoms having unique symbols."
 function Base.unique(atoms::Vector{<:AbstractAtom{T}}) where T <: AbstractFloat
-    ids    = Symbol[]
+    names    = Symbol[]
     uni = AbstractAtom{T}[]
     for at in atoms
-        if !in(id(at), ids)
-            push!(ids, id(at))
+        if !in(name(at), names)
+            push!(names, name(at))
             push!(uni, at)
         end
     end
@@ -60,18 +60,18 @@ end
 
 #We use angstrom everywhere
 @with_kw mutable struct Atom{T<:AbstractFloat} <: AbstractAtom{T}
-    id          ::Symbol
+    name        ::Symbol
     element     ::Element
     position    ::Point3{T}
     pseudo      ::String = ""
     projections ::Vector{Projection} = Projection[]
 end
 
-Atom(id::Symbol, el::Element, pos::Point3; kwargs...)  = Atom(id=id, element=el, position=pos; kwargs...)
-Atom(id::Symbol, el::Symbol, pos::Point3; kwargs...)  = Atom(id=id, element=element(el), position=pos; kwargs...)
-Atom(orig_at::Atom, new_pos::Point3) = Atom(id(orig_at), element(orig_at), new_pos, pseudo(orig_at), projections(orig_at))
+Atom(name::Symbol, el::Element, pos::Point3; kwargs...)  = Atom(name=name, element=el, position=pos; kwargs...)
+Atom(name::Symbol, el::Symbol, pos::Point3; kwargs...)  = Atom(name=name, element=element(el), position=pos; kwargs...)
+Atom(orig_at::Atom, new_pos::Point3) = Atom(name(orig_at), element(orig_at), new_pos, pseudo(orig_at), projections(orig_at))
 #Easiest way to implement a new abstractatom is to provide a way to access
-#the struct holding `id`, `position`, `element`, `pseudo`, `projection` fields
+#the struct holding `name`, `position`, `element`, `pseudo`, `projection` fields
 atom(at::Atom) = at
 name(at::AbstractAtom)          = atom(at).name
 position(at::AbstractAtom)    = atom(at).position
@@ -79,7 +79,7 @@ element(at::AbstractAtom)     = atom(at).element
 pseudo(at::AbstractAtom)      = atom(at).pseudo
 projections(at::AbstractAtom) = atom(at).projections
 
-setid!(at::AbstractAtom, id::Symbol) = (atom(at).name = id)
+setname!(at::AbstractAtom, name::Symbol) = (atom(at).name = name)
 setposition!(at::AbstractAtom{T}, position::Point3) where T =
     (atom(at).position = convert(Point3{T}, position))
 setpseudo!(at::AbstractAtom, pseudo) = (atom(at).pseudo = pseudo)
@@ -90,4 +90,4 @@ bondlength(at1::AbstractAtom{T}, at2::AbstractAtom{T}, R=T(0.0)) where T<:Abstra
 
 import Base: ==
 ==(at1::AbstractAtom, at2::AbstractAtom) =
-    id(at1)==id(at2) && norm(position(at1) - position(at2)) < 1e-6
+    name(at1)==name(at2) && norm(position(at1) - position(at2)) < 1e-6

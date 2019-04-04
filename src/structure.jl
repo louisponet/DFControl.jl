@@ -21,7 +21,7 @@ Returns all the atoms inside the structure with the specified symbol
 function atoms(str::AbstractStructure, atsym::Symbol)
     out = AbstractAtom[]
     for at in str.atoms
-        id(at) == atsym && push!(out, at)
+        name(at) == atsym && push!(out, at)
     end
     return out
 end
@@ -47,8 +47,8 @@ where proj = :s, :p, :d, :f, etc.
 function setprojections!(str::Structure, projs::Pair...)
     projdict = Dict(projs)
     for at in unique(str.atoms)
-        if !haskey(projdict, id(at))
-            projdict[id(at)] = [proj.orb for proj in projections(at)]
+        if !haskey(projdict, name(at))
+            projdict[name(at)] = [proj.orb for proj in projections(at)]
         end
     end
     emptyprojections!(str)
@@ -81,7 +81,7 @@ function mergestructures(structures::Vector{<:AbstractStructure})
         for at1 in atoms(out), at2 in atoms(structure)
             if at1==at2
                 for name in fieldnames(typeof(at1))
-                    if name in [:id, :element, :position]
+                    if name in [:name, :element, :position]
                         continue
                     end
                     field = getfield(at2, name)
@@ -111,9 +111,9 @@ end
 
 function setpseudos!(structure::AbstractStructure, set, specifier=nothing)
     for (i, at) in enumerate(atoms(structure))
-        pseudo = getdefault_pseudo(id(at), set, specifier=specifier)
+        pseudo = getdefault_pseudo(name(at), set, specifier=specifier)
         if pseudo == nothing
-            @warn "Pseudo for $(id(at)) at index $i not found in set $set."
+            @warn "Pseudo for $(name(at)) at index $i not found in set $set."
         else
             setpseudo!(at, pseudo)
         end

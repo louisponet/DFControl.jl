@@ -389,7 +389,7 @@ end
 
 #--------------- Interacting with the Structure inside the DFJob ---------------#
 "Returns the ith atom with id `atsym`."
-atom(job::DFJob, atsym::Symbol, i=1) = filter(x -> x.id == atsym, atoms(job))[i]
+atom(job::DFJob, atsym::Symbol, i=1) = filter(x -> x.name == atsym, atoms(job))[i]
 
 """
     atoms(job::DFJob)

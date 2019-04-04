@@ -1,5 +1,5 @@
 struct Orbital
-    id  ::Symbol
+    name  ::Symbol
     size::Int
     l   ::Int
 end
@@ -14,9 +14,9 @@ const orbitals = [
     Orbital(Symbol("dx2-y2"), 1, 2),
     Orbital(:dxy, 1, 2),
 ]
-orbital(s::Symbol) = getfirst(x->x.id==s, orbitals)
+orbital(s::Symbol) = getfirst(x -> x.name == s, orbitals)
 
-Base.convert(::Type{Symbol}, x::Orbital) = x.id
+Base.convert(::Type{Symbol}, x::Orbital) = x.name
 orbsize(orb::Orbital) = orb.size
 orbsize(orb::Symbol)  = orbsize(orbital(orb))
 
@@ -40,8 +40,8 @@ function addprojections!(projections_, atoms)
                 continue
             end
             for proj in projs
-                if id(at) == proj_at
-                    size = orbsize(proj)
+                if name(at) == proj_at
+                    size   = orbsize(proj)
                     t_proj = Projection(orbital(proj), t_start, t_start + size - 1)
                     push!(projections(at), t_proj)
                     t_start += size

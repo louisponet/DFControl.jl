@@ -16,7 +16,7 @@ end
 
 @render i::Inline x::AbstractAtom begin
     pos = position(x)
-    Tree(Text("$(id(x))  ang: $(round(pos[1], digits=5)) $(round(pos[2], digits=5)) $(round(pos[3], digits=5))"), [SubTree(Text("$f → "), getfield_(x, f)) for f in fieldnames(typeof(x))[2:end]])
+    Tree(Text("$(name(x))  ang: $(round(pos[1], digits=5)) $(round(pos[2], digits=5)) $(round(pos[3], digits=5))"), [SubTree(Text("$f → "), getfield_(x, f)) for f in fieldnames(typeof(x))[2:end]])
 end
 
 @render i::Inline x::DFJob begin

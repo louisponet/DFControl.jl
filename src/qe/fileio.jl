@@ -698,11 +698,11 @@ function write_structure(f, input::DFInput{QE}, structure)
     pseudo_lines = String[]
     atom_lines   = String[]
     for at in unique_at
-        push!(pseudo_lines, "$(id(at)) $(element(at).atomic_weight)   $(pseudo(at))\n")
+        push!(pseudo_lines, "$(name(at)) $(element(at).atomic_weight)   $(pseudo(at))\n")
     end
     for at in atoms(structure)
         pos = position(at)
-        push!(atom_lines, "$(id(at))  $(pos[1]) $(pos[2]) $(pos[3])\n")
+        push!(atom_lines, "$(name(at))  $(pos[1]) $(pos[2]) $(pos[3])\n")
     end
 
     write(f, "ATOMIC_SPECIES\n")
