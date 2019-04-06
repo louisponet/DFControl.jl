@@ -5,6 +5,7 @@ module DFControl
     using Dates
     using DelimitedFiles
     import Base.Iterators.flatten
+    using StaticArrays
     using RecipesBase
     using StaticArrays
     using Parameters
