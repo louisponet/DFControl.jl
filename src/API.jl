@@ -18,7 +18,7 @@ export save, submit, abort, setflow!, setheaderword!, isrunning, progressreport,
 export searchinput, searchinputs, setcutoffs!, setname!
 
 #Interacting with the Structure inside DFJob
-export atom, atoms, setatoms!, setpseudos!, projections, setprojections!
+export atom, atoms, setatoms!, setpseudos!, projections, setprojections!, cell
 
 include("serverAPI.jl")
 export qstat, watch_qstat
