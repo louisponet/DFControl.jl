@@ -3,7 +3,14 @@ import Base: parse
 
 #this is all pretty hacky with regards to the new structure and atom api. can for sure be a lot better!
 "Quantum espresso card option parser"
-cardoption(line) = Symbol(match(r"((?:[a-z][a-z0-9_]*))", split(line)[2]).match)
+function cardoption(line)
+	sline = split(line)
+	if length(sline) < 2 && lowercase(sline[1])=="k_points"
+		return :tpiba
+	else
+	  	return Symbol(match(r"((?:[a-z][a-z0-9_]*))", sline[2]).match)
+  	end
+end
 
 """
     qe_read_output(filename::String, T=Float64)
@@ -487,6 +494,9 @@ function qe_read_input(filename; execs=[Exec("pw.x")], run=true, structure_name=
             v = strip(lowercase(v), '.')
         elseif eltype(typ) <: Number
             v = replace(v, "d" => "e")
+        end
+        if typ <: AbstractArray
+	        typ = eltype(typ)
         end
         tval = typ != String ? parse.((typ,), split(v)) : v
         parsed_flags[sym] = length(tval) == 1 ? tval[1] : tval

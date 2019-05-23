@@ -32,12 +32,12 @@ kpoints(band::DFBand, kind=:cryst) = kind == :cart ? band.k_points_cart : band.k
 mutable struct ExecFlag
     symbol     ::Symbol
     name       ::String
-    type       ::Type
+    typ        ::Type
     description::String
     value
 end
 
-ExecFlag(e::ExecFlag, value) = ExecFlag(e.symbol, e.name, e.type, e.description, value)
+ExecFlag(e::ExecFlag, value) = ExecFlag(e.symbol, e.name, e.typ, e.description, value)
 ExecFlag(p::Pair{Symbol, T}) where T = ExecFlag(first(p), String(first(p)), T, "", last(p))
 
 const QEEXECFLAGS = ExecFlag[
@@ -151,7 +151,7 @@ function parse_mpiflags(line::Vector{<:SubString})
         end
 
         @assert mflag != nothing "$(strip(s, '-')) is not a recognized mpiflag"
-        val, i = mpi_flag_val(mflag.type, line, i)
+        val, i = mpi_flag_val(mflag.typ, line, i)
         push!(eflags, ExecFlag(mflag, val))
     end
     eflags
@@ -193,7 +193,7 @@ function setflags!(exec::Exec, flags...)
     for (f, val) in flags
         flag = isa(f, String) ? getfirst(x -> x.name == f, exec.flags) : getfirst(x -> x.symbol == f, exec.flags)
         if flag != nothing
-            flag.value = convert(flag.type, val)
+            flag.value = convert(flag.typ, val)
         end
     end
     exec.flags

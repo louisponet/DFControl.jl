@@ -3,7 +3,7 @@
 const default_file = occursin("cache", first(Base.DEPOT_PATH)) ? abspath(Base.DEPOT_PATH[2], "config","DFControl", "user_defaults.jl") : abspath(Base.DEPOT_PATH[1], "config","DFControl", "user_defaults.jl")
 const default_pseudodirs = Dict{Symbol, String}()
 const default_pseudos = Dict{Symbol, Dict{Symbol, Vector{String}}}()
-const default_jobheader = ""
+const default_jobheader = [""]
 
 for el in ELEMENTS
     default_pseudos[el.symbol] = Dict{Symbol, Vector{String}}()
