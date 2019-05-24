@@ -12,7 +12,7 @@ logical, public, save :: spn_formatted
 logical, public, save :: uHu_formatted
 logical, public, save :: berry_uHu_formatted
 !! Read the uHu from fortran formatted file
-integer, public, save :: spin
+character(len=20), public, save :: spin
 !! Spin up=1 down=2
 integer, public, save :: num_bands
 !! Number of bands
