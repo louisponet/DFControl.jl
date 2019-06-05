@@ -73,18 +73,28 @@ Atom(orig_at::Atom, new_pos::Point3) = Atom(name(orig_at), element(orig_at), new
 #Easiest way to implement a new abstractatom is to provide a way to access
 #the struct holding `name`, `position`, `element`, `pseudo`, `projection` fields
 atom(at::Atom) = at
-name(at::AbstractAtom)          = atom(at).name
-position(at::AbstractAtom)    = atom(at).position
-element(at::AbstractAtom)     = atom(at).element
-pseudo(at::AbstractAtom)      = atom(at).pseudo
-projections(at::AbstractAtom) = atom(at).projections
 
-setname!(at::AbstractAtom, name::Symbol) = (atom(at).name = name)
+for interface_function in (:name, :position, :element, :pseudo, :projections)
+	@eval $interface_function(at::AbstractAtom) = atom(at).$interface_function
+end
+
+function Base.range(at::AbstractAtom)
+	projs = projections(at)
+	@assert length(projs) != 0 "At $(name(at)) has no defined projections. Please use `setprojections!` first."
+	return projs[1].start : projs[end].last
+end
+
+setname!(at::AbstractAtom, name::Symbol) =
+	atom(at).name = name
+
 setposition!(at::AbstractAtom{T}, position::Point3) where T =
-    (atom(at).position = convert(Point3{T}, position))
-setpseudo!(at::AbstractAtom, pseudo) = (atom(at).pseudo = pseudo)
+    atom(at).position = convert(Point3{T}, position)
+
+setpseudo!(at::AbstractAtom, pseudo) =
+	atom(at).pseudo = pseudo
+
 setprojections!(at::AbstractAtom, projections::Vector{Projection}) =
-    (atom(at).projections = projections)
+    atom(at).projections = projections
 
 bondlength(at1::AbstractAtom{T}, at2::AbstractAtom{T}, R=T(0.0)) where T<:AbstractFloat = norm(position(at1) - position(at2) - R)
 
