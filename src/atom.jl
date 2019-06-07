@@ -90,8 +90,10 @@ setname!(at::AbstractAtom, name::Symbol) =
 setposition!(at::AbstractAtom{T}, position::Point3) where T =
     atom(at).position = convert(Point3{T}, position)
 
-setpseudo!(at::AbstractAtom, pseudo) =
+function setpseudo!(at::AbstractAtom, pseudo; print=true)
+	print && @info "Pseudo of atom $(name(at)) set to $pseudo."
 	atom(at).pseudo = pseudo
+end
 
 setprojections!(at::AbstractAtom, projections::Vector{Projection}) =
     atom(at).projections = projections

@@ -425,16 +425,16 @@ end
 
 
 "sets the pseudopotentials to the specified one in the default pseudoset."
-function setpseudos!(job::DFJob, set, specifier="")
-    setpseudos!(job.structure, set, specifier)
+function setpseudos!(job::DFJob, set, specifier=""; kwargs...)
+    setpseudos!(job.structure, set, specifier; kwargs...)
     dir = getdefault_pseudodir(set)
     dir != nothing && setflags!(job, :pseudo_dir => "$dir", print=false)
     return job
 end
 
 "sets the pseudopotentials to the specified one in the default pseudoset."
-function setpseudos!(job::DFJob, pseudodir, at_pseudos::Pair{Symbol, String}...)
-    setpseudos!(job.structure, at_pseudos...)
+function setpseudos!(job::DFJob, pseudodir, at_pseudos::Pair{Symbol, String}...; kwargs...)
+    setpseudos!(job.structure, at_pseudos...; kwargs...)
     setflags!(job, :pseudo_dir => "$pseudodir", print=false)
     return job
 end

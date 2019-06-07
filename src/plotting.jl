@@ -33,6 +33,7 @@ linewidth=2
     linewidth --> linewidth
     title     --> "Eigenvalues"
     yguide    --> "Energy (eV)"
+    legend    --> false
     out = band.eigvals
     ks, out
 end
