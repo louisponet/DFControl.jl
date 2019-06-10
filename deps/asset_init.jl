@@ -294,3 +294,124 @@ open(joinpath(@__DIR__, "abinitflags.jl"), "w") do wf
     end
     write(wf, ")")
 end
+
+
+#all this so I can be lazy and just use repr
+struct ElkFlagInfo{T}
+    name::Symbol
+    default::Union{T, Nothing}  #check again v0.7 Some
+    description::String
+end
+ElkFlagInfo() = ElkFlagInfo{Nothing}(:error, "")
+Base.eltype(x::ElkFlagInfo{T}) where T = T
+
+
+struct ElkControlBlockInfo
+    name::Symbol
+    flags::Vector{<:ElkFlagInfo}
+    description::String
+end
+
+function closing(c::Char)
+	if c == '{'
+		return '}'
+	elseif c == '('
+		return ')'
+	elseif c == '['
+		return ']'
+	end
+end
+
+function readuntil_closing(io::IO, opening_char::Char)
+	out = ""
+	counter = 1
+	closing_char = closing(opening_char)
+	while counter > 0
+		c = read(io, Char)
+		out *= c
+		if c == opening_char
+			counter += 1
+		elseif c == closing_char
+			counter -= 1
+		end
+	end
+	return out
+end
+
+function elk2julia_type(s::AbstractString)
+	if s == "integer"
+		return Int
+	elseif s == "real"
+		return Float64
+	elseif s == "logical"
+		return Bool
+	elseif s == "string"
+		return String
+	elseif s == "complex"
+		return ComplexF64
+	end
+end
+
+function replace_multiple(str, replacements::Pair{String, String}...)
+    tstr = deepcopy(str)
+    for r in replacements
+        tstr = replace(tstr, r)
+    end
+    return tstr
+end
+
+function parse_elk_default(::Type{T}, s) where T
+	s_cleaned =strip(strip(strip(replace_multiple(s, "{" => "", "}" => "", "."=>"", " "=>""), '\$'), ')'), '(')
+	if occursin("-", s_cleaned)
+		return nothing
+	elseif occursin(",", s_cleaned)
+		s_t = split(s_cleaned, ',')
+		return parse.(eltype(T), s_t)
+	else
+		return parse(T, s_cleaned)
+	end
+end
+
+function blockflags(s::String)
+	flag_regex = r"\{([^.}]*)\}"
+	flags = ElkFlagInfo[]
+	lines = split(s, "\\\\")
+	for l in lines
+		sline = strip_split(l, '&')
+		flag = match(flag_regex, sline[1])
+        descr = sline[2]
+        flag_i = split(sline[3], '(')
+        typ = length(flag_i) > 1 ? Vector{elk2julia_type(flag_i[1])} : elk2julia_type(flag_i[1])
+		#TODO default
+        default = typ == String ? sline[4] : parse_elk_default(typ, sline[4])
+        push!(flags, ElkFlagInfo{typ}(Symbol(strip_split(flag.captures[1], '(')[1]), default, string(descr)))
+	end
+	return flags
+end
+
+replace_latex_symbols(s::String) = replace_multiple(s, "\\_" => "_", "\\hline" => "", "\\tt "=> "", "^"=>"e")
+
+function read_elk_doc(fn::String)
+	blocks = ElkControlBlockInfo[]
+	blockname_regex = r"\{(.*)\}"
+	open(fn, "r") do f
+		while !eof(f)
+			line = readline(f)
+			if occursin("\\block", line)
+				m = match(blockname_regex, line)
+				blockname = Symbol(m.captures[1])
+				block_text = replace_latex_symbols(readuntil_closing(f, '{'))
+				flags = blockflags(block_text)
+				push!(blocks, ElkControlBlockInfo(blockname, flags, readuntil(f, "\\block")))
+				seek(f, Base.position(f) - 6) #\\block offset
+			end
+		end
+	end
+	return blocks
+end
+
+ELK_CONTROLBLOCKS = read_elk_doc(joinpath(@__DIR__, "..","assets", "inputs", "elk", "elk.txt"))
+
+open(joinpath(@__DIR__,"elkflags.jl"), "w") do f
+	write(f, "_ELKINPUTINFOS() = $(repr(ELK_CONTROLBLOCKS))")
+end

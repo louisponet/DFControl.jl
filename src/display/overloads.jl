@@ -103,7 +103,30 @@ end
 
 function show(io::IO, flag_info::QEFlagInfo{T}) where T
     df_show_type(io, flag_info)
-    dfprintln(io, "name = $(flag_info.name)")
+    dfprintln(io, crayon"yellow", "name : $(flag_info.name)")
     dfprintln(io, crayon"cyan", "description:", crayon"reset")
     dfprint(io, "\t"*replace(flag_info.description, "\n" => "\n\t"))
+end
+
+function show(io::IO, flag_info::ElkFlagInfo{T}) where T
+    df_show_type(io, flag_info)
+    dfprintln(io, crayon"yellow", "name : $(flag_info.name)")
+    dfprintln(io, crayon"green", "default:", crayon"reset")
+    if flag_info.default != nothing
+	    dfprintln(io, "\t" * "$(flag_info.default)")
+    else
+	    dfprintln(io, "\t" * "nothing")
+    end
+    dfprintln(io, crayon"cyan", "description:", crayon"reset")
+    dfprintln(io, "\t"*replace(flag_info.description, "\n" => "\n\t"))
+end
+
+function show(io::IO, info::ElkControlBlockInfo)
+    dfprintln(io, crayon"yellow", "name = $(info.name)")
+    dfprintln(io, crayon"cyan", "flags:", crayon"reset")
+    for flag in info.flags
+	    dfprintln(io, "\t$(flag.name)")
+    end
+    dfprintln(io, crayon"cyan", "description:", crayon"reset")
+    dfprintln(io, "\t"*replace(info.description, "\n" => "\n\t"))
 end
