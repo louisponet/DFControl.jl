@@ -295,7 +295,7 @@ Reads the output file of a projwfc.x calculation.
 Each kpoint will have as many energy dos values as there are bands in the scf/nscf calculation that
 generated the density upon which the projwfc.x was called.
 Returns:
-    states: [(:atom_id, :wfc_id, :l, :m),...]
+    states: [(:atom_id, :wfc_id, :j, :l, :m),...] where each j==0 for a non spin polarized calculation.
     kpdos : kpoint => [(:e, :ψ, :ψ²), ...] where ψ is the coefficient vector in terms of the states.
 """
 function qe_read_projwfc(filename::String)
@@ -307,9 +307,9 @@ function qe_read_projwfc(filename::String)
     istop  = findnext(isempty, lines, istart) - 1
     for i = istart:istop
         l = replace_multiple(lines[i], "(" => " ", ")" => " ", "," => "", "=" => " ", ":" => "", "#" => " ") |> split
-        if length(l) == 11
+        if length(l) == 11 #spinpolarized
             push!(states, state_tuple((parse.(Int,(l[4], l[7]))..., 0.0, parse.(Float64,( l[9], l[11]))...)))
-        else
+        else #not spin polarized
             push!(states, state_tuple((parse.(Int,(l[4], l[7]))..., parse.(Float64, (l[9], l[11], l[13]))...)))
         end
     end
