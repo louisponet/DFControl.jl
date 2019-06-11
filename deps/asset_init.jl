@@ -30,7 +30,7 @@ end
 indentabs(indent) = prod(["\t" for i=1:indent])
 
 open(joinpath(@__DIR__, "mpirunflags.jl"), "w") do wf
-    write(wf, "_MPIFLAGS() = ExecFlag[\n")
+    write(wf, "_MPI_FLAGS() = ExecFlag[\n")
     # writefbodyline(1, "flags = ")
     open(joinpath(@__DIR__, "..", "assets","mpirun_man.txt"), "r") do f
         line = readline(f)
@@ -80,7 +80,7 @@ open(joinpath(@__DIR__, "mpirunflags.jl"), "w") do wf
 end
 
 open(joinpath(@__DIR__, "wannier90flags.jl"), "w") do wf
-    write(wf, "_WANFLAGS() = Dict{Symbol, Type}(\n")
+    write(wf, "_WAN_FLAGS() = Dict{Symbol, Type}(\n")
     open(joinpath(@__DIR__, "..", "assets", "inputs", "wannier", "input_flags.txt"), "r") do f
         while !eof(f)
             line = readline(f)
@@ -413,5 +413,5 @@ end
 ELK_CONTROLBLOCKS = read_elk_doc(joinpath(@__DIR__, "..","assets", "inputs", "elk", "elk.txt"))
 
 open(joinpath(@__DIR__,"elkflags.jl"), "w") do f
-	write(f, "_ELKINPUTINFOS() = $(repr(ELK_CONTROLBLOCKS))")
+	write(f, "_ELK_CONTROLBLOCKS() = $(repr(ELK_CONTROLBLOCKS))")
 end

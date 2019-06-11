@@ -235,9 +235,9 @@ function read_job_line(line)
     end
     spl = strip_split(line)
 
-    input = spl[end-1]
+    input  = spl[end-1]
     output = spl[end]
-    spl = spl[1:end-2]
+    spl    = spl[1:end-2]
     exec_and_flags = Pair{String, Vector{SubString}}[]
     #TODO This is not really nice, we don't handle execs that are unparseable...
     #     Not sure how we can actually do this
@@ -254,10 +254,10 @@ function read_job_line(line)
     for (e, flags) in exec_and_flags
         dir, efile = splitdir(e)
         if occursin("mpirun", e)
-            push!(execs, Exec(efile, dir, parse_mpiflags(flags)))
+            push!(execs, Exec(efile, dir, parse_mpi_flags(flags)))
         elseif efile == "wannier90.x"
-            push!(execs, Exec(efile, dir, parse_wanexecflags(flags)))
-        elseif any(occursin.(QEEXECS, (efile,)))
+            push!(execs, Exec(efile, dir, parse_wan_execflags(flags)))
+        elseif any(occursin.(QE_EXECS, (efile,)))
             push!(execs, Exec(efile, dir, parse_qeexecflags(flags)))
         end
     end

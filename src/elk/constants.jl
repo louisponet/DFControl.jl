@@ -1,4 +1,5 @@
 include(joinpath(depsdir, "elkflags.jl"))
+
 struct ElkFlagInfo{T}
     name::Symbol
     default::Union{T, Nothing}  #check again v0.7 Some
@@ -14,4 +15,7 @@ struct ElkControlBlockInfo <: AbstractBlockInfo
     description::String
 end
 
-const ELK_CONTROLBLOCKS = _ELKINPUTINFOS()
+const ELK_CONTROLBLOCKS = _ELK_CONTROLBLOCKS()
+
+const ELK_EXECS = ["elk", "elk-omp"]
+

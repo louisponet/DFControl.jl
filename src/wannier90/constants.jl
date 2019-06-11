@@ -1,5 +1,5 @@
-const WANEXECS= ["wannier90.x"]
+const WAN_EXECS= ["wannier90.x"]
 include(joinpath(depsdir, "wannier90flags.jl"))
-const WANFLAGS = _WANFLAGS()
-flagtype(::Type{Wannier90}, flag) = haskey(WANFLAGS, flag) ? WANFLAGS[flag] : Nothing
+const WAN_FLAGS = _WAN_FLAGS()
+flagtype(::Type{Wannier90}, flag) = haskey(WAN_FLAGS, flag) ? WAN_FLAGS[flag] : Nothing
 flagtype(::DFInput{Wannier90}, flag) = flagtype(Wannier90, flag)

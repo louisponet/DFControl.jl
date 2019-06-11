@@ -480,7 +480,7 @@ function qe_read_input(filename; execs=[Exec("pw.x")], run=true, structure_name=
         x -> filter(y -> !(occursin("/", y) && length(y) == 1), x) |>
         x -> filter(!isempty, x)
 
-    exec = getfirst(x->x.exec ∈ QEEXECS, execs)
+    exec = getfirst(x->x.exec ∈ QE_EXECS, execs)
 
     flaglines, lines = separate(x -> occursin("=", x), lines)
     flaglines = strip_split.(flaglines, "=")
