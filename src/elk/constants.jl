@@ -19,3 +19,5 @@ const ELK_CONTROLBLOCKS = _ELK_CONTROLBLOCKS()
 
 const ELK_EXECS = ["elk", "elk-omp"]
 
+
+elk_block_info(name::Symbol) = getfirst(x->x.name == name, ELK_CONTROLBLOCKS)

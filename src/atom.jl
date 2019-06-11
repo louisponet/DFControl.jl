@@ -65,6 +65,7 @@ end
     position    ::Point3{T}
     pseudo      ::String = ""
     projections ::Vector{Projection} = Projection[]
+    magnetization ::Vec3{Float64} = zero(Vec3{Float64})
 end
 
 Atom(name::Symbol, el::Element, pos::Point3; kwargs...)  = Atom(name=name, element=el, position=pos; kwargs...)

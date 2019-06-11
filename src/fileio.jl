@@ -3,6 +3,7 @@
 include("qe/fileio.jl")
 include("abinit/fileio.jl")
 include("wannier90/fileio.jl")
+include("elk/fileio.jl")
 
 #--------------------Used by other file processing------------------#
 function parse_k_line(line, T)
@@ -298,8 +299,9 @@ function read_job_inputs(job_file::String)
             if line == ""
                 continue
             end
-            if occursin(".x ", line)
+            if has_parseable_exec(line)
                 execs, inputfile, output, run = read_job_line(line)
+                @show inputfile
                 inpath = joinpath(dir, inputfile)
                 if !ispath(inpath)
                     input = (nothing, nothing)
@@ -320,15 +322,15 @@ function read_job_inputs(job_file::String)
                         end
                     end
                 end
-        elseif occursin("#SBATCH", line)
-                if occursin("-J", line)
-                    name = split(line)[end]
-                else
-                    push!(header, line)
-                end
-            else
-                push!(header, line)
-            end
+	        elseif occursin("#SBATCH", line)
+	                if occursin("-J", line)
+	                    name = split(line)[end]
+	                else
+	                    push!(header, line)
+	                end
+	        else
+	            push!(header, line)
+	        end
         end
     end
     outstruct = mergestructures(structures)
