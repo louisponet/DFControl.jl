@@ -65,16 +65,17 @@ end
     position    ::Point3{T}
     pseudo      ::String = ""
     projections ::Vector{Projection} = Projection[]
+    magnetization ::Vec3{Float64} = zero(Vec3{Float64})
 end
 
 Atom(name::Symbol, el::Element, pos::Point3; kwargs...)  = Atom(name=name, element=el, position=pos; kwargs...)
 Atom(name::Symbol, el::Symbol, pos::Point3; kwargs...)  = Atom(name=name, element=element(el), position=pos; kwargs...)
-Atom(orig_at::Atom, new_pos::Point3) = Atom(name(orig_at), element(orig_at), new_pos, pseudo(orig_at), projections(orig_at))
+Atom(orig_at::Atom, new_pos::Point3) = Atom(name(orig_at), element(orig_at), new_pos, pseudo(orig_at), projections(orig_at), magnetization(orig_at))
 #Easiest way to implement a new abstractatom is to provide a way to access
 #the struct holding `name`, `position`, `element`, `pseudo`, `projection` fields
 atom(at::Atom) = at
 
-for interface_function in (:name, :position, :element, :pseudo, :projections)
+for interface_function in (:name, :position, :element, :pseudo, :projections, :magnetization)
 	@eval $interface_function(at::AbstractAtom) = atom(at).$interface_function
 end
 
@@ -102,4 +103,4 @@ bondlength(at1::AbstractAtom{T}, at2::AbstractAtom{T}, R=T(0.0)) where T<:Abstra
 
 import Base: ==
 ==(at1::AbstractAtom, at2::AbstractAtom) =
-    name(at1)==name(at2) && norm(position(at1) - position(at2)) < 1e-6
+    name(at1) == name(at2) && norm(position(at1) - position(at2)) < 1e-6

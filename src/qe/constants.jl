@@ -1,5 +1,5 @@
 const celldm_1 = Symbol("celldm(1)")
-const QEEXECS = [
+const QE_EXECS = [
     "pw.x",
     "projwfc.x",
     "pp.x",

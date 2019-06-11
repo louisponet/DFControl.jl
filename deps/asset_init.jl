@@ -1,3 +1,6 @@
+using StaticArrays
+const Vec = SVector
+
 function writefbodyline(f, indent, s)
     for i=1:indent
         write(f, "\t")
@@ -30,7 +33,7 @@ end
 indentabs(indent) = prod(["\t" for i=1:indent])
 
 open(joinpath(@__DIR__, "mpirunflags.jl"), "w") do wf
-    write(wf, "_MPIFLAGS() = ExecFlag[\n")
+    write(wf, "_MPI_FLAGS() = ExecFlag[\n")
     # writefbodyline(1, "flags = ")
     open(joinpath(@__DIR__, "..", "assets","mpirun_man.txt"), "r") do f
         line = readline(f)
@@ -80,7 +83,7 @@ open(joinpath(@__DIR__, "mpirunflags.jl"), "w") do wf
 end
 
 open(joinpath(@__DIR__, "wannier90flags.jl"), "w") do wf
-    write(wf, "_WANFLAGS() = Dict{Symbol, Type}(\n")
+    write(wf, "_WAN_FLAGS() = Dict{Symbol, Type}(\n")
     open(joinpath(@__DIR__, "..", "assets", "inputs", "wannier", "input_flags.txt"), "r") do f
         while !eof(f)
             line = readline(f)
@@ -293,4 +296,132 @@ open(joinpath(@__DIR__, "abinitflags.jl"), "w") do wf
         write(wf, "\t:$fl => $typ,\n")
     end
     write(wf, ")")
+end
+
+
+#all this so I can be lazy and just use repr
+struct ElkFlagInfo{T}
+    name::Symbol
+    default::Union{T, Nothing}  #check again v0.7 Some
+    description::String
+end
+ElkFlagInfo() = ElkFlagInfo{Nothing}(:error, "")
+Base.eltype(x::ElkFlagInfo{T}) where T = T
+
+
+struct ElkControlBlockInfo
+    name::Symbol
+    flags::Vector{<:ElkFlagInfo}
+    description::String
+end
+
+function closing(c::Char)
+	if c == '{'
+		return '}'
+	elseif c == '('
+		return ')'
+	elseif c == '['
+		return ']'
+	end
+end
+
+function readuntil_closing(io::IO, opening_char::Char)
+	out = ""
+	counter = 1
+	closing_char = closing(opening_char)
+	while counter > 0
+		c = read(io, Char)
+		out *= c
+		if c == opening_char
+			counter += 1
+		elseif c == closing_char
+			counter -= 1
+		end
+	end
+	return out
+end
+
+function elk2julia_type(s::AbstractString)
+	if s == "integer"
+		return Int
+	elseif s == "real"
+		return Float64
+	elseif s == "logical"
+		return Bool
+	elseif s == "string"
+		return String
+	elseif s == "complex"
+		return ComplexF64
+	end
+end
+
+function replace_multiple(str, replacements::Pair{String, String}...)
+    tstr = deepcopy(str)
+    for r in replacements
+        tstr = replace(tstr, r)
+    end
+    return tstr
+end
+
+function parse_elk_default(::Type{T}, s) where T
+	s_cleaned =strip(strip(strip(replace_multiple(s, "{" => "", "}" => "", "."=>"", " "=>""), '\$'), ')'), '(')
+	if occursin("-", s_cleaned)
+		return nothing
+	elseif occursin(",", s_cleaned)
+		s_t = split(s_cleaned, ',')
+		return parse.(eltype(T), s_t)
+	else
+		return parse(T, s_cleaned)
+	end
+end
+
+function blockflags(s::String)
+	flag_regex = r"\{([^.}]*)\}"
+	flags = ElkFlagInfo[]
+	lines = split(s, "\\\\")
+	for l in lines
+		sline = strip_split(l, '&')
+		flag = match(flag_regex, sline[1])
+        descr = sline[2]
+        flag_i = split(replace_multiple(sline[3], "(" => " ", ")" => " "))
+        typ = length(flag_i) > 1 && flag_i[1] != "string" ? Vec{parse(Int, flag_i[2]), elk2julia_type(flag_i[1])} : elk2julia_type(flag_i[1])
+		#TODO default
+        default = typ == String ? sline[4] : parse_elk_default(typ, sline[4])
+        flagname = Symbol(strip_split(flag.captures[1], '(')[1])
+        if flagname == :wann_bands
+	        push!(flags, ElkFlagInfo{UnitRange{Int}}(:wann_bands, nothing, string(descr)))
+		elseif flagname == :wann_projections
+	        push!(flags, ElkFlagInfo{Vector{String}}(:wann_projections, nothing, string(descr)))
+		else
+	        push!(flags, ElkFlagInfo{typ}(flagname, default, string(descr)))
+        end
+	end
+	return flags
+end
+
+replace_latex_symbols(s::String) = replace_multiple(s, "\\_" => "_", "\\hline" => "", "\\tt "=> "", "^"=>"e")
+
+function read_elk_doc(fn::String)
+	blocks = ElkControlBlockInfo[]
+	blockname_regex = r"\{(.*)\}"
+	open(fn, "r") do f
+		while !eof(f)
+			line = readline(f)
+			if occursin("\\block", line)
+				m = match(blockname_regex, line)
+				blockname = Symbol(m.captures[1])
+				block_text = replace_latex_symbols(readuntil_closing(f, '{'))
+				flags = blockflags(block_text)
+				push!(blocks, ElkControlBlockInfo(blockname, flags, readuntil(f, "\\block")))
+				seek(f, Base.position(f) - 6) #\\block offset
+			end
+		end
+	end
+	return blocks
+end
+
+ELK_CONTROLBLOCKS = read_elk_doc(joinpath(@__DIR__, "..","assets", "inputs", "elk", "elk.txt"))
+
+open(joinpath(@__DIR__,"elkflags.jl"), "w") do f
+	write(f, "_ELK_CONTROLBLOCKS() = $(repr(ELK_CONTROLBLOCKS))")
 end

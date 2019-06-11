@@ -12,11 +12,13 @@ module DFControl
 
     abstract type Package end
     struct Wannier90 <: Package end
-    struct QE <: Package end
-    struct Abinit <: Package end
-    export QE, Wannier90, Abinit
+    struct QE        <: Package end
+    struct Abinit    <: Package end
+    struct Elk       <: Package end
+    export Wannier90, QE, Abinit, Elk
 
     const depsdir = joinpath(dirname(@__DIR__), "deps")
+
     include("types.jl")
     include("atom.jl")
     include("structure.jl")

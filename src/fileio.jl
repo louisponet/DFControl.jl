@@ -3,6 +3,7 @@
 include("qe/fileio.jl")
 include("abinit/fileio.jl")
 include("wannier90/fileio.jl")
+include("elk/fileio.jl")
 
 #--------------------Used by other file processing------------------#
 function parse_k_line(line, T)
@@ -144,6 +145,17 @@ function writetojob(f, job, inputs::Vector{DFInput{Abinit}})
     return abifiles
 end
 
+function writetojob(f, job, inputs::Vector{DFInput{Elk}})
+    save(inputs, job.structure)
+    should_run = any(map(x->x.run, inputs)) 
+    if !should_run
+        write(f, "#")
+    end
+    writeexec.((f,), execs(inputs[1]))
+    write(f, "< elk.in > elk.out\n")
+    return inputs
+end
+
 function writeexec(f, exec::Exec)
     direxec = joinpath(exec.dir, exec.exec)
     write(f, "$direxec")
@@ -177,27 +189,36 @@ function writetojob(f, job, _input::DFInput{Wannier90})
     should_run  = _input.run
     id = findfirst(isequal(_input), job.inputs)
     seedname = name(_input)
-    runexec = input(job, "nscf").execs
-    pw2waninput = qe_generate_pw2waninput(_input, "$(job.name)", runexec)
-    preprocess  = pop!(flags(_input), :preprocess)
 
-    if !preprocess || !should_run
-        write(f, "#")
+	nscf_calc = getfirst(x -> isnscfcalc(x), job.inputs)
+    runexec   = nscf_calc.execs
+    # For elk the setup necessary for the wan_calc needs to be done before writing the wan input
+    # because it's inside elk.in
+	if package(nscf_calc) == QE
+	    pw2waninput = qe_generate_pw2waninput(_input, "$(job.name)", runexec)
+	    preprocess  = pop!(flags(_input), :preprocess)
+
+	    if !preprocess || !should_run
+	        write(f, "#")
+	    end
+	    writeexec.((f,), execs(_input))
+	    write(f, "-pp $filename > $(outfilename(_input))\n")
+
+	    save(_input, job.structure)
+	    writetojob(f, job, pw2waninput)
+	    flags(_input)[:preprocess] = preprocess
+    elseif package(nscf_calc) == Elk
+	    pw2waninput = job["elk2wannier"]
     end
-    writeexec.((f,), execs(_input))
-    write(f, "-pp $filename > $(outfilename(_input))\n")
-
-    save(_input, job.structure)
-    writetojob(f, job, pw2waninput)
 
     if !should_run
         write(f, "#")
     end
     writeexec.((f, ), execs(_input))
     write(f, "$filename > $(outfilename(_input))\n")
-    flags(_input)[:preprocess] = preprocess
     return _input, pw2waninput
 end
+
 """
     writejobfiles(job::DFJob)
 
@@ -209,13 +230,15 @@ function writejobfiles(job::DFJob)
         write(f, "#!/bin/bash\n")
         write_job_name(f, job)
         write_job_header(f, job)
+        written_inputs = DFInput[]
         abiinputs = Vector{DFInput{Abinit}}(filter(x -> package(x) == Abinit, inputs(job)))
         !isempty(abiinputs) && writetojob(f, job, abiinputs)
+        elkinputs = Vector{DFInput{Elk}}(filter(x -> package(x) == Elk, inputs(job)))
+        !isempty(elkinputs) && append!(written_inputs, writetojob(f, job, elkinputs))
         # i = length(abiinputs) + 1
         # while i <= length(inputs(job))
         #     i += writetojob(f, job, inputs(job)[i])
         # end
-        written_inputs = DFInput[]
         for i in inputs(job)
             if i ∉ written_inputs
                 append!(written_inputs, writetojob(f, job, i))
@@ -235,9 +258,9 @@ function read_job_line(line)
     end
     spl = strip_split(line)
 
-    input = spl[end-1]
+    input  = spl[end-1]
     output = spl[end]
-    spl = spl[1:end-2]
+    spl    = spl[1:end-2]
     exec_and_flags = Pair{String, Vector{SubString}}[]
     #TODO This is not really nice, we don't handle execs that are unparseable...
     #     Not sure how we can actually do this
@@ -254,11 +277,13 @@ function read_job_line(line)
     for (e, flags) in exec_and_flags
         dir, efile = splitdir(e)
         if occursin("mpirun", e)
-            push!(execs, Exec(efile, dir, parse_mpiflags(flags)))
+            push!(execs, Exec(efile, dir, parse_mpi_flags(flags)))
         elseif efile == "wannier90.x"
-            push!(execs, Exec(efile, dir, parse_wanexecflags(flags)))
-        elseif any(occursin.(QEEXECS, (efile,)))
+            push!(execs, Exec(efile, dir, parse_wan_execflags(flags)))
+        elseif any(occursin.(QE_EXECS, (efile,)))
             push!(execs, Exec(efile, dir, parse_qeexecflags(flags)))
+        elseif any(occursin.(ELK_EXECS, (efile,)))
+            push!(execs, Exec(efile, dir))
         end
     end
     return execs, input, output, run
@@ -298,7 +323,7 @@ function read_job_inputs(job_file::String)
             if line == ""
                 continue
             end
-            if occursin(".x ", line)
+            if has_parseable_exec(line)
                 execs, inputfile, output, run = read_job_line(line)
                 inpath = joinpath(dir, inputfile)
                 if !ispath(inpath)
@@ -308,27 +333,31 @@ function read_job_inputs(job_file::String)
                     input = calccommand != nothing ? inputparser(calccommand)(inpath, execs=execs, run=run) : (nothing, nothing)
                 end
                 if input != (nothing, nothing)
-                    id = findall(x-> infilename(x) == inputfile, inputs)
+                    id = findall(x -> infilename(x) == inputfile, inputs)
                     if !isempty(id) #this can only happen for stuff that needs to get preprocessed
                         merge!(flags(input[1]), flags(inputs[id[1]]))
                         inputs[id[1]] = input[1]
                         # structures[id[1]] = input[2]
                     else
-                        push!(inputs, input[1])
+	                    if isa(input[1], Vector)
+	                        append!(inputs, input[1])
+                        else
+	                        push!(inputs, input[1])
+                        end
                         if input[2] != nothing
                             push!(structures, input[2])
                         end
                     end
                 end
-        elseif occursin("#SBATCH", line)
-                if occursin("-J", line)
-                    name = split(line)[end]
-                else
-                    push!(header, line)
-                end
-            else
-                push!(header, line)
-            end
+	        elseif occursin("#SBATCH", line)
+	                if occursin("-J", line)
+	                    name = split(line)[end]
+	                else
+	                    push!(header, line)
+	                end
+	        else
+	            push!(header, line)
+	        end
         end
     end
     outstruct = mergestructures(structures)

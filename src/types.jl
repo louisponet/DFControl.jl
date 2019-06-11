@@ -40,14 +40,14 @@ end
 ExecFlag(e::ExecFlag, value) = ExecFlag(e.symbol, e.name, e.typ, e.description, value)
 ExecFlag(p::Pair{Symbol, T}) where T = ExecFlag(first(p), String(first(p)), T, "", last(p))
 
-const QEEXECFLAGS = ExecFlag[
+const QE_EXECFLAGS = ExecFlag[
     ExecFlag(:nk, "kpoint-pools", Int, "groups k-point parallelization into nk processor pools", 0),
     ExecFlag(:ntg, "task-groups", Int, "FFT task groups", 0),
     ExecFlag(:ndiag, "diag", Int, "Number of processes for linear algebra", 0)
 ]
 
-qeexecflag(flag::AbstractString) = getfirst(x -> x.name==flag, QEEXECFLAGS)
-qeexecflag(flag::Symbol) = getfirst(x -> x.symbol==flag, QEEXECFLAGS)
+qeexecflag(flag::AbstractString) = getfirst(x -> x.name==flag, QE_EXECFLAGS)
+qeexecflag(flag::Symbol) = getfirst(x -> x.symbol==flag, QE_EXECFLAGS)
 
 function parse_qeexecflags(line::Vector{<:AbstractString})
     flags = ExecFlag[]
@@ -60,28 +60,28 @@ function parse_qeexecflags(line::Vector{<:AbstractString})
     flags
 end
 
-const WANEXECFLAGS = ExecFlag[
+const WAN_EXECFLAGS = ExecFlag[
     ExecFlag(:pp, "preprocess", Nothing, "Whether or not to preprocess the wannier input", nothing),
 ]
 
-wanexecflag(flag::AbstractString) = getfirst(x -> x.name==flag, WANEXECFLAGS)
-wanexecflag(flag::Symbol) = getfirst(x -> x.symbol==flag, WANEXECFLAGS)
-function parse_wanexecflags(line::Vector{<:AbstractString})
+wan_execflag(flag::AbstractString) = getfirst(x -> x.name==flag, WAN_EXECFLAGS)
+wan_execflag(flag::Symbol) = getfirst(x -> x.symbol==flag, WAN_EXECFLAGS)
+function parse_wan_execflags(line::Vector{<:AbstractString})
     flags = ExecFlag[]
     i=1
     while i<=length(line)
         s = strip(line[i], '-')
-        push!(flags, ExecFlag(wanexecflag(Symbol(s)), nothing))
+        push!(flags, ExecFlag(wan_execflag(Symbol(s)), nothing))
         i += 1
     end
     flags
 end
 
 include(joinpath(depsdir, "mpirunflags.jl"))
-const MPIFLAGS = _MPIFLAGS()
+const MPI_FLAGS = _MPI_FLAGS()
 
-mpiflag(flag::AbstractString) = getfirst(x -> x.name==flag, MPIFLAGS)
-mpiflag(flag::Symbol) = getfirst(x -> x.symbol==flag, MPIFLAGS)
+mpi_flag(flag::AbstractString) = getfirst(x -> x.name==flag, MPI_FLAGS)
+mpi_flag(flag::Symbol) = getfirst(x -> x.symbol==flag, MPI_FLAGS)
 
 function mpi_flag_val(::Type{String}, line, i)
     v = line[i+1]
@@ -136,7 +136,7 @@ function mpi_flag_val(::Type{Pair{Int, String}}, line, i)
     end
     return tval, i + 1
 end
-function parse_mpiflags(line::Vector{<:SubString})
+function parse_mpi_flags(line::Vector{<:SubString})
     eflags = ExecFlag[]
     i = 1
     while i <= length(line)
@@ -145,21 +145,22 @@ function parse_mpiflags(line::Vector{<:SubString})
             break
         end
         if s[2] == '-'
-            mflag = mpiflag(strip(s, '-'))
+            mflag = mpi_flag(strip(s, '-'))
         else
-            mflag = mpiflag(Symbol(strip(s, '-')))
+            mflag = mpi_flag(Symbol(strip(s, '-')))
         end
 
-        @assert mflag != nothing "$(strip(s, '-')) is not a recognized mpiflag"
+        @assert mflag != nothing "$(strip(s, '-')) is not a recognized mpi_flag"
         val, i = mpi_flag_val(mflag.typ, line, i)
         push!(eflags, ExecFlag(mflag, val))
     end
     eflags
 end
 
-const RUNEXECS = ["mpirun"]
-allexecs() = vcat(RUNEXECS, QEEXECS, WANEXECS)
-parseable_execs() = vcat(QEEXECS, WANEXECS)
+const RUN_EXECS = ["mpirun"]
+allexecs() = vcat(RUN_EXECS, QE_EXECS, WAN_EXECS, ELK_EXECS)
+parseable_execs() = vcat(QE_EXECS, WAN_EXECS, ELK_EXECS)
+has_parseable_exec(l::String) = occursin(">", l) && any(occursin.(parseable_execs(), (l,)))
 
 mutable struct Exec
     exec ::String
@@ -182,10 +183,12 @@ end
 isparseable(exec::Exec) = exec.exec ∈ parseable_execs()
 
 function inputparser(exec::Exec)
-    if exec.exec ∈ QEEXECS
+    if exec.exec ∈ QE_EXECS
         qe_read_input
-    elseif exec.exec ∈ WANEXECS
-        read_wannier_input
+    elseif exec.exec ∈ WAN_EXECS
+        wan_read_input
+    elseif exec.exec ∈ ELK_EXECS
+        elk_read_input
     end
 end
 

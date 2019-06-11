@@ -79,9 +79,9 @@ function mergestructures(structures::Vector{<:AbstractStructure})
     out = nonvoid[1]
     for structure in nonvoid[2:end]
         for at1 in atoms(out), at2 in atoms(structure)
-            if at1==at2
+            if at1 == at2
                 for name in fieldnames(typeof(at1))
-                    if name in [:name, :element, :position]
+                    if name in [:name, :element, :position, :magnetization]
                         continue
                     end
                     field = getfield(at2, name)
