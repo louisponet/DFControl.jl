@@ -392,6 +392,8 @@ function blockflags(s::String)
 	        push!(flags, ElkFlagInfo{UnitRange{Int}}(:wann_bands, nothing, string(descr)))
 		elseif flagname == :wann_projections
 	        push!(flags, ElkFlagInfo{Vector{String}}(:wann_projections, nothing, string(descr)))
+		elseif flagname == :wann_seedname
+	        push!(flags, ElkFlagInfo{Symbol}(:wann_seedname, nothing, string(descr)))
 		else
 	        push!(flags, ElkFlagInfo{typ}(flagname, default, string(descr)))
         end

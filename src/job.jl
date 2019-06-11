@@ -158,6 +158,7 @@ function DFJob(server_dir::String, local_dir::String, server = getdefault_server
     return DFJob(local_dir, server=server, server_dir=server_dir, new_job_name=new_job_name)
 end
 
+name(job) = job.name
 #-------------------BEGINNING GENERAL SECTION-------------#
 scriptpath(job::DFJob) = joinpath(job.local_dir, "job.tt")
 starttime(job::DFJob) = mtime(scriptpath(job))
@@ -193,6 +194,7 @@ function sanitizeflags!(job::DFJob)
 	        setflags!(job, :num_bands => length(nscfcalc[:wann_bands]))
 	        nscfcalc[:wann_projections] = projections_string.(unique(filter(x->!isempty(projections(x)), atoms(job))))
 	        nscfcalc[:elk2wan_tasks]    = ["602", "604"]
+	        nscfcalc[:wann_seedname]    = Symbol(name(job))
 	        if job[:wannier_plot] == true
 		        push!(nscfcalc[:elk2wan_tasks], "605")
 	        end

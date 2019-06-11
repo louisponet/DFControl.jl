@@ -166,6 +166,9 @@ function parse_block_flags(blockname::Symbol, lines::Vector{<:AbstractString})
 		if typ == String || typ == Vector{String}
 			flags[flagname] = lines[i]
 			i += 1
+		elseif typ == Symbol
+			flags[flagname] = Symbol(lines[i])
+			i += 1
 		else
 			eltyp = eltype(typ)
 			# The assumption is that the infinite repeating values are at the end of a block
@@ -271,6 +274,7 @@ end
 function save(inputs::Vector{DFInput{Elk}}, structure::Structure)
 	tasks = map(x -> x.run ? "$(x.name)" : "!$(x.name)", filter(x->x.name != "elk2wannier", inputs))
 	elk2wan_input = getfirst(x->x.name == "elk2wannier", inputs)
+	@show elk2wan_input.flags
 	if elk2wan_input != nothing
 		append!(tasks, pop!(elk2wan_input.flags, :elk2wan_tasks))
 	end
