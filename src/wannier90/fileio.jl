@@ -1,4 +1,5 @@
 #THIS IS THE MOST HORRIBLE FUNCTION I HAVE EVER CREATED!!!
+#extracts only atoms with projections
 function extract_atoms(atoms_block::T, proj_block::T, cell, spinors=false) where T <: InputData
     if atoms_block.name == :atoms_cart
         cell = Mat3(Matrix(I, 3, 3))
@@ -56,17 +57,17 @@ function extract_structure(name, cell_block::T, atoms_block::T, projections_bloc
     if atoms_block == nothing || cell_block == nothing
         return nothing
     end
-    if cell_block.option == :ang
-        cell = cell_block.data
-    elseif cell_block.option == :bohr
+    if cell_block.option == :bohr
         cell = conversions[:bohr2ang] * cell_block.data
+    else
+        cell = cell_block.data
     end
 
     atoms = extract_atoms(atoms_block, projections_block, cell, spinors)
     return Structure(name, Mat3(cell), atoms)
 end
 
-function read_wannier_input(::Type{T}, f::IO) where T
+function wan_read_input(::Type{T}, f::IO) where T
     flags = Dict{Symbol,Any}()
     data  = Vector{InputData}()
     atoms_block = nothing
@@ -126,7 +127,7 @@ function read_wannier_input(::Type{T}, f::IO) where T
             elseif block_name == :unit_cell_cart
                 line = readline(f)
                 if length(split(line)) == 1
-                    option = Symbol(lowercase(line))
+                    option = Symbol(strip(lowercase(line)))
                     line = readline(f)
                 else
                     option = :ang
@@ -150,7 +151,7 @@ function read_wannier_input(::Type{T}, f::IO) where T
                         continue
                     end
                     if length(split(line)) == 1
-                        option = Meta.parse(line)
+                        option = Symbol(strip(line))
                         line = readline(f)
                         continue
                     end
@@ -195,21 +196,21 @@ function read_wannier_input(::Type{T}, f::IO) where T
     return flags, data, atoms_block, cell_block, proj_block
 end
 
-read_wannier_input(f::IO) = read_wannier_input(Float64, f)
+wan_read_input(f::IO) = wan_read_input(Float64, f)
 
 """
-    read_wannier_input(filename::String, T=Float64; runcommand= Exec(""), run=true, exec=Exec("wannier90.x"), structure_name="NoName")
+    wan_read_input(filename::String, T=Float64; runcommand= Exec(""), run=true, exec=Exec("wannier90.x"), structure_name="NoName")
 
 Reads a `DFInput{Wannier90}` and the included `Structure` from a WANNIER90 input file.
 """
-function read_wannier_input(filename::String, T=Float64; execs=[Exec("wannier90.x")], run=true, structure_name="NoName")
+function wan_read_input(filename::String, T=Float64; execs=[Exec("wannier90.x")], run=true, structure_name="NoName")
     flags = Dict{Symbol,Any}()
     data  = Vector{InputData}()
     atoms_block = nothing
     cell_block  = nothing
     proj_block  = nothing
     open(filename,"r") do f
-    	flags, data, atoms_block, cell_block, proj_block = read_wannier_input(T, f)
+    	flags, data, atoms_block, cell_block, proj_block = wan_read_input(T, f)
 	end
     structure = extract_structure(structure_name, cell_block, atoms_block, proj_block, get(flags, :spinors, false))
     dir, file = splitdir(filename)
@@ -244,6 +245,36 @@ function wan_parse_flag_line(line::String)
     return flag, val
 end
 
+function projections_string(at::AbstractAtom)
+	prjs = projections(at)
+	str = "$(name(at)): $(prjs[1].orb.name)"
+    if length(prjs) > 1
+        for proj in prjs[2:end]
+            str *= ";$(proj.orb.name)"
+        end
+    end
+    return str
+end
+
+function wan_write_projections(f::IO, atoms::Vector{<:AbstractAtom})
+    write(f, "begin projections\n")
+    uniats = unique(atoms)
+    projs = projections.(uniats)
+    # projs = projections.(unique(atoms(structure)))
+    if all(isempty.(projs))
+        write(f, "random\n")
+    else
+        for (at, prjs) in zip(uniats, projs)
+            if isempty(prjs)
+                continue
+            end
+            write(f, projections_string(at))
+            write(f, "\n")
+        end
+    end
+    write(f, "end projections\n")
+end
+
 """
     save(input::DFInput{Wannier90}, structure, filename::String=inpath(input))
 
@@ -263,27 +294,7 @@ function save(input::DFInput{Wannier90}, structure, filename::String=inpath(inpu
             write(f,"end unit_cell_cart\n")
             write(f, "\n")
         end
-        write(f, "begin projections\n")
-        uniats = unique(atoms(structure))
-        projs = projections.(uniats)
-        # projs = projections.(unique(atoms(structure)))
-        if all(isempty.(projs))
-            write(f, "random\n")
-        else
-            for (at, prjs) in zip(uniats, projs)
-                if isempty(prjs)
-                    continue
-                end
-                write(f, "$(name(at)): $(prjs[1].orb.name)")
-                if length(prjs) > 1
-                    for proj in prjs[2:end]
-                        write(f, ";$(proj.orb.name)")
-                    end
-                end
-                write(f, "\n")
-            end
-        end
-        write(f, "end projections\n")
+        wan_write_projections(f, atoms(structure))
 
         write(f, "\n")
         write(f, "begin atoms_cart\n")
@@ -314,7 +325,7 @@ function save(input::DFInput{Wannier90}, structure, filename::String=inpath(inpu
 end
 
 """
-    read_wannier_output(filename)
+    wan_read_output(filename)
 
 Reads an outputfile for wannier.
 Parsed info:
@@ -322,7 +333,7 @@ Parsed info:
     :wannierise,
     :final_state,
 """
-function read_wannier_output(filename)
+function wan_read_output(filename)
     DisTuple = NamedTuple{(:Iter, :Ω_i_1, :Ω_i, :δ, :Time), Tuple{Int, Float64, Float64, Float64, Float64}}
     WanTuple = NamedTuple{(:Iter, :δ_spread, :∇RMS, :Spread, :Time), Tuple{Int, Float64, Float64, Float64, Float64}}
     WfcTuple = NamedTuple{(:index, :center, :Spread), Tuple{Int, Point3{Float64}, Float64}}

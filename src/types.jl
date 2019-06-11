@@ -186,7 +186,7 @@ function inputparser(exec::Exec)
     if exec.exec ∈ QE_EXECS
         qe_read_input
     elseif exec.exec ∈ WAN_EXECS
-        read_wannier_input
+        wan_read_input
     elseif exec.exec ∈ ELK_EXECS
         elk_read_input
     end

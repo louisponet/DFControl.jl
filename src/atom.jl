@@ -103,4 +103,4 @@ bondlength(at1::AbstractAtom{T}, at2::AbstractAtom{T}, R=T(0.0)) where T<:Abstra
 
 import Base: ==
 ==(at1::AbstractAtom, at2::AbstractAtom) =
-    name(at1)==name(at2) && norm(position(at1) - position(at2)) < 1e-6
+    name(at1) == name(at2) && norm(position(at1) - position(at2)) < 1e-6

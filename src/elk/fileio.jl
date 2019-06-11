@@ -64,7 +64,7 @@ function elk_read_input(fn::String; execs=[Exec("elk")], run=true, structure_nam
 				elseif blockname == :wannierExtra
 					@warn "Please supply the .win file instead of wannierExtra block for extracting the Wannier DFInput."
 
-					wflags, wdata, ab, cb, proj_block = read_wannier_input(f)
+					wflags, wdata, ab, cb, proj_block = wan_read_input(f)
 					continue
 					# push!(inputs, DFInput{Wannier90}("wannier", dir, wflags, wdata, execs, run))
 				elseif info != nothing
@@ -87,8 +87,9 @@ function elk_read_input(fn::String; execs=[Exec("elk")], run=true, structure_nam
 	#cell
 	scale = haskey(blocknames_flaglines, :scale) ? last(pop!(blocknames_flaglines[:scale])) : 1.0
 	cell  = Mat3(reshape(scale .* parse.(Float64, collect(Iterators.flatten(split.(pop!(blocknames_flaglines, :avec))))), 3, 3))
-	#structure
-	structure = Structure(structure_name, cell, atoms)
+	#structure #TODO make positions be in lattices coordinates
+	newats = [Atom(at, cell' * position(at)) for at in atoms]
+	structure = Structure(structure_name, cell, newats)
 
 	#different tasks
 	tasks_ = pop!(blocknames_flaglines, :tasks)
@@ -106,7 +107,7 @@ function elk_read_input(fn::String; execs=[Exec("elk")], run=true, structure_nam
 	end
 	if haskey(blocknames_flaglines, :wannier) && !isempty(wan_tasks)
 		flags = pop!(blocknames_flaglines, :wannier)
-		flags[:elk2wan_tasks] = wan_tasks
+		# flags[:elk2wan_tasks] = wan_tasks
 		push!(inputs, DFInput{Elk}(name="elk2wannier", dir=dir, flags=flags, execs=execs, run=true))
 	end
 	for f in (:ngrid, :vkloff, :plot1d, :plot2d, :plot3d)
@@ -142,34 +143,48 @@ function input_from_task(task, blocknames_flaglines, dir, execs, run)
 		data = find_data((:ngridk, :vkloff), blocknames_flaglines)
 	elseif task ∈ ["20", "21"]
 		data = find_data((:plot1d, :plot2d, :plot3d), blocknames_flaglines)
-		@show data[1].data
 	end
 	return DFInput{Elk}(task, dir, SymAnyDict(), data, execs, run)
+end
+
+function parse(::Type{UnitRange{Int}}, l::AbstractString)
+	for delim in [":", ",", "-"]
+		if occursin(delim, l)
+			return UnitRange(parse.(Int, split(l, delim))...)
+		end
+	end
 end
 
 function parse_block_flags(blockname::Symbol, lines::Vector{<:AbstractString})
 	flags = SymAnyDict()
 	i = 1
+	totlen = length(lines)
 	for flaginfo in elk_block_info(blockname).flags
+		flagname = flaginfo.name 
 		i > length(lines) && break
 		typ = eltype(flaginfo)
 		if typ == String || typ == Vector{String}
-			flags[flaginfo.name] = lines[i]
+			flags[flagname] = lines[i]
 			i += 1
 		else
+			eltyp = eltype(typ)
+			# The assumption is that the infinite repeating values are at the end of a block
 			if flaginfo == last(elk_block_info(blockname).flags)
-				parsed = parse.(eltype(typ), lines[i:i + length(typ) - 1])
-				flags[flaginfo.name] = length(parsed) == 1 ? [parsed[1]] : [typ(parsed)]
-				i += blockname == :plot1d ? length(typ) + 1 : length(typ) 
-				while i < length(lines)
-					parsed = parse.(eltype(typ), lines[i:i + length(typ) - 1])
-					push!(flags[flaginfo.name], length(parsed) == 1 ? parsed[1] : typ(parsed))
-					i += blockname == :plot1d ? length(typ) + 1 : length(typ) 
+				typelen = length(typ)
+				parsed = parse.(eltyp, lines[i:end])
+				flags[flagname] = typ[]
+				@assert length(parsed) % typelen == 0
+				for j = 1:typelen:length(parsed)
+					push!(flags[flagname], typ(parsed[j:j+typelen-1]...))
 				end
+			elseif typ <: UnitRange
+				flags[flagname] = parse(typ, lines[i])
+				i += 1
 			else
-				parsed = parse.(eltype(typ), lines[i:i + length(typ) - 1])
-				flags[flaginfo.name] = length(parsed) == 1 ? parsed[1] : typ(parsed)
-				i += length(typ) 
+				typelen = length(typ)
+				parsed = parse.(eltyp, lines[i:i + typelen - 1])
+				flags[flagname] = length(parsed) == 1 ? parsed[1] : typ(parsed)
+				i += typelen 
 			end
 		end
 	end
@@ -187,8 +202,8 @@ function elk_write_structure(f, structure)
 		write(f, "\t$(length(ats))\n")
 		for a in ats
 			write(f, "\t")
-			for i in position(a)
-				write(f, "$i ")
+			for i in inv(cell(structure)')*position(a)
+				write(f, "$(round(i, digits=8)) ")
 			end
 			for i in magnetization(a)
 				write(f, "$i ")
@@ -236,26 +251,28 @@ function construct_flag_blocks(inputs::Vector{DFInput{Elk}})
 end
 
 function elk_write_flag_val(f, val)
-	if isa(val, AbstractVector)
-		write(f, "\t")
+	write(f, "\t")
+	if isa(val, UnitRange)
+		write(f, "$(first(val))-$(last(val))")
+	elseif isa(val, AbstractVector)
 		for i in val
 			write(f, "$i ")
 		end
-		write(f, "\n")
 	else
 		if isa(val, AbstractString)
-			write(f, "\t'$val'\n")
+			write(f, "'$val'")
 		else
-			write(f, "\t$val\n")
+			write(f, "$val")
 		end
 	end
+	write(f, "\n")
 end
 
 function save(inputs::Vector{DFInput{Elk}}, structure::Structure)
 	tasks = map(x -> x.run ? "$(x.name)" : "!$(x.name)", filter(x->x.name != "elk2wannier", inputs))
 	elk2wan_input = getfirst(x->x.name == "elk2wannier", inputs)
 	if elk2wan_input != nothing
-		append!(tasks, elk2wan_input[:elk2wan_tasks])
+		append!(tasks, pop!(elk2wan_input.flags, :elk2wan_tasks))
 	end
 	flags = construct_flag_blocks(inputs)
 	open(joinpath(inputs[1].dir, "elk.in"), "w") do f
@@ -280,7 +297,3 @@ function save(inputs::Vector{DFInput{Elk}}, structure::Structure)
 		end
 	end
 end
-
-
-
-

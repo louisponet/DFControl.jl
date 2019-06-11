@@ -19,6 +19,15 @@ const ELK_CONTROLBLOCKS = _ELK_CONTROLBLOCKS()
 
 const ELK_EXECS = ["elk", "elk-omp"]
 
+function elk_flaginfo(flag::Symbol)
+	for b in ELK_CONTROLBLOCKS
+		for f in b.flags
+			if f.name == flag
+				return f
+			end
+		end
+	end
+end
 
 elk_block_info(name::Symbol) = getfirst(x->x.name == name, ELK_CONTROLBLOCKS)
 
@@ -31,4 +40,7 @@ function elk_block_variable(flag_name::Symbol)
 		end
 	end
 end
+
+
+flagtype(::DFInput{Elk}, flag::Symbol) = eltype(elk_flaginfo(flag))
 

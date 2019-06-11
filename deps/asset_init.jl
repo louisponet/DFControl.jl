@@ -387,7 +387,14 @@ function blockflags(s::String)
         typ = length(flag_i) > 1 && flag_i[1] != "string" ? Vec{parse(Int, flag_i[2]), elk2julia_type(flag_i[1])} : elk2julia_type(flag_i[1])
 		#TODO default
         default = typ == String ? sline[4] : parse_elk_default(typ, sline[4])
-        push!(flags, ElkFlagInfo{typ}(Symbol(strip_split(flag.captures[1], '(')[1]), default, string(descr)))
+        flagname = Symbol(strip_split(flag.captures[1], '(')[1])
+        if flagname == :wann_bands
+	        push!(flags, ElkFlagInfo{UnitRange{Int}}(:wann_bands, nothing, string(descr)))
+		elseif flagname == :wann_projections
+	        push!(flags, ElkFlagInfo{Vector{String}}(:wann_projections, nothing, string(descr)))
+		else
+	        push!(flags, ElkFlagInfo{typ}(flagname, default, string(descr)))
+        end
 	end
 	return flags
 end

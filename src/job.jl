@@ -164,8 +164,8 @@ starttime(job::DFJob) = mtime(scriptpath(job))
 
 runslocal(job::DFJob) = job.server=="localhost"
 structure(job::DFJob) = job.structure
-iswannierjob(job::DFJob) = any(x->package(x) == Wannier90, inputs(job)) && any(x->flag(x, :calculation) == "nscf", inputs(job))
-getnscfcalc(job::DFJob) = getfirst(x->flag(x, :calculation) == "nscf", inputs(job))
+iswannierjob(job::DFJob) = any(x->package(x) == Wannier90, inputs(job)) && any(x->isnscfcalc(x), inputs(job))
+getnscfcalc(job::DFJob) = getfirst(x -> isnscfcalc(x), inputs(job))
 cell(job::DFJob) = cell(structure(job))
 
 input(job::DFJob, n::String) = getfirst(x -> occursin(n, name(x)), inputs(job))
@@ -186,7 +186,17 @@ outpath(job::DFJob, n) = outpath(input(job,n))
 function sanitizeflags!(job::DFJob)
     setflags!(job, :prefix => "$(job.name)", print=false)
     if iswannierjob(job)
-        setflags!(job, :num_bands => flag(getnscfcalc(job), :nbnd), print=false)
+	    nscfcalc = getnscfcalc(job)
+	    if package(nscfcalc) == QE
+	        setflags!(job, :num_bands => nscfcalc[:nbnd], print=false)
+        elseif package(nscfcalc) == Elk
+	        setflags!(job, :num_bands => length(nscfcalc[:wann_bands]))
+	        nscfcalc[:wann_projections] = projections_string.(unique(filter(x->!isempty(projections(x)), atoms(job))))
+	        nscfcalc[:elk2wan_tasks]    = ["602", "604"]
+	        if job[:wannier_plot] == true
+		        push!(nscfcalc[:elk2wan_tasks], "605")
+	        end
+        end
     end
     sanitizeflags!.(inputs(job))
 end

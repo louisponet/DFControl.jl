@@ -189,27 +189,36 @@ function writetojob(f, job, _input::DFInput{Wannier90})
     should_run  = _input.run
     id = findfirst(isequal(_input), job.inputs)
     seedname = name(_input)
-    runexec = input(job, "nscf").execs
-    pw2waninput = qe_generate_pw2waninput(_input, "$(job.name)", runexec)
-    preprocess  = pop!(flags(_input), :preprocess)
 
-    if !preprocess || !should_run
-        write(f, "#")
+	nscf_calc = getfirst(x -> isnscfcalc(x), job.inputs)
+    runexec   = nscf_calc.execs
+    # For elk the setup necessary for the wan_calc needs to be done before writing the wan input
+    # because it's inside elk.in
+	if package(nscf_calc) == QE
+	    pw2waninput = qe_generate_pw2waninput(_input, "$(job.name)", runexec)
+	    preprocess  = pop!(flags(_input), :preprocess)
+
+	    if !preprocess || !should_run
+	        write(f, "#")
+	    end
+	    writeexec.((f,), execs(_input))
+	    write(f, "-pp $filename > $(outfilename(_input))\n")
+
+	    save(_input, job.structure)
+	    writetojob(f, job, pw2waninput)
+	    flags(_input)[:preprocess] = preprocess
+    elseif package(nscf_calc) == Elk
+	    pw2waninput = job["elk2wannier"]
     end
-    writeexec.((f,), execs(_input))
-    write(f, "-pp $filename > $(outfilename(_input))\n")
-
-    save(_input, job.structure)
-    writetojob(f, job, pw2waninput)
 
     if !should_run
         write(f, "#")
     end
     writeexec.((f, ), execs(_input))
     write(f, "$filename > $(outfilename(_input))\n")
-    flags(_input)[:preprocess] = preprocess
     return _input, pw2waninput
 end
+
 """
     writejobfiles(job::DFJob)
 
@@ -316,13 +325,11 @@ function read_job_inputs(job_file::String)
             end
             if has_parseable_exec(line)
                 execs, inputfile, output, run = read_job_line(line)
-                @show inputfile
                 inpath = joinpath(dir, inputfile)
                 if !ispath(inpath)
                     input = (nothing, nothing)
                 else
                     calccommand = getfirst(isparseable, execs)
-                    @show execs
                     input = calccommand != nothing ? inputparser(calccommand)(inpath, execs=execs, run=run) : (nothing, nothing)
                 end
                 if input != (nothing, nothing)
