@@ -70,12 +70,12 @@ end
 
 Atom(name::Symbol, el::Element, pos::Point3; kwargs...)  = Atom(name=name, element=el, position=pos; kwargs...)
 Atom(name::Symbol, el::Symbol, pos::Point3; kwargs...)  = Atom(name=name, element=element(el), position=pos; kwargs...)
-Atom(orig_at::Atom, new_pos::Point3) = Atom(name(orig_at), element(orig_at), new_pos, pseudo(orig_at), projections(orig_at))
+Atom(orig_at::Atom, new_pos::Point3) = Atom(name(orig_at), element(orig_at), new_pos, pseudo(orig_at), projections(orig_at), magnetization(orig_at))
 #Easiest way to implement a new abstractatom is to provide a way to access
 #the struct holding `name`, `position`, `element`, `pseudo`, `projection` fields
 atom(at::Atom) = at
 
-for interface_function in (:name, :position, :element, :pseudo, :projections)
+for interface_function in (:name, :position, :element, :pseudo, :projections, :magnetization)
 	@eval $interface_function(at::AbstractAtom) = atom(at).$interface_function
 end
 

@@ -88,7 +88,6 @@ setflow!(job, "nscf" => true, "bands" => true)
 save(job)
 job2 = DFJob(local_dir)
 
-
 begin
     for (calc, calc2) in zip(job.inputs, job2.inputs)
 

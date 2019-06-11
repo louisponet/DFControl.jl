@@ -21,3 +21,14 @@ const ELK_EXECS = ["elk", "elk-omp"]
 
 
 elk_block_info(name::Symbol) = getfirst(x->x.name == name, ELK_CONTROLBLOCKS)
+
+function elk_block_variable(flag_name::Symbol)
+	for b in ELK_CONTROLBLOCKS
+		for f in b.flags
+			if f.name == flag_name
+				return b
+			end
+		end
+	end
+end
+

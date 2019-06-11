@@ -458,9 +458,9 @@ end
 
 
 """
-    qe_read_input(filename, T=Float64; exec="pw.x",  runcommand="", run=true, structure_name="NoName")
+    qe_read_input(filename, T=Float64; execs=[Exec("pw.x")], run=true, structure_name="noname")
 
-Reads a Quantum Espresso input file. The exec get's used to find which flags are allowed in this input file, and convert the read values to the correct Types.
+Reads a Quantum Espresso input file. The `QE_EXEC` inside execs gets used to find which flags are allowed in this input file, and convert the read values to the correct Types.
 Returns a `DFInput{QE}` and the `Structure` that is found in the input.
 """
 function qe_read_input(filename; execs=[Exec("pw.x")], run=true, structure_name="noname")

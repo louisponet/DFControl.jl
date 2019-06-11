@@ -145,6 +145,17 @@ function writetojob(f, job, inputs::Vector{DFInput{Abinit}})
     return abifiles
 end
 
+function writetojob(f, job, inputs::Vector{DFInput{Elk}})
+    save(inputs, job.structure)
+    should_run = any(map(x->x.run, inputs)) 
+    if !should_run
+        write(f, "#")
+    end
+    writeexec.((f,), execs(inputs[1]))
+    write(f, "< elk.in > elk.out\n")
+    return inputs
+end
+
 function writeexec(f, exec::Exec)
     direxec = joinpath(exec.dir, exec.exec)
     write(f, "$direxec")
@@ -210,13 +221,15 @@ function writejobfiles(job::DFJob)
         write(f, "#!/bin/bash\n")
         write_job_name(f, job)
         write_job_header(f, job)
+        written_inputs = DFInput[]
         abiinputs = Vector{DFInput{Abinit}}(filter(x -> package(x) == Abinit, inputs(job)))
         !isempty(abiinputs) && writetojob(f, job, abiinputs)
+        elkinputs = Vector{DFInput{Elk}}(filter(x -> package(x) == Elk, inputs(job)))
+        !isempty(elkinputs) && append!(written_inputs, writetojob(f, job, elkinputs))
         # i = length(abiinputs) + 1
         # while i <= length(inputs(job))
         #     i += writetojob(f, job, inputs(job)[i])
         # end
-        written_inputs = DFInput[]
         for i in inputs(job)
             if i ∉ written_inputs
                 append!(written_inputs, writetojob(f, job, i))
@@ -260,6 +273,8 @@ function read_job_line(line)
             push!(execs, Exec(efile, dir, parse_wan_execflags(flags)))
         elseif any(occursin.(QE_EXECS, (efile,)))
             push!(execs, Exec(efile, dir, parse_qeexecflags(flags)))
+        elseif any(occursin.(ELK_EXECS, (efile,)))
+            push!(execs, Exec(efile, dir))
         end
     end
     return execs, input, output, run
@@ -307,16 +322,21 @@ function read_job_inputs(job_file::String)
                     input = (nothing, nothing)
                 else
                     calccommand = getfirst(isparseable, execs)
+                    @show execs
                     input = calccommand != nothing ? inputparser(calccommand)(inpath, execs=execs, run=run) : (nothing, nothing)
                 end
                 if input != (nothing, nothing)
-                    id = findall(x-> infilename(x) == inputfile, inputs)
+                    id = findall(x -> infilename(x) == inputfile, inputs)
                     if !isempty(id) #this can only happen for stuff that needs to get preprocessed
                         merge!(flags(input[1]), flags(inputs[id[1]]))
                         inputs[id[1]] = input[1]
                         # structures[id[1]] = input[2]
                     else
-                        push!(inputs, input[1])
+	                    if isa(input[1], Vector)
+	                        append!(inputs, input[1])
+                        else
+	                        push!(inputs, input[1])
+                        end
                         if input[2] != nothing
                             push!(structures, input[2])
                         end

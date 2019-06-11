@@ -160,7 +160,7 @@ end
 const RUN_EXECS = ["mpirun"]
 allexecs() = vcat(RUN_EXECS, QE_EXECS, WAN_EXECS, ELK_EXECS)
 parseable_execs() = vcat(QE_EXECS, WAN_EXECS, ELK_EXECS)
-has_parseable_exec(l::String) = !occursin("#", l) && any(occursin.(parseable_execs(), (l,)))
+has_parseable_exec(l::String) = occursin(">", l) && any(occursin.(parseable_execs(), (l,)))
 
 mutable struct Exec
     exec ::String
@@ -187,7 +187,7 @@ function inputparser(exec::Exec)
         qe_read_input
     elseif exec.exec ∈ WAN_EXECS
         read_wannier_input
-    elseif exec.exec ∈ ELK_EXEC
+    elseif exec.exec ∈ ELK_EXECS
         elk_read_input
     end
 end
