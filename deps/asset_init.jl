@@ -79,7 +79,7 @@ open(joinpath(@__DIR__, "mpirunflags.jl"), "w") do wf
             end
         end
     end
-    writefbodyline(wf, 0,"]")
+    writefbodyline(wf, 0, "]")
 end
 
 open(joinpath(@__DIR__, "wannier90flags.jl"), "w") do wf

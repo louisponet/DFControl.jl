@@ -274,8 +274,7 @@ end
 function save(inputs::Vector{DFInput{Elk}}, structure::Structure)
 	tasks = map(x -> x.run ? "$(x.name)" : "!$(x.name)", filter(x->x.name != "elk2wannier", inputs))
 	elk2wan_input = getfirst(x->x.name == "elk2wannier", inputs)
-	@show elk2wan_input.flags
-	if elk2wan_input != nothing
+	if elk2wan_input != nothing && haskey(elk2wan_input.flags, :elk2wan_tasks)
 		append!(tasks, pop!(elk2wan_input.flags, :elk2wan_tasks))
 	end
 	flags = construct_flag_blocks(inputs)
