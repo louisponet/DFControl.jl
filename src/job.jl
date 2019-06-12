@@ -160,17 +160,17 @@ end
 
 name(job) = job.name
 #-------------------BEGINNING GENERAL SECTION-------------#
-scriptpath(job::DFJob) = joinpath(job.local_dir, "job.tt")
-starttime(job::DFJob) = mtime(scriptpath(job))
+scriptpath(job::DFJob)       = joinpath(job.local_dir, "job.tt")
+starttime(job::DFJob)        = mtime(scriptpath(job))
 
-runslocal(job::DFJob) = job.server=="localhost"
-structure(job::DFJob) = job.structure
-iswannierjob(job::DFJob) = any(x->package(x) == Wannier90, inputs(job)) && any(x->isnscfcalc(x), inputs(job))
-getnscfcalc(job::DFJob) = getfirst(x -> isnscfcalc(x), inputs(job))
-cell(job::DFJob) = cell(structure(job))
+runslocal(job::DFJob)        = job.server        =="localhost"
+structure(job::DFJob)        = job.structure
+iswannierjob(job::DFJob)     = any(x->package(x) == Wannier90, inputs(job)) && any(x->isnscfcalc(x), inputs(job))
+getnscfcalc(job::DFJob)      = getfirst(x -> isnscfcalc(x), inputs(job))
+cell(job::DFJob)             = cell(structure(job))
 
 input(job::DFJob, n::String) = getfirst(x -> occursin(n, name(x)), inputs(job))
-inputs(job::DFJob) = job.inputs
+inputs(job::DFJob)           = job.inputs
 
 """
     inputs(job::DFJob, names::Vector)
@@ -199,6 +199,10 @@ function sanitizeflags!(job::DFJob)
 		        push!(nscfcalc[:elk2wan_tasks], "605")
 	        end
         end
+    end
+    for i in filter(x -> package(x) == QE, inputs(job))
+	    set_hubbard_flags!(i, job.structure)
+	    set_starting_magnetization_flags!(i, job.structure)
     end
     sanitizeflags!.(inputs(job))
 end

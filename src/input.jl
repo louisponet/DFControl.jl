@@ -223,3 +223,28 @@ end
 function hasexec_assert(i::DFInput, exec::String)
     @assert hasexec(i, exec) "Please specify an input with $exec as it's executable."
 end
+
+
+#TODO Temporary handling of HubbardU situation
+function set_hubbard_flags!(input::DFInput{QE}, str::AbstractStructure{T}) where {T}
+	u_ats = unique(atoms(str))
+	input[:Hubbard_U]     = map(x -> dftu(x).U , u_ats)
+	input[:Hubbard_alpha] = map(x -> dftu(x).α , u_ats)
+	input[:Hubbard_beta]  = map(x -> dftu(x).β , u_ats)
+	Jmap = map(x -> dftu(x).J, u_ats)
+	input[:Hubbard_J]     = reshape(collect(Iterators.flatten(Jmap)), length(u_ats), length(Jmap[1]))  
+	input[:Hubbard_J0]    = map(x -> dftu(x).J0, u_ats)
+end
+
+function set_starting_magnetization_flags!(input::DFInput{QE}, str::AbstractStructure{T}) where {T}
+	u_ats = unique(atoms(str))
+	input[:starting_magnetization] = map(x -> [magnetization(x)...], u_ats)
+end
+
+
+
+
+
+
+
+

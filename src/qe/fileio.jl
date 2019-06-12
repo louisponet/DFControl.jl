@@ -409,36 +409,74 @@ function extract_cell!(flags, cell_block)
     end
 end
 
-function extract_atoms!(control, atom_block, pseudo_block, cell)
+function qe_DFTU(atid::Int, parsed_flags::SymAnyDict)
+	U  = 0.0
+	J0 = 0.0
+	J  = Float64[]
+	α  = 0.0
+	β  = 0.0
+	if haskey(parsed_flags, :Hubbard_U) && length(parsed_flags[:Hubbard_U]) >= atid
+		U = parsed_flags[:Hubbard_U][atid]
+	end
+	if haskey(parsed_flags, :Hubbard_J0) && length(parsed_flags[:Hubbard_J0]) >= atid
+		J0 = parsed_flags[:Hubbard_J0][atid]
+	end
+	if haskey(parsed_flags, :Hubbard_J) && length(parsed_flags[:Hubbard_J]) >= atid
+		J = Float64.(parsed_flags[:Hubbard_J][atid, :])
+	end
+	if haskey(parsed_flags, :Hubbard_alpha) && length(parsed_flags[:Hubbard_alpha]) >= atid
+		α = parsed_flags[:Hubbard_alpha][atid]
+	end
+	if haskey(parsed_flags, :Hubbard_beta) && length(parsed_flags[:Hubbard_beta]) >= atid
+		β = parsed_flags[:Hubbard_beta][atid]
+	end
+	return DFTU(U=U, J0=J0, α=α, β=β, J=J)
+end
+
+function qe_magnetization(atid::Int, parsed_flags::SymAnyDict)
+	if haskey(parsed_flags, :starting_magnetization) && length(parsed_flags[:starting_magnetization]) >= atid
+		all_magnetizations = parsed_flags[:starting_magnetization]
+		if isa(all_magnetizations, Vector{<:Vector})
+			return Vec3(all_magnetizations[atid]...)
+		else
+			return Vec3(0.0, 0.0, all_magnetizations[atid])
+		end
+	else
+		return Vec3(0.0, 0.0, 0.0)
+	end
+end
+
+function extract_atoms!(parsed_flags, atom_block, pseudo_block, cell)
     atoms = Atom{Float64}[]
 
     option = atom_block.option
     if option == :crystal || option == :crystal_sg
         primv = cell
     elseif option == :alat
-        primv = alat(control, true) * Mat3(Matrix(1.0I, 3, 3))
+        primv = alat(parsed_flags, true) * Mat3(Matrix(1.0I, 3, 3))
     elseif option == :bohr
         primv = conversions[:bohr2ang] * Mat3(Matrix(1.0I, 3, 3))
     else
         primv = Mat3(Matrix(1.0I, 3, 3))
     end
-
+	atid = 1
     for (at_sym, positions) in atom_block.data
         pseudo = haskey(pseudo_block.data, at_sym) ? pseudo_block.data[at_sym] : error("Please specify a pseudo potential for atom '$at_sym'.")
         for pos in positions
-            push!(atoms, Atom(at_sym, element(at_sym), primv' * pos, pseudo=pseudo))
+            push!(atoms, Atom(name=at_sym, element=element(at_sym), position=primv' * pos, pseudo=pseudo, magnetization=qe_magnetization(atid, parsed_flags), dftu=qe_DFTU(atid, parsed_flags)))
+            atid += 1
         end
     end
 
     return atoms
 end
 
-function extract_structure!(name, control, cell_block, atom_block, pseudo_block)
+function extract_structure!(name, parsed_flags, cell_block, atom_block, pseudo_block)
     if atom_block == nothing
         return nothing
     end
-    cell = extract_cell!(control, cell_block)
-    atoms = extract_atoms!(control, atom_block, pseudo_block, cell)
+    cell = extract_cell!(parsed_flags, cell_block)
+    atoms = extract_atoms!(parsed_flags, atom_block, pseudo_block, cell)
     return Structure(name, cell, atoms)
 end
 
@@ -485,7 +523,7 @@ function qe_read_input(filename; execs=[Exec("pw.x")], run=true, structure_name=
     flaglines, lines = separate(x -> occursin("=", x), lines)
     flaglines = strip_split.(flaglines, "=")
     easy_flaglines, difficult_flaglines = separate(x-> !occursin("(", x[1]), flaglines)
-    parsed_flags = Dict()
+    parsed_flags = SymAnyDict()
     #easy flags
     for (f, v) in easy_flaglines
         sym = Symbol(f)
@@ -565,6 +603,7 @@ function qe_read_input(filename; execs=[Exec("pw.x")], run=true, structure_name=
         end
         structure = extract_structure!(structure_name, parsed_flags, cell_block, atom_block, pseudos)
         delete!.((parsed_flags,), [:ibrav, :nat, :ntyp, :A, :celldm_1, :celldm])
+        delete!.((parsed_flags,), [:Hubbard_U, :Hubbard_J0, :Hubbard_alpha, :Hubbard_beta, :Hubbard_J, :starting_magnetization]) #hubbard and magnetization flags
     else
         structure = nothing
     end
@@ -701,6 +740,8 @@ function save(input::DFInput{QE}, structure, filename::String=inpath(input))
             write(f, "\n")
         end
     end
+    #TODO handle writing hubbard and magnetization better
+    delete!.((input.flags,), (:Hubbard_U, :Hubbard_J0, :Hubbard_J, :Hubbard_alpha, :Hubbard_beta, :starting_magnetization))
 end
 
 function write_structure(f, input::DFInput{QE}, structure)

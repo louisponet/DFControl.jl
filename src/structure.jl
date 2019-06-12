@@ -85,7 +85,7 @@ function mergestructures(structures::Vector{<:AbstractStructure})
                         continue
                     end
                     field = getfield(at2, name)
-                    if field == nothing || isempty(field)
+                    if field == nothing || isdefault(field)
                         continue
                     else
                         setfield!(at1, name, field)

@@ -4,30 +4,28 @@ function read_atoms(fn::IO)
 	species_counter = 0
 
 	reading_atoms = false
-	atname = nothing
+	atname = :nothing
 	natoms = 0
 	atcounter = 0
 	positions = Point3{Float64}[] 
 	bfcmts    = Vec3{Float64}[]
 	atoms     = Atom{Float64}[]
-	atname = Symbol(split(sane_readline(), ".")[1])
-
 	while species_counter < nspecies
 		l = sane_readline()
-		isempty(l) && continue
 		if !reading_atoms
-			natoms = parse(Int, l)
+			atname = Symbol(split(l, ".")[1])
+			natoms = parse(Int, sane_readline())
 			reading_atoms = true
 		elseif atcounter < natoms
 			sline = split(l)
 			push!(positions, Point3{Float64}(parse.(Float64, sline[1:3])))
 			push!(bfcmts, Vec3{Float64}(parse.(Float64, sline[4:end])))
 			atcounter += 1
-		else
+		elseif isempty(l)
 			for (p, mag) in zip(positions, bfcmts)
 				push!(atoms, Atom(name=atname, element=element(atname), position=p, magnetization=mag))
 			end
-			atname = Symbol(split(l, ".")[1])
+			atname = :nothing
 			reading_atoms   = false
 			natoms          = 0
 			atcounter       = 0
