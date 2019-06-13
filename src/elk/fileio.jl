@@ -324,17 +324,18 @@ function save(inputs::Vector{DFInput{Elk}}, structure::Structure)
 	end
 	flags = construct_flag_blocks(inputs)
 	open(joinpath(inputs[1].dir, "elk.in"), "w") do f
+
 		write(f, "tasks\n")
 		for t in tasks
 			write(f, "\t$t\n")
 		end
+		write(f, "\n")
 
 		elk_write_structure(f, structure)
 
 		haskey(flags, Symbol("dft+u")) && elk_write_DFTU(f, structure, pop!(flags, Symbol("dft+u")))
 
 		#remaining generic blocks
-		write(f, "\n")
 		for (k, v) in flags
 			write(f, "$k\n")
 			for v_ in values(v)

@@ -152,7 +152,6 @@ function writetojob(f, job, inputs::Vector{DFInput{Elk}})
         write(f, "#")
     end
     writeexec.((f,), execs(inputs[1]))
-    write(f, "< elk.in > elk.out\n")
     return inputs
 end
 
@@ -283,6 +282,8 @@ function read_job_line(line)
         elseif any(occursin.(QE_EXECS, (efile,)))
             push!(execs, Exec(efile, dir, parse_qeexecflags(flags)))
         elseif any(occursin.(ELK_EXECS, (efile,)))
+	        input = "elk.in"
+	        output = "elk.out"
             push!(execs, Exec(efile, dir))
         end
     end
