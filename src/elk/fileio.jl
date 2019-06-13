@@ -23,7 +23,7 @@ function read_atoms(fn::IO)
 			atcounter += 1
 		elseif isempty(l)
 			for (p, mag) in zip(positions, bfcmts)
-				push!(atoms, Atom(name=atname, element=element(atname), position=p, magnetization=mag))
+				push!(atoms, Atom{Float64}(name=atname, element=element(atname), position=p, magnetization=mag))
 			end
 			atname = :nothing
 			reading_atoms   = false
@@ -37,6 +37,30 @@ function read_atoms(fn::IO)
 	return atoms
 end
 
+function elk_parse_DFTU(atoms::Vector{<:Atom}, blocknames_flaglines::Dict{Symbol, Any})
+	lines = pop!(blocknames_flaglines, Symbol("dft+u"))
+	t_l       = split(lines[1])
+	species_start = 3
+	if length(t_l) == 1
+		dftu_type = parse(Int, t_l[1])
+		inpdftu   = parse(Int, lines[2])
+	else
+		dftu_type, inpdftu = parse.(Int,  t_l)
+		species_start = 2
+	end
+	species_names = name.(unique(atoms))
+	for line in lines[species_start:end]
+		sline = split(line)
+		species_id, l = parse.(Int, sline[1:2])
+		U, J0         = parse.(Float64, sline[3:4])
+		for at in filter(x -> name(x) == species_names[species_id], atoms)
+			at.dftu = DFTU{Float64}(U=U, J0=J0, l=l)
+			@show at.dftu
+		end
+	end
+	return dftu_type, inpdftu
+end
+		
 
 """
     elk_read_input(filename; execs=[Exec("elk")], run=true, structure_name="noname")
@@ -49,6 +73,11 @@ function elk_read_input(fn::String; execs=[Exec("elk")], run=true, structure_nam
 	atoms = Atom{Float64}[]
 	inputs = DFInput[]
 	dir, file = splitdir(fn)
+
+	#TODO it's a bit messy that the atoms block is not handled like this, not sure if we want to clean this up
+	#blocks that require specific parsing
+	special_blocks = (:avec, :tasks, Symbol("dft+u"))
+
 	open(fn, "r") do f
 		sane_readline() = strip_split(readline(f), ':')[1]
 		while !eof(f)
@@ -72,7 +101,7 @@ function elk_read_input(fn::String; execs=[Exec("elk")], run=true, structure_nam
 						push!(blocklines, strip(replace(strip(split(line, ':')[1]), "'" => ""), '.'))
 						line = sane_readline()
 					end
-					if blockname != :tasks && blockname != :avec
+					if !in(blockname, special_blocks)
 						blocknames_flaglines[blockname] = parse_block_flags(blockname, collect(Iterators.flatten(split.(filter(x->!isempty(x), blocklines)))))
 					else
 						blocknames_flaglines[blockname] = filter(x->!isempty(x), blocklines)
@@ -90,7 +119,7 @@ function elk_read_input(fn::String; execs=[Exec("elk")], run=true, structure_nam
 	structure = Structure(structure_name, cell, newats)
 
 	#different tasks
-	tasks_ = pop!(blocknames_flaglines, :tasks)
+	tasks_     = pop!(blocknames_flaglines, :tasks)
 	should_run = map(x -> !occursin("!", x), tasks_)
 	tasks      = map(x -> strip(strip(x, '!')), tasks_)
 
@@ -115,9 +144,15 @@ function elk_read_input(fn::String; execs=[Exec("elk")], run=true, structure_nam
 	#elk2wannier
 	
 	flags = SymAnyDict()
+
+	if haskey(blocknames_flaglines, Symbol("dft+u"))
+		flags[:dftu], flags[:inpdftu] = elk_parse_DFTU(structure.atoms, blocknames_flaglines)
+	end
+
 	for (k, v) in blocknames_flaglines
 		merge!(flags, v)
 	end
+
 	for i in inputs
 		if isempty(i.flags)
 			i.flags = deepcopy(flags)
@@ -269,6 +304,18 @@ function elk_write_flag_val(f, val)
 	write(f, "\n")
 end
 
+function elk_write_DFTU(f::IO, structure::AbstractStructure, dftu_vals::Vector)
+	write(f, "dft+u\n")
+	for v in dftu_vals
+		elk_write_flag_val(f, v)
+	end
+	species = unique(atoms(structure))
+	for (i, s) in enumerate(species)
+		write(f, "\t$i $(string(Elk, dftu(s)))\n")
+	end
+	write(f, "\n")
+end
+
 function save(inputs::Vector{DFInput{Elk}}, structure::Structure)
 	tasks = map(x -> x.run ? "$(x.name)" : "!$(x.name)", filter(x->x.name != "elk2wannier", inputs))
 	elk2wan_input = getfirst(x->x.name == "elk2wannier", inputs)
@@ -277,11 +324,16 @@ function save(inputs::Vector{DFInput{Elk}}, structure::Structure)
 	end
 	flags = construct_flag_blocks(inputs)
 	open(joinpath(inputs[1].dir, "elk.in"), "w") do f
-		elk_write_structure(f, structure)
 		write(f, "tasks\n")
 		for t in tasks
 			write(f, "\t$t\n")
 		end
+
+		elk_write_structure(f, structure)
+
+		haskey(flags, Symbol("dft+u")) && elk_write_DFTU(f, structure, pop!(flags, Symbol("dft+u")))
+
+		#remaining generic blocks
 		write(f, "\n")
 		for (k, v) in flags
 			write(f, "$k\n")

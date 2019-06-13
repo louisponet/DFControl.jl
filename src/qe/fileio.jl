@@ -409,26 +409,26 @@ function extract_cell!(flags, cell_block)
     end
 end
 
-function qe_DFTU(atid::Int, parsed_flags::SymAnyDict)
+function qe_DFTU(speciesid::Int, parsed_flags::SymAnyDict)
 	U  = 0.0
 	J0 = 0.0
 	J  = Float64[]
 	α  = 0.0
 	β  = 0.0
-	if haskey(parsed_flags, :Hubbard_U) && length(parsed_flags[:Hubbard_U]) >= atid
-		U = parsed_flags[:Hubbard_U][atid]
+	if haskey(parsed_flags, :Hubbard_U) && length(parsed_flags[:Hubbard_U]) >= speciesid
+		U = parsed_flags[:Hubbard_U][speciesid]
 	end
-	if haskey(parsed_flags, :Hubbard_J0) && length(parsed_flags[:Hubbard_J0]) >= atid
-		J0 = parsed_flags[:Hubbard_J0][atid]
+	if haskey(parsed_flags, :Hubbard_J0) && length(parsed_flags[:Hubbard_J0]) >= speciesid
+		J0 = parsed_flags[:Hubbard_J0][speciesid]
 	end
-	if haskey(parsed_flags, :Hubbard_J) && length(parsed_flags[:Hubbard_J]) >= atid
-		J = Float64.(parsed_flags[:Hubbard_J][atid, :])
+	if haskey(parsed_flags, :Hubbard_J) && length(parsed_flags[:Hubbard_J]) >= speciesid
+		J = Float64.(parsed_flags[:Hubbard_J][speciesid, :])
 	end
-	if haskey(parsed_flags, :Hubbard_alpha) && length(parsed_flags[:Hubbard_alpha]) >= atid
-		α = parsed_flags[:Hubbard_alpha][atid]
+	if haskey(parsed_flags, :Hubbard_alpha) && length(parsed_flags[:Hubbard_alpha]) >= speciesid
+		α = parsed_flags[:Hubbard_alpha][speciesid]
 	end
-	if haskey(parsed_flags, :Hubbard_beta) && length(parsed_flags[:Hubbard_beta]) >= atid
-		β = parsed_flags[:Hubbard_beta][atid]
+	if haskey(parsed_flags, :Hubbard_beta) && length(parsed_flags[:Hubbard_beta]) >= speciesid
+		β = parsed_flags[:Hubbard_beta][speciesid]
 	end
 	return DFTU(U=U, J0=J0, α=α, β=β, J=J)
 end
@@ -459,12 +459,10 @@ function extract_atoms!(parsed_flags, atom_block, pseudo_block, cell)
     else
         primv = Mat3(Matrix(1.0I, 3, 3))
     end
-	atid = 1
-    for (at_sym, positions) in atom_block.data
+    for (speciesid, (at_sym, positions)) in enumerate(atom_block.data)
         pseudo = haskey(pseudo_block.data, at_sym) ? pseudo_block.data[at_sym] : error("Please specify a pseudo potential for atom '$at_sym'.")
         for pos in positions
-            push!(atoms, Atom(name=at_sym, element=element(at_sym), position=primv' * pos, pseudo=pseudo, magnetization=qe_magnetization(atid, parsed_flags), dftu=qe_DFTU(atid, parsed_flags)))
-            atid += 1
+            push!(atoms, Atom(name=at_sym, element=element(at_sym), position=primv' * pos, pseudo=pseudo, magnetization=qe_magnetization(speciesid, parsed_flags), dftu=qe_DFTU(speciesid, parsed_flags)))
         end
     end
 

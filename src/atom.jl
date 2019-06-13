@@ -1,5 +1,6 @@
 include("wannier90/projections.jl")
 
+import Base: ==
 """
 Represents an element.
 """
@@ -68,10 +69,22 @@ end
 	J::Vector{T} = T[]
 end
 
+function ==(x::DFTU, y::DFTU)
+	fnames = fieldnames(DFTU)
+	for fn in fnames
+		if getfield(x, fn) != getfield(y, fn)
+			return false
+		end
+	end
+	return true
+end
+
 isdefault(x::DFTU{T}) where {T} =
 	x == DFTU{T}() 
 
 isdefault(x::Any) = isempty(x)
+
+Base.string(::Type{Elk}, dftu::DFTU) = "$(dftu.l) $(dftu.U) $(dftu.J0)"
 
 # TODO Multiple l per atom in Elk??
 #We use angstrom everywhere
@@ -119,7 +132,6 @@ setprojections!(at::AbstractAtom, projections::Vector{Projection}) =
 
 bondlength(at1::AbstractAtom{T}, at2::AbstractAtom{T}, R=T(0.0)) where T<:AbstractFloat = norm(position(at1) - position(at2) - R)
 
-import Base: ==
 ==(at1::AbstractAtom, at2::AbstractAtom) =
     name(at1) == name(at2) && norm(position(at1) - position(at2)) < 1e-6
 

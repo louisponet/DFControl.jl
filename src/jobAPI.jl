@@ -487,3 +487,5 @@ function set_Hubbard_J!(at::AbstractAtom, ats_Js::Pair{Symbol, Vector{<:Abstract
 end
 
 export set_Hubbard_J!
+
+atoms(job::DFJob, atsym::Symbol) = atoms(job.structure, atsym)
