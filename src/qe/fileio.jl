@@ -437,12 +437,12 @@ function qe_magnetization(atid::Int, parsed_flags::SymAnyDict)
 	if haskey(parsed_flags, :starting_magnetization) && length(parsed_flags[:starting_magnetization]) >= atid
 		all_magnetizations = parsed_flags[:starting_magnetization]
 		if isa(all_magnetizations, Vector{<:Vector})
-			return Vec3(all_magnetizations[atid]...)
+			return Vec3{Float64}(all_magnetizations[atid]...)
 		else
-			return Vec3(0.0, 0.0, all_magnetizations[atid])
+			return Vec3{Float64}(0.0, 0.0, all_magnetizations[atid])
 		end
 	else
-		return Vec3(0.0, 0.0, 0.0)
+		return Vec3{Float64}(0.0, 0.0, 0.0)
 	end
 end
 
