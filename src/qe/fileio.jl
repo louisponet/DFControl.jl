@@ -430,7 +430,7 @@ function qe_DFTU(speciesid::Int, parsed_flags::SymAnyDict)
 	if haskey(parsed_flags, :Hubbard_beta) && length(parsed_flags[:Hubbard_beta]) >= speciesid
 		β = parsed_flags[:Hubbard_beta][speciesid]
 	end
-	return DFTU(U=U, J0=J0, α=α, β=β, J=J)
+	return DFTU{Float64}(U=U, J0=J0, α=α, β=β, J=J)
 end
 
 function qe_magnetization(atid::Int, parsed_flags::SymAnyDict)
