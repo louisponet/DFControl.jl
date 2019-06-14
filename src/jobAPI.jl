@@ -425,12 +425,16 @@ end
 
 
 "sets the pseudopotentials to the specified one in the default pseudoset."
-function setpseudos!(job::DFJob, set, specifier=""; kwargs...)
+function setpseudos!(job::DFJob, set::Symbol, specifier::String=""; kwargs...)
     setpseudos!(job.structure, set, specifier; kwargs...)
     dir = getdefault_pseudodir(set)
     dir != nothing && setflags!(job, :pseudo_dir => "$dir", print=false)
     return job
 end
+
+"sets the pseudopotentials for the atom with name `atsym` to the specified one in the default pseudoset."
+setpseudos!(job::DFJob, atsym::Symbol, set::Symbol, specifier::String=""; kwargs...) =
+	setpseudos!(job.structure, atsym, set, specifier; kwargs...)
 
 "sets the pseudopotentials to the specified one in the default pseudoset."
 function setpseudos!(job::DFJob, pseudodir, at_pseudos::Pair{Symbol, String}...; kwargs...)

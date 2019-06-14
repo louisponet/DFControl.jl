@@ -133,7 +133,13 @@ setcutoffs!(job)
 
 setpseudos!(job, "pseudos", :Pt => "Pt.UPF")
 @test job.structure.atoms[1].pseudo == "Pt.UPF"
-@test job["nscf"][:pseudo_dir] == "pseudos"
+setpseudos!(job, :Pt, :test)
+@test job.structure.atoms[1].pseudo == "Pt.UPF"
+
+setpseudos!(job, :test)
+@test job.structure.atoms[1].pseudo == "Pt.UPF"
+
+@test splitdir(job["nscf"][:pseudo_dir])[end] == "pseudos"
 testorbs = [:s, :p]
 setprojections!(job, :Pt => testorbs)
 @test convert.(Symbol, [p.orb for p in projections(job, :Pt)]) == testorbs
