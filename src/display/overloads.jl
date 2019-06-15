@@ -78,7 +78,7 @@ function show(io::IO, job::DFJob)
     dfprint(io, reset)
 end
 
-show(io::IO, at::AbstractAtom) = dfprintln(io, "$(name(at)): $(position(at)[1]) $(position(at)[2]) $(position(at)[3])")
+show(io::IO, at::AbstractAtom) = dfprintln(io, "$(name(at)): $(position_cart(at)[1]) $(position_cart(at)[2]) $(position_cart(at)[3])")
 
 function show(io::IO, in::DFInput)
     df_show_type(io, in)

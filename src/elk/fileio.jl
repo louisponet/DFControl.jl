@@ -23,7 +23,7 @@ function read_atoms(fn::IO)
 			atcounter += 1
 		elseif isempty(l)
 			for (p, mag) in zip(positions, bfcmts)
-				push!(atoms, Atom{Float64}(name=atname, element=element(atname), position=p, magnetization=mag))
+				push!(atoms, Atom{Float64}(name=atname, element=element(atname), position_cart=p, magnetization=mag))
 			end
 			atname = :nothing
 			reading_atoms   = false
@@ -115,7 +115,7 @@ function elk_read_input(fn::String; execs=[Exec("elk")], run=true, structure_nam
 	scale = haskey(blocknames_flaglines, :scale) ? last(pop!(blocknames_flaglines[:scale])) : 1.0
 	cell  = Mat3(reshape(scale .* parse.(Float64, collect(Iterators.flatten(split.(pop!(blocknames_flaglines, :avec))))), 3, 3))
 	#structure #TODO make positions be in lattices coordinates
-	newats = [Atom(at, cell' * position(at)) for at in atoms]
+	newats = [Atom(at, cell' * position_cart(at)) for at in atoms]
 	structure = Structure(structure_name, cell, newats)
 
 	#different tasks
@@ -238,7 +238,7 @@ function elk_write_structure(f, structure)
 		write(f, "\t$(length(ats))\n")
 		for a in ats
 			write(f, "\t")
-			for i in inv(cell(structure)')*position(a)
+			for i in inv(cell(structure)')*position_cart(a)
 				write(f, "$(round(i, digits=8)) ")
 			end
 			for i in magnetization(a)

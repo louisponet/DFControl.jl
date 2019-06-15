@@ -462,7 +462,7 @@ function extract_atoms!(parsed_flags, atom_block, pseudo_block, cell)
     for (speciesid, (at_sym, positions)) in enumerate(atom_block.data)
         pseudo = haskey(pseudo_block.data, at_sym) ? pseudo_block.data[at_sym] : error("Please specify a pseudo potential for atom '$at_sym'.")
         for pos in positions
-            push!(atoms, Atom(name=at_sym, element=element(at_sym), position=primv' * pos, pseudo=pseudo, magnetization=qe_magnetization(speciesid, parsed_flags), dftu=qe_DFTU(speciesid, parsed_flags)))
+            push!(atoms, Atom{Float64}(name=at_sym, element=element(at_sym), position_cart=primv' * pos, position_cryst=inv(cell') * pos, pseudo=pseudo, magnetization=qe_magnetization(speciesid, parsed_flags), dftu=qe_DFTU(speciesid, parsed_flags)))
         end
     end
 
@@ -750,7 +750,7 @@ function write_structure(f, input::DFInput{QE}, structure)
         push!(pseudo_lines, "$(name(at)) $(element(at).atomic_weight)   $(pseudo(at))\n")
     end
     for at in atoms(structure)
-        pos = position(at)
+        pos = position_cart(at)
         push!(atom_lines, "$(name(at))  $(pos[1]) $(pos[2]) $(pos[3])\n")
     end
 

@@ -28,7 +28,7 @@ function extract_atoms(atoms_block::T, proj_block::T, cell, spinors=false) where
             for ps in pos
                 same_ats = Atom{Float64}[]
                 for at in t_ats
-                    if position(at) == cell' * ps
+                    if position_cart(at) == cell' * ps
                         push!(same_ats, at)
                     end
                 end
@@ -299,7 +299,7 @@ function save(input::DFInput{Wannier90}, structure, filename::String=inpath(inpu
         write(f, "\n")
         write(f, "begin atoms_cart\n")
         for at in atoms(structure)
-            pos = position(at)
+            pos = position_cart(at)
             write(f, "$(name(at))  $(pos[1]) $(pos[2]) $(pos[3])\n")
         end
         write(f, "end atoms_cart\n")

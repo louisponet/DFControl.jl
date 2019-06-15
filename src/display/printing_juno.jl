@@ -15,7 +15,7 @@ end
 end
 
 @render i::Inline x::AbstractAtom begin
-    pos = position(x)
+    pos = position_cart(x)
     Tree(Text("$(name(x))  ang: $(round(pos[1], digits=5)) $(round(pos[2], digits=5)) $(round(pos[3], digits=5))"), [SubTree(Text("$f → "), getfield_(x, f)) for f in fieldnames(typeof(x))[2:end]])
 end
 

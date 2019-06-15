@@ -55,9 +55,11 @@ setflags!(job, :Hubbard_J => [4 4 5], print=false)
 
 
 struct2 = DFControl.create_supercell(job.structure, 1, 2, 1)
-newpositions = [DFControl.position(at) for at in atoms(struct2)]
-oldposition = atoms(job.structure)[1].position
+newpositions = [DFControl.position_cart(at) for at in atoms(struct2)]
+oldposition = atoms(job.structure)[1].position_cart
 cell = DFControl.cell(job.structure)
+
+@test atoms(job.structure)[1].position_cart == job.structure.cell' * atoms(job.structure)[1].position_cryst
 @test oldposition == newpositions[1]
 @test oldposition + cell[1,:] ∈ newpositions
 @test oldposition + 2*cell[2,:] ∈ newpositions

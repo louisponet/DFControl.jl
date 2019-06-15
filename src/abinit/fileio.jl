@@ -276,7 +276,7 @@
 #     write(f, "acell 1.0 1.0 1.0\n")
 #     write(f, "xangst\n")
 #     for at in structure.atoms
-#         write(f, position(at))
+#         write(f, position_cart(at))
 #         write(f, "\n")
 #     end
 #     write(f, "rprim\n")

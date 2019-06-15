@@ -81,7 +81,7 @@ function mergestructures(structures::Vector{<:AbstractStructure})
         for at1 in atoms(out), at2 in atoms(structure)
             if at1 == at2
                 for fname in fieldnames(typeof(at1))
-                    if fname in [:name, :element, :position, :magnetization]
+                    if fname in [:name, :element, :position_cart, :magnetization]
                         continue
                     end
                     field = getfield(at2, fname)
@@ -156,7 +156,7 @@ function create_supercell(structure::AbstractStructure, na::Int, nb::Int, nc::In
         end
         transl_vec = orig_cell'*[ia, ib, ic]
         for at in orig_ats
-            push!(new_atoms, Atom(at, position(at)+transl_vec))
+            push!(new_atoms, Atom(at, position_cart(at)+transl_vec))
         end
     end
     return Structure(name(structure), Mat3(new_cell), new_atoms, data(structure))
