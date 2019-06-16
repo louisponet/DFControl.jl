@@ -38,7 +38,7 @@ end
 
 element(z::Int) = getfirst(x->x.Z == z, ELEMENTS)
 
-abstract type AbstractAtom{T} end
+abstract type AbstractAtom{T, LT<:Length{T}} end
 
 #Definition of the AbstractAtom interface, each AbstractAtom needs to provide a method `atom(...)` that returns a datastructure with the Atom fields.
 elsym(atom::AbstractAtom) = element(atom).symbol
@@ -88,10 +88,10 @@ Base.string(::Type{Elk}, dftu::DFTU) = "$(dftu.l) $(dftu.U) $(dftu.J0)"
 
 # TODO Multiple l per atom in Elk??
 #We use angstrom everywhere
-@with_kw mutable struct Atom{T<:AbstractFloat} <: AbstractAtom{T}
+@with_kw mutable struct Atom{T<:AbstractFloat, LT<:Length{T}} <: AbstractAtom{T, LT}
     name          ::Symbol
     element       ::Element
-    position_cart ::Point3{T}
+    position_cart ::Point3{LT}
     position_cryst::Point3{T}=zero(Point3{T})
     pseudo        ::String = ""
     projections   ::Vector{Projection} = Projection[]
@@ -99,8 +99,10 @@ Base.string(::Type{Elk}, dftu::DFTU) = "$(dftu.l) $(dftu.U) $(dftu.J0)"
     dftu          ::DFTU{T} = DFTU{T}()
 end
 
-Atom(name::Symbol, el::Element, pos_cart::Point3{T}; kwargs...) where {T} = Atom{T}(name=name, element=el, position_cart=pos_cart; kwargs...)
-Atom(name::Symbol, el::Symbol, pos_cart::Point3{T}; kwargs...) where {T} = Atom{T}(name=name, element=element(el), position_cart=pos_cart; kwargs...)
+Atom(name::Symbol, el::Element, pos_cart::Point3{LT}, pos_cryst::Point3{T}; kwargs...) where {T, LT<:Length{T}} =
+	Atom{T, LT}(name=name, element=el, position_cart=pos_cart, position_cryst=pos_cryst; kwargs...)
+Atom(name::Symbol, el::Symbol, args...; kwargs...) =
+	Atom(name, element(el), args...; kwargs...)
 
 #TODO this is a little iffy
 Atom(orig_at::Atom, new_pos_cart::Point3) = Atom(name(orig_at), element(orig_at), new_pos_cart, position_cryst(orig_at), pseudo(orig_at), projections(orig_at), magnetization(orig_at), dftu(orig_at))
@@ -122,8 +124,10 @@ end
 setname!(at::AbstractAtom, name::Symbol) =
 	atom(at).name = name
 
+length_unit(at::Atom{T, LT}) where {T, LT} = LT
+
 setposition_cart!(at::AbstractAtom{T}, position_cart::Point3) where T =
-    atom(at).position_cart = convert(Point3{T}, position_cart)
+    atom(at).position_cart = length_unit(at).(convert(Point3{T}, position_cart))
 
 function setpseudo!(at::AbstractAtom, pseudo; print=true)
 	print && @info "Pseudo of atom $(name(at)) set to $pseudo."
@@ -135,8 +139,8 @@ setprojections!(at::AbstractAtom, projections::Vector{Projection}) =
 
 bondlength(at1::AbstractAtom{T}, at2::AbstractAtom{T}, R=T(0.0)) where T<:AbstractFloat = norm(position_cart(at1) - position_cart(at2) - R)
 
-==(at1::AbstractAtom, at2::AbstractAtom) =
-    name(at1) == name(at2) && norm(position_cart(at1) - position_cart(at2)) < 1e-6
+==(at1::AbstractAtom{T, LT}, at2::AbstractAtom{T, LT}) where {T, LT} =
+    name(at1) == name(at2) && norm(position_cart(at1) - position_cart(at2)) < LT(1e-6)
 
 #TODO fix documentation
 for hub_param in (:U, :J0, :α, :β)

@@ -1,15 +1,15 @@
 #THIS IS THE MOST HORRIBLE FUNCTION I HAVE EVER CREATED!!!
 #extracts only atoms with projections
-function extract_atoms(atoms_block::T, proj_block::T, cell, spinors=false) where T <: InputData
+function extract_atoms(atoms_block::T, proj_block::T, cell::Mat3{LT}, spinors=false) where {T<:InputData,LT<:Length}
     if atoms_block.name == :atoms_cart
-        cell = Mat3(Matrix(I, 3, 3))
+        cell = Mat3(Matrix(1.0Ang*I, 3, 3))
     end
     projections_ = proj_block.data
     atoms = atoms_block.data
     t_start = 1
-    out_ats = Atom{Float64}[]
+    out_ats = Atom{Float64, LT}[]
     if projections_ != nothing
-        t_ats = Atom{Float64}[]
+        t_ats = Atom{Float64, LT}[]
         for (pos_at, pos) in atoms
             for ps in pos
                 for (proj_at, projs) in projections_
@@ -18,7 +18,7 @@ function extract_atoms(atoms_block::T, proj_block::T, cell, spinors=false) where
                     end
                     for proj in projs
                         size = spinors ? 2*orbsize(proj) : orbsize(proj)
-                        push!(t_ats, Atom(pos_at, element(pos_at), cell' * ps, projections=[Projection(orbital(proj), t_start, t_start + size - 1)]))
+                        push!(t_ats, Atom(pos_at, element(pos_at), cell' * ps, ps, projections=[Projection(orbital(proj), t_start, t_start + size - 1)]))
                         t_start += size
                     end
                 end
@@ -26,7 +26,7 @@ function extract_atoms(atoms_block::T, proj_block::T, cell, spinors=false) where
         end
         for (pos_at, pos) in atoms
             for ps in pos
-                same_ats = Atom{Float64}[]
+                same_ats = Atom{Float64, LT}[]
                 for at in t_ats
                     if position_cart(at) == cell' * ps
                         push!(same_ats, at)
@@ -46,7 +46,7 @@ function extract_atoms(atoms_block::T, proj_block::T, cell, spinors=false) where
     else
         for (pos_at, pos) in atoms
             for p in pos
-                push!(out_ats, Atom(pos_at, element(pos_at), cell' * p, projections=:random))
+                push!(out_ats, Atom(pos_at, element(pos_at), cell' * p, p, projections=:random))
             end
         end
     end
@@ -58,9 +58,9 @@ function extract_structure(name, cell_block::T, atoms_block::T, projections_bloc
         return nothing
     end
     if cell_block.option == :bohr
-        cell = conversions[:bohr2ang] * cell_block.data
+        cell = cell_block.data .* 1a₀
     else
-        cell = cell_block.data
+        cell = cell_block.data .* 1Ang
     end
 
     atoms = extract_atoms(atoms_block, projections_block, cell, spinors)
@@ -290,7 +290,7 @@ function save(input::DFInput{Wannier90}, structure, filename::String=inpath(inpu
 
         if structure != nothing
             write(f,"begin unit_cell_cart\n")
-            write_cell(f, cell(structure))
+            write_cell(f, ustrip.(uconvert.(Ang, cell(structure))))
             write(f,"end unit_cell_cart\n")
             write(f, "\n")
         end
@@ -299,7 +299,7 @@ function save(input::DFInput{Wannier90}, structure, filename::String=inpath(inpu
         write(f, "\n")
         write(f, "begin atoms_cart\n")
         for at in atoms(structure)
-            pos = position_cart(at)
+            pos = ustrip.(uconvert.(Ang, position_cart(at)))
             write(f, "$(name(at))  $(pos[1]) $(pos[2]) $(pos[3])\n")
         end
         write(f, "end atoms_cart\n")

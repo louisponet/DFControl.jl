@@ -373,19 +373,21 @@ function qe_read_polarization(filename::String, T=Float64)
     return t[:polarization], t[:pol_mod]
 end
 
-qe_read_vcrel(filename::String, T=Float64) = qe_read_output(filename, T) do x
-                                                return x[:cell_parameters], x[:alat], x[:atomic_positions], x[:pos_option]
-                                            end
+qe_read_vcrel(filename::String, T=Float64) =
+	qe_read_output(filename, T) do x
+		return x[:cell_parameters], x[:alat], x[:atomic_positions], x[:pos_option]
+    end
 
 function alat(flags, pop=false)
     if haskey(flags, :A)
         alat = pop ? pop!(flags, :A) : flags[:A]
-    elseif haskey(flags, :celldm_1)
+		alat *= 1Ang
+elseif haskey(flags, :celldm_1)
         alat = pop ? pop!(flags, :celldm_1) : flags[:celldm_1]
-        alat *= conversions[:bohr2ang]
+        alat *= 1a₀
     elseif haskey(flags, :celldm)
         alat = pop ? pop!(flags, :celldm)[1] : flags[:celldm][1]
-        alat *= conversions[:bohr2ang]
+        alat *= 1a₀
     else
         error("Cell option 'alat' was found, but no matching flag was set. \n
                The 'alat' has to  be specified through 'A' or 'celldm(1)'.")
@@ -396,16 +398,16 @@ end
 #TODO handle more fancy cells
 function extract_cell!(flags, cell_block)
     if cell_block != nothing
-        _alat = 1.0
+        _alat = 1.0Ang
         if cell_block.option == :alat
             @assert pop!(flags, :ibrav) == 0 "Only ibrav = 0 allowed for now."
             _alat = alat(flags)
 
         elseif cell_block.option == :bohr
-            _alat = conversions[:bohr2ang]
+            _alat = 1u"a₀"
         end
 
-        return _alat * cell_block.data
+        return _alat .* cell_block.data
     end
 end
 
@@ -446,8 +448,8 @@ function qe_magnetization(atid::Int, parsed_flags::SymAnyDict)
 	end
 end
 
-function extract_atoms!(parsed_flags, atom_block, pseudo_block, cell)
-    atoms = Atom{Float64}[]
+function extract_atoms!(parsed_flags, atom_block, pseudo_block, cell::Mat3{LT}) where {LT <: Length}
+    atoms = Atom{Float64, LT}[]
 
     option = atom_block.option
     if option == :crystal || option == :crystal_sg
@@ -455,14 +457,14 @@ function extract_atoms!(parsed_flags, atom_block, pseudo_block, cell)
     elseif option == :alat
         primv = alat(parsed_flags, true) * Mat3(Matrix(1.0I, 3, 3))
     elseif option == :bohr
-        primv = conversions[:bohr2ang] * Mat3(Matrix(1.0I, 3, 3))
+        primv = 1a₀ .* Mat3(Matrix(1.0I, 3, 3))
     else
-        primv = Mat3(Matrix(1.0I, 3, 3))
+        primv = 1Ang .* Mat3(Matrix(1.0I, 3, 3))
     end
     for (speciesid, (at_sym, positions)) in enumerate(atom_block.data)
         pseudo = haskey(pseudo_block.data, at_sym) ? pseudo_block.data[at_sym] : error("Please specify a pseudo potential for atom '$at_sym'.")
         for pos in positions
-            push!(atoms, Atom{Float64}(name=at_sym, element=element(at_sym), position_cart=primv' * pos, position_cryst=inv(cell') * pos, pseudo=pseudo, magnetization=qe_magnetization(speciesid, parsed_flags), dftu=qe_DFTU(speciesid, parsed_flags)))
+            push!(atoms, Atom(name=at_sym, element=element(at_sym), position_cart=primv' * pos, position_cryst=ustrip.(inv(cell') * pos), pseudo=pseudo, magnetization=qe_magnetization(speciesid, parsed_flags), dftu=qe_DFTU(speciesid, parsed_flags)))
         end
     end
 
@@ -749,9 +751,10 @@ function write_structure(f, input::DFInput{QE}, structure)
     for at in unique_at
         push!(pseudo_lines, "$(name(at)) $(element(at).atomic_weight)   $(pseudo(at))\n")
     end
+
     for at in atoms(structure)
-        pos = position_cart(at)
-        push!(atom_lines, "$(name(at))  $(pos[1]) $(pos[2]) $(pos[3])\n")
+        pos = uconvert.(Ang, position_cart(at))
+        push!(atom_lines, "$(name(at))  $(ustrip(pos[1])) $(ustrip(pos[2])) $(ustrip(pos[3]))\n")
     end
 
     write(f, "ATOMIC_SPECIES\n")
@@ -759,7 +762,7 @@ function write_structure(f, input::DFInput{QE}, structure)
 
     write(f, "\n")
     write(f, "CELL_PARAMETERS (angstrom)\n")
-    write_cell(f, cell(structure))
+    write_cell(f, ustrip.(uconvert.(Ang, cell(structure))))
     write(f, "\n")
 
     write(f, "ATOMIC_POSITIONS (angstrom) \n")
