@@ -1,7 +1,7 @@
 
-abstract type AbstractStructure{T} end
+abstract type AbstractStructure{T, LT} end
 
-mutable struct Structure{T <: AbstractFloat, AA<:AbstractAtom{T}, LT <: Length{T}} <: AbstractStructure{T}
+mutable struct Structure{T <: AbstractFloat, AA<:AbstractAtom{T}, LT <: Length{T}} <: AbstractStructure{T, LT}
     name ::AbstractString
     cell ::Mat3{LT}
     atoms::Vector{AA}
