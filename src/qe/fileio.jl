@@ -194,8 +194,8 @@ end
 function qe_read_output(input::DFInput{QE}, args...; kwargs...)
     out = Dict{Symbol, Any}()
     if isprojwfccalc(input)
+        pdos_files = searchdir(dir(input), ".pdos_")
         if flag(input, :kresolveddos) == true
-            pdos_files = searchdir(dir(input), ".pdos_")
             out[:heatmaps]   = Vector{Matrix{Float64}}()
             out[:ytickvals] = Vector{Vector{Float64}}()
             out[:yticks]    = Vector{Vector{Float64}}()
