@@ -89,11 +89,11 @@ Base.string(::Type{Elk}, dftu::DFTU) = "$(dftu.l) $(dftu.U) $(dftu.J0)"
 mutable struct Pseudo
 	name::String
 	dir ::String
+	Pseudo() =
+		new("", "")
 	Pseudo(name::AbstractString, dir::AbstractString) =
 		new(name, abspath(dir))
 end
-
-Pseudo() = Pseudo("", "")
 
 Base.isempty(p::Pseudo) =
 	isempty(p.name) && isempty(p.dir)

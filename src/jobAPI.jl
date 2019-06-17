@@ -16,14 +16,14 @@ function save(job::DFJob, local_dir=job.local_dir)
 end
 
 """
-    submit(job::DFJob; server=job.server, server_dir=job.server_dir)
+    submit(job::DFJob; server=job.server, server_dir=job.server_dir, kwargs...)
 
-Saves the job locally, and then either runs it locally using `qsub` (when `job.server == "localhost"`) or sends it to the specified `job.server` in `job.server_dir`, and submits it using `qsub` on the server.
+Saves the job locally, and then either runs it locally using `qsub` (when `job.server == "localhost"`) or sends it to the specified `job.server` in `job.server_dir`, and submits it using `qsub` on the server. Kwargs get passed through to `qsub(job; kwargs...)`.
 """
-function submit(job::DFJob; server=job.server, server_dir=job.server_dir)
+function submit(job::DFJob; server=job.server, server_dir=job.server_dir, kwargs...)
     save(job)
     job.server = server
-    job.metadata[:slurmid] = qsub(job)
+    job.metadata[:slurmid] = qsub(job; kwargs...)
 end
 
 """

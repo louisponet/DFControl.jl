@@ -127,20 +127,26 @@ function qdel(job::DFJob)
     end
 end
 
-function qsub(job::DFJob)
+function qsub(job::DFJob; rm_prev=true)
     outstr = ""
     if !runslocal(job)
         push(job)
         outstr = read(`ssh -t $(job.server) cd $(job.server_dir) '&&' qsub job.tt`, String)
     else
+        curdir = pwd()
+        cd(job.local_dir)
+        if rm_prev
+	        prev_files = searchdir(job.local_dir, "job.tt.")
+	        for p in prev_files
+		        rm(joinpath(job.local_dir), p)
+	        end
+        end
         try
-            curdir = pwd()
-            cd(job.local_dir)
             outstr = read(`qsub job.tt`, String)
-            cd(curdir)
         catch
             error("Tried submitting on the local machine but got an error executing `qsub`.")
         end
+        cd(curdir)
     end
     return parse(Int, chomp(outstr))
 end
