@@ -677,7 +677,7 @@ end
 
 Writes a Quantum Espresso input file.
 """
-function save(input::DFInput{QE}, structure, filename::String=inpath(input))
+function save(input::DFInput{QE}, structure, filename::String=inpath(input); relative_positions=true)
     if haskey(flags(input), :calculation)
         setflags!(input, :calculation => replace(input[:calculation], "_" => "-"), print=false)
     end
@@ -721,7 +721,7 @@ function save(input::DFInput{QE}, structure, filename::String=inpath(input))
             write(f, "/\n\n")
         end
         if exec(input, "pw.x") != nothing
-            write_structure(f, input, structure)
+            write_structure(f, input, structure, relative_positions=relative_positions)
         end
         for dat in input.data
             if dat.name != :noname
@@ -744,7 +744,7 @@ function save(input::DFInput{QE}, structure, filename::String=inpath(input))
     delete!.((input.flags,), (:Hubbard_U, :Hubbard_J0, :Hubbard_J, :Hubbard_alpha, :Hubbard_beta, :starting_magnetization))
 end
 
-function write_structure(f, input::DFInput{QE}, structure)
+function write_structure(f, input::DFInput{QE}, structure; relative_positions=true)
     unique_at = unique(atoms(structure))
     pseudo_lines = String[]
     atom_lines   = String[]
@@ -753,8 +753,8 @@ function write_structure(f, input::DFInput{QE}, structure)
     end
 
     for at in atoms(structure)
-        pos = uconvert.(Ang, position_cart(at))
-        push!(atom_lines, "$(name(at))  $(ustrip(pos[1])) $(ustrip(pos[2])) $(ustrip(pos[3]))\n")
+        pos = 
+        push!(atom_lines, position_string(QE, at, relative=relative_positions))
     end
 
     write(f, "ATOMIC_SPECIES\n")
@@ -765,7 +765,11 @@ function write_structure(f, input::DFInput{QE}, structure)
     write_cell(f, ustrip.(uconvert.(Ang, cell(structure))))
     write(f, "\n")
 
-    write(f, "ATOMIC_POSITIONS (angstrom) \n")
+    if relative_positions
+	    write(f, "ATOMIC_POSITIONS (crystal) \n")
+    else
+	    write(f, "ATOMIC_POSITIONS (angstrom) \n")
+    end
     write.((f, ), atom_lines)
     write(f, "\n")
 end

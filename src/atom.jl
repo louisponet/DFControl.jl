@@ -191,3 +191,8 @@ function set_Hubbard_J!(at::AbstractAtom{T}, v::Vector{<:AbstractFloat}; print=t
 	dftu(at).J = convert.(T, v)
 	print && @info "Hubbard J of atom $(at.name) set to $v"
 end
+
+function position_string(::Type{QE}, at::AbstractAtom; relative=true)
+	pos = relative ? position_cryst(at) : ustrip.(uconvert.(Ang, position_cart(at)))
+	return "$(name(at))  $(pos[1]) $(pos[2]) $(pos[3])\n"
+end

@@ -128,8 +128,8 @@ function write_job_header(f, job::DFJob)
     end
 end
 
-function writetojob(f, job, inputs::Vector{DFInput{Abinit}})
-    abinit_jobfiles   = write_abi_datasets(inputs, job.local_dir)
+function writetojob(f, job, inputs::Vector{DFInput{Abinit}}; kwargs...)
+    abinit_jobfiles   = write_abi_datasets(inputs, job.local_dir; kwargs...)
     abifiles = String[]
     num_abi = 0
     for (filename, pseudos, runcommand) in abinit_jobfiles
@@ -145,8 +145,8 @@ function writetojob(f, job, inputs::Vector{DFInput{Abinit}})
     return abifiles
 end
 
-function writetojob(f, job, inputs::Vector{DFInput{Elk}})
-    save(inputs, job.structure)
+function writetojob(f, job, inputs::Vector{DFInput{Elk}}; kwargs...)
+    save(inputs, job.structure; kwargs...)
     should_run = any(map(x->x.run, inputs)) 
     if !should_run
         write(f, "#")
@@ -171,10 +171,10 @@ function writeexec(f, exec::Exec)
     write(f, " ")
 end
 
-function writetojob(f, job, input::DFInput)
+function writetojob(f, job, input::DFInput; kwargs...)
     filename    = infilename(input)
     should_run  = input.run
-    save(input, job.structure)
+    save(input, job.structure; kwargs...)
     if !should_run
         write(f, "#")
     end
@@ -183,7 +183,7 @@ function writetojob(f, job, input::DFInput)
     return (input,)
 end
 
-function writetojob(f, job, _input::DFInput{Wannier90})
+function writetojob(f, job, _input::DFInput{Wannier90}; kwargs...)
     filename    = infilename(_input)
     should_run  = _input.run
     id = findfirst(isequal(_input), job.inputs)
@@ -203,8 +203,8 @@ function writetojob(f, job, _input::DFInput{Wannier90})
 	    writeexec.((f,), execs(_input))
 	    write(f, "-pp $filename > $(outfilename(_input))\n")
 
-	    save(_input, job.structure)
-	    writetojob(f, job, pw2waninput)
+	    save(_input, job.structure; kwargs...)
+	    writetojob(f, job, pw2waninput; kwargs...)
 	    flags(_input)[:preprocess] = preprocess
     elseif package(nscf_calc) == Elk
 	    pw2waninput = job["elk2wannier"]
@@ -219,11 +219,12 @@ function writetojob(f, job, _input::DFInput{Wannier90})
 end
 
 """
-    writejobfiles(job::DFJob)
+    writejobfiles(job::DFJob; kwargs...)
 
 Writes all the input files and job file that are linked to a DFJob.
+Kwargs will be passed down to various writetojob functions.
 """
-function writejobfiles(job::DFJob)
+function writejobfiles(job::DFJob; kwargs...)
     rm.(joinpath.(Ref(job.local_dir), searchdir(job.local_dir, ".in")))
     open(joinpath(job.local_dir, "job.tt"), "w") do f
         write(f, "#!/bin/bash\n")
@@ -231,16 +232,16 @@ function writejobfiles(job::DFJob)
         write_job_header(f, job)
         written_inputs = DFInput[]
         abiinputs = Vector{DFInput{Abinit}}(filter(x -> package(x) == Abinit, inputs(job)))
-        !isempty(abiinputs) && writetojob(f, job, abiinputs)
+        !isempty(abiinputs) && writetojob(f, job, abiinputs; kwargs...)
         elkinputs = Vector{DFInput{Elk}}(filter(x -> package(x) == Elk, inputs(job)))
-        !isempty(elkinputs) && append!(written_inputs, writetojob(f, job, elkinputs))
+        !isempty(elkinputs) && append!(written_inputs, writetojob(f, job, elkinputs; kwargs...))
         # i = length(abiinputs) + 1
         # while i <= length(inputs(job))
         #     i += writetojob(f, job, inputs(job)[i])
         # end
         for i in inputs(job)
             if i ∉ written_inputs
-                append!(written_inputs, writetojob(f, job, i))
+                append!(written_inputs, writetojob(f, job, i; kwargs...))
             end
         end
     end

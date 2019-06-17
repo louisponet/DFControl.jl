@@ -4,7 +4,7 @@
 
 Saves a DFJob, it's job file and all it's input files.
 """
-function save(job::DFJob, local_dir=job.local_dir)
+function save(job::DFJob, local_dir=job.local_dir; kwargs...)
     local_dir = local_dir != "" ? local_dir : error("Please specify a valid local_dir!")
     if !ispath(local_dir)
         mkpath(local_dir)
@@ -12,18 +12,18 @@ function save(job::DFJob, local_dir=job.local_dir)
     end
     sanitizeflags!(job)
     job.local_dir = local_dir
-    return writejobfiles(job)
+    return writejobfiles(job; kwargs...)
 end
 
 """
-    submit(job::DFJob; server=job.server, server_dir=job.server_dir, kwargs...)
+    submit(job::DFJob; server=job.server, server_dir=job.server_dir, rm_prev=true, kwargs...)
 
-Saves the job locally, and then either runs it locally using `qsub` (when `job.server == "localhost"`) or sends it to the specified `job.server` in `job.server_dir`, and submits it using `qsub` on the server. Kwargs get passed through to `qsub(job; kwargs...)`.
+Saves the job locally, and then either runs it locally using `qsub` (when `job.server == "localhost"`) or sends it to the specified `job.server` in `job.server_dir`, and submits it using `qsub` on the server. Kwargs get passed through to `save(job; kwargs...)`. If `rm_prev == true` previous `job.tt` output files will be removed.
 """
-function submit(job::DFJob; server=job.server, server_dir=job.server_dir, kwargs...)
-    save(job)
+function submit(job::DFJob; server=job.server, server_dir=job.server_dir, rm_prev=true, kwargs...)
+    save(job; kwargs...)
     job.server = server
-    job.metadata[:slurmid] = qsub(job; kwargs...)
+    job.metadata[:slurmid] = qsub(job; rm_prev=rm_prev)
 end
 
 """
