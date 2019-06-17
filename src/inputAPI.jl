@@ -149,7 +149,7 @@ end
 
 function setkpoints!(input::DFInput{QE}, k_grid::NTuple{6, Int}; print=true) #scf
     calc = flag(input, :calculation)
-    print && (calc != "scf" || !occursin("relax", calc)) && (@warn "Expected calculation to be scf, vc-relax, relax.\nGot $calc.")
+    print && calc != "scf" && !occursin("relax", calc) && (@warn "Expected calculation to be scf, vc-relax, relax.\nGot $calc.")
     setdata!(input, :k_points, [k_grid...], option = :automatic, print=print)
     prod(k_grid[1:3]) > 100 && setflags!(input, :verbosity => "high", print=print)
     return input

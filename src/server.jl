@@ -138,7 +138,7 @@ function qsub(job::DFJob; rm_prev=true)
         if rm_prev
 	        prev_files = searchdir(job.local_dir, "job.tt.")
 	        for p in prev_files
-		        rm(joinpath(job.local_dir), p)
+		        rm(joinpath(job.local_dir, p))
 	        end
         end
         try
