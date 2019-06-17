@@ -453,6 +453,7 @@ function extract_atoms!(parsed_flags, atom_block, pseudo_block, cell::Mat3{LT}) 
     option = atom_block.option
     if option == :crystal || option == :crystal_sg
         primv = cell
+        cell  = Mat3(Matrix(1.0I, 3, 3))
     elseif option == :alat
         primv = alat(parsed_flags, true) * Mat3(Matrix(1.0I, 3, 3))
     elseif option == :bohr
