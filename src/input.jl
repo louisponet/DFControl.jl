@@ -54,11 +54,14 @@ outfilename(input::DFInput{Elk})       = "elk.out"
 inpath(input::DFInput)                 = joinpath(dir(input),  infilename(input))
 outpath(input::DFInput)                = joinpath(dir(input),  outfilename(input))
 
+hasflag(i::DFInput, s::Symbol) = haskey(flags(i), s)
+
 function flag(input::DFInput, flag::Symbol)
-    if haskey(input.flags, flag)
+    if hasflag(input, flag)
         return input.flags[flag]
     end
 end
+
 
 Base.eltype(::DFInput{P}) where P = P
 package(::DFInput{P}) where P = P
@@ -111,6 +114,11 @@ end
 function sanitizeflags!(input::DFInput{QE})
     setflags!(input, :outdir => "$(joinpath(dir(input), "outputs"))", print=false)
     cleanflags!(input)
+    if isvcrelaxcalc(input)
+	    #this is to make sure &ions and &cell are there in the input 
+	    !hasflag(input, :ion_dynamics)  && setflags!(input, :ion_dynamics  => "bfgs", print=false)
+	    !hasflag(input, :cell_dynamics) && setflags!(input, :cell_dynamics => "bfgs", print=false)
+    end
     #TODO add all the required flags
 end
 
@@ -139,19 +147,36 @@ function setdata!(input::DFInput, data::InputData)
     return input
 end
 
-#QE specific
 isbandscalc(input::DFInput{QE})    = flag(input, :calculation) == "bands"
 isbandscalc(input::DFInput{Elk})   = input.name == "20"
+isbandscalc(input::DFInput)        = false
 
 isnscfcalc(input::DFInput{QE})     = flag(input, :calculation) == "nscf"
 isnscfcalc(input::DFInput{Elk})    = input.name == "elk2wannier" #nscf == elk2wan??
+isnscfcalc(input::DFInput)         = false
 
 isscfcalc(input::DFInput{QE})      = flag(input, :calculation) == "scf"
 isscfcalc(input::DFInput{Elk})     = input.name ∈ ["0", "1"]
+isscfcalc(input::DFInput)          = false
 
-iscolincalc(input::DFInput{QE})    = all(flag(input, :nspin) .!= [nothing, 1])
-isnoncolincalc(input::DFInput{QE}) = flag(input, :noncolin)    == true 
-isprojwfccalc(input::DFInput{QE})  = hasexec(input, "projwfc.x") 
+iscolincalc(input::DFInput{QE})    = flag(input, :nspin) == 2
+iscolincalc(input::DFInput)        = false
+
+isnoncolincalc(input::DFInput{QE}) = flag(input, :noncolin) == true
+isnoncolincalc(input::DFInput)     = false
+
+isvcrelaxcalc(input::DFInput{QE})  = flag(input, :calculation) == "vc-relax"
+isvcrelaxcalc(input::DFInput)      = false
+
+isprojwfccalc(input::DFInput{QE})  = hasexec(input, "projwfc.x")
+isprojwfccalc(input::DFInput)      = false
+
+isdftucalc(input::DFInput{QE})     = flag(input, :lda_plus_u) == true
+isdftucalc(input::DFInput)         = false
+
+ismagneticcalc(input::DFInput{QE}) = flag(input, :nspin) ∈ [2, 4] || (flag(input, :lda_plus_u) == true && flag(input, :noncolin) == true)
+ismagneticcalc(input::DFInput)     = false
+
 #TODO review this!
 outdata(input::DFInput) = input.outdata
 hasoutput(input::DFInput) = !isempty(outdata(input))
@@ -227,18 +252,22 @@ end
 
 #TODO Temporary handling of HubbardU situation
 function set_hubbard_flags!(input::DFInput{QE}, str::AbstractStructure{T}) where {T}
-	u_ats = unique(atoms(str))
-	input[:Hubbard_U]     = map(x -> dftu(x).U , u_ats)
-	input[:Hubbard_alpha] = map(x -> dftu(x).α , u_ats)
-	input[:Hubbard_beta]  = map(x -> dftu(x).β , u_ats)
-	Jmap = map(x -> dftu(x).J, u_ats)
-	input[:Hubbard_J]     = reshape(collect(Iterators.flatten(Jmap)), length(u_ats), length(Jmap[1]))  
-	input[:Hubbard_J0]    = map(x -> dftu(x).J0, u_ats)
+	if isdftucalc(input)
+		u_ats = unique(atoms(str))
+		setflags!(input,:Hubbard_U     => map(x -> dftu(x).U , u_ats); print=false)
+		setflags!(input,:Hubbard_alpha => map(x -> dftu(x).α , u_ats); print=false)
+		setflags!(input,:Hubbard_beta  => map(x -> dftu(x).β , u_ats); print=false)
+		Jmap = map(x -> dftu(x).J, u_ats)
+		setflags!(input, :Hubbard_J => reshape(collect(Iterators.flatten(Jmap)), length(u_ats), length(Jmap[1])); print=false)
+		setflags!(input, :Hubbard_J0=> map(x -> dftu(x).J0, u_ats); print=false)
+	end
 end
 
 function set_starting_magnetization_flags!(input::DFInput{QE}, str::AbstractStructure{T}) where {T}
-	u_ats = unique(atoms(str))
-	input[:starting_magnetization] = map(x -> [magnetization(x)...], u_ats)
+	if ismagneticcalc(input)
+		u_ats = unique(atoms(str))
+		setflags!(input, :starting_magnetization => map(x -> [magnetization(x)...], u_ats);print=false)
+	end
 end
 
 

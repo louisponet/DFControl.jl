@@ -64,8 +64,8 @@ setflags!(job, :nspin => 2, print=false)
 job["nscf"][:nspin] = 3
 @test job["nscf"][:nspin] == 3
 
-job[:nspin] = 10
-@test job["nscf"][:nspin] == 10
+job[:nspin] = 2
+@test job["nscf"][:nspin] == 2
 
 job["nscf"][:Hubbard_U] = [1.0]
 @test job["nscf"][:Hubbard_U] == [1.0]
