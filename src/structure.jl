@@ -179,9 +179,11 @@ function scale_cell!(structure::Structure, v)
 	end
 end
 
-function set_magnetization!(str::Structure, atsym::Symbol, mag)
-	for at in atoms(str, atsym)
-		set_magnetization!(at, mag)
+function set_magnetization!(str::Structure, atsym_mag::Pair{Symbol, <:AbstractVector}...)
+	for (atsym, mag) in atsym_mag
+		for at in atoms(str, atsym)
+			set_magnetization!(at, mag)
+		end
 	end
 end
 

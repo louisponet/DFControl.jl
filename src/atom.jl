@@ -197,6 +197,8 @@ function position_string(::Type{QE}, at::AbstractAtom; relative=true)
 	return "$(name(at))  $(pos[1]) $(pos[2]) $(pos[3])\n"
 end
 
-set_magnetization!(at::AbstractAtom, mag) =
+function set_magnetization!(at::AbstractAtom, mag; print=true)
 	at.magnetization = convert(Vec3, mag)
+	print && @info "Magnetization of at $(name(at)) was set to $(magnetization(at))"
+end
 
