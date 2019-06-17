@@ -204,7 +204,27 @@ function sanitizeflags!(job::DFJob)
 	    set_hubbard_flags!(i, job.structure)
 	    set_starting_magnetization_flags!(i, job.structure)
     end
+    sanitize_pseudos!(job)
     sanitizeflags!.(inputs(job))
+end
+
+function sanitize_pseudos!(job::DFJob)
+	all_pseudos = pseudo.(atoms(job))
+	uni_dirs    = unique(map(x->x.dir, all_pseudos))
+	uni_pseudos = unique(all_pseudos)
+	pseudo_dir  = length(uni_dirs) == 1 ? uni_dirs[1] : job.local_dir 
+	if length(uni_dirs) > 1
+		@info "Found pseudos in multiple directories, copying them to job directory"
+		for pseudo in uni_pseudos
+			cp(path(pseudo), joinpath(job.local_dir, pseudo.name), force=true)
+		end
+	end
+	for p in all_pseudos
+		p.dir = pseudo_dir
+	end
+	for i in filter(x -> package(x) == QE, inputs(job))
+		setflags!(i, :pseudo_dir => pseudo_dir; print=false)
+	end
 end
 
 "Checks the last created output file for a certain job."

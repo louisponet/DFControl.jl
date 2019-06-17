@@ -54,10 +54,9 @@ function qe_read_output(filename::String, T=Float64)
 
                 #PseudoPot
             elseif occursin("PseudoPot", line)
-                !haskey(out, :pseudos) && (out[:pseudos] = Dict{Symbol, String}())
+                !haskey(out, :pseudos) && (out[:pseudos] = Dict{Symbol, Pseudo}())
                 pseudopath = readline(f) |> strip |> splitdir
-                out[:pseudos][Symbol(split(line)[5])] = pseudopath[2]
-                !haskey(out, :pseudodir) && (out[:pseudodir] = pseudopath[1])
+                out[:pseudos][Symbol(split(line)[5])] = Pseudo(pseudopath...)
                 #fermi energy
             elseif occursin("Fermi", line)
                 out[:fermi]        = parse(T, split(line)[5])
@@ -548,11 +547,12 @@ function qe_read_input(filename; execs=[Exec("pw.x")], run=true, structure_name=
         nat  = parsed_flags[:nat]
         ntyp = parsed_flags[:ntyp]
 
-        pseudos = InputData(:atomic_species, :none, Dict{Symbol, String}())
+        pseudos = InputData(:atomic_species, :none, Dict{Symbol, Pseudo}())
+        pseudo_dir = pop!(parsed_flags, :pseudo_dir, "./")
         for k=1:ntyp
             push!(used_lineids, i + k)
             sline = strip_split(lines[i+k])
-            pseudos.data[Symbol(sline[1])] = sline[end]
+            pseudos.data[Symbol(sline[1])] = Pseudo(sline[end], pseudo_dir) 
         end
 
         i = findcard("cell_parameters")
@@ -749,7 +749,7 @@ function write_structure(f, input::DFInput{QE}, structure)
     pseudo_lines = String[]
     atom_lines   = String[]
     for at in unique_at
-        push!(pseudo_lines, "$(name(at)) $(element(at).atomic_weight)   $(pseudo(at))\n")
+        push!(pseudo_lines, "$(name(at)) $(element(at).atomic_weight)   $(pseudo(at).name)\n")
     end
 
     for at in atoms(structure)

@@ -86,6 +86,22 @@ isdefault(x::Any) = isempty(x)
 
 Base.string(::Type{Elk}, dftu::DFTU) = "$(dftu.l) $(dftu.U) $(dftu.J0)"
 
+mutable struct Pseudo
+	name::String
+	dir ::String
+	Pseudo(name::AbstractString, dir::AbstractString) =
+		new(name, abspath(dir))
+end
+
+Pseudo() = Pseudo("", "")
+
+Base.isempty(p::Pseudo) =
+	isempty(p.name) && isempty(p.dir)
+
+==(p1::Pseudo, p2::Pseudo) =
+	p1.name == p2.name && p1.dir == p2.dir
+
+path(p::Pseudo) = joinpath(p.dir, p.name)
 # TODO Multiple l per atom in Elk??
 #We use angstrom everywhere
 @with_kw mutable struct Atom{T<:AbstractFloat, LT<:Length{T}} <: AbstractAtom{T, LT}
@@ -93,7 +109,7 @@ Base.string(::Type{Elk}, dftu::DFTU) = "$(dftu.l) $(dftu.U) $(dftu.J0)"
     element       ::Element
     position_cart ::Point3{LT}
     position_cryst::Point3{T}=zero(Point3{T})
-    pseudo        ::String = ""
+    pseudo        ::Pseudo=Pseudo()
     projections   ::Vector{Projection} = Projection[]
     magnetization ::Vec3{T} = zero(Vec3{T})
     dftu          ::DFTU{T} = DFTU{T}()
@@ -129,8 +145,9 @@ length_unit(at::Atom{T, LT}) where {T, LT} = LT
 setposition_cart!(at::AbstractAtom{T}, position_cart::Point3) where T =
     atom(at).position_cart = length_unit(at).(convert(Point3{T}, position_cart))
 
-function setpseudo!(at::AbstractAtom, pseudo; print=true)
+function setpseudo!(at::AbstractAtom, pseudo::Pseudo; print=true)
 	print && @info "Pseudo of atom $(name(at)) set to $pseudo."
+	!ispath(path(pseudo)) && @warn "Pseudopath $(path(pseudo)) not found."
 	atom(at).pseudo = pseudo
 end
 
@@ -148,26 +165,29 @@ for hub_param in (:U, :J0, :α, :β)
 	str = "$(hub_param)"
 	@eval begin
 		"""
-			$($(f))(at::AbstractAtom, v::AbstractFloat)
+			$($(f))(at::AbstractAtom, v::AbstractFloat; print=true)
 
 		Set the Hubbard $($(str)) parameter for the specified atom.
 
 		Example:
 			`$($(f))(at, 2.1)'
 		"""
-		function $f(at::AbstractAtom{T}, v::AbstractFloat) where {T}
+		function $f(at::AbstractAtom{T}, v::AbstractFloat; print=true) where {T}
 			dftu(at).$(hub_param) = convert(T, v)
+			print && @info "Hubbard $($(str)) of atom $(at.name) set to $v"
 		end
 	end
 end
 
 """
-	set_Hubbard_J!(at::AbstractAtom, v::Vector{AbstractFloat})
+	set_Hubbard_J!(at::AbstractAtom, v::Vector{<:AbstractFloat}; print=true)
 
 Set the Hubbard J parameter for the specified atom.
 
 Example:
 	`set_Hubbard_J(at, [2.1])'
 """
-set_Hubbard_J!(at::AbstractAtom{T}, v::AbstractFloat) where {T} =
+function set_Hubbard_J!(at::AbstractAtom{T}, v::Vector{<:AbstractFloat}; print=true) where {T}
 	dftu(at).J = convert.(T, v)
+	print && @info "Hubbard J of atom $(at.name) set to $v"
+end

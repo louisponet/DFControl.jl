@@ -1,3 +1,5 @@
+export Atom, Pseudo, DFTU
+
 include("inputAPI.jl")
 #Basic Interaction with DFInputs
 export flag, setflags!, rmflags!, data, setdata!, setdataoption!, exec, execs,

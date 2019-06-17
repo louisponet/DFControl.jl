@@ -117,9 +117,14 @@ function cif2structure(cif_file::String; structure_name="NoName")
     return structure
 end
 
-function setpseudos!(structure::AbstractStructure, set::Symbol, specifier::String=""; kwargs...)
-    for (i, at) in enumerate(atoms(structure))
-        pseudo = getdefault_pseudo(name(at), set, specifier=specifier)
+function setpseudos!(structure::AbstractStructure, atoms::Vector{<:AbstractAtom}, set::Symbol, specifier::String=""; kwargs...)
+	dir = getdefault_pseudodir(set)
+	if dir == nothing
+		@warn "No pseudos found for set $set."
+		return
+	end
+    for (i, at) in enumerate(atoms)
+        pseudo = Pseudo(getdefault_pseudo(name(at), set, specifier=specifier), dir)
         if pseudo == nothing
             @warn "Pseudo for $(name(at)) at index $i not found in set $set."
         else
@@ -128,18 +133,13 @@ function setpseudos!(structure::AbstractStructure, set::Symbol, specifier::Strin
     end
 end
 
-function setpseudos!(structure::AbstractStructure, atname::Symbol, set::Symbol, specifier::String=""; kwargs...)
-    for (i, at) in enumerate(atoms(structure, atname))
-        pseudo = getdefault_pseudo(name(at), set, specifier=specifier)
-        if pseudo == nothing
-            @warn "Pseudo for $(name(at)) at index $i not found in set $set."
-        else
-            setpseudo!(at, pseudo; kwargs...)
-        end
-    end
-end
+setpseudos!(structure::AbstractStructure, atname::Symbol, set::Symbol, specifier::String=""; kwargs...) =
+	setpseudos!(structure, atoms(structure, atname), set, specifier; kwargs...)
 
-function setpseudos!(structure::AbstractStructure, at_pseudos::Pair{Symbol, String}...; kwargs...)
+setpseudos!(structure::AbstractStructure, set::Symbol, specifier::String=""; kwargs...) =
+	setpseudos!(structure, atoms(structure), set, specifier; kwargs...)
+
+function setpseudos!(structure::AbstractStructure, at_pseudos::Pair{Symbol, Pseudo}...; kwargs...)
     for (atsym, pseudo) in at_pseudos
         for at in atoms(structure, atsym)
             setpseudo!(at, pseudo; kwargs...)
