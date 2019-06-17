@@ -59,7 +59,7 @@ function Base.unique(atoms::Vector{<:AbstractAtom{T}}) where T <: AbstractFloat
     return uni
 end
 
-@with_kw struct DFTU{T}
+@with_kw mutable struct DFTU{T}
 	l::Int = -1
 	U::T   = zero(T)
 	J0::T  = zero(T)

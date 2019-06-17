@@ -186,6 +186,10 @@ projwfc = gencalc_projwfc(job["nscf"], -20, 10, 0.05)
 @test projwfc[:degauss] == job["nscf"][:degauss]
 @test projwfc[:ngauss] == 1
 
+set_Hubbard_U!(job, :Si => 1.0)
+@test atoms(job, :Si)[1].dftu.U == 1.0
+
+
 rm.(DFControl.inpath.(job.inputs))
 
 rm(joinpath(splitdir(DFControl.inpath(job.inputs[1]))[1], "pw2wan_wanup.in"))

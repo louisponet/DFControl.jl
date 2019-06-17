@@ -460,15 +460,15 @@ for hub_param in (:U, :J0, :α, :β)
 	str = "$hub_param"
 	@eval begin
 		"""
-			$($(f))(job::DFJob, ats_$($(str))s::Pair{Symbol, AbstractFloat}...)
+			$($(f))(job::DFJob, ats_$($(str))s::Pair{Symbol, <:AbstractFloat}...)
 
 		Set the Hubbard $($(str)) parameter for the specified atoms.
 
 		Example:
 			`$($(f))(job, :Ir => 2.1, :Ni => 1.0, :O => 0.0)`
 		"""
-		function $f(job::DFJob, ats_Us::Pair{Symbol, AbstractFloat}...)
-			for (atsym, val) in ats_$(hub_param)s
+		function $f(job::DFJob, $(hub_param)::Pair{Symbol, <:AbstractFloat}...)
+			for (atsym, val) in $(hub_param)
 				$f.(atoms(job, atsym), val)
 			end
 		end
