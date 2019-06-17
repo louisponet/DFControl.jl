@@ -211,6 +211,8 @@ for (p, at) in zip(prev_pos, atoms(job))
 	@test round.(DFControl.ustrip(p * 2), digits=5) == round.(DFControl.ustrip(position_cart(at)), digits=5)
 end
 
+set_magnetization!(job, :Pt, [1.0, 0.0, 0.0])
+@test magnetization(atom(job, :Pt)) == DFControl.Vec3(1.0, 0.0, 0.0)
 
 rm.(DFControl.inpath.(job.inputs))
 

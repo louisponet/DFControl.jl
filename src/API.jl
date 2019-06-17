@@ -20,7 +20,8 @@ export save, submit, abort, setflow!, setheaderword!, isrunning, progressreport,
 export searchinput, searchinputs, setcutoffs!, setname!
 
 #Interacting with the Structure inside DFJob
-export atom, atoms, setatoms!, setpseudos!, projections, setprojections!, cell
+export atom, atoms, setatoms!, setpseudos!, projections, setprojections!, cell,
+	   set_magnetization!
 
 # Atom interface functions
 for interface_function in (:name,

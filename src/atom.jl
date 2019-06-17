@@ -196,3 +196,7 @@ function position_string(::Type{QE}, at::AbstractAtom; relative=true)
 	pos = relative ? round.(position_cryst(at), digits=5) : round.(ustrip.(uconvert.(Ang, position_cart(at))), digits=5)
 	return "$(name(at))  $(pos[1]) $(pos[2]) $(pos[3])\n"
 end
+
+set_magnetization!(at::AbstractAtom, mag) =
+	at.magnetization = convert(Vec3, mag)
+

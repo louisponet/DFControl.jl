@@ -481,3 +481,6 @@ atoms(job::DFJob, atsym::Symbol) = atoms(job.structure, atsym)
 "Rescales the unit cell."
 scale_cell!(job::DFJob, s) =
 	scale_cell!(job.structure, s)
+
+set_magnetization!(job::DFJob, args...) =
+	set_magnetization!(job.structure, args...)
