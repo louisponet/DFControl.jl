@@ -477,3 +477,7 @@ end
 export set_Hubbard_J!
 
 atoms(job::DFJob, atsym::Symbol) = atoms(job.structure, atsym)
+
+"Rescales the unit cell."
+scale_cell!(job::DFJob, s) =
+	scale_cell!(job.structure, s)

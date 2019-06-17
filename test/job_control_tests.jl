@@ -198,6 +198,20 @@ projwfc = gencalc_projwfc(job["nscf"], -20, 10, 0.05)
 set_Hubbard_U!(job, :Si => 1.0)
 @test atoms(job, :Si)[1].dftu.U == 1.0
 
+
+prev_a = cell(job)[1, :]
+prev_b = cell(job)[2, :]
+prev_c = cell(job)[3, :]
+prev_pos = position_cart.(atoms(job))
+scale_cell!(job, 2)
+@test prev_a .* 2 == cell(job)[1, :]
+@test prev_b .* 2 == cell(job)[2, :]
+@test prev_c .* 2 == cell(job)[3, :]
+for (p, at) in zip(prev_pos, atoms(job))
+	@test round.(DFControl.ustrip(p * 2), digits=5) == round.(DFControl.ustrip(position_cart(at)), digits=5)
+end
+
+
 rm.(DFControl.inpath.(job.inputs))
 
 rm(joinpath(splitdir(DFControl.inpath(job.inputs[1]))[1], "pw2wan_wanup.in"))
