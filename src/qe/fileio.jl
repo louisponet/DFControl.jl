@@ -461,7 +461,7 @@ function extract_atoms!(parsed_flags, atom_block, pseudo_block, cell::Mat3{LT}) 
         primv = 1Ang .* Mat3(Matrix(1.0I, 3, 3))
     end
     for (speciesid, (at_sym, positions)) in enumerate(atom_block.data)
-        pseudo = haskey(pseudo_block.data, at_sym) ? pseudo_block.data[at_sym] : error("Please specify a pseudo potential for atom '$at_sym'.")
+        pseudo = haskey(pseudo_block.data, at_sym) ? pseudo_block.data[at_sym] : (@warn "No Pseudo found for atom '$at_sym'.\nUsing Pseudo()."; Pseudo())
         for pos in positions
             push!(atoms, Atom(name=at_sym, element=element(at_sym), position_cart=primv' * pos, position_cryst=ustrip.(inv(cell') * pos), pseudo=pseudo, magnetization=qe_magnetization(speciesid, parsed_flags), dftu=qe_DFTU(speciesid, parsed_flags)))
         end
