@@ -753,7 +753,6 @@ function write_structure(f, input::DFInput{QE}, structure; relative_positions=tr
     end
 
     for at in atoms(structure)
-        pos = 
         push!(atom_lines, position_string(QE, at, relative=relative_positions))
     end
 
