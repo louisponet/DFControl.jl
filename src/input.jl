@@ -264,12 +264,12 @@ function set_hubbard_flags!(input::DFInput{QE}, str::AbstractStructure{T}) where
 end
 
 function set_starting_magnetization_flags!(input::DFInput{QE}, str::AbstractStructure{T}) where {T}
-	if ismagneticcalc(input)
-		u_ats = unique(atoms(str))
-		mags  = magnetization.(u_ats)
-		starts= T[]
-		θs    = T[]
-		ϕs    = T[]
+	u_ats = unique(atoms(str))
+	mags  = magnetization.(u_ats)
+	starts= T[]
+	θs    = T[]
+	ϕs    = T[]
+	if ismagneticcalc(input) && isnoncolincalc(input)
 		for m in mags
 			if norm(m) == 0
 				push!.((starts, θs, ϕs), 0.0)
@@ -282,10 +282,19 @@ function set_starting_magnetization_flags!(input::DFInput{QE}, str::AbstractStru
 				push!(starts, start)
 			end
 		end
-		setflags!(input, :starting_magnetization => starts; print=false)
-		setflags!(input, :angle1 => θs; print=false)
-		setflags!(input, :angle2 => ϕs; print=false)
+	elseif ismagneticcalc(input) && iscolincalc(input)
+		for m in mags
+			push!.((θs, ϕs), 0.0)
+			if norm(m) == 0
+				push!(starts, 0)
+			else
+				push!(starts, sum(m))
+			end
+		end
 	end
+	setflags!(input, :starting_magnetization => starts; print=false)
+	setflags!(input, :angle1 => θs; print=false)
+	setflags!(input, :angle2 => ϕs; print=false)
 end
 
 
