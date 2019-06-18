@@ -66,7 +66,7 @@ end
 	#QE params
 	α::T   = zero(T)
 	β::T   = zero(T)
-	J::Vector{T} = T[]
+	J::Vector{T} = T[zero(T)]
 end
 
 function ==(x::DFTU, y::DFTU)

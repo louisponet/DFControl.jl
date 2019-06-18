@@ -468,9 +468,9 @@ Set the Hubbard J parameter for the specified atom.
 Example:
 	`set_Hubbard_J(job, :Ir => [2.1], :Ni => [1.0])'
 """
-function set_Hubbard_J!(at::AbstractAtom, ats_Js::Pair{Symbol, Vector{<:AbstractFloat}}...; print=true)
+function set_Hubbard_J!(job::DFJob, ats_Js::Pair{Symbol, <:Vector{<:AbstractFloat}}...; print=true)
 	for (atsym, val) in ats_Js
-		set_Hubbard_J!.(atoms(job, atsym), val; print=print)
+		set_Hubbard_J!.(atoms(job, atsym), (val,); print=print)
 	end
 end
 
