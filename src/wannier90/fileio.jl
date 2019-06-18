@@ -297,12 +297,12 @@ function save(input::DFInput{Wannier90}, structure, filename::String=inpath(inpu
         wan_write_projections(f, atoms(structure))
 
         write(f, "\n")
-        write(f, "begin atoms_cart\n")
+        write(f, "begin atoms_frac\n")
         for at in atoms(structure)
-            pos = ustrip.(uconvert.(Ang, position_cart(at)))
+            pos = round.(position_cryst(at), digits=5)
             write(f, "$(name(at))  $(pos[1]) $(pos[2]) $(pos[3])\n")
         end
-        write(f, "end atoms_cart\n")
+        write(f, "end atoms_frac\n")
         write(f, "\n")
 
         for block in input.data

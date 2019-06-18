@@ -55,7 +55,6 @@ function elk_parse_DFTU(atoms::Vector{<:Atom}, blocknames_flaglines::Dict{Symbol
 		U, J0         = parse.(Float64, sline[3:4])
 		for at in filter(x -> name(x) == species_names[species_id], atoms)
 			at.dftu = DFTU{Float64}(U=U, J0=J0, l=l)
-			@show at.dftu
 		end
 	end
 	return dftu_type, inpdftu
