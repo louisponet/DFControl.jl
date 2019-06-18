@@ -188,7 +188,7 @@ function sanitizeflags!(job::DFJob)
     setflags!(job, :prefix => "$(job.name)", print=false)
     if iswannierjob(job)
 	    nscfcalc = getnscfcalc(job)
-	    if package(nscfcalc) == QE
+	    if package(nscfcalc) == QE && hasflag(nscfcalc, :nbnd)
 	        setflags!(job, :num_bands => nscfcalc[:nbnd], print=false)
         elseif package(nscfcalc) == Elk
 	        setflags!(job, :num_bands => length(nscfcalc[:wann_bands]))
