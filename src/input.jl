@@ -266,7 +266,25 @@ end
 function set_starting_magnetization_flags!(input::DFInput{QE}, str::AbstractStructure{T}) where {T}
 	if ismagneticcalc(input)
 		u_ats = unique(atoms(str))
-		setflags!(input, :starting_magnetization => map(x -> sum(magnetization(x)), u_ats);print=false)
+		mags  = magnetization.(u_ats)
+		starts= T[]
+		θs    = T[]
+		ϕs    = T[]
+		for m in mags
+			if norm(m) == 0
+				push!.((starts, θs, ϕs), 0.0)
+			else
+				θ = acos(m[3])/norm(m) * 180/π
+				ϕ = atan(m[2], m[1])   * 180/π
+				start = 1
+				push!(θs, θ)
+				push!(ϕs, ϕ)
+				push!(starts, start)
+			end
+		end
+		setflags!(input, :starting_magnetization => starts; print=false)
+		setflags!(input, :angle1 => θs; print=false)
+		setflags!(input, :angle2 => ϕs; print=false)
 	end
 end
 

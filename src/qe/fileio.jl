@@ -742,7 +742,8 @@ function save(input::DFInput{QE}, structure, filename::String=inpath(input); rel
         end
     end
     #TODO handle writing hubbard and magnetization better
-    delete!.((input.flags,), (:Hubbard_U, :Hubbard_J0, :Hubbard_J, :Hubbard_alpha, :Hubbard_beta, :starting_magnetization))
+    delete!.((input.flags,), (:Hubbard_U, :Hubbard_J0, :Hubbard_J, :Hubbard_alpha, :Hubbard_beta,
+    						  :starting_magnetization, :angle1, :angle2))
 end
 
 function write_structure(f, input::DFInput{QE}, structure; relative_positions=true)
