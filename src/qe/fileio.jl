@@ -434,17 +434,18 @@ function qe_DFTU(speciesid::Int, parsed_flags::SymAnyDict)
 	return DFTU{Float64}(U=U, J0=J0, α=α, β=β, J=J)
 end
 
+degree2π(ang) = ang / 180 * π
+
 function qe_magnetization(atid::Int, parsed_flags::SymAnyDict)
-	if haskey(parsed_flags, :starting_magnetization) && length(parsed_flags[:starting_magnetization]) >= atid
-		all_magnetizations = parsed_flags[:starting_magnetization]
-		if isa(all_magnetizations, Vector{<:Vector})
-			return Vec3{Float64}(all_magnetizations[atid]...)
-		else
-			return Vec3{Float64}(0.0, 0.0, all_magnetizations[atid])
-		end
-	else
-		return Vec3{Float64}(0.0, 0.0, 0.0)
-	end
+	θ = haskey(parsed_flags, :angle1) && length(parsed_flags[:angle1]) >= atid ? parsed_flags[:angle1][atid] : 0.0
+	θ = degree2π(θ)
+	ϕ = haskey(parsed_flags, :angle2) && length(parsed_flags[:angle2]) >= atid ? parsed_flags[:angle2][atid] : 0.0
+	ϕ = degree2π(ϕ)
+
+	start = haskey(parsed_flags, :starting_magnetization) && length(parsed_flags[:starting_magnetization]) >= atid ?
+		parsed_flags[:starting_magnetization][atid] : 0.0
+
+	return start * Vec3{Float64}(sin(θ) * cos(ϕ), sin(θ) * sin(ϕ), cos(θ))
 end
 
 function extract_atoms!(parsed_flags, atom_block, pseudo_block, cell::Mat3{LT}) where {LT <: Length}
