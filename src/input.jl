@@ -266,7 +266,7 @@ end
 function set_starting_magnetization_flags!(input::DFInput{QE}, str::AbstractStructure{T}) where {T}
 	if ismagneticcalc(input)
 		u_ats = unique(atoms(str))
-		setflags!(input, :starting_magnetization => map(x -> [magnetization(x)...], u_ats);print=false)
+		setflags!(input, :starting_magnetization => map(x -> sum(magnetization(x)), u_ats);print=false)
 	end
 end
 
