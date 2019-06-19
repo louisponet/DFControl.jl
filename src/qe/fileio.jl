@@ -605,7 +605,8 @@ function qe_read_input(filename; execs=[Exec("pw.x")], run=true, structure_name=
         end
         structure = extract_structure!(structure_name, parsed_flags, cell_block, atom_block, pseudos)
         delete!.((parsed_flags,), [:ibrav, :nat, :ntyp, :A, :celldm_1, :celldm])
-        delete!.((parsed_flags,), [:Hubbard_U, :Hubbard_J0, :Hubbard_alpha, :Hubbard_beta, :Hubbard_J, :starting_magnetization]) #hubbard and magnetization flags
+        delete!.((parsed_flags,), [:Hubbard_U, :Hubbard_J0, :Hubbard_alpha, :Hubbard_beta, :Hubbard_J])
+        delete!.((parsed_flags,), [:starting_magnetization, :angle1, :angle2]) #hubbard and magnetization flags
     else
         structure = nothing
     end

@@ -271,12 +271,13 @@ function set_starting_magnetization_flags!(input::DFInput{QE}, str::AbstractStru
 	ϕs    = T[]
 	if ismagneticcalc(input) && isnoncolincalc(input)
 		for m in mags
+			tm = normalize(m)
 			if norm(m) == 0
 				push!.((starts, θs, ϕs), 0.0)
 			else
-				θ = acos(m[3])/norm(m) * 180/π
-				ϕ = atan(m[2], m[1])   * 180/π
-				start = 1
+				θ = acos(tm[3]) * 180/π
+				ϕ = atan(tm[2], tm[1])   * 180/π
+				start = norm(m)
 				push!(θs, θ)
 				push!(ϕs, ϕ)
 				push!(starts, start)
@@ -288,7 +289,7 @@ function set_starting_magnetization_flags!(input::DFInput{QE}, str::AbstractStru
 			if norm(m) == 0
 				push!(starts, 0)
 			else
-				push!(starts, sum(m))
+				push!(starts, sign(sum(m))*norm(m))
 			end
 		end
 	end
