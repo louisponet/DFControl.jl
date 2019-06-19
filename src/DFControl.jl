@@ -4,6 +4,7 @@ module DFControl
     using Media
     using Dates
     using DelimitedFiles
+    using Reexport
     import Base.Iterators.flatten
 
     using RecipesBase

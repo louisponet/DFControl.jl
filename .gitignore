@@ -21,3 +21,5 @@ deps/wannier90flags\.jl
 deps/qeflags\.jl
 
 deps/abinitflags\.jl
+
+Manifest\.toml
