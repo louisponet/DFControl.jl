@@ -1,4 +1,7 @@
 export Atom, Pseudo, DFTU
+#Units exported
+export Ang, e₀, kₑ, a₀, Eₕ, Ry 
+export Vec3, Point3, Mat3
 
 include("inputAPI.jl")
 #Basic Interaction with DFInputs
@@ -36,7 +39,7 @@ for interface_function in (:name,
 end
 
 include("serverAPI.jl")
-export qstat, watch_qstat
+export qstat, watch_qstat, qdel
 
 #Slurm interactions
 export slurm_history_jobdir, slurm_jobid, slurm_isrunning, slurm_mostrecent, slurm_isqueued

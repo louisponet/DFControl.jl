@@ -5,15 +5,12 @@ module DFControl
     using Dates
     using DelimitedFiles
     import Base.Iterators.flatten
-    using StaticArrays
-
-
 
     using RecipesBase
-    using StaticArrays
+    @reexport using StaticArrays
     using Parameters
 
-	using Unitful
+	@reexport using Unitful
 	Unitful.register(@__MODULE__);
 	import Unitful: Length, @unit, FreeUnits, unit
 
@@ -24,6 +21,7 @@ module DFControl
     @unit a₀  "a₀"  BohrRadius            1u"ħ^2/(1kₑ*me*e₀^2)"   false
     @unit Eₕ  "Eₕ"  HartreeEnergy         1u"me*e₀^4*kₑ^2/(1ħ^2)" true
     @unit Ry  "Ry"  RydbergEnergy         0.5Eₕ                   true
+
 
 	@inline function StaticArrays._inv(::StaticArrays.Size{(3,3)}, A::SMatrix{3,3, LT}) where {LT<:Length}
 
