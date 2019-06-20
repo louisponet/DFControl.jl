@@ -259,7 +259,7 @@ function set_hubbard_flags!(input::DFInput{QE}, str::AbstractStructure{T}) where
 		setflags!(input,:Hubbard_beta  => map(x -> dftu(x).β , u_ats); print=false)
 		Jmap = map(x -> dftu(x).J, u_ats)
 		Jdim = maximum(length.(Jmap))
-		Jarr = zeros(length(u_ats), Jdim)
+		Jarr = zeros(Jdim, length(u_ats))
 		for (i, J) in enumerate(Jmap)
 			diff = Jdim - length(J)
 			if diff > 0
@@ -267,7 +267,7 @@ function set_hubbard_flags!(input::DFInput{QE}, str::AbstractStructure{T}) where
 					push!(J, zero(eltype(J)))
 				end
 			end
-			Jarr[i, :] .= J
+			Jarr[:, i] .= J
 		end
 		setflags!(input, :Hubbard_J => Jarr; print=false)
 		setflags!(input, :Hubbard_J0=> map(x -> dftu(x).J0, u_ats); print=false)
