@@ -104,7 +104,7 @@ Base.isempty(p::Pseudo) =
 path(p::Pseudo) = joinpath(p.dir, p.name)
 # TODO Multiple l per atom in Elk??
 #We use angstrom everywhere
-@with_kw mutable struct Atom{T<:AbstractFloat, LT<:Length{T}} <: AbstractAtom{T, LT}
+@with_kw_noshow mutable struct Atom{T<:AbstractFloat, LT<:Length{T}} <: AbstractAtom{T, LT}
     name          ::Symbol
     element       ::Element
     position_cart ::Point3{LT}

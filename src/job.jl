@@ -242,5 +242,7 @@ end
 "Finds the input corresponding to the name and returns the full output path."
 outpath(job::DFJob, n::String) = outpath(input(job,n))
 
+Base.joinpath(job::DFJob, n::AbstractString) = joinpath(job.local_dir, n)
+
 runslocal_assert(job::DFJob) =
     @assert runslocal(job) "This only works if the job runs on `localhost`."

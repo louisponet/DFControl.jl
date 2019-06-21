@@ -78,7 +78,6 @@ function show(io::IO, job::DFJob)
     dfprint(io, reset)
 end
 
-show(io::IO, at::AbstractAtom) = dfprintln(io, "$(name(at)): $(position_cart(at)[1]) $(position_cart(at)[2]) $(position_cart(at)[3])")
 
 function show(io::IO, in::DFInput)
     df_show_type(io, in)
@@ -129,4 +128,26 @@ function show(io::IO, info::ElkControlBlockInfo)
     end
     dfprintln(io, crayon"cyan", "description:", crayon"reset")
     dfprintln(io, "\t"*replace(info.description, "\n" => "\n\t"))
+end
+
+function show(io::IO, el::Element)
+	for f in fieldnames(typeof(el))
+		dfprintln(io, crayon"red", "$f: ", crayon"reset", "$(getfield(el, f))")
+	end
+end
+
+function show(io::IO, at::AbstractAtom{T, LT}) where {T,LT<:Length{T}}
+	dfprintln(io, crayon"cyan", "$(typeof(at))")
+	dfprintln(io, crayon"red", "\tname: ", crayon"reset", "$(name(at))")
+	for f in fieldnames(typeof(at))[3:end-1]
+		dfprintln(io, crayon"red", "\t$f: ", crayon"reset", "$(getfield(at, f))")
+	end
+	dfprint(io, crayon"red", "\tdftu: ", crayon"reset")
+	for f in fieldnames(DFTU)
+		val = getfield(dftu(at), f)
+		if !isdefault(val)
+			dfprint(io, "$f: $val, ")
+		end
+	end
+	dfprintln(io)
 end

@@ -12,7 +12,7 @@ module DFControl
     using Parameters
 
 	@reexport using Unitful
-	import Unitful: Length, @unit, FreeUnits, unit
+	import Unitful: Length, @unit, FreeUnits, unit, 𝐋, FreeUnits
 
 	Unitful.register(@__MODULE__)
 	Base.eltype(::Type{Length{T}}) where T = T
@@ -24,7 +24,10 @@ module DFControl
     @unit Ry  "Ry"  RydbergEnergy         0.5Eₕ                   true
 
     const localunits = Unitful.basefactors
+    const LengthType{T,A} = Quantity{T,𝐋,FreeUnits{A,𝐋,nothing}}
 
+ 	Base.show(io::IO, ::Type{Quantity{T,𝐋,FreeUnits{A,𝐋,nothing}}}) where {T,A} =
+	    dfprint(io, "LengthType{$T, $A}")
 
 	@inline function StaticArrays._inv(::StaticArrays.Size{(3,3)}, A::SMatrix{3,3, LT}) where {LT<:Length}
 

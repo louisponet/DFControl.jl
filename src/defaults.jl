@@ -163,7 +163,7 @@ function getdefault_jobheader()
     if isdefined(DFControl, :default_job_header)
         return default_job_header
     else
-        return ""
+        return [""]
     end
 end
 
