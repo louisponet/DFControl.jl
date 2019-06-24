@@ -422,7 +422,7 @@ function qe_DFTU(speciesid::Int, parsed_flags::SymAnyDict)
 		J0 = parsed_flags[:Hubbard_J0][speciesid]
 	end
 	if haskey(parsed_flags, :Hubbard_J) && length(parsed_flags[:Hubbard_J]) >= speciesid
-		J = Float64.(parsed_flags[:Hubbard_J][speciesid, :])
+		J = Float64.(parsed_flags[:Hubbard_J][:, speciesid])
 	end
 	if haskey(parsed_flags, :Hubbard_alpha) && length(parsed_flags[:Hubbard_alpha]) >= speciesid
 		α = parsed_flags[:Hubbard_alpha][speciesid]
