@@ -124,7 +124,7 @@ function setpseudos!(structure::AbstractStructure, atoms::Vector{<:AbstractAtom}
 		return
 	end
     for (i, at) in enumerate(atoms)
-        pseudo = Pseudo(getdefault_pseudo(name(at), set, specifier=specifier), dir)
+        pseudo = getdefault_pseudo(name(at), set, specifier=specifier)
         if pseudo == nothing
             @warn "Pseudo for $(name(at)) at index $i not found in set $set."
         else
@@ -177,6 +177,7 @@ function scale_cell!(structure::Structure, v)
 	for at in atoms(structure)
 		at.position_cart = structure.cell' * at.position_cryst
 	end
+	structure.cell
 end
 
 function set_magnetization!(str::Structure, atsym_mag::Pair{Symbol, <:AbstractVector}...)

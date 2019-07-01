@@ -2,11 +2,11 @@
 # const default_file = abspath(homedir(),".julia","config","DFControl", "user_defaults.jl")
 const default_file = occursin("cache", first(Base.DEPOT_PATH)) ? abspath(Base.DEPOT_PATH[2], "config","DFControl", "user_defaults.jl") : abspath(Base.DEPOT_PATH[1], "config","DFControl", "user_defaults.jl")
 const default_pseudodirs = Dict{Symbol, String}()
-const default_pseudos = Dict{Symbol, Dict{Symbol, Vector{String}}}()
+const default_pseudos = Dict{Symbol, Dict{Symbol, Vector{Pseudo}}}()
 const default_jobheader = [""]
 
 for el in ELEMENTS
-    default_pseudos[el.symbol] = Dict{Symbol, Vector{String}}()
+    default_pseudos[el.symbol] = Dict{Symbol, Vector{Pseudo}}()
 end
 
 const default_server = "localhost"
@@ -109,11 +109,11 @@ function configuredefault_pseudos(;server = getdefault_server(), pseudo_dirs=get
             pseudo  = pseudos[i]
             element = Symbol(titlecase(String(split(split(pseudo, ".")[1], "_")[1])))
             if element in elsyms
-                t  = String[pseudo]
+                t  = Pseudo[Pseudo(pseudo, pseudo_dirs[name])]
                 # t_expr  = :(String[$pseudo])
                 j = 1
                 while j + i <= length(pseudos) && Symbol(split(pseudos[i + j],".")[1]) == element
-                    push!(t, pseudos[i + j])
+                    push!(t, Pseudo(pseudos[i + j], pseudo_dirs[name]))
                     # push!(t_expr.args,pseudos[i + j])
                     j += 1
                 end
