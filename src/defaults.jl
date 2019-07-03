@@ -141,7 +141,7 @@ function getdefault_pseudo(atom::Symbol, set=:default; specifier="")
     end
     if haskey(default_pseudos[pp_atom], set)
         if specifier != ""
-            return getfirst(x -> occursin(specifier, x), default_pseudos[pp_atom][set])
+            return getfirst(x -> occursin(specifier, x.name), default_pseudos[pp_atom][set])
         else
             return default_pseudos[pp_atom][set][1]
         end

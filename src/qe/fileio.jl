@@ -274,14 +274,14 @@ function qe_read_kpdos(filename::String, column=1; fermi=0)
 end
 
 """
-    qe_read_pdos(filename::String, column=1; fermi=0)
+    qe_read_pdos(filename::String)
 
-Reads partial dos file. One can specify the column of values to read.
+Reads partial dos file.
 """
-function qe_read_pdos(filename::String, column=1; fermi=0)
+function qe_read_pdos(filename::String)
     read_tmp = readdlm(filename, skipstart=1)
-    energies = read_tmp[:,1] .- fermi
-    values   = read_tmp[:,1+column]
+    energies = read_tmp[:, 1]
+    values   = read_tmp[:, 2:end]
 
     return energies, values
 end
