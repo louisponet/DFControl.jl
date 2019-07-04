@@ -10,7 +10,6 @@ out = outputdata(job;print=false,onlynew=false);
 
 @test isconverged(job["scf"])
 nscf = DFControl.input(job, "nscf")
-show(nscf)
 nscf2 = DFInput(nscf, "nscf2", data=[:testdata => (:testoption, "test"), :k_points => (:blabla, [1,1,1,1,1,1])])
 
 @test data(nscf2, :testdata).option == :testoption
@@ -50,7 +49,7 @@ push!(job, gencalc_scf(job["scf"], (5,5,5,1,1,1), name="1scf2"))
 wanflags = [:write_hr => true, :wannier_plot => true]
 
 setprojections!(job, :Pt => [:s, :p, :d])
-wancalc = gencalc_wan(structure(job), searchinput(job, "nscf"), fermi-7.0; Epad=5.0, wanflags=wanflags)
+wancalc = gencalc_wan(job["nscf"], structure(job), fermi-7.0; Epad=5.0, wanflags=wanflags)
 push!.((job,), wancalc)
 @test job["wan"][:write_hr] == job["wan"][:wannier_plot] == true
 
@@ -75,7 +74,7 @@ job["nscf"][:starting_magnetization] = [[1.0, 2.0, 1.0]]
 
 job["nscf"][:Hubbard_J] = [0 1 2]
 @test job["nscf"][:Hubbard_J] == [0 1 2]
-push!.((job,), gencalc_wan(structure(job), nscf, fermi-7.0, Epad=5.0, wanflags=wanflags))
+push!.((job,), gencalc_wan(nscf, structure(job), fermi-7.0, Epad=5.0, wanflags=wanflags))
 
 #TODO: add test with the new wancalc from projwfc
 

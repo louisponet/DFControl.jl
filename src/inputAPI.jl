@@ -297,17 +297,15 @@ function gencalc_projwfc(template::DFInput, Emin, Emax, DeltaE, extraflags...; n
 end
 
 """
-    gencalc_wan(structure::AbstractStructure, nscf::DFInput{QE}, Emin;
+    gencalc_wan(nscf::DFInput{QE}, structure::AbstractStructure, Emin;
                 Epad     = 5.0,
                 wanflags = nothing,
                 wanexec  = Exec("wannier90.x", ""))
 
-Generates a Wannier90 input from the supplied Structure, Emin, nscf calculation and projections.
-The nscf needs to have an bandsoutput because it will be used to find the energy range
-for the frozen window of the Wannier90 calculation.
-Currently only works with QE.
+Generates a Wannier90 input to follow on the supplied `nscf` calculation. It uses the projections defined in the `structure`, and starts counting the required amount of bands from `Emin`.
+The `nscf` needs to have a valid output since it will be used in conjunction with `Emin` to find the required amount of bands and energy window for the Wannier90 calculation.
 """
-function gencalc_wan(structure::AbstractStructure, nscf::DFInput{QE}, Emin;
+function gencalc_wan(nscf::DFInput{QE}, structure::AbstractStructure, Emin;
                      Epad     = 5.0,
                      wanflags = nothing,
                      wanexec  = Exec("wannier90.x", ""))
@@ -342,7 +340,7 @@ function gencalc_wan(structure::AbstractStructure, nscf::DFInput{QE}, Emin;
     wanflags[:preprocess] = true
     @info "mp_grid=$(join(wanflags[:mp_grid]," ")) (inferred from nscf input)."
 
-	isnoncolincalc(nscf) && (wanflags[:nspinor] = 2)
+	isnoncolincalc(nscf) && (wanflags[:spinors] = true)
 
     kdata = InputData(:kpoints, :none, [k[1:3] for k in kpoints])
 
@@ -359,13 +357,13 @@ function gencalc_wan(structure::AbstractStructure, nscf::DFInput{QE}, Emin;
 end
 
 """
-    gencalc_wan(structure::AbstractStructure, nscf::DFInput{QE}, projwfc::DFInput{QE}, threshold::Real; kwargs...)
+    gencalc_wan(nscf::DFInput{QE}, structure::AbstractStructure, projwfc::DFInput{QE}, threshold::Real; kwargs...)
 
-Generates a wannier calculation. Instead of passing Emin manually, the output of a projwfc.x run
+Generates a wannier calculation, that follows on the `nscf` calculation. Instead of passing Emin manually, the output of a projwfc.x run
 can be used together with a `threshold` to determine the minimum energy such that the contribution of the
 projections to the DOS is above the `threshold`.
 """
-function gencalc_wan(structure::AbstractStructure, nscf::DFInput{QE}, projwfc::DFInput{QE}, threshold::Real; kwargs...)
+function gencalc_wan(nscf::DFInput{QE}, structure::AbstractStructure, projwfc::DFInput{QE}, threshold::Real; kwargs...)
     hasexec_assert(projwfc, "projwfc.x")
     hasoutput_assert(projwfc)
     Emin = Emin_from_projwfc(structure, projwfc, threshold)

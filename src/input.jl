@@ -231,7 +231,7 @@ function Emin_from_projwfc(structure::AbstractStructure, projwfc::DFInput{QE}, t
 
     end
     if Emin == -10000.0
-        error("Couldn't find any band with occupation of relevant projections above $threshold.")
+        error("Couldn't find any band with occupation of relevant projections above $threshold, were any set in the structure?")
     end
     return Emin
 end
