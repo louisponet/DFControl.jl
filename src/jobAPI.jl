@@ -485,3 +485,6 @@ scale_cell!(job::DFJob, s) =
 
 set_magnetization!(job::DFJob, args...) =
 	set_magnetization!(job.structure, args...)
+
+Base.joinpath(job::DFJob, p) =
+	joinpath(job.local_dir, p)

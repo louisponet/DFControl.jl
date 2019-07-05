@@ -97,8 +97,6 @@ function slurm_isqueued(job::DFJob)
     end
 end
 
-
-
 """
     slurm_mostrecent(index=1, jobfile="job.tt", startdate=lastmonth(), args...; kwargs...)
 
