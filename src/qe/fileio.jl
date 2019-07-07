@@ -206,7 +206,7 @@ function qe_read_output(input::DFInput{QE}, args...; kwargs...)
                 push!(out[:yticks], ticks)
             end
         else
-            out[:pdos] = NamedTuple{(:energies, :values), Tuple{Vector{Float64}, Vector{Float64}}}[]
+            out[:pdos] = NamedTuple{(:energies, :values), Tuple{Vector{Float64}, Matrix{Float64}}}[]
             for f in pdos_files
                 energs, vals = qe_read_pdos(joinpath(dir(input), f), args...; kwargs...)
                 push!(out[:pdos], (energies=energs, values=vals))

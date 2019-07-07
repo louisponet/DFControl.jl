@@ -1,7 +1,6 @@
 export Structure, Atom, Pseudo, DFTU
 #Units exported
 export Ang, e₀, kₑ, a₀, Eₕ, Ry 
-export Vec3, Point3, Mat3
 
 include("inputAPI.jl")
 export DFInput

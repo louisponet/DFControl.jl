@@ -18,10 +18,11 @@ show(io::IO, data::Vector{InputData}) = map(x-> show(io, x), data)
 function show(io::IO, band::DFBand{T}) where T <: AbstractFloat
     df_show_type(io, band)
     string = """
-    k_points of length $(length(band.k_points_cryst)):
+    k_points of length $(length(band.k_points_cart)):
     cart:    $(band.k_points_cart[1]) -> $(band.k_points_cart[end])
-    cryst:   $(band.k_points_cryst[1]) -> $(band.k_points_cryst[end])
-    eigvals: $(band.eigvals[1]) -> $(band.eigvals[end])
+    """
+    !isempty(band.k_points_cryst) && (string *= "cryst:   $(band.k_points_cryst[1]) -> $(band.k_points_cryst[end])\n")
+    string *= """eigvals: $(band.eigvals[1]) -> $(band.eigvals[end])
     extra:   $(band.extra)
     """
     dfprintln(io, string)
