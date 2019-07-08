@@ -162,7 +162,7 @@ function create_supercell(structure::AbstractStructure, na::Int, nb::Int, nc::In
         if all((ia, ib, ic) .== 0)
             continue
         end
-        transl_vec = orig_cell'*[ia, ib, ic]
+        transl_vec = orig_cell*[ia, ib, ic]
         for at in orig_ats
             push!(new_atoms, Atom(at, position_cart(at)+transl_vec))
         end

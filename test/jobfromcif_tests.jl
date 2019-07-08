@@ -61,7 +61,7 @@ cell_ = DFControl.cell(job.structure)
 
 @test atoms(job.structure)[1].position_cart == job.structure.cell' * atoms(job.structure)[1].position_cryst
 @test oldposition == newpositions[1]
-@test oldposition + cell_[1,:] ∈ newpositions
-@test oldposition + 2*cell_[2,:] ∈ newpositions
-@test oldposition + 1*cell_[3,:] ∈ newpositions
-@test oldposition + (1*cell_[3,:] + 1*cell_[2,:]) ∈ newpositions
+@test oldposition + cell_[:, 1] ∈ newpositions
+@test oldposition + 2*cell_[:, 2] ∈ newpositions
+@test oldposition + 1*cell_[:, 3] ∈ newpositions
+@test oldposition + (1*cell_[:, 3] + 1*cell_[:, 2]) ∈ newpositions
