@@ -156,7 +156,7 @@ function create_supercell(structure::AbstractStructure, na::Int, nb::Int, nc::In
     orig_ats   = atoms(structure)
     orig_cell  = cell(structure)
     scale_mat  = diagm(0 => 1 .+ [na, nb, nc])
-    new_cell   = scale_mat * orig_cell
+    new_cell   = orig_cell * scale_mat
     new_atoms  = deepcopy(orig_ats)
     for ia=0:na, ib=0:nb, ic=0:nc
         if all((ia, ib, ic) .== 0)
@@ -175,7 +175,7 @@ function scale_cell!(structure::Structure, v)
 	scalemat = [v 0 0; 0 v 0; 0 0 v]
 	structure.cell *= scalemat
 	for at in atoms(structure)
-		at.position_cart = structure.cell' * at.position_cryst
+		at.position_cart = structure.cell * at.position_cryst
 	end
 	structure.cell
 end
