@@ -157,14 +157,16 @@ function create_supercell(structure::AbstractStructure, na::Int, nb::Int, nc::In
     orig_cell  = cell(structure)
     scale_mat  = diagm(0 => 1 .+ [na, nb, nc])
     new_cell   = orig_cell * scale_mat
-    new_atoms  = deepcopy(orig_ats)
+    new_atoms  = eltype(orig_ats)[]
     for ia=0:na, ib=0:nb, ic=0:nc
-        if all((ia, ib, ic) .== 0)
-            continue
-        end
-        transl_vec = orig_cell*[ia, ib, ic]
+        # if all((ia, ib, ic) .== 0)
+        #     continue
+        # end
+        transl_vec = orig_cell * [ia, ib, ic]
         for at in orig_ats
-            push!(new_atoms, Atom(at, position_cart(at)+transl_vec))
+	        cart_pos = position_cart(at) + transl_vec
+	        cryst_pos = inv(new_cell) * cart_pos
+            push!(new_atoms, Atom(at, cart_pos, Point3(cryst_pos)))
         end
     end
     return Structure(name(structure), Mat3(new_cell), new_atoms, data(structure))

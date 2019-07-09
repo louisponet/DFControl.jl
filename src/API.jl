@@ -26,6 +26,8 @@ export searchinput, searchinputs, setcutoffs!, setname!
 export atom, atoms, setatoms!, setpseudos!, projections, setprojections!, cell,
 	   set_magnetization!
 
+export create_supercell
+
 # Atom interface functions
 for interface_function in (:name,
 						   :position_cart,

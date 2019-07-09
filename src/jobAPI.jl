@@ -488,3 +488,6 @@ set_magnetization!(job::DFJob, args...) =
 
 Base.joinpath(job::DFJob, p) =
 	joinpath(job.local_dir, p)
+
+create_supercell(job::DFJob, args...) =
+	create_supercell(structure(job), args...)

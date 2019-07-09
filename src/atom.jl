@@ -121,7 +121,7 @@ Atom(name::Symbol, el::Symbol, args...; kwargs...) =
 	Atom(name, element(el), args...; kwargs...)
 
 #TODO this is a little iffy
-Atom(orig_at::Atom, new_pos_cart::Point3) = Atom(name(orig_at), element(orig_at), new_pos_cart, position_cryst(orig_at), pseudo(orig_at), projections(orig_at), magnetization(orig_at), dftu(orig_at))
+Atom(orig_at::Atom, new_pos_cart::Point3, new_pos_cryst::Point3) = Atom(name(orig_at), element(orig_at), new_pos_cart, new_pos_cryst, pseudo(orig_at), projections(orig_at), magnetization(orig_at), dftu(orig_at))
 #Easiest way to implement a new abstractatom is to provide a way to access
 #the struct holding `name`, `position_cart`, `element`, `pseudo`, `projection` fields
 atom(at::Atom) = at
