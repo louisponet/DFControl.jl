@@ -180,12 +180,17 @@ end
 
 isparseable(exec::Exec) = exec.exec ∈ parseable_execs()
 
+is_qe_exec(exec::Exec)      = exec.exec ∈ QE_EXECS
+is_wannier_exec(exec::Exec) = exec.exec ∈ WAN_EXECS
+is_elk_exec(exec::Exec)     = exec.exec ∈ ELK_EXECS
+is_mpi_exec(exec::Exec)     = exec.exec == "mpirun"
+
 function inputparser(exec::Exec)
-    if exec.exec ∈ QE_EXECS
+    if is_qe_exec(exec) 
         qe_read_input
-    elseif exec.exec ∈ WAN_EXECS
+    elseif is_wannier_exec(exec)
         wan_read_input
-    elseif exec.exec ∈ ELK_EXECS
+    elseif is_elk_exec(exec)
         elk_read_input
     end
 end
@@ -195,10 +200,21 @@ function setflags!(exec::Exec, flags...)
         flag = isa(f, String) ? getfirst(x -> x.name == f, exec.flags) : getfirst(x -> x.symbol == f, exec.flags)
         if flag != nothing
             flag.value = convert(flag.typ, val)
+        else
+	        for (f1, f2) in zip((is_qe_exec, is_wannier_exec, is_mpi_exec), (qeexecflag, wan_execflag, mpi_flag))
+	        	if f1(exec)
+		        	def_flag = f2(f)
+			        if def_flag != nothing
+				        push!(exec.flags, ExecFlag(def_flag, val))
+				        break
+			        end
+		        end
+	        end
         end
     end
     exec.flags
 end
+
 function rmflags!(exec::Exec, flags...)
     for f in flags
         if isa(f, String)

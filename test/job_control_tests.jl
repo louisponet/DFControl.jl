@@ -147,8 +147,9 @@ setwanenergies!(job, nscf, fermi-7.0, Epad=3.0)
 @test job["wanup"][:dis_froz_max] == 13.2921
 @test job["wanup"][:dis_win_max] == 16.292099999999998
 
-setexecflags!(job, "pw.x", :nk => 230)
+setexecflags!(job, "pw.x", :nk => 230, :ndiag => 3)
 @test DFControl.getfirst(x->x.symbol==:nk, execs(job, "nscf")[2].flags).value == 230
+@test DFControl.getfirst(x->x.symbol==:ndiag, execs(job, "nscf")[2].flags).value == 3
 rmexecflags!(job, "pw.x", :nk)
 @test isempty(filter(x->x.symbol == :nk, execs(job, "nscf")[2].flags))
 
