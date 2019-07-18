@@ -81,7 +81,7 @@ end
 """
     slurm_isqueued(job::DFJob)
 
-Returns whether the job is running.
+Returns whether the job is queued.
 """
 function slurm_isqueued(job::DFJob)
     runslocal_assert(job)

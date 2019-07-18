@@ -380,7 +380,7 @@ function gencalc_wan(nscf::DFInput{QE}, structure::AbstractStructure, projwfc::D
     hasexec_assert(projwfc, "projwfc.x")
     hasoutput_assert(projwfc)
     Emin = Emin_from_projwfc(structure, projwfc, threshold)
-    gencalc_wan(structure, nscf, Emin; kwargs...)
+    gencalc_wan(nscf, structure, Emin; kwargs...)
 end
 
 """
