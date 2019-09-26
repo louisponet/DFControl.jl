@@ -214,9 +214,33 @@ end
 set_magnetization!(job, :Pt => [1.0, 0.0, 0.0])
 @test magnetization(atom(job, :Pt)) == DFControl.Vec3(1.0, 0.0, 0.0)
 
+
+at = atoms(job)[1]
+c = cell(job)
+orig_pos_cart  = position_cart(at)
+orig_pos_cryst = position_cryst(at)
+
+set_position!(at, orig_pos_cart .+ c * [0.1, 0.1, 0.1], c)
+@test isapprox(position_cryst(at), orig_pos_cryst .+ [0.1, 0.1, 0.1])
+
+set_position!(at, orig_pos_cryst .+ [0.1, 0.1, 0.1], c)
+@test position_cart(at) == c * position_cryst(at)
+
+at2 = atoms(job)[2]
+p1, p2 = position_cart(at), position_cart(at2)
+mid = (p1+p2)/2
+bondlength = distance(at, at2)
+scale_bondlength!(at, at2, 0.5, c)
+
+@test isapprox((position_cart(at) + position_cart(at2))/2, mid)
+@test isapprox(distance(at, at2), bondlength/2) 
+
+
 rm.(DFControl.inpath.(job.inputs))
 
 rm(joinpath(splitdir(DFControl.inpath(job.inputs[1]))[1], "pw2wan_wanup.in"))
 rm(joinpath(splitdir(DFControl.inpath(job.inputs[1]))[1], "pw2wan_wandn.in"))
 rm(joinpath(job.local_dir, "job.tt"))
 rm.(joinpath.((job.local_dir,), filter(x -> occursin("UPF", x), readdir(job.local_dir))))
+
+

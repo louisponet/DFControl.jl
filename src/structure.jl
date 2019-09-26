@@ -190,4 +190,11 @@ function set_magnetization!(str::Structure, atsym_mag::Pair{Symbol, <:AbstractVe
 	end
 end
 
+"""
+	volume(str::Structure)
+
+Calculates the volume for the unit cell of the structure.
+"""
+volume(str::Structure) = det(str.cell)
+
 

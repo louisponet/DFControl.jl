@@ -495,3 +495,5 @@ Base.joinpath(job::DFJob, p) =
 
 create_supercell(job::DFJob, args...) =
 	create_supercell(structure(job), args...)
+
+volume(job::DFJob) = volume(structure(job))

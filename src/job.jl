@@ -246,3 +246,4 @@ Base.joinpath(job::DFJob, n::AbstractString) = joinpath(job.local_dir, n)
 
 runslocal_assert(job::DFJob) =
     @assert runslocal(job) "This only works if the job runs on `localhost`."
+

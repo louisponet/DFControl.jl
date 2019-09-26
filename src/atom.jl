@@ -142,9 +142,6 @@ setname!(at::AbstractAtom, name::Symbol) =
 
 length_unit(at::Atom{T, LT}) where {T, LT} = LT
 
-setposition_cart!(at::AbstractAtom{T}, position_cart::Point3) where T =
-    atom(at).position_cart = length_unit(at).(convert(Point3{T}, position_cart))
-
 function setpseudo!(at::AbstractAtom, pseudo::Pseudo; print=true)
 	print && @info "Pseudo of atom $(name(at)) set to $pseudo."
 	!ispath(path(pseudo)) && @warn "Pseudopath $(path(pseudo)) not found."
@@ -202,3 +199,45 @@ function set_magnetization!(at::AbstractAtom, mag; print=true)
 	print && @info "Magnetization of at $(name(at)) was set to $(magnetization(at))"
 end
 
+"""
+	distance(at1::AbstractAtom, at2::AbstractAtom)
+
+Calculates the distance between the two atoms.
+"""
+distance(at1::AbstractAtom, at2::AbstractAtom) = norm(at1.position_cart - at2.position_cart)
+
+
+"""
+	set_position!(at::AbstractAtom, pos::AbstractVector{T}, unit_cell::Mat3) where {T<:Real}
+
+Updates the position of the atom to this. The unit cell is used to make sure both `position_cryst` and `position_cart` are correct.
+"""
+function set_position!(at::AbstractAtom, pos::AbstractVector{T}, unit_cell::Mat3) where {T<:Real}
+	atom(at).position_cryst = Point3{T}(pos...)
+	atom(at).position_cart  = unit_cell * atom(at).position_cryst
+	return at
+end
+
+function set_position!(at::AbstractAtom, pos::AbstractVector{T}, unit_cell::Mat3) where {T<:Length}
+	atom(at).position_cart  = Point3{T}(pos...)
+	atom(at).position_cryst = unit_cell^-1 * atom(at).position_cart
+	return at
+end
+
+"""
+	scale_bondlength!(at1::AbstractAtom, at2::AbstractAtom, scale::Real, cell::Mat3)
+
+Scales the bondlength between two atoms. The center of mass remains the same.
+"""
+function scale_bondlength!(at1::AbstractAtom, at2::AbstractAtom, scale::Real, cell::Mat3)
+	p1 = position_cryst(at1) 
+	p2 = position_cryst(at2) 
+	mid = (p1 + p2)/2
+	orig_dist = norm(p1 - p2)
+	direction = (p1 - mid)/norm(p1-mid)
+	new_dist = orig_dist * scale
+	new_p1 = mid + new_dist * direction/2
+	new_p2 = mid - new_dist * direction/2
+	set_position!(at1, new_p1, cell)
+	set_position!(at2, new_p2, cell)
+end

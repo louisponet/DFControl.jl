@@ -17,7 +17,7 @@ export gencalc_scf, gencalc_nscf, gencalc_bands, gencalc_projwfc, gencalc_wan
 include("jobAPI.jl")
 #Basic Job Control Functionality
 export save, submit, abort, setflow!, setheaderword!, isrunning, progressreport,
-       setserverdir!, setlocaldir!, structure, scale_cell!
+       setserverdir!, setlocaldir!, structure, scale_cell!, volume
 
 #Basic Interaction with DFInputs inside DFJob
 export searchinput, searchinputs, setcutoffs!, setname!
@@ -29,16 +29,8 @@ export atom, atoms, setatoms!, setpseudos!, projections, setprojections!, cell,
 export create_supercell
 
 # Atom interface functions
-for interface_function in (:name,
-						   :position_cart,
-						   :position_cryst,
-						   :element,
-						   :pseudo,
-						   :projections,
-						   :magnetization,
-						   :dftu)
-	@eval export $interface_function
-end
+export name, position_cart, position_cryst, element, pseudo, projections, magnetization, dftu
+export distance, set_position!, scale_bondlength!
 
 include("serverAPI.jl")
 export qstat, watch_qstat, qdel
