@@ -18,11 +18,11 @@ end
 DFInput{P}(name, dir, flags, data, execs, run) where P<:Package = DFInput{P}(name, abspath(dir), flags, data, execs, run, SymAnyDict())
 
 """
-    DFInput(template::DFInput, name, newflags...; runcommand=template.runcommand, run=true)
+    DFInput(template::DFInput, name, newflags...; excs=deepcopy(execs(template)), run=true, data=nothing, dir=copy(template.dir))
 
 Creates a new `DFInput` from a template `DFInput`, setting the newflags in the new one.
 """
-function DFInput(template::DFInput, name, newflags...; excs=execs(template), run=true, data=nothing, dir=template.dir)
+function DFInput(template::DFInput, name, newflags...; excs=deepcopy(execs(template)), run=true, data=nothing, dir=copy(template.dir))
     newflags = Dict(newflags...)
 
     input          = deepcopy(template)
