@@ -22,7 +22,7 @@ DFInput{P}(name, dir, flags, data, execs, run) where P<:Package = DFInput{P}(nam
 
 Creates a new `DFInput` from a template `DFInput`, setting the newflags in the new one.
 """
-function DFInput(template::DFInput, name, newflags...; excs=deepcopy(execs(template)), run=true, data=nothing, dir=copy(template.dir))
+function DFInput(template::DFInput, name, newflags...; excs=deepcopy(execs(template)), run=true, data=nothing, dir=deepcopy(template.dir))
     newflags = Dict(newflags...)
 
     input          = deepcopy(template)
