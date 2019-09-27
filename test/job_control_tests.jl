@@ -235,6 +235,8 @@ scale_bondlength!(at, at2, 0.5, c)
 @test isapprox((position_cart(at) + position_cart(at2))/2, mid)
 @test isapprox(distance(at, at2), bondlength/2) 
 
+@test isapprox(bandgap(job), 3.6522999999999994)
+
 
 rm.(DFControl.inpath.(job.inputs))
 

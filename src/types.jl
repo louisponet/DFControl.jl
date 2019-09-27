@@ -26,6 +26,29 @@ DFBand(::Type{T}, vlength::Int) where T = DFBand(Vector{Vec3{T}}(undef, vlength)
 DFBand(vlength::Int) = DFBand(Float64, vlength)
 
 kpoints(band::DFBand, kind=:cryst) = kind == :cart ? band.k_points_cart : band.k_points_cryst
+eigvals(band::DFBand) = band.eigvals
+
+
+"""
+	bandgap(bands::AbstractVector{DFBand}, fermi=0.0)
+
+Calculates the bandgap (possibly indirect) around the fermi level.
+"""
+function bandgap(bands::AbstractVector{<:Band}, fermi=0.0)
+	max_valence = -Inf
+	min_conduction = Inf
+	for b in bands
+		max = maximum(eigvals(b).-fermi)
+		min = minimum(eigvals(b).-fermi)
+		if max_valence <= max <= 0.0
+			max_valence = max
+		end
+		if 0.0 <= min <= min_conduction
+			min_conduction = min
+		end
+	end
+	return min_conduction - max_valence
+end
 
 mutable struct ExecFlag
     symbol     ::Symbol

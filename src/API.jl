@@ -1,6 +1,7 @@
 export Structure, Atom, Pseudo, DFTU
 #Units exported
-export Ang, e₀, kₑ, a₀, Eₕ, Ry 
+export Ang, e₀, kₑ, a₀, Eₕ, Ry
+
 
 include("inputAPI.jl")
 export DFInput
@@ -31,6 +32,9 @@ export create_supercell
 # Atom interface functions
 export name, position_cart, position_cryst, element, pseudo, projections, magnetization, dftu
 export distance, set_position!, scale_bondlength!
+
+#Bands related functionality
+export bandgap
 
 include("serverAPI.jl")
 export qstat, watch_qstat, qdel
