@@ -51,5 +51,7 @@ function addprojections!(projections_, atoms)
     end
 end
 
-Base.zero(::Type{Projection}) = Projection(s, 0, 0, 0)
+Base.zero(::Type{Projection}) = Projection(Orbital(:zero, 0, 0), 0, 0)
+Base.zero(::Projection) = Projection(Orbital(:zero, 0, 0), 0, 0)
+
 Base.range(proj::Projection)  = proj.start:proj.last
