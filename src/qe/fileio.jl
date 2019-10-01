@@ -52,6 +52,22 @@ function qe_read_output(filename::String, T=Float64)
                 out[:polarization] = Point3{T}(P * s_line[1], P * s_line[2], P * s_line[3])
                 out[:pol_mod]      = mod
 
+            #input structure parameters
+            elseif occursin("lattice parameter", line)
+                out[:in_alat] = uconvert(Ang, parse(Float64, split(line)[5])*1a₀)
+
+            elseif occursin("crystal axes", line)
+                cell_1 = parse.(Float64, split(readline(f))[4:6]) .* out[:in_alat]
+                cell_2 = parse.(Float64, split(readline(f))[4:6]) .* out[:in_alat]
+                cell_3 = parse.(Float64, split(readline(f))[4:6]) .* out[:in_alat]
+                out[:in_cell] = Mat3([cell_1 cell_2 cell_3])
+
+            elseif occursin("reciprocal axes", line)
+                cell_1 = parse.(Float64, split(readline(f))[4:6]) .* 2π/out[:in_alat]
+                cell_2 = parse.(Float64, split(readline(f))[4:6]) .* 2π/out[:in_alat]
+                cell_3 = parse.(Float64, split(readline(f))[4:6]) .* 2π/out[:in_alat]
+                out[:in_recip_cell] = Mat3([cell_1 cell_2 cell_3])
+
                 #PseudoPot
             elseif occursin("PseudoPot", line)
                 !haskey(out, :pseudos) && (out[:pseudos] = Dict{Symbol, Pseudo}())
@@ -65,11 +81,6 @@ function qe_read_output(filename::String, T=Float64)
 
             elseif occursin("lowest unoccupied", line) || occursin("highest occupied", line)
                 out[:fermi]        = parse(T, split(line)[5])
-                #setup for k_points
-            elseif occursin("celldm(1)", line)
-                alat_bohr = parse(T, split(line)[2])
-                prefac_k  = T(2pi / alat_bohr * 1.889725)
-                #k_cryst
 
             elseif occursin("cryst.", line) && length(split(line)) == 2
                 out[:k_cryst] = Vector{Vec3{T}}()
@@ -81,10 +92,11 @@ function qe_read_output(filename::String, T=Float64)
 
                 #k_cart
             elseif occursin("cart.", line) && length(split(line)) == 5
-                out[:k_cart] = Vector{Vec3{T}}()
                 line = readline(f)
+                alat = out[:in_alat]
+                out[:k_cart] = Vector{Vec3{typeof(2π/alat)}}()
                 while line != "" && !occursin("--------", line)
-                    push!(out[:k_cart], prefac_k * parse_k_line(line, T))
+                    push!(out[:k_cart], parse_k_line(line, T) .* 2π/alat)
                     line = readline(f)
                 end
 
@@ -184,9 +196,14 @@ function qe_read_output(filename::String, T=Float64)
                 for i = 1:length(out[:k_cart])
                     push!(eig_band, k_eigvals[i][i1])
                 end
-                push!(out[:bands], DFBand(get(out, :k_cart, Vec3{T}[]), get(out, :k_cryst, Vec3{T}[]), eig_band))
+                if !haskey(out, :k_cryst)
+                    out[:k_cryst] = (out[:in_recip_cell]^-1,) .* out[:k_cart]
+                end
+
+                push!(out[:bands], DFBand(out[:k_cart], out[:k_cryst], eig_band))
             end
         end
+
         return out
     end
 end
@@ -380,7 +397,7 @@ function alat(flags, pop=false)
     if haskey(flags, :A)
         alat = pop ? pop!(flags, :A) : flags[:A]
 		alat *= 1Ang
-elseif haskey(flags, :celldm_1)
+    elseif haskey(flags, :celldm_1)
         alat = pop ? pop!(flags, :celldm_1) : flags[:celldm_1]
         alat *= 1a₀
     elseif haskey(flags, :celldm)

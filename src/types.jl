@@ -15,8 +15,8 @@ abstract type Band end
 """
 Energy band from DFT calculation.
 """
-mutable struct DFBand{T<:AbstractFloat} <: Band
-    k_points_cart  ::Vector{Vec3{T}}
+mutable struct DFBand{T<:AbstractFloat,K} <: Band
+    k_points_cart  ::Vector{Vec3{K}}
     k_points_cryst ::Vector{Vec3{T}}
     eigvals        ::Vector{T}
     extra          ::Dict{Symbol, Any}
