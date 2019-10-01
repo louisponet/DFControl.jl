@@ -247,3 +247,13 @@ Base.joinpath(job::DFJob, n::AbstractString) = joinpath(job.local_dir, n)
 runslocal_assert(job::DFJob) =
     @assert runslocal(job) "This only works if the job runs on `localhost`."
 
+function Base.pop!(job::DFJob, name::String)
+    i = findfirst(x -> x.name == name, job.inputs)
+    if i === nothing
+        error("No input with name $name found.")
+    end
+    out = job.inputs[i]
+    deleteat!(job.inputs, i)
+    return out
+end
+

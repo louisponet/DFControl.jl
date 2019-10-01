@@ -237,6 +237,12 @@ scale_bondlength!(at, at2, 0.5, c)
 
 @test isapprox(bandgap(job), 3.6522999999999994)
 
+t = job["nscf"]
+curlen = length(job.inputs)
+id = findfirst(x->x.name == "nscf", job.inputs)
+n = pop!(job, "nscf")
+@test n == t
+@test length(job.inputs) == curlen - 1
 
 rm.(DFControl.inpath.(job.inputs))
 
