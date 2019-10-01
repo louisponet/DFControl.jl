@@ -3,7 +3,8 @@ const QE_EXECS = [
     "pw.x",
     "projwfc.x",
     "pp.x",
-    "ld1.x"
+    "ld1.x",
+    "ph.x"
 ]
 #REVIEW: Should we make the flag name a String?
 #QE calls these flags

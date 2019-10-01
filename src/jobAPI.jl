@@ -497,3 +497,24 @@ create_supercell(job::DFJob, args...) =
 	create_supercell(structure(job), args...)
 
 volume(job::DFJob) = volume(structure(job))
+
+"""
+	bandgap(job::DFJob, fermi=readfermi(getfirst(isscfcalc, inputs(job))))
+
+Calculates the bandgap (possibly indirect) around the fermi level.
+Uses the first found bands calculation, if there is none it uses the first found nscf calculation.
+"""
+function bandgap(job::DFJob, fermi=readfermi(getfirst(isscfcalc, inputs(job))))
+	bandscalc = getfirst(isbandscalc, inputs(job))
+	if bandscalc === nothing
+		nscfcalc = getfirst(isnscfcalc, inputs(job))
+		if nscfcalc === nothing
+			error("No valid calculation found to calculate the bandgap.\nMake sure the job has either a valid bands or nscf calculation.")
+		else
+			bands = readbands(nscfcalc)
+		end
+	else
+		bands = readbands(bandscalc)
+	end
+	return bandgap(bands, fermi)
+end

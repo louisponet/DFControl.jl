@@ -83,6 +83,7 @@ isdefault(x::DFTU{T}) where {T} =
 	x == DFTU{T}() 
 
 isdefault(x::Any) = isempty(x)
+isdefault(x::AbstractVector) = isempty(x) || all(iszero, x)
 
 Base.string(::Type{Elk}, dftu::DFTU) = "$(dftu.l) $(dftu.U) $(dftu.J0)"
 
