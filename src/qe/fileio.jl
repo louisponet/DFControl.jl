@@ -460,8 +460,11 @@ function qe_magnetization(atid::Int, parsed_flags::SymAnyDict)
 
 	start = haskey(parsed_flags, :starting_magnetization) && length(parsed_flags[:starting_magnetization]) >= atid ?
 		parsed_flags[:starting_magnetization][atid] : 0.0
-
-	return start * Vec3{Float64}(sin(θ) * cos(ϕ), sin(θ) * sin(ϕ), cos(θ))
+	if start isa AbstractVector
+		return Vec3{Float64}(start...)
+	else
+		return start * Vec3{Float64}(sin(θ) * cos(ϕ), sin(θ) * sin(ϕ), cos(θ))
+	end
 end
 
 function extract_atoms!(parsed_flags, atom_block, pseudo_block, cell::Mat3{LT}) where {LT <: Length}
