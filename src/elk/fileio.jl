@@ -9,7 +9,7 @@ function read_atoms(fn::IO)
 	atcounter = 0
 	positions = Point3{Float64}[] 
 	bfcmts    = Vec3{Float64}[]
-	atoms     = Atom{Float64}[]
+	atoms     = Tuple{Symbol, Point3{Float64}, Vec3{Float64}}[]
 	while species_counter < nspecies
 		l = sane_readline()
 		if !reading_atoms
@@ -23,7 +23,7 @@ function read_atoms(fn::IO)
 			atcounter += 1
 		elseif isempty(l)
 			for (p, mag) in zip(positions, bfcmts)
-				push!(atoms, Atom{Float64}(name=atname, element=element(atname), position_cart=p, magnetization=mag))
+				push!(atoms, (atname, p, mag))
 			end
 			atname = :nothing
 			reading_atoms   = false
@@ -101,7 +101,8 @@ function elk_read_input(fn::String; execs=[Exec("elk")], run=true, structure_nam
 						line = sane_readline()
 					end
 					if !in(blockname, special_blocks)
-						blocknames_flaglines[blockname] = parse_block_flags(blockname, collect(Iterators.flatten(split.(filter(x->!isempty(x), blocklines)))))
+						blocknames_flaglines[blockname] =
+						    parse_block_flags(blockname, collect(Iterators.flatten(split.(filter(x->!isempty(x), blocklines)))))
 					else
 						blocknames_flaglines[blockname] = filter(x->!isempty(x), blocklines)
 					end
@@ -112,9 +113,10 @@ function elk_read_input(fn::String; execs=[Exec("elk")], run=true, structure_nam
 	# for i in 
 	#cell
 	scale = haskey(blocknames_flaglines, :scale) ? last(pop!(blocknames_flaglines[:scale])) : 1.0
-	cell  = Mat3(reshape(scale .* parse.(Float64, collect(Iterators.flatten(split.(pop!(blocknames_flaglines, :avec))))), 3, 3))
+	cell  = uconvert.(Ang, Mat3(reshape(scale .* parse.(Float64, collect(Iterators.flatten(split.(pop!(blocknames_flaglines, :avec))))), 3, 3).*1a₀))'
+
+    newats = [Atom{Float64, eltype(cell)}(name=x[1], element=element(x[1]), position_cryst=x[2], position_cart=cell*x[2], magnetization=x[3]) for x in atoms] 
 	#structure #TODO make positions be in lattices coordinates
-	newats = [Atom(at, cell' * position_cart(at)) for at in atoms]
 	structure = Structure(structure_name, cell, newats)
 
 	#different tasks
@@ -237,7 +239,7 @@ function elk_write_structure(f, structure)
 		write(f, "\t$(length(ats))\n")
 		for a in ats
 			write(f, "\t")
-			for i in inv(cell(structure)')*position_cart(a)
+			for i in position_cryst(a)
 				write(f, "$(round(i, digits=8)) ")
 			end
 			for i in magnetization(a)
@@ -250,8 +252,8 @@ function elk_write_structure(f, structure)
 	write(f, "\n")
 	write(f, "avec\n\t")
 
-	for i in eachindex(structure.cell)
-		c = structure.cell[i]
+	for i in eachindex(structure.cell')
+		c = ustrip(uconvert(a₀, structure.cell[i]))
 		if i%3 == 0
 			write(f, "$c\n\t")
 		else
