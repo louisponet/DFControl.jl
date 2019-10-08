@@ -152,6 +152,7 @@ function writetojob(f, job, inputs::Vector{DFInput{Elk}}; kwargs...)
         write(f, "#")
     end
     writeexec.((f,), execs(inputs[1]))
+    write(f, "< $(infilename(inputs[1])) > $(outfilename(inputs[1]))\n")
     return inputs
 end
 
