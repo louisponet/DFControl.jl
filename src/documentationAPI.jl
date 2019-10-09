@@ -60,7 +60,13 @@ end
 function documentation(::Type{Elk}, flagsymbol::Symbol)
     flag = elk_flaginfo(flagsymbol)
     if flag == nothing
-        error("No documentation found for flag $flagsymbol, are you sure it is a valid flag for Elk?")
+        block = getfirst(x->x.name == flagsymbol, ELK_CONTROLBLOCKS)
+        if block == nothing
+            error("No documentation found for flag $flagsymbol, are you sure it is a valid flag for Elk?")
+        else
+            return block
+        end
+    else
+        return flag
     end
-    return flag
 end
