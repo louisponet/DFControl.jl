@@ -44,7 +44,7 @@ returns the flags where the description contains the `searchstring`.
 Returns the documentation for a given flag.
 """
 function documentation(::Type{Elk}, searchstring::AbstractString)
-    found = Pair{Symbol, Vector{ElkFlagInfo}}[]
+    found = Pair{ElkControlBlockInfo, Vector{ElkFlagInfo}}[]
     for b in ELK_CONTROLBLOCKS
         found_flags = ElkFlagInfo[]
         for f in b.flags
@@ -52,7 +52,9 @@ function documentation(::Type{Elk}, searchstring::AbstractString)
                 push!(found_flags, f)
             end
         end
-        !isempty(found_flags) && push!(found, b.name => found_flags)
+        if !isempty(found_flags) || occursin(searchstring, b.description)
+            push!(found, b => found_flags)
+        end
     end
     return found
 end
