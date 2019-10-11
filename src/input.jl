@@ -252,11 +252,10 @@ end
 
 #TODO Temporary handling of HubbardU situation
 function set_hubbard_flags!(input::DFInput{QE}, str::AbstractStructure{T}) where {T}
-	if isdftucalc(input)
-		u_ats = unique(atoms(str))
-		setflags!(input,:Hubbard_U     => map(x -> dftu(x).U , u_ats); print=false)
-		setflags!(input,:Hubbard_alpha => map(x -> dftu(x).α , u_ats); print=false)
-		setflags!(input,:Hubbard_beta  => map(x -> dftu(x).β , u_ats); print=false)
+	u_ats = unique(atoms(str))
+    isdftucalc = any(x -> dftu(x).U != 0 || dftu(x).J0 != 0.0 || sum(dftu(x).J) != 0, u_ats)
+
+	if isdftucalc
 		Jmap = map(x -> dftu(x).J, u_ats)
 		Jdim = maximum(length.(Jmap))
 		Jarr = zeros(Jdim, length(u_ats))
@@ -269,8 +268,14 @@ function set_hubbard_flags!(input::DFInput{QE}, str::AbstractStructure{T}) where
 			end
 			Jarr[:, i] .= J
 		end
-		setflags!(input, :Hubbard_J => Jarr; print=false)
-		setflags!(input, :Hubbard_J0=> map(x -> dftu(x).J0, u_ats); print=false)
+    	setflags!(input,
+    	          :lda_plus_u    => true,
+    	          :Hubbard_U     => map(x -> dftu(x).U, u_ats),
+    	          :Hubbard_alpha => map(x -> dftu(x).α , u_ats),
+    	          :Hubbard_beta  => map(x -> dftu(x).β , u_ats),
+    	          :Hubbard_J     => Jarr,
+    	          :Hubbard_J0    => map(x -> dftu(x).J0, u_ats);
+	              print=false)
 	end
 end
 
@@ -280,7 +285,9 @@ function set_starting_magnetization_flags!(input::DFInput{QE}, str::AbstractStru
 	starts= T[]
 	θs    = T[]
 	ϕs    = T[]
-	if ismagneticcalc(input) && isnoncolincalc(input)
+    ismagcalc      = any(x -> sum(magnetization(x)) != 0, u_ats)
+    isnc =  isnoncolincalc(input) || any(x -> sum(magnetization(x)) !=0 && !isapprox(abs(normalize(magnetization(x)) ⋅ [0,0,1]), 1.0), u_ats)
+	if ismagcalc && isnc
 		for m in mags
 			tm = normalize(m)
 			if norm(m) == 0
@@ -294,7 +301,8 @@ function set_starting_magnetization_flags!(input::DFInput{QE}, str::AbstractStru
 				push!(starts, start)
 			end
 		end
-	elseif ismagneticcalc(input) && iscolincalc(input)
+		setflags!(input, :noncolin=>true; print=false)
+	elseif ismagcalc 
 		for m in mags
 			push!.((θs, ϕs), 0.0)
 			if norm(m) == 0
@@ -303,10 +311,9 @@ function set_starting_magnetization_flags!(input::DFInput{QE}, str::AbstractStru
 				push!(starts, sign(sum(m))*norm(m))
 			end
 		end
+		setflags!(input, :nspin => 2; print=false)
 	end
-	setflags!(input, :starting_magnetization => starts; print=false)
-	setflags!(input, :angle1 => θs; print=false)
-	setflags!(input, :angle2 => ϕs; print=false)
+	setflags!(input, :starting_magnetization => starts, :angle1 => θs, :angle2 => ϕs; print=false)
 end
 
 

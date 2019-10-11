@@ -244,6 +244,20 @@ n = pop!(job, "nscf")
 @test n == t
 @test length(job.inputs) == curlen - 1
 
+nscf = job["scf"]
+rmflags!(job, :nspin, :lda_plus_u, :noncolin)
+set_magnetization!(job, :Pt => [0.2, 1.0, 0.2])
+DFControl.sanitizeflags!(job)
+set_Hubbard_U!(job, :Pt => 2.3)
+@test job["scf"][:lda_plus_u]
+@test job["scf"][:noncolin]
+
+rmflags!(job, :nspin, :lda_plus_u, :noncolin)
+set_magnetization!(job, :Pt => [0.0, 0.0, 0.5])
+DFControl.sanitizeflags!(job)
+@test job["scf"][:nspin] == 2
+
+
 rm.(DFControl.inpath.(job.inputs))
 
 rm(joinpath(splitdir(DFControl.inpath(job.inputs[1]))[1], "pw2wan_wanup.in"))
