@@ -23,3 +23,13 @@ deps/qeflags\.jl
 deps/abinitflags\.jl
 
 Manifest\.toml
+
+deps/builds/
+
+deps/downloads/
+
+deps/src/
+
+deps/usr/
+
+deps/deps\.jl

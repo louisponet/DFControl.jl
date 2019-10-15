@@ -75,5 +75,9 @@ module DFControl
 
     const pythonpath = Sys.iswindows() ? joinpath(depsdir, "python2", "python") : joinpath(dirname(@__DIR__), "deps", "python2", "bin", "python")
     const cif2cellpath = Sys.iswindows() ? joinpath(depsdir, "python2", "Scripts", "cif2cell") : joinpath(dirname(@__DIR__), "deps", "python2", "bin", "cif2cell")
-
+    if isfile(joinpath(dirname(@__FILE__),"..","deps","deps.jl"))
+      include(joinpath(dirname(@__FILE__),"..","deps","deps.jl"))
+    else
+      error("DFControl not properly installed. Please run Pkg.build(\"DFControl\")")
+end
 end
