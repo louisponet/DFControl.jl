@@ -225,10 +225,19 @@ function symmetry_operators(s::SPGStructure; maxsize=52, tolerance = DEFAULT_TOL
     num_ops = ccall((:spg_get_symmetry, SPGLIB), Cint,
       (Ptr{Cint}, Ptr{Cdouble}, Cint, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cint}, Cint, Cdouble),
        rotations, translations, maxsize, s.lattice, s.positions, s.species_indices, length(s.species_indices), tolerance)
-    return [Mat3{Int}(rotations[:, :, i]) for i=1:num_ops], [Vec3(translations[:, i]) for i=1:num_ops]
+    return (rotations=[Mat3{Int}(rotations[:, :, i]) for i=1:num_ops], translations=[Vec3(translations[:, i]) for i=1:num_ops])
+end
+
+function international_symbol(s::SPGStructure; tolerance = DEFAULT_TOLERANCE)
+    res = zeros(Cchar, 11)
+
+    numops = ccall((:spg_get_international, SPGLIB), Cint,
+                   (Ptr{Cchar}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cint}, Cint, Cdouble),
+                   res, s.lattice, s.positions, s.species_indices, length(s.species_indices), tolerance)
+    numops == 0 && error("Could not determine the international symbol.")
+
+    return join(convert(Vector{Char}, res[1:findfirst(iszero, res) - 1]))
 end
 
 symmetry_operators(s::Structure; kwargs...) = symmetry_operators(SPGStructure(s); kwargs...)
-
-
-
+international_symbol(s::Structure; kwargs...) = international_symbol(SPGStructure(s); kwargs...)
