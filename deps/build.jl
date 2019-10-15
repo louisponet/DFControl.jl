@@ -22,14 +22,6 @@ for d in readdir(package_basepath)
         break
     end
 end
-
-@BinDeps.setup
-
-libspg = library_dependency("libsymspg")
-provides(Sources, URI("https://sourceforge.net/projects/spglib/files/spglib/spglib-1.12/spglib-1.12.0.tar.gz"), libspg)
-provides(BuildProcess, Autotools(libtarget = joinpath("src", "libsymspg.la")), libspg)
-@BinDeps.install Dict(:libsymspg => :spglib)
-
 if !ispath(pythonpath)
     mkdir(pythonpath)
     dlpath = relpath("downloads")
@@ -81,9 +73,34 @@ if !ispath(pythonpath)
     write(starfile, starsource)
 #
     rm(tarpath)
-    # rm(relpath("cif2cell-1.2.10"), recursive=true)
-    # rm(relpath("downloads"), recursive=true)
+    rm(relpath("cif2cell-1.2.10"), recursive=true)
+    rm(relpath("downloads"), recursive=true)
 end
 
+spglibpath = relpath("spglib/lib/libsymspg.so")
+if !ispath(spglibpath)
+    spglibdir = relpath("spglib")
+    if !ispath(spglibdir)
+        mkdir(spglibdir)
+    end
+
+    spgdownloads = joinpath(spglibdir, "downloads") 
+    if !ispath(spgdownloads)
+        mkdir(spgdownloads)
+    end
+    spgzip = joinpath(spgdownloads, "spglib-master.zip")
+    download("https://github.com/atztogo/spglib/archive/master.zip", spgzip)
+    run(unpack_cmd(spgzip, spglibdir, ".zip",""))
+    cd(joinpath(spglibdir, "spglib-master"))
+    run(`mkdir build`)
+    cd("build")
+    run(`cmake -DCMAKE_INSTALL_PREFIX="" ..`)
+    run(`make`)
+    run(`make DESTDIR=$spglibdir install`)
+end
+
+open("deps.jl", "w") do f
+    write(f, """const SPGLIB = joinpath(@__DIR__, "spglib","lib","libsymspg.so")\n""")
+end
 
 include("asset_init.jl")

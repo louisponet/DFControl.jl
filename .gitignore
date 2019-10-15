@@ -33,3 +33,5 @@ deps/src/
 deps/usr/
 
 deps/deps\.jl
+
+deps/spglib/
