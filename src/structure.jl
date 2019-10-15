@@ -239,5 +239,66 @@ function international_symbol(s::SPGStructure; tolerance = DEFAULT_TOLERANCE)
     return join(convert(Vector{Char}, res[1:findfirst(iszero, res) - 1]))
 end
 
+function niggli_reduce!(s::SPGStructure; tolerance = DEFAULT_TOLERANCE)
+
+    numops = ccall((:spg_niggli_reduce, SPGLIB), Cint,
+                   (Ptr{Cdouble}, Cdouble),
+                   s.lattice, tolerance)
+    numops == 0 && error("Could not determine the niggli reduced cell.")
+
+    return Mat3(s.lattice)
+end
+
 symmetry_operators(s::Structure; kwargs...) = symmetry_operators(SPGStructure(s); kwargs...)
 international_symbol(s::Structure; kwargs...) = international_symbol(SPGStructure(s); kwargs...)
+niggli_reduce(s::Structure; kwargs...) = niggli_reduce!(SPGStructure(s); kwargs...).*unit(eltype(cell(s)))
+
+
+"""
+    cell_parameters(cell::Mat3)
+    cell_parameters(str::Structure)
+
+Parameters (a, b, c, α, β, γ) of the input cell returned in a named tuple.
+"""
+function cell_parameters(cell::Mat3)
+    G = transpose(cell) * cell
+    a, b, c = sqrt.(diag(G))
+    α = acos(0.5(G[2, 3] + G[3, 2])/(c * b))
+    β = acos(0.5(G[3, 1] + G[1, 3])/(a * c))
+    γ = acos(0.5(G[1, 2] + G[2, 1])/(a * b))
+    a, b, c, α, β, γ
+end
+
+cell_parameters(s::Structure) = cell_parameters(ustrip.(cell(s)))
+
+function crystal_kind(s::Structure; tolerance=DEFAULT_TOLERANCE, nigglireduce=true)
+
+    abcαβγ = nigglireduce ? cell_parameters(ustrip.(niggli_reduce(s))) : cell_parameters(s)
+    a, b, c, α, β, γ = abcαβγ
+    all_same_length = all(x->x - abcαβγ[1] < tolerance, abcαβγ[1:3])
+
+    angles = abcαβγ[4:end]
+    all_same_angles = all(x->x - angles[1] < tolerance, angles)
+
+    all_angles_are = (a) -> maximum(abs.(angles .- a)) < tolerance
+    if all_same_length && all_angles_are(π/2)
+        return :cubic
+    elseif all_same_length && all_angles_are(π/3)
+        return :fcc
+    elseif all_same_length && all_angles_are(acos(-1/3))
+        return :bcc
+    elseif abs(a-b) < tolerance && all_angles_are(π/2)
+        return :tetragonal
+    elseif all_angles_are(π/2)
+        return :orthorhombic
+    elseif abs(a-b) < tolerance &&
+        (abs(γ - 2π/3) < tolerance || abs(γ - π/3) < tolerance && maximum(abs.(angles[1:2] .- π/2)) < tolerance)
+        return :hexagonal
+    elseif sum(abs.(angles .- π/2) .> tolerance) == 1
+        return :monoclinic
+    elseif all_same_length && all_same_angles && maximum(abs.(angles)) < π/2
+        return :rhombohedral_type_1
+    elseif all_same_length && all_same_angles && maximum(abs.(angles)) > π/2
+        return :rhombohedral_type_2
+    end
+end

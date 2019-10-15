@@ -25,7 +25,7 @@ export searchinput, searchinputs, setcutoffs!, setname!
 
 #Interacting with the Structure inside DFJob
 export atom, atoms, setatoms!, setpseudos!, projections, setprojections!, cell,
-	   set_magnetization!, symmetry_operators, international_symbol
+	   set_magnetization!, symmetry_operators, international_symbol, niggli_reduce
 
 export create_supercell
 

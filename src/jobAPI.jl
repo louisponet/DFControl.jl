@@ -534,3 +534,11 @@ symmetry_operators(j::DFJob; kwargs...) = symmetry_operators(j.structure; kwargs
 Returns the international symbol of the space group of the structure.
 """
 international_symbol(j::DFJob; kwargs...) = international_symbol(j.structure; kwargs...)
+
+"""
+    niggli_reduce(j::DFJob; tolerance=$DEFAULT_TOLERANCE)
+    niggli_reduce(s::Structure; tolerance=$DEFAULT_TOLERANCE)
+
+Returns the niggli reduced lattice cell.
+"""
+niggli_reduce(j::DFJob; kwargs...) = niggli_reduce(j.structure; kwargs...)
