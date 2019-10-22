@@ -99,6 +99,7 @@ if !ispath(spglibpath)
     run(`make DESTDIR=$spglibdir install`)
 end
 
+cd(@__DIR__)
 open("deps.jl", "w") do f
     write(f, """const SPGLIB = joinpath(@__DIR__, "spglib","lib","libsymspg.so")\n""")
 end
