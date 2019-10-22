@@ -110,11 +110,9 @@ function configuredefault_pseudos(;server = getdefault_server(), pseudo_dirs=get
             element = Symbol(titlecase(String(split(split(pseudo, ".")[1], "_")[1])))
             if element in elsyms
                 t  = Pseudo[Pseudo(pseudo, pseudo_dirs[name])]
-                # t_expr  = :(String[$pseudo])
                 j = 1
                 while j + i <= length(pseudos) && Symbol(split(pseudos[i + j],".")[1]) == element
                     push!(t, Pseudo(pseudos[i + j], pseudo_dirs[name]))
-                    # push!(t_expr.args,pseudos[i + j])
                     j += 1
                 end
                 i += j
@@ -125,7 +123,6 @@ function configuredefault_pseudos(;server = getdefault_server(), pseudo_dirs=get
             end
         end
     end
-    # init_defaults(default_file)
 end
 
 """
@@ -141,9 +138,9 @@ function getdefault_pseudo(atom::Symbol, set=:default; specifier="")
     end
     if haskey(default_pseudos[pp_atom], set)
         if specifier != ""
-            return getfirst(x -> occursin(specifier, x.name), default_pseudos[pp_atom][set])
+            return copy(getfirst(x -> occursin(specifier, x.name), default_pseudos[pp_atom][set]))
         else
-            return default_pseudos[pp_atom][set][1]
+            return copy(default_pseudos[pp_atom][set][1])
         end
     end
 end
