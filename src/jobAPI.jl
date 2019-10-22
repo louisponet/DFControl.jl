@@ -10,6 +10,8 @@ function save(job::DFJob, local_dir=job.local_dir; kwargs...)
         mkpath(local_dir)
         @info "$local_dir did not exist, it was created."
     end
+    sanitize_magnetization!(job)
+    sanitize_projections!(job)
     sanitizeflags!(job)
     job.local_dir = local_dir
     return writejobfiles(job; kwargs...)

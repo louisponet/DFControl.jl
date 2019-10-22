@@ -257,6 +257,28 @@ set_magnetization!(job, :Pt => [0.0, 0.0, 0.5])
 DFControl.sanitizeflags!(job)
 @test job["scf"][:nspin] == 2
 
+using LinearAlgebra
+new_str = create_supercell(structure(job), 1, 0, 0)
+prevcell = cell(job)
+@test norm(cell(new_str)[:,1]) == norm(prevcell[:, 1]) * 2
+prevlen = length(atoms(job))
+@test length(atoms(new_str)) == 2*prevlen
+prevlen_Pt = length(atoms(job, :Pt))
+
+set_magnetization!(job, :Pt => [0, 0, 1])
+orig_projs = projections(atoms(job, :Pt)[1])
+
+job.structure = create_supercell(structure(job), 1, 0, 0, make_afm=true)
+
+DFControl.sanitize_magnetization!(job)
+@test length(atoms(job, :Pt1)) == prevlen_Pt
+@test length(atoms(job, :Pt2)) == prevlen_Pt
+
+@test magnetization(atoms(job, :Pt1)[1]) == [0, 0, 1]
+@test magnetization(atoms(job, :Pt2)[1]) == [0, 0, -1]
+
+DFControl.sanitize_projections!(job)
+@test projections(atoms(job, :Pt1)[1]) != projections(atoms(job, :Pt2)[1])
 
 rm.(DFControl.inpath.(job.inputs))
 

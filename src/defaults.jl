@@ -138,9 +138,9 @@ function getdefault_pseudo(atom::Symbol, set=:default; specifier="")
     end
     if haskey(default_pseudos[pp_atom], set)
         if specifier != ""
-            return copy(getfirst(x -> occursin(specifier, x.name), default_pseudos[pp_atom][set]))
+            return deepcopy(getfirst(x -> occursin(specifier, x.name), default_pseudos[pp_atom][set]))
         else
-            return copy(default_pseudos[pp_atom][set][1])
+            return deepcopy(default_pseudos[pp_atom][set][1])
         end
     end
 end

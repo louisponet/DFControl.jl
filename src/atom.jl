@@ -46,6 +46,8 @@ elsym(atom::AbstractAtom) = element(atom).symbol
 positions(atoms::Vector{<:AbstractAtom}, name::Symbol) = [position_cart(x) for x in filter(y -> name(y) == name, atoms)]
 getpseudoset(at::AbstractAtom) = getpseudoset(elsym(at), pseudo(at))
 
+ismagnetic(at::AbstractAtom) = !iszero(sum(magnetization(at)))
+
 "Takes a Vector of atoms and returns a Vector with the atoms having unique symbols."
 function Base.unique(atoms::Vector{<:AbstractAtom{T}}) where T <: AbstractFloat
     uni = AbstractAtom{T}[]
@@ -125,8 +127,9 @@ Atom(orig_at::Atom, new_pos_cart::Point3, new_pos_cryst::Point3) = Atom(name(ori
 #the struct holding `name`, `position_cart`, `element`, `pseudo`, `projection` fields
 atom(at::Atom) = at
 
-for interface_function in (:name, :position_cart, :position_cryst, :element, :pseudo, :projections, :magnetization, :dftu)
+for interface_function in fieldnames(Atom)
 	@eval $interface_function(at::AbstractAtom) = atom(at).$interface_function
+	@eval export $interface_function
 end
 
 

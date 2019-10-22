@@ -62,7 +62,7 @@ function setprojections!(str::Structure, projs::Pair...)
         end
     end
     emptyprojections!(str)
-    addprojections!(projdict, str.atoms)
+    addprojections!(atoms(str), projdict)
 end
 
 function emptyprojections!(str::Structure)
@@ -150,25 +150,32 @@ function setpseudos!(structure::AbstractStructure, at_pseudos::Pair{Symbol, Pseu
 end
 
 """
-    create_supercell(structure::AbstractStructure, na::Int, nb::Int, nc::Int)
+    create_supercell(structure::AbstractStructure, na::Int, nb::Int, nc::Int;make_afm=false)
 
 Takes a structure and creates a supercell from it with the given amount of extra cells (`na, nb, nc`) along the a, b, c direction.
+If `make_afm` is set to `true` all the labels and magnetizations of the magnetic atoms will be reversed.
 """
-function create_supercell(structure::AbstractStructure, na::Int, nb::Int, nc::Int)
+function create_supercell(structure::AbstractStructure, na::Int, nb::Int, nc::Int; make_afm=false)
     orig_ats   = atoms(structure)
     orig_cell  = cell(structure)
     scale_mat  = diagm(0 => 1 .+ [na, nb, nc])
+
+    orig_uats = unique(orig_ats)
+
     new_cell   = orig_cell * scale_mat
     new_atoms  = eltype(orig_ats)[]
     for ia=0:na, ib=0:nb, ic=0:nc
-        # if all((ia, ib, ic) .== 0)
-        #     continue
-        # end
         transl_vec = orig_cell * [ia, ib, ic]
+        factor = isodd(ia + ib + ic) ? -1 : 1
         for at in orig_ats
 	        cart_pos = position_cart(at) + transl_vec
 	        cryst_pos = inv(new_cell) * cart_pos
-            push!(new_atoms, Atom(at, cart_pos, Point3(cryst_pos)))
+            if make_afm && ismagnetic(at)
+                new_magnetization = factor*magnetization(at)
+                push!(new_atoms, Atom(at, projections=deepcopy(projections(at)), magnetization=new_magnetization, position_cart = cart_pos, position_cryst = Point3(cryst_pos)))
+            else
+                push!(new_atoms, Atom(at, projections=deepcopy(projections(at)), position_cart=cart_pos, position_cryst=Point3(cryst_pos)))
+            end
         end
     end
     return Structure(name(structure), Mat3(new_cell), new_atoms, data(structure))

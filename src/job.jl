@@ -227,6 +227,36 @@ function sanitize_pseudos!(job::DFJob)
 	end
 end
 
+function sanitize_magnetization!(job::DFJob)
+    if !any(x->package(x) == QE, inputs(job))
+        return
+    end
+    magnetic_uats = filter(ismagnetic, unique(atoms(job)))
+    element_to_magnetization = Dict([element(at) => Vec3{Float64}[] for at in magnetic_uats]...)
+    for at in magnetic_uats
+        magvec = element_to_magnetization[element(at)]
+        mag = magnetization(at)
+        if !in(mag, magvec)
+            push!(magvec, mag)
+        end
+    end
+
+    for at in filter(ismagnetic, atoms(job))
+        el = element(at)
+        id = findfirst(x -> x==magnetization(at), element_to_magnetization[el])
+        at.name = Symbol(string(el.symbol)*"$id")
+    end
+end
+
+function sanitize_projections!(job::DFJob)
+    if !any(x->!isempty(projections(x)), atoms(job))
+        return
+    end
+    uats = unique(atoms(job))
+    projs = unique([name(at) => [p.orb.name for p in projections(at)] for at in uats])
+    setprojections!(job, projs...)
+end
+
 "Checks the last created output file for a certain job."
 function runninginput(job::DFJob)
     @assert job.server == "localhost" "Intended use for now is locally."
