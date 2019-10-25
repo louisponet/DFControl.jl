@@ -38,7 +38,7 @@ function qe_read_output(filename::String, T=Float64)
         prefac_k     = nothing
         k_eigvals    = Array{Array{T,1},1}()
         lowest_force = T(1000000)
-
+        atsyms = Symbol[]
         while !eof(f)
             line = readline(f)
 
@@ -67,6 +67,13 @@ function qe_read_output(filename::String, T=Float64)
                 cell_2 = parse.(Float64, split(readline(f))[4:6]) .* 2π/out[:in_alat]
                 cell_3 = parse.(Float64, split(readline(f))[4:6]) .* 2π/out[:in_alat]
                 out[:in_recip_cell] = Mat3([cell_1 cell_2 cell_3])
+
+            elseif occursin("atomic species", line)
+                line = readline(f)
+                while !isempty(line)
+                    push!(atsyms, Symbol(strip_split(line)[1]))
+                    line = readline(f)
+                end
 
                 #PseudoPot
             elseif occursin("PseudoPot", line)
@@ -156,7 +163,7 @@ function qe_read_output(filename::String, T=Float64)
                     end
                     cell_data = InputData(:cell_parameters, :alat, Mat3(out[:cell_parameters]))
                     atoms_data = InputData(:atomic_positions, out[:pos_option], out[:atomic_positions])
-                    out[:final_structure] = extract_structure!("newstruct", tmp_flags, cell_data, atoms_data, pseudo_data)
+                    out[:final_structure] = extract_structure!("newstruct", tmp_flags, cell_data, atsyms, atoms_data, pseudo_data)
                 end
 
             elseif occursin("Total force", line)
@@ -467,7 +474,7 @@ function qe_magnetization(atid::Int, parsed_flags::SymAnyDict)
 	end
 end
 
-function extract_atoms!(parsed_flags, atom_block, pseudo_block, cell::Mat3{LT}) where {LT <: Length}
+function extract_atoms!(parsed_flags, atsyms, atom_block, pseudo_block, cell::Mat3{LT}) where {LT <: Length}
     atoms = Atom{Float64, LT}[]
 
     option = atom_block.option
@@ -481,8 +488,9 @@ function extract_atoms!(parsed_flags, atom_block, pseudo_block, cell::Mat3{LT}) 
     else
         primv = 1Ang .* Mat3(Matrix(1.0I, 3, 3))
     end
-    for (speciesid, (at_sym, positions)) in enumerate(atom_block.data)
+    for (at_sym, positions) in atom_block.data
         pseudo = haskey(pseudo_block.data, at_sym) ? pseudo_block.data[at_sym] : (@warn "No Pseudo found for atom '$at_sym'.\nUsing Pseudo()."; Pseudo())
+        speciesid = findfirst(isequal(at_sym), atsyms)
         for pos in positions
             push!(atoms, Atom(name=at_sym, element=element(at_sym), position_cart=primv * pos, position_cryst=ustrip.(inv(cell) * pos), pseudo=pseudo, magnetization=qe_magnetization(speciesid, parsed_flags), dftu=qe_DFTU(speciesid, parsed_flags)))
         end
@@ -491,12 +499,12 @@ function extract_atoms!(parsed_flags, atom_block, pseudo_block, cell::Mat3{LT}) 
     return atoms
 end
 
-function extract_structure!(name, parsed_flags, cell_block, atom_block, pseudo_block)
+function extract_structure!(name, parsed_flags, cell_block, atsyms, atom_block, pseudo_block)
     if atom_block == nothing
         return nothing
     end
     cell = extract_cell!(parsed_flags, cell_block)
-    atoms = extract_atoms!(parsed_flags, atom_block, pseudo_block, cell)
+    atoms = extract_atoms!(parsed_flags, atsyms, atom_block, pseudo_block, cell)
     return Structure(name, cell, atoms)
 end
 
@@ -570,10 +578,13 @@ function qe_read_input(filename; execs=[Exec("pw.x")], run=true, structure_name=
 
         pseudos = InputData(:atomic_species, :none, Dict{Symbol, Pseudo}())
         pseudo_dir = pop!(parsed_flags, :pseudo_dir, "./")
+        atsyms = Symbol[]
         for k=1:ntyp
             push!(used_lineids, i + k)
             sline = strip_split(lines[i+k])
-            pseudos.data[Symbol(sline[1])] = Pseudo(sline[end], pseudo_dir) 
+            atsym = Symbol(sline[1])
+            pseudos.data[atsym] = Pseudo(sline[end], pseudo_dir)
+            push!(atsyms, atsym)
         end
 
         i = findcard("cell_parameters")
@@ -622,7 +633,7 @@ function qe_read_input(filename; execs=[Exec("pw.x")], run=true, structure_name=
                 parsed_flags[sym][ids[1], ids[2]] = length(parsedval) == 1 ? parsedval[1] : parsedval
             end
         end
-        structure = extract_structure!(structure_name, parsed_flags, cell_block, atom_block, pseudos)
+        structure = extract_structure!(structure_name, parsed_flags, cell_block, atsyms, atom_block, pseudos)
         delete!.((parsed_flags,), [:ibrav, :nat, :ntyp, :A, :celldm_1, :celldm])
         delete!.((parsed_flags,), [:Hubbard_U, :Hubbard_J0, :Hubbard_alpha, :Hubbard_beta, :Hubbard_J])
         delete!.((parsed_flags,), [:starting_magnetization, :angle1, :angle2]) #hubbard and magnetization flags
