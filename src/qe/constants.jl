@@ -4,7 +4,8 @@ const QE_EXECS = [
     "projwfc.x",
     "pp.x",
     "ld1.x",
-    "ph.x"
+    "ph.x",
+    "pw2wannier90.x"
 ]
 #REVIEW: Should we make the flag name a String?
 #QE calls these flags
@@ -132,7 +133,15 @@ function qe_block_variable(exec::AbstractString, flagname)
     return :error, QEFlagInfo()
 end
 
-qe_block_variable(input::DFInput, flagname) = qe_block_variable(execs(input)[2].exec, flagname)
+function qe_exec(input::DFInput{QE})
+    exec = getfirst(x -> x.exec ∈ QE_EXECS, execs(input))
+    if exec === nothing
+        error("Input $input does not have a valid QE executable, please set it first.")
+    end
+    return exec
+end
 
-flagtype(input::DFInput{QE}, flag) = eltype(qe_flaginfo(execs(input)[2], flag))
+qe_block_variable(input::DFInput, flagname) = qe_block_variable(qe_exec(input).exec, flagname)
+
+flagtype(input::DFInput{QE}, flag) = eltype(qe_flaginfo(qe_exec(input), flag))
 flagtype(::Type{QE}, exec, flag) = eltype(qe_flaginfo(exec, flag))

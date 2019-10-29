@@ -23,7 +23,7 @@ bands_data = Dict(:kpoints => [[0.5, 0.5, 0.5, 100.],
                   :flags => [:verbosity => "high", :nbnd => 8])
 
 nscf_data = merge(bands_data, Dict(:kpoints => [10, 10, 10]))
-calculations = [:vc_relax => (excs, scf_data), :scf => (excs, scf_data), :bands => (excs, bands_data), :nscf =>(excs, nscf_data), :blabla => ([Exec(), Exec()], Dict())]
+calculations = [:vc_relax => (excs, scf_data), :scf => (excs, scf_data), :bands => (excs, bands_data), :nscf =>(excs, nscf_data)]
 
 job = DFJob(name, local_dir, joinpath(testjobpath, "Pt.cif"), calculations,
       :prefix       => "$name",

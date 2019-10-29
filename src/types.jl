@@ -179,7 +179,7 @@ function parse_mpi_flags(line::Vector{<:SubString})
     eflags
 end
 
-const RUN_EXECS = ["mpirun"]
+const RUN_EXECS = ["mpirun","mpi","mpiexec"]
 allexecs() = vcat(RUN_EXECS, QE_EXECS, WAN_EXECS, ELK_EXECS)
 parseable_execs() = vcat(QE_EXECS, WAN_EXECS, ELK_EXECS)
 has_parseable_exec(l::String) = occursin(">", l) && any(occursin.(parseable_execs(), (l,)))
@@ -207,7 +207,7 @@ isparseable(exec::Exec) = exec.exec ∈ parseable_execs()
 is_qe_exec(exec::Exec)      = exec.exec ∈ QE_EXECS
 is_wannier_exec(exec::Exec) = exec.exec ∈ WAN_EXECS
 is_elk_exec(exec::Exec)     = exec.exec ∈ ELK_EXECS
-is_mpi_exec(exec::Exec)     = exec.exec == "mpirun"
+is_mpi_exec(exec::Exec)     = occursin("mpi", exec.exec)
 
 function inputparser(exec::Exec)
     if is_qe_exec(exec) 

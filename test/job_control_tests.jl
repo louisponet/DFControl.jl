@@ -83,10 +83,10 @@ setflow!(job, ""=>false)
 setflow!(job, "nscf" => true, "bands" => true)
 @test job.inputs[3].run
 
-
+@show job.inputs
 save(job)
 job2 = DFJob(local_dir)
-
+@show job2.inputs
 begin
     for (calc, calc2) in zip(job.inputs, job2.inputs)
 

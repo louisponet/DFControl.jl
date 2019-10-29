@@ -295,8 +295,8 @@ function gencalc_projwfc(template::DFInput, Emin, Emax, DeltaE, extraflags...; n
     end
     tdegaussflag = flag(template, :degauss)
     degauss = tdegaussflag != nothing ? tdegaussflag : 0.0
-    if hasexec(template, "mpirun")
-        excs = [exec(template, "mpirun"), Exec("projwfc.x", execs(template)[end].dir)]
+    if length(execs(template)) == 2
+        excs = [execs(template)[1], Exec("projwfc.x", execs(template)[end].dir)]
     else
         excs = [Exec("projwfc.x", execs(template)[end].dir)]
     end

@@ -277,11 +277,11 @@ function read_job_line(line)
     execs = Exec[]
     for (e, flags) in exec_and_flags
         dir, efile = splitdir(e)
-        if occursin("mpirun", e)
+        if occursin("mpi", e)
             push!(execs, Exec(efile, dir, parse_mpi_flags(flags)))
         elseif efile == "wannier90.x"
             push!(execs, Exec(efile, dir, parse_wan_execflags(flags)))
-        elseif any(occursin.(QE_EXECS, (efile,)))
+        elseif any(occursin.(QE_EXECS, (efile,))) && !occursin("pw2wannier90", efile)
             push!(execs, Exec(efile, dir, parse_qeexecflags(flags)))
         elseif any(occursin.(ELK_EXECS, (efile,)))
 	        input = "elk.in"
