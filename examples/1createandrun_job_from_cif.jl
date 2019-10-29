@@ -42,6 +42,7 @@ nscf_data = merge(bands_data, Dict(:k_points => (10, 10, 10)))
  #the order here is the order in which the calculations will run! The first string in the tuple is the executable name that will be ran, which should be in the bin dir.
 
 #Now we load the cif file and create a `DFJob` from it.
+calculations= [:scf => (execs, scf_data), :bands => (execs, bands_data), :nscf => (execs, nscf_data)] 
 
 job = DFJob(name, local_dir, "/home/ponet/Downloads/9011998.cif", calculations,
       :prefix       => "$name",
@@ -71,16 +72,14 @@ qstat()
 #these default to run the commands on the default server
 
 #hopefully everything went according to plan and we can watch our pulloutputs
-out = pulloutputs(job)
+out = outputdata(job)
 
 #now the bandstructure can be plotted
-bands = qe_read_output(out[2])[:bands]
-#alt:
-bands = qe_read_bands_file(out[2])
+bands = out["bands"][:bands]
+#or
+bands = readbands(job["bands"])
 
-fermi = qe_read_output(out[1])[:fermi]
-#alt:
-fermi = qe_read_fermi_from_output(out[1])
+fermi = readfermi(job["scf"])[:fermi]
 using Plots
 
 plot(bands, fermi=fermi)
