@@ -521,26 +521,26 @@ function bandgap(job::DFJob, fermi=readfermi(getfirst(isscfcalc, inputs(job))))
 	return bandgap(bands, fermi)
 end
 
-"""
-    symmetry_operators(j::DFJob; maxsize=52, tolerance=$DEFAULT_TOLERANCE)
-    symmetry_operators(s::Structure; maxsize=52, tolerance=$DEFAULT_TOLERANCE)
+# """
+#     symmetry_operators(j::DFJob; maxsize=52, tolerance=$DEFAULT_TOLERANCE)
+#     symmetry_operators(s::Structure; maxsize=52, tolerance=$DEFAULT_TOLERANCE)
 
-Finds and returns all the rotations and translations that are symmetry operators of the structure.
-"""
-symmetry_operators(j::DFJob; kwargs...) = symmetry_operators(j.structure; kwargs...)
+# Finds and returns all the rotations and translations that are symmetry operators of the structure.
+# """
+# symmetry_operators(j::DFJob; kwargs...) = symmetry_operators(j.structure; kwargs...)
 
-"""
-    international_symbol(j::DFJob; tolerance=$DEFAULT_TOLERANCE)
-    international_symbol(s::Structure; tolerance=$DEFAULT_TOLERANCE)
+# """
+#     international_symbol(j::DFJob; tolerance=$DEFAULT_TOLERANCE)
+#     international_symbol(s::Structure; tolerance=$DEFAULT_TOLERANCE)
 
-Returns the international symbol of the space group of the structure.
-"""
-international_symbol(j::DFJob; kwargs...) = international_symbol(j.structure; kwargs...)
+# Returns the international symbol of the space group of the structure.
+# """
+# international_symbol(j::DFJob; kwargs...) = international_symbol(j.structure; kwargs...)
 
-"""
-    niggli_reduce(j::DFJob; tolerance=$DEFAULT_TOLERANCE)
-    niggli_reduce(s::Structure; tolerance=$DEFAULT_TOLERANCE)
+# """
+#     niggli_reduce(j::DFJob; tolerance=$DEFAULT_TOLERANCE)
+#     niggli_reduce(s::Structure; tolerance=$DEFAULT_TOLERANCE)
 
-Returns the niggli reduced lattice cell.
-"""
-niggli_reduce(j::DFJob; kwargs...) = niggli_reduce(j.structure; kwargs...)
+# Returns the niggli reduced lattice cell.
+# """
+# niggli_reduce(j::DFJob; kwargs...) = niggli_reduce(j.structure; kwargs...)
