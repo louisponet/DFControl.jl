@@ -150,8 +150,10 @@ function setpseudo!(at::AbstractAtom, pseudo::Pseudo; print=true)
 	atom(at).pseudo = pseudo
 end
 
-setprojections!(at::AbstractAtom, projections::Vector{Projection}) =
+function setprojections!(at::AbstractAtom, projections::Vector{Projection}; print=true)
+    print && @info "Setting projections for atom $(name(at)) to $projections"
     atom(at).projections = projections
+end
 
 bondlength(at1::AbstractAtom{T}, at2::AbstractAtom{T}, R=T(0.0)) where T<:AbstractFloat = norm(position_cart(at1) - position_cart(at2) - R)
 

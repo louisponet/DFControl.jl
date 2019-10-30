@@ -132,6 +132,8 @@ Base.insert!(job::DFJob, index::Int, input::DFInput) = insert!(job.inputs, index
 Base.push!(job::DFJob, input::DFInput) = push!(job.inputs, input)
 Base.pop!(job::DFJob) = pop!(job.inputs)
 
+Base.append!(job::DFJob, args...) = append!(job.inputs, args...)
+
 """Access an input inside the job using it's name. E.g `job["scf"]`"""
 function Base.getindex(job::DFJob, id::String)
     tmp = getfirst(x -> name(x)==id, inputs(job))
