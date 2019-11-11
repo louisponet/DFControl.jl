@@ -111,7 +111,7 @@ function configuredefault_pseudos(;server = getdefault_server(), pseudo_dirs=get
             if element in elsyms
                 t  = Pseudo[Pseudo(pseudo, pseudo_dirs[name])]
                 j = 1
-                while j + i <= length(pseudos) && Symbol(split(pseudos[i + j],".")[1]) == element
+                while j + i <= length(pseudos) && Symbol(titlecase(String(split(split(pseudos[i+j], ".")[1], "_")[1]))) == element
                     push!(t, Pseudo(pseudos[i + j], pseudo_dirs[name]))
                     j += 1
                 end
