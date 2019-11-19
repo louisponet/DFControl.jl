@@ -177,6 +177,10 @@ isdftucalc(input::DFInput)         = false
 ismagneticcalc(input::DFInput{QE}) = flag(input, :nspin) ∈ [2, 4] || (flag(input, :lda_plus_u) == true && flag(input, :noncolin) == true)
 ismagneticcalc(input::DFInput)     = false
 
+issoccalc(input::DFInput{QE}) = flag(input, :lspinorb) == true && flag(input, :noncolin) == true
+issoccalc(input::DFInput{Wannier90}) = flag(input, :spinors) == true
+issoccalc(input::DFInput) = false
+
 #TODO review this!
 outdata(input::DFInput) = input.outdata
 hasoutput(input::DFInput) = !isempty(outdata(input))

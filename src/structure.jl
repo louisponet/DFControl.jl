@@ -49,12 +49,12 @@ hasprojections_assert(str::AbstractStructure) =
 reciprocal(cell::AbstractMatrix) = inv(cell)
 
 """
-    setprojections!(str::Structure, projs::Pair...)
+    setprojections!(str::Structure, projs::Pair...; soc=false)
 
 Sets the projections of the specified atoms. `projs` has to be of form `:atsym => [:proj]`,
-where proj = :s, :p, :d, :f, etc.
+where proj = :s, :p, :d, :f, etc. If `soc` is set to `true` both up and down projections will be taken into account.
 """
-function setprojections!(str::Structure, projs::Pair...)
+function setprojections!(str::Structure, projs::Pair...; soc=false)
     projdict = Dict(projs)
     for at in unique(str.atoms)
         if !haskey(projdict, name(at))
@@ -62,7 +62,7 @@ function setprojections!(str::Structure, projs::Pair...)
         end
     end
     emptyprojections!(str)
-    addprojections!(atoms(str), projdict)
+    addprojections!(atoms(str), projdict, soc)
 end
 
 function emptyprojections!(str::Structure)

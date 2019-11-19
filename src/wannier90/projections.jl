@@ -32,7 +32,7 @@ orbsize(proj::Projection) = proj.last - proj.start + 1
 """
 Adds projections to atoms.
 """
-function addprojections!(atoms, projections_)
+function addprojections!(atoms, projections_, soc)
     t_start = 1
     for (proj_at, projs) in projections_
         for at in atoms
@@ -41,7 +41,7 @@ function addprojections!(atoms, projections_)
             end
             for proj in projs
                 if name(at) == proj_at
-                    size   = orbsize(proj)
+                    size   = soc ? 2*orbsize(proj) : orbsize(proj)
                     t_proj = Projection(orbital(proj), t_start, t_start + size - 1)
                     push!(projections(at), t_proj)
                     t_start += size

@@ -365,7 +365,7 @@ function setwanenergies!(job::DFJob, nscf::DFInput{QE}, Emin::Real; Epad=5.0)
     bands = readbands(nscf)
     wancalcs = searchinputs(job, Wannier90)
     @assert length(wancalcs) != 0 "Job ($(job.name)) has no Wannier90 calculations, nothing to do."
-    nbnd = isnoncolincalc(nscf) ? 2 * nprojections(structure(job)) : nprojections(structure(job))
+    nbnd = nprojections(structure(job))
     @info "num_bands=$nbnd (inferred from provided projections)."
     winmin, frozmin, frozmax, winmax = wanenergyranges(Emin, nbnd, bands, Epad)
     map(x->setflags!(x, :dis_win_min => winmin, :dis_froz_min => frozmin, :dis_froz_max => frozmax, :dis_win_max => winmax, :num_wann => nbnd, :num_bands=>length(bands)), wancalcs)
@@ -445,8 +445,10 @@ projections(job::DFJob) = projections(structure(job))
 """
 sets the projections of the specified atoms inside the job structure.
 """
-setprojections!(job::DFJob, projections...) =
-    setprojections!(job.structure, projections...)
+function setprojections!(job::DFJob, projections...)
+    socid = findfirst(issoccalc, inputs(job))
+    setprojections!(job.structure, projections...; soc=socid !== nothing)
+end
 
 for hub_param in (:U, :J0, :α, :β)
 	f = Symbol("set_Hubbard_$(hub_param)!")
