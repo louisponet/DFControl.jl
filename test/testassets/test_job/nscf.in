@@ -2,8 +2,8 @@
   prefix = 'Pt'
   verbosity = 'high'
   calculation = 'nscf'
-  outdir = '/home/ponet/.julia/dev/DFControl/test/testassets/test_job/outputs'
-  pseudo_dir = '/home/ponet/.julia/dev/DFControl/test/testassets/test_job'
+  outdir = '/home/ponet/.julia/environments/DFControlDEV/test/testassets/test_job/outputs'
+  pseudo_dir = '/home/ponet/.julia/environments/DFControlDEV/test/testassets/test_job'
   restart_mode = 'from_scratch'
 /
 

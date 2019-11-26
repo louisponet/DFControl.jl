@@ -80,4 +80,6 @@ module DFControl
 #     else
 #       error("DFControl not properly installed. Please run Pkg.build(\"DFControl\")")
 # end
+    include("precompile.jl")
+    _precompile_()
 end

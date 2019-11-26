@@ -130,13 +130,13 @@ end
 setcutoffs!(job)
 @test job["scf"][:ecutwfc] == 32.0
 
-setpseudos!(job, :Pt => Pseudo("Pt.UPF", "testassets/pseudos"))
-@test job.structure.atoms[1].pseudo == Pseudo("Pt.UPF", "testassets/pseudos")
+setpseudos!(job, :Pt => Pseudo("Pt.UPF", joinpath(testdir, "testassets/pseudos")))
+@test job.structure.atoms[1].pseudo == Pseudo("Pt.UPF", joinpath(testdir, "testassets/pseudos"))
 setpseudos!(job, :Pt, :test)
-@test job.structure.atoms[1].pseudo == Pseudo("Pt.UPF", "testassets/pseudos")
+@test job.structure.atoms[1].pseudo == Pseudo("Pt.UPF", joinpath(testdir, "testassets/pseudos"))
 
 setpseudos!(job, :test)
-@test job.structure.atoms[1].pseudo == Pseudo("Pt.UPF", "testassets/pseudos")
+@test job.structure.atoms[1].pseudo == Pseudo("Pt.UPF", joinpath(testdir, "testassets/pseudos"))
 
 
 testorbs = [:s, :p]
