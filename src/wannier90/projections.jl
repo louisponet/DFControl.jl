@@ -6,6 +6,7 @@ end
 const orbitals = [
     Orbital(:s, 1, 0),
     Orbital(:p, 3, 1),
+    Orbital(:pz, 1, 1),
     Orbital(:d, 5, 2),
     Orbital(:f, 7, 3),
     Orbital(:dz2, 1, 2),
@@ -35,11 +36,11 @@ Adds projections to atoms.
 function addprojections!(atoms, projections_, soc)
     t_start = 1
     for (proj_at, projs) in projections_
-        for at in atoms
-            if length(projs) <= length(projections(at))
-                continue
-            end
-            for proj in projs
+        for proj in projs
+            for at in atoms
+                if length(projs) <= length(projections(at))
+                    continue
+                end
                 if name(at) == proj_at
                     size   = soc ? 2*orbsize(proj) : orbsize(proj)
                     t_proj = Projection(orbital(proj), t_start, t_start + size - 1)

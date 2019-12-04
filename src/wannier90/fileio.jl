@@ -10,9 +10,9 @@ function extract_atoms(atoms_block::T, proj_block::T, cell::Mat3{LT}, spinors=fa
     out_ats = Atom{Float64, LT}[]
     if projections_ != nothing
         t_ats = Atom{Float64, LT}[]
-        for (pos_at, pos) in atoms
-            for ps in pos
-                for (proj_at, projs) in projections_
+        for (proj_at, projs) in projections_
+            for (pos_at, pos) in atoms
+                for ps in pos
                     if proj_at != pos_at
                         continue
                     end
@@ -86,7 +86,7 @@ function wan_read_input(::Type{T}, f::IO) where T
             block_name = Symbol(split(lowercase(line))[end])
 
             if block_name == :projections
-                proj_dict = Dict{Symbol,Array{Symbol,1}}()
+                proj_dict = Tuple{Symbol,Array{Symbol,1}}[]
                 line      = readline(f)
                 while !occursin("end", lowercase(line))
                     if occursin("!", line) || line == ""
@@ -101,7 +101,7 @@ function wan_read_input(::Type{T}, f::IO) where T
                         split_line      = strip_split(line, ':')
                         atom            = Symbol(split_line[1])
                         projections     = [Symbol(proj) for proj in strip_split(split_line[2], ';')]
-                        proj_dict[atom] = projections
+                        push!(proj_dict,(atom,projections))
                         line = readline(f)
                     end
                 end
