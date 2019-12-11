@@ -525,6 +525,19 @@ function bandgap(job::DFJob, fermi=readfermi(getfirst(isscfcalc, inputs(job))))
 	return bandgap(bands, fermi)
 end
 
+"Searches for the first scf or nscf calculation with output, and reads the fermi level from it."
+function readfermi(job::DFJob)
+    input = getfirst(x -> (isscfcalc(x) || isnscfcalc(x)) && hasoutfile(x), inputs(job))
+    @assert input !== nothing "Job does not have a valid scf or nscf output."
+    return readfermi(input)
+end
+
+"Searches for the first bands calculation with output, and reads the fermi level from it."
+function readbands(job::DFJob)
+    input = getfirst(x -> isbandscalc(x) && hasoutfile(x), inputs(job))
+    @assert input !== nothing "Job does not have a valid bands output."
+    return readbands(input)
+end
 # """
 #     symmetry_operators(j::DFJob; maxsize=52, tolerance=$DEFAULT_TOLERANCE)
 #     symmetry_operators(s::Structure; maxsize=52, tolerance=$DEFAULT_TOLERANCE)
