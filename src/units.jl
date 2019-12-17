@@ -1,6 +1,7 @@
 Unitful.register(@__MODULE__)
 Base.eltype(::Type{Length{T}}) where T = T
-@unit Ang "Ang" Angstrom              1e-1u"nm"               false
+using Unitful: angstrom
+const Ang = angstrom
 @unit e₀  "eₒ"  ElementaryCharge      1.602176620898e-19*u"C" false
 @unit kₑ  "kₑ"  CoulombForceConstant  1/(4π)u"ϵ0"             false
 @unit a₀  "a₀"  BohrRadius            1u"ħ^2/(1kₑ*me*e₀^2)"   false
