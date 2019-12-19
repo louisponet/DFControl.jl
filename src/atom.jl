@@ -49,8 +49,8 @@ getpseudoset(at::AbstractAtom) = getpseudoset(elsym(at), pseudo(at))
 ismagnetic(at::AbstractAtom) = !iszero(sum(magnetization(at)))
 
 "Takes a Vector of atoms and returns a Vector with the atoms having unique symbols."
-function Base.unique(atoms::Vector{<:AbstractAtom{T}}) where T <: AbstractFloat
-    uni = AbstractAtom{T}[]
+function Base.unique(atoms::Vector{A}) where A <: AbstractAtom
+    uni = A[]
     for at in atoms
         if findfirst(x -> isequal_species(x, at), uni) === nothing
             push!(uni, at)
