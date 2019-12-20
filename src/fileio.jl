@@ -233,6 +233,7 @@ function write_job_postamble(f, job::DFJob)
     if !isempty(job.server_dir)
         dir = splitpath(job.local_dir)[end]
         write(f, "cp -r $(joinpath(job.server_dir, dir)) $(job.local_dir)\n")
+        write(f, "rm -r $(joinpath(job.server_dir, dir))\n")
     end
 end
 
@@ -379,8 +380,8 @@ function read_job_inputs(job_file::String)
                 else
                     push!(header, line)
                 end
-            elseif occursin("cd -r", line) && isempty(serverdir)
-                serverdir = split(line)[end]
+            elseif occursin("cp -r", line) && isempty(serverdir)
+                serverdir = splitdir(string(split(line)[end]))[1]
 	        else
 	            push!(header, line)
 	        end
