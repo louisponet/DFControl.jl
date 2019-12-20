@@ -193,7 +193,7 @@ function sanitizeflags!(job::DFJob)
         end
     end
     for i in filter(x -> package(x) == QE, inputs(job))
-        outdir = isempty(job.server_dir) ? joinpath(job, "outputs") : joinpath(job.server_dir, "outputs")
+        outdir = isempty(job.server_dir) ? joinpath(job, "outputs") : joinpath(job.server_dir, splitdir(job.local_dir)[end], "outputs")
         setflags!(i, :outdir => "$outdir", print=false)
 	    set_hubbard_flags!(i, job.structure)
 	    set_starting_magnetization_flags!(i, job.structure)
