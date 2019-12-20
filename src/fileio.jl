@@ -224,7 +224,7 @@ end
 function write_job_preamble(f, job::DFJob)
     if !isempty(job.server_dir)
         write(f, "cp -r $(job.local_dir) $(job.server_dir) \n")
-        write(f, "cd -r $(job.server_dir) \n")
+        write(f, "cd $(job.server_dir) \n")
     end
 end
 
