@@ -223,14 +223,16 @@ end
 
 function write_job_preamble(f, job::DFJob)
     if !isempty(job.server_dir)
-        write(f, "cp -r $(job.local_dir) $(job.server_dir) \n")
-        write(f, "cd $(job.server_dir) \n")
+        dir = splitpath(job.local_dir)[end]
+        write(f, "cp -r $(job.local_dir) $(joinpath(job.server_dir, dir)) \n")
+        write(f, "cd $(joinpath(job.server_dir, dir)) \n")
     end
 end
 
 function write_job_postamble(f, job::DFJob)
     if !isempty(job.server_dir)
-        write(f, "cp -r $(job.server_dir) $(job.local_dir)\n")
+        dir = splitpath(job.local_dir)[end]
+        write(f, "cp -r $(joinpath(job.server_dir, dir)) $(job.local_dir)\n")
     end
 end
 
