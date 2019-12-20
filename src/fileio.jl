@@ -381,7 +381,7 @@ function read_job_inputs(job_file::String)
                     push!(header, line)
                 end
             elseif occursin("cp -r", line) && isempty(serverdir)
-                serverdir = splitdir(string(split(line)[end]))[1]
+                serverdir = split(line)[end]
 	        else
 	            push!(header, line)
 	        end
