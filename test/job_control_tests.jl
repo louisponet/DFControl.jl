@@ -1,7 +1,9 @@
 using DFControl, Test
 
 testjobpath = joinpath(testdir, "testassets", "test_job")
+
 job = DFJob(testjobpath);
+job4 = DFJob(testjobpath)
 
 #output stuff
 out = outputdata(job;print=false,onlynew=false);
@@ -83,10 +85,8 @@ setflow!(job, ""=>false)
 setflow!(job, "nscf" => true, "bands" => true)
 @test job.inputs[3].run
 
-@show job.inputs
 save(job)
 job2 = DFJob(local_dir)
-@show job2.inputs
 begin
     for (calc, calc2) in zip(job.inputs, job2.inputs)
 
@@ -170,7 +170,6 @@ setdataoption!(job, "nscf",:k_points, :blabla, print=false)
 @test data(job, "nscf", :k_points).option == :blabla
 setdataoption!(job, :k_points, :test, print=false)
 @test data(job, "nscf", :k_points).option == :test
-
 
 report = progressreport(job; onlynew=false, print=false)
 @test report[:fermi] == 17.4572
@@ -280,10 +279,16 @@ DFControl.sanitize_magnetization!(job)
 DFControl.sanitize_projections!(job)
 @test projections(atoms(job, :Pt1)[1]) != projections(atoms(job, :Pt2)[1])
 
+job4.server_dir = "/tmp"
+save(job4)
+job3 = DFJob(job4.local_dir)
+
+@test job3.server_dir == "/tmp"
+
 rm.(DFControl.inpath.(job.inputs))
 
-rm(joinpath(splitdir(DFControl.inpath(job.inputs[1]))[1], "pw2wan_wanup.in"))
-rm(joinpath(splitdir(DFControl.inpath(job.inputs[1]))[1], "pw2wan_wandn.in"))
+# rm(joinpath(splitdir(DFControl.inpath(job.inputs[1]))[1], "pw2wan_wanup.in"))
+# rm(joinpath(splitdir(DFControl.inpath(job.inputs[1]))[1], "pw2wan_wandn.in"))
 rm(joinpath(job.local_dir, "job.tt"))
 rm.(joinpath.((job.local_dir,), filter(x -> occursin("UPF", x), readdir(job.local_dir))))
 

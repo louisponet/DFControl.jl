@@ -807,11 +807,11 @@ function write_structure(f, input::DFInput{QE}, structure; relative_positions=tr
     write(f, "\n")
 end
 
-function qe_generate_pw2waninput(input::DFInput{Wannier90}, qeprefix, runexecs)
+function qe_generate_pw2waninput(input::DFInput{Wannier90}, nscf_input::DFInput{QE}, runexecs)
     flags = Dict()
-    flags[:prefix] = qeprefix
+    flags[:prefix] = nscf_input[:prefix]
     flags[:seedname] = "$(name(input))"
-    flags[:outdir] = "$(joinpath(dir(input), "outputs"))"
+    flags[:outdir] = nscf_input[:outdir]
     flags[:wan_mode] = "standalone"
     flags[:write_mmn] = true
     flags[:write_amn] = true

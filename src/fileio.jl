@@ -118,7 +118,7 @@ function write_job_name(f, job::DFJob)
 end
 
 function write_job_header(f, job::DFJob)
-    job_header = job.header == "" ? getdefault_jobheader() : job.header
+    job_header = isempty(job.header) ? getdefault_jobheader() : job.header
     for line in job_header
         if occursin("\n", line)
             write(f, line)
@@ -191,24 +191,26 @@ function writetojob(f, job, _input::DFInput{Wannier90}; kwargs...)
     seedname = name(_input)
 
 	nscf_calc = getfirst(x -> isnscfcalc(x), job.inputs)
-    runexec   = nscf_calc.execs
-    # For elk the setup necessary for the wan_calc needs to be done before writing the wan input
-    # because it's inside elk.in
-	if package(nscf_calc) == QE
-	    pw2waninput = qe_generate_pw2waninput(_input, "$(job.name)", runexec)
-	    preprocess  = pop!(flags(_input), :preprocess)
+	if nscf_calc !== nothing
+        runexec   = nscf_calc.execs
+        # For elk the setup necessary for the wan_calc needs to be done before writing the wan input
+        # because it's inside elk.in
+    	if package(nscf_calc) == QE
+    	    pw2waninput = qe_generate_pw2waninput(_input, nscf_calc, runexec)
+    	    preprocess  = pop!(flags(_input), :preprocess)
 
-	    if !preprocess || !should_run
-	        write(f, "#")
-	    end
-	    writeexec.((f,), execs(_input))
-	    write(f, "-pp $filename > $(outfilename(_input))\n")
+    	    if !preprocess || !should_run
+    	        write(f, "#")
+    	    end
+    	    writeexec.((f,), execs(_input))
+    	    write(f, "-pp $filename > $(outfilename(_input))\n")
 
-	    save(_input, job.structure; kwargs...)
-	    writetojob(f, job, pw2waninput; kwargs...)
-	    flags(_input)[:preprocess] = preprocess
-    elseif package(nscf_calc) == Elk
-	    pw2waninput = job["elk2wannier"]
+    	    save(_input, job.structure; kwargs...)
+    	    writetojob(f, job, pw2waninput; kwargs...)
+    	    flags(_input)[:preprocess] = preprocess
+        elseif package(nscf_calc) == Elk
+    	    pw2waninput = job["elk2wannier"]
+        end
     end
 
     if !should_run
@@ -216,7 +218,20 @@ function writetojob(f, job, _input::DFInput{Wannier90}; kwargs...)
     end
     writeexec.((f, ), execs(_input))
     write(f, "$filename > $(outfilename(_input))\n")
-    return _input, pw2waninput
+    return (_input,)
+end
+
+function write_job_preamble(f, job::DFJob)
+    if !isempty(job.server_dir)
+        write(f, "cp -r $(job.local_dir) $(job.server_dir) \n")
+        write(f, "cd -r $(job.server_dir) \n")
+    end
+end
+
+function write_job_postamble(f, job::DFJob)
+    if !isempty(job.server_dir)
+        write(f, "cp -r $(job.server_dir) $(job.local_dir)\n")
+    end
 end
 
 """
@@ -231,6 +246,7 @@ function writejobfiles(job::DFJob; kwargs...)
         write(f, "#!/bin/bash\n")
         write_job_name(f, job)
         write_job_header(f, job)
+        write_job_preamble(f, job)
         written_inputs = DFInput[]
         abiinputs = Vector{DFInput{Abinit}}(filter(x -> package(x) == Abinit, inputs(job)))
         !isempty(abiinputs) && writetojob(f, job, abiinputs; kwargs...)
@@ -245,6 +261,7 @@ function writejobfiles(job::DFJob; kwargs...)
                 append!(written_inputs, writetojob(f, job, i; kwargs...))
             end
         end
+        write_job_postamble(f, job)
     end
 end
 
@@ -287,6 +304,7 @@ function read_job_line(line)
 	        input = "elk.in"
 	        output = "elk.out"
             push!(execs, Exec(efile, dir))
+
         end
     end
     return execs, input, output, run
@@ -319,6 +337,7 @@ function read_job_inputs(job_file::String)
     header = Vector{String}()
     inputs     = DFInput[]
     structures = AbstractStructure[]
+    serverdir = ""
     open(job_file, "r") do f
         readline(f)
         while !eof(f)
@@ -353,11 +372,13 @@ function read_job_inputs(job_file::String)
                     end
                 end
 	        elseif occursin("#SBATCH", line)
-	                if occursin("-J", line)
-	                    name = split(line)[end]
-	                else
-	                    push!(header, line)
-	                end
+                if occursin("-J", line)
+                    name = split(line)[end]
+                else
+                    push!(header, line)
+                end
+            elseif occursin("cd -r", line) && isempty(serverdir)
+                serverdir = split(line)[end]
 	        else
 	            push!(header, line)
 	        end
@@ -367,7 +388,7 @@ function read_job_inputs(job_file::String)
 	    error("Something went wrong and no valid structures could be read from input files.")
     end
     outstruct = mergestructures(structures)
-    return name, header, inputs, outstruct
+    return name, header, inputs, outstruct, serverdir
 end
 
 #---------------------------END GENERAL SECTION-------------------#

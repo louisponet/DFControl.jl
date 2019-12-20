@@ -15,13 +15,6 @@ mutable struct DFJob
     header       ::Vector{String}
     metadata     ::Dict
     function DFJob(name, structure, calculations, local_dir, server, server_dir, header = getdefault_jobheader())
-        if local_dir != ""
-            local_dir = local_dir
-        end
-
-        if server_dir != ""
-            server_dir = server_dir
-        end
         if !isabspath(local_dir)
             local_dir = abspath(local_dir)
         end
@@ -131,9 +124,8 @@ function DFJob(job_dir::String, T=Float64;
                   job_fuzzy     = "job",
                   new_job_name  = "",
                   new_local_dir = nothing,
-                  server        = getdefault_server(),
-                  server_dir    = "")
-    name, header, inputs, structure = read_job_inputs(joinpath(job_dir, searchdir(job_dir, job_fuzzy)[1]))
+                  server        = getdefault_server())
+    name, header, inputs, structure, server_dir = read_job_inputs(joinpath(job_dir, searchdir(job_dir, job_fuzzy)[1]))
     j_name = isempty(new_job_name) ? name : new_job_name
     structure_name = split(j_name, "_")[1]
     structure.name = structure_name
@@ -201,6 +193,8 @@ function sanitizeflags!(job::DFJob)
         end
     end
     for i in filter(x -> package(x) == QE, inputs(job))
+        outdir = isempty(job.server_dir) ? joinpath(job, "outputs") : joinpath(job.server_dir, "outputs")
+        setflags!(i, :outdir => "$outdir", print=false)
 	    set_hubbard_flags!(i, job.structure)
 	    set_starting_magnetization_flags!(i, job.structure)
     end

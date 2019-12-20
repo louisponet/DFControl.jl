@@ -112,7 +112,6 @@ function sanitizeflags!(input::DFInput)
 end
 
 function sanitizeflags!(input::DFInput{QE})
-    setflags!(input, :outdir => "$(joinpath(dir(input), "outputs"))", print=false)
     cleanflags!(input)
     if isvcrelaxcalc(input)
 	    #this is to make sure &ions and &cell are there in the input 
