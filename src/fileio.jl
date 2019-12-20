@@ -232,7 +232,7 @@ end
 function write_job_postamble(f, job::DFJob)
     if !isempty(job.server_dir)
         dir = splitpath(job.local_dir)[end]
-        write(f, "cp -r $(joinpath(job.server_dir, dir)) $(job.local_dir)\n")
+        write(f, "cp -r $(joinpath(job.server_dir, dir)) $(splitdir(job.local_dir)[1])\n")
         write(f, "rm -r $(joinpath(job.server_dir, dir))\n")
     end
 end
