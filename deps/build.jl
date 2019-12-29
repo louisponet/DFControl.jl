@@ -77,31 +77,4 @@ if !ispath(pythonpath)
     rm(relpath("downloads"), recursive=true)
 end
 
-# spglibpath = relpath("spglib/lib/libsymspg.so")
-# if !ispath(spglibpath)
-#     spglibdir = relpath("spglib")
-#     if !ispath(spglibdir)
-#         mkdir(spglibdir)
-#     end
-
-#     spgdownloads = joinpath(spglibdir, "downloads") 
-#     if !ispath(spgdownloads)
-#         mkdir(spgdownloads)
-#     end
-#     spgzip = joinpath(spgdownloads, "spglib-master.zip")
-#     download("https://github.com/atztogo/spglib/archive/master.zip", spgzip)
-#     run(unpack_cmd(spgzip, spglibdir, ".zip",""))
-#     cd(joinpath(spglibdir, "spglib-master"))
-#     run(`mkdir build`)
-#     cd("build")
-#     run(`cmake -DCMAKE_INSTALL_PREFIX="" ..`)
-#     run(`make`)
-#     run(`make DESTDIR=$spglibdir install`)
-# end
-
-# cd(@__DIR__)
-# open("deps.jl", "w") do f
-#     write(f, """const SPGLIB = joinpath(@__DIR__, "spglib","lib","libsymspg.so")\n""")
-# end
-
 include("asset_init.jl")

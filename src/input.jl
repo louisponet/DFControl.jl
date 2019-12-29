@@ -5,6 +5,8 @@ mutable struct InputData
     data   ::Any
 end
 name(data::InputData) = data.name
+Base.:(==)(d1::InputData, d2::InputData) =
+    all(x -> getfield(d1, x) == getfield(d2, x), fieldnames(InputData))
 
 @with_kw_noshow mutable struct DFInput{P <: Package}
     name     ::String
@@ -319,7 +321,8 @@ function set_starting_magnetization_flags!(input::DFInput{QE}, str::AbstractStru
 	setflags!(input, :starting_magnetization => starts, :angle1 => θs, :angle2 => ϕs; print=false)
 end
 
-
+Base.:(==)(i1::DFInput, i2::DFInput) =
+    all(x -> x == :outdata ? true : getfield(i1, x) == getfield(i2, x), fieldnames(DFInput)) 
 
 
 

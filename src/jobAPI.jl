@@ -538,26 +538,57 @@ function readbands(job::DFJob)
     @assert input !== nothing "Job does not have a valid bands output."
     return readbands(input)
 end
-# """
-#     symmetry_operators(j::DFJob; maxsize=52, tolerance=$DEFAULT_TOLERANCE)
-#     symmetry_operators(s::Structure; maxsize=52, tolerance=$DEFAULT_TOLERANCE)
+"""
+    symmetry_operators(j::DFJob; maxsize=52, tolerance=$DEFAULT_TOLERANCE)
+    symmetry_operators(s::Structure; maxsize=52, tolerance=$DEFAULT_TOLERANCE)
 
-# Finds and returns all the rotations and translations that are symmetry operators of the structure.
-# """
-# symmetry_operators(j::DFJob; kwargs...) = symmetry_operators(j.structure; kwargs...)
+Finds and returns all the rotations and translations that are symmetry operators of the structure.
+"""
+symmetry_operators(j::DFJob; kwargs...) = symmetry_operators(j.structure; kwargs...)
 
-# """
-#     international_symbol(j::DFJob; tolerance=$DEFAULT_TOLERANCE)
-#     international_symbol(s::Structure; tolerance=$DEFAULT_TOLERANCE)
+"""
+    international_symbol(j::DFJob; tolerance=$DEFAULT_TOLERANCE)
+    international_symbol(s::Structure; tolerance=$DEFAULT_TOLERANCE)
 
-# Returns the international symbol of the space group of the structure.
-# """
-# international_symbol(j::DFJob; kwargs...) = international_symbol(j.structure; kwargs...)
+Returns the international symbol of the space group of the structure.
+"""
+international_symbol(j::DFJob; kwargs...) = international_symbol(j.structure; kwargs...)
 
-# """
-#     niggli_reduce(j::DFJob; tolerance=$DEFAULT_TOLERANCE)
-#     niggli_reduce(s::Structure; tolerance=$DEFAULT_TOLERANCE)
+"""
+    niggli_reduce(j::DFJob; tolerance=$DEFAULT_TOLERANCE)
+    niggli_reduce(s::Structure; tolerance=$DEFAULT_TOLERANCE)
 
-# Returns the niggli reduced lattice cell.
-# """
-# niggli_reduce(j::DFJob; kwargs...) = niggli_reduce(j.structure; kwargs...)
+Returns the niggli reduced lattice cell.
+"""
+niggli_reduce(j::DFJob; kwargs...) = niggli_reduce(j.structure; kwargs...)
+
+for (calc, tn) in zip((:gencalc_bands, :gencalc_nscf, :gencalc_projwfc), ("scf", "scf", "nscf"))
+    @eval function $calc(job::DFJob, args...;template_name::String=$tn, kwargs...)
+            template = input(job, template_name)
+            @assert template !== nothing "No valid input with template_name $template_name found in job."
+            return $calc(template, args...; kwargs...)
+        end
+end
+
+"""
+    gencalc_wan(job::DFJob, min_window_determinator::Real; kwargs...)
+
+Automates the generation of wannier calculations based on the `job`.
+When a projwfc calculation is present in the `job`, `min_window_determinator` will be used to
+determine the threshold value for including a band in the window based on the projections, otherwise
+it will be used as the `Emin` value from which to start counting the number of bands needed for all
+projections.
+`extra_wan_flags` can be any extra flags for the Wannier90 input such as `write_hr` etc.
+"""
+function gencalc_wan(job::DFJob, min_window_determinator::Real, extra_wan_flags...; kwargs...)
+    nscf_input = input(job, "nscf")
+    projwfc_input = input(job, "projwfc")
+    if projwfc_input === nothing || !hasoutput(projwfc_input)
+        @info "No projwfc input found with valid output, using $min_window_determinator as Emin"
+        return gencalc_wan(nscf_input, job.structure, min_window_determinator, extra_wan_flags...; kwargs...)
+    else
+        @info "Valid projwfc output found, using $min_window_determinator as the dos threshold."
+        return gencalc_wan(nscf_input, job.structure, projwfc_input, min_window_determinator, extra_wan_flags...; kwargs...)
+    end
+end
+

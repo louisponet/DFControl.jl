@@ -3,6 +3,7 @@ using DFControl, Test
 testjobpath = joinpath(testdir, "testassets", "test_job")
 
 job = DFJob(testjobpath);
+@test deepcopy(job["scf"]) == job["scf"]
 job4 = DFJob(testjobpath)
 
 #output stuff
@@ -39,10 +40,19 @@ setkpoints!(nscf2, (3,3,3,0,0,1), print=false)
 fermi = outputdata(job, "nscf")[:fermi]
 @test fermi == 17.4572
 
-push!(job, gencalc_bands(job["bands"], [(0.5,0.0,0.5,10.0),(0.0,0.0,0.0,10.0),(0.5,0.5,0.5,1.0)], name="bands2"))
+
+tcalc = gencalc_bands(job["bands"], [(0.5,0.0,0.5,10.0),(0.0,0.0,0.0,10.0),(0.5,0.5,0.5,1.0)], name="bands2")
+
+@test gencalc_bands(job, [(0.5,0.0,0.5,10.0),(0.0,0.0,0.0,10.0),(0.5,0.5,0.5,1.0)], name = "bands2", template_name="bands") ==
+    tcalc
+
+push!(job, tcalc)
 @test job["bands2"][:calculation] == "bands"
 @test data(job, "bands2", :k_points).data == [(0.5,0.0,0.5,10.0),(0.0,0.0,0.0,10.0),(0.5,0.5,0.5,1.0)]
-push!(job, gencalc_nscf(job["nscf"], (10,10,10), name="nscf2"))
+
+tcalc = gencalc_nscf(job["nscf"], (10,10,10), name="nscf2")
+@test gencalc_nscf(job, (10,10,10), name="nscf2", template_name="nscf") == tcalc
+push!(job, tcalc)
 @test job["nscf2"][:calculation] == "nscf"
 push!(job, gencalc_scf(job["scf"], (5,5,5,1,1,1), name="1scf2"))
 @test job["1scf2"][:calculation] == "scf"
@@ -51,8 +61,9 @@ push!(job, gencalc_scf(job["scf"], (5,5,5,1,1,1), name="1scf2"))
 wanflags = [:write_hr => true, :wannier_plot => true]
 
 setprojections!(job, :Pt => [:s, :p, :d])
-wancalc = gencalc_wan(job["nscf"], structure(job), fermi-7.0; Epad=5.0, wanflags=wanflags)
-push!.((job,), wancalc)
+wancalc = gencalc_wan(job["nscf"], structure(job), fermi-7.0, wanflags...; Epad=5.0)
+@test wancalc == gencalc_wan(job, fermi-7.0, wanflags...; Epad=5.0)
+append!(job, wancalc)
 @test job["wan"][:write_hr] == job["wan"][:wannier_plot] == true
 
 wanout = outputdata(job, "wan")
@@ -76,7 +87,7 @@ job["nscf"][:starting_magnetization] = [[1.0, 2.0, 1.0]]
 
 job["nscf"][:Hubbard_J] = [0 1 2]
 @test job["nscf"][:Hubbard_J] == [0 1 2]
-push!.((job,), gencalc_wan(nscf, structure(job), fermi-7.0, Epad=5.0, wanflags=wanflags))
+push!.((job,), gencalc_wan(nscf, structure(job), fermi-7.0, wanflags..., Epad=5.0))
 
 #TODO: add test with the new wancalc from projwfc
 

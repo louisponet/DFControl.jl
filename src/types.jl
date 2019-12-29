@@ -57,6 +57,8 @@ mutable struct ExecFlag
     description::String
     value
 end
+Base.:(==)(e1::ExecFlag, e2::ExecFlag) =
+    all(x -> getfield(e1, x) == getfield(e2, x), (:symbol, :value))
 
 ExecFlag(e::ExecFlag, value) = ExecFlag(e.symbol, e.name, e.typ, e.description, value)
 ExecFlag(p::Pair{Symbol, T}) where T = ExecFlag(first(p), String(first(p)), T, "", last(p))
@@ -251,3 +253,5 @@ function rmflags!(exec::Exec, flags...)
 end
 hasflag(exec::Exec, s::Symbol) = findfirst(x->x.symbol == s, exec.flags) != nothing
 setexecdir!(exec::Exec, dir) = exec.dir = dir
+
+Base.:(==)(e1::Exec, e2::Exec) = all(x -> getfield(e1, x) == getfield(e2, x), fieldnames(Exec))

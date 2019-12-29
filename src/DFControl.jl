@@ -11,6 +11,9 @@ module DFControl
     @reexport using StaticArrays
     using Parameters
 
+    using spglib_jll
+    const SPGLIB = spglib_jll.libsymspg
+
 	@reexport using Unitful
 	import Unitful: Length, @unit, FreeUnits, unit, 𝐋, FreeUnits
 	include("units.jl")

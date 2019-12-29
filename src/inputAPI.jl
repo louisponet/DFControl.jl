@@ -257,6 +257,7 @@ gencalc_scf(template::DFInput, kpoints::NTuple{6, Int}, newflags...; name="scf")
 
 """
     gencalc_bands(template::DFInput, kpoints::Vector{NTuple{4}}, newflags...; name="bands")
+    gencalc_bands(job::DFJob, kpoints::Vector{NTuple{4}}, newflags...; name="bands", template_name="scf")
 
 Uses the information from the template and supplied kpoints to generate a bands input.
 Extra flags can be supplied which will be set for the generated input.
@@ -267,6 +268,7 @@ gencalc_bands(template::DFInput, kpoints::Vector{<:NTuple{4}}, newflags...; name
 
 """
     gencalc_nscf(template::DFInput, kpoints::NTuple{3, Int}, newflags...; name="nscf")
+    gencalc_nscf(job::DFJob, kpoints::NTuple{3, Int}, newflags...; name="nscf", template_name="scf")
 
 Uses the information from the template and supplied kpoints to generate an nscf input.
 Extra flags can be supplied which will be set for the generated input.
@@ -276,6 +278,7 @@ gencalc_nscf(template::DFInput, kpoints::NTuple{3, Int}, newflags...; name="nscf
 
 """
     gencalc_projwfc(template::DFInput, Emin, Emax, DeltaE, newflags...; name="projwfc")
+    gencalc_projwfc(job::DFJob, Emin, Emax, DeltaE, newflags...; name="projwfc", template_name="nscf")
 
 Uses the information from the template and supplied kpoints to generate a projwfc.x input.
 Extra flags can be supplied which will be set for the generated input.
@@ -310,17 +313,15 @@ function gencalc_projwfc(template::DFInput, Emin, Emax, DeltaE, extraflags...; n
 end
 
 """
-    gencalc_wan(nscf::DFInput{QE}, structure::AbstractStructure, Emin;
+    gencalc_wan(nscf::DFInput{QE}, structure::AbstractStructure, Emin, wanflags...;
                 Epad     = 5.0,
-                wanflags = nothing,
                 wanexec  = Exec("wannier90.x", ""))
 
 Generates a Wannier90 input to follow on the supplied `nscf` calculation. It uses the projections defined in the `structure`, and starts counting the required amount of bands from `Emin`.
 The `nscf` needs to have a valid output since it will be used in conjunction with `Emin` to find the required amount of bands and energy window for the Wannier90 calculation.
 """
-function gencalc_wan(nscf::DFInput{QE}, structure::AbstractStructure, Emin;
+function gencalc_wan(nscf::DFInput{QE}, structure::AbstractStructure, Emin, wanflags...;
                      Epad     = 5.0,
-                     wanflags = nothing,
                      wanexec  = Exec("wannier90.x", ""))
 
     hasoutput_assert(nscf)
@@ -370,17 +371,17 @@ function gencalc_wan(nscf::DFInput{QE}, structure::AbstractStructure, Emin;
 end
 
 """
-    gencalc_wan(nscf::DFInput{QE}, structure::AbstractStructure, projwfc::DFInput{QE}, threshold::Real; kwargs...)
+    gencalc_wan(nscf::DFInput{QE}, structure::AbstractStructure, projwfc::DFInput{QE}, threshold::Real, wanflags...; kwargs...)
 
 Generates a wannier calculation, that follows on the `nscf` calculation. Instead of passing Emin manually, the output of a projwfc.x run
 can be used together with a `threshold` to determine the minimum energy such that the contribution of the
 projections to the DOS is above the `threshold`.
 """
-function gencalc_wan(nscf::DFInput{QE}, structure::AbstractStructure, projwfc::DFInput{QE}, threshold::Real; kwargs...)
+function gencalc_wan(nscf::DFInput{QE}, structure::AbstractStructure, projwfc::DFInput{QE}, threshold::Real, args...; kwargs...)
     hasexec_assert(projwfc, "projwfc.x")
     hasoutput_assert(projwfc)
     Emin = Emin_from_projwfc(structure, projwfc, threshold)
-    gencalc_wan(nscf, structure, Emin; kwargs...)
+    gencalc_wan(nscf, structure, Emin, args...; kwargs...)
 end
 
 """
