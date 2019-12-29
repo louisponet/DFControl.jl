@@ -339,15 +339,15 @@ function gencalc_wan(nscf::DFInput{QE}, structure::AbstractStructure, Emin;
                 This generally gives errors because of omitted kpoints, needed for pw2wannier90.x"
     end
 
-    nbnd = isnoncolincalc(nscf) ? 2 * nprojections(structure) : nprojections(structure)
-    @info "num_bands=$nbnd (inferred from provided projections)."
+    nwann = nprojections(structure)
+    @info "num_wann=$nwann (inferred from provided projections)."
 
     bands = readbands(nscf)
     wanflags = wanflags != nothing ? SymAnyDict(wanflags) : SymAnyDict()
-    wanflags[:dis_win_min], wanflags[:dis_froz_min], wanflags[:dis_froz_max], wanflags[:dis_win_max] = wanenergyranges(Emin, nbnd, bands, Epad)
+    wanflags[:dis_win_min], wanflags[:dis_froz_min], wanflags[:dis_froz_max], wanflags[:dis_win_max] = wanenergyranges(Emin, nwann, bands, Epad)
 
     wanflags[:num_bands] = length(bands)
-    wanflags[:num_wann]  = nbnd
+    wanflags[:num_wann]  = nwann
     kpoints = data(nscf, :k_points).data
     wanflags[:mp_grid] = kakbkc(kpoints)
     wanflags[:preprocess] = true
