@@ -597,17 +597,18 @@ function qe_read_input(filename; execs=[Exec("pw.x")], run=true, structure_name=
         push!(used_lineids, i)
         atom_block = InputData(:atomic_positions,
                                cardoption(lines[i]),
-                               Dict{Symbol, Vector{Point3{Float64}}}() )
+                               Pair{Symbol, Vector{Point3{Float64}}}[])
 
         for k=1:nat
             push!(used_lineids, i+k)
             sline = split(lines[i+k])
             atsym = Symbol(sline[1])
             point = Point3(parse.(Float64, sline[2:4]))
-            if !haskey(atom_block.data, atsym)
-                atom_block.data[atsym] = [point]
+            at_id = findfirst(x -> first(x) == atsym, atom_block.data)
+            if at_id === nothing
+                push!(atom_block.data, atsym => [point])
             else
-                push!(atom_block.data[atsym], point)
+                push!(last(atom_block.data[at_id]), point)
             end
         end
 
