@@ -218,6 +218,27 @@ function wan_read_input(filename::String, T=Float64; execs=[Exec("wannier90.x")]
     return DFInput{Wannier90}(splitext(file)[1], dir, flags, data, execs, run), structure
 end
 
+function wan_parse_array_value(eltyp, value_str)
+    value_str = replace(value_str, "," => "")
+    spl = split(value_str)
+    arr = eltyp[]
+    for i in 1:length(spl)
+        if spl[i] == "t"
+            spl[i] = "true"
+        elseif spl[i] == "f"
+            spl[i] = "false"
+        end
+        s = spl[i]
+        if occursin("-", s)
+            t = split(s, '-')
+            append!(arr, collect(parse(eltyp, t[1]):parse(eltyp, t[2])))
+        else
+            append!(arr, parse(eltyp, s))
+        end
+    end
+    return arr
+end
+
 function wan_parse_flag_line(line::String)
     split_line = strip_split(line, '=')
     flag       = Symbol(split_line[1])
@@ -226,17 +247,13 @@ function wan_parse_flag_line(line::String)
     if flagtyp != String
 	    value = replace(value, "d" => "e")
     end
-    spl_val    = split(value)
-    if eltype(flagtyp) == Bool
-        for i = 1:length(spl_val)
-            if spl_val[i] == "t"
-                spl_val[i] = "true"
-            elseif spl_val[i] == "f"
-                spl_val[i] = "false"
-            end
-        end
+    if flagtyp <: Vector
+        parsed_val = wan_parse_array_value(eltype(flagtyp), value)
+    elseif flagtyp == String
+        parsed_val = value
+    else
+        parsed_val = parse.(eltype(flagtyp), split(value))
     end
-    parsed_val = flagtyp == String ? spl_val : parse.(eltype(flagtyp), spl_val)
     if length(parsed_val) == 1
         val = parsed_val[1]
     else

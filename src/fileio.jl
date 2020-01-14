@@ -23,17 +23,17 @@ function write_flag_line(f, flag, data, seperator="=", i="")
 
     if typeof(data) <: Array
 
-        if length(data) < 20
+        if length(data)%3 == 0 && eltype(data) != Int
+            write(f, "\n")
+            for i = 1:3:length(data)
+                write(f, "  $(data[i]) $(data[i + 1]) $(data[i + 2])\n")
+            end
+        else
             write(f, "  $(data[1])")
             for x in data[2:end]
                 write(f, " $x")
             end
             write(f, "\n")
-        else
-            write(f, "\n")
-            for i = 1:3:length(data)
-                write(f, "  $(data[i]) $(data[i + 1]) $(data[i + 2])\n")
-            end
         end
 
     else #this should work for anything singular valued data such as bools, ''s and other types
