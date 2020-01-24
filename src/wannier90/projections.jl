@@ -21,7 +21,7 @@ Base.convert(::Type{Symbol}, x::Orbital) = x.name
 orbsize(orb::Orbital) = orb.size
 orbsize(orb::Symbol)  = orbsize(orbital(orb))
 
-@with_kw struct Projection
+@with_kw_noshow struct Projection
     orb   ::Orbital = orbitals[1]
     start ::Int = 0
     last  ::Int = 0
@@ -29,6 +29,12 @@ end
 
 orbital(proj::Projection) = proj.orb
 orbsize(proj::Projection) = proj.last - proj.start + 1
+
+function Base.show(io::IO, proj::Projection)
+    dfprintln(io, crayon"cyan", "Orbital: ", crayon"reset", "$(proj.orb.name)") 
+    dfprintln(io, crayon"red", "start index: ", crayon"reset", "$(proj.start)")
+    dfprintln(io, crayon"red", "last index: ", crayon"reset", "$(proj.last)")
+end
 
 """
 Adds projections to atoms.
@@ -47,6 +53,15 @@ function addprojections!(atoms, projections_, soc)
                     push!(projections(at), t_proj)
                     t_start += size
                 end
+            end
+        end
+    end
+    @info "Projections are now:"
+    for at in atoms
+        if !isempty(projections(at))
+            @info "$(name(at));$(position_cryst(at)) :"
+            for p in projections(at)
+                Base.show(p)
             end
         end
     end

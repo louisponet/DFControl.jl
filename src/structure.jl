@@ -48,6 +48,14 @@ hasprojections_assert(str::AbstractStructure) =
 
 reciprocal(cell::AbstractMatrix) = inv(cell)
 
+a(str::AbstractStructure) = cell(str)[:,1]
+b(str::AbstractStructure) = cell(str)[:,2]
+c(str::AbstractStructure) = cell(str)[:,3]
+
+NearestNeighbors.KDTree(str::AbstractStructure, args...; kwargs...) =
+    NearestNeighbors.KDTree(position_cryst.(atoms(str)), args...; kwargs...)
+
+
 """
     setprojections!(str::Structure, projs::Pair...; soc=false)
 

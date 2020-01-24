@@ -24,7 +24,7 @@ export save, submit, abort, setflow!, setheaderword!, isrunning, progressreport,
 export searchinput, searchinputs, setcutoffs!, setname!
 
 #Interacting with the Structure inside DFJob
-export atom, atoms, setatoms!, setpseudos!, projections, setprojections!, cell,
+export atom, atoms, setatoms!, setpseudos!, projections, setprojections!, cell, a, b, c,
 	   set_magnetization!, symmetry_operators, international_symbol, niggli_reduce
 
 export create_supercell

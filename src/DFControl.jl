@@ -18,6 +18,9 @@ module DFControl
 	import Unitful: Length, @unit, FreeUnits, unit, 𝐋, FreeUnits
 	include("units.jl")
 
+	using NearestNeighbors
+    using Crayons
+
 
     abstract type Package end
     struct Wannier90 <: Package end
@@ -64,7 +67,6 @@ module DFControl
     export getdefault_pseudodirs
     export removedefault
 
-    using Crayons
     const dfprintln = println
     const dfprint = print
     include("display/overloads.jl")
