@@ -296,7 +296,7 @@ find_files(job::DFJob, str::AbstractString) = joinpath.((job,), searchdir(job.lo
 
 #TODO: only for QE
 function pdos(job, atsym)
-    projwfc = findfirst(isprojwfccalc, inputs(job))
+    projwfc = getfirst(isprojwfccalc, inputs(job))
     if package(projwfc) == QE
         files = filter(x->occursin("$atsym",x) && occursin("#", x), find_files(job, "pdos"))
         if isempty(files)
