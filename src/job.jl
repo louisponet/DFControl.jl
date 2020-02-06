@@ -303,7 +303,7 @@ function pdos(job, atsym)
             @error "No pdos files found in jobdir"
         end
         energies, = qe_read_pdos(files[1])
-        atdos = zeros(length(enegies))
+        atdos = zeros(length(energies))
 
         for f in files
             atdos .+= qe_read_pdos(f)[2][:,1]
