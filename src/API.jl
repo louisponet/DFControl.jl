@@ -36,6 +36,9 @@ export distance, set_position!, scale_bondlength!
 #Bands related functionality
 export bandgap
 
+#other postprocessing
+export pdos
+
 include("serverAPI.jl")
 export qstat, watch_qstat, qdel
 
