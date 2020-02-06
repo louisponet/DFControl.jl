@@ -293,3 +293,23 @@ function Base.pop!(job::DFJob, name::String)
 end
 
 find_files(job::DFJob, str::AbstractString) = joinpath.((job,), searchdir(job.local_dir, str))
+
+#TODO: only for QE
+function pdos(job, atsym)
+    projwfc = findfirst(isprojwfccalc, inputs(job))
+    if package(projwfc) == QE
+        files = filter(x->occursin("$atsym",x) && occursin("#", x), find_files(job, "pdos"))
+        if isempty(files)
+            @error "No pdos files found in jobdir"
+        end
+        energies, = qe_read_pdos(files[1])
+        atdos = zeros(length(enegies))
+
+        for f in files
+            atdos .+= qe_read_pdos(f)[2][:,1]
+        end
+        return (energies=energies, pdos=atdos)
+    else
+        @error "Not implemented for non-QE calculations"
+    end
+end
