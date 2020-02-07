@@ -365,9 +365,10 @@ function setwanenergies!(job::DFJob, nscf::DFInput{QE}, Emin::Real; Epad=5.0)
     bands = readbands(nscf)
     wancalcs = searchinputs(job, Wannier90)
     @assert length(wancalcs) != 0 "Job ($(job.name)) has no Wannier90 calculations, nothing to do."
-    nbnd = ismagneticcalc(nscf) && !isnoncolincalc(nscf) ? 2 * nprojections(structure(job)) : nprojections(structure(job))
+    nbnd = nprojections(structure(job))
     @info "num_bands=$nbnd (inferred from provided projections)."
-    winmin, frozmin, frozmax, winmax = wanenergyranges(Emin, nbnd, bands, Epad)
+    nbands_to_find = ismagneticcalc(nscf) && !isnoncolincalc(nscf) ? 2*nbnd : nbnd
+    winmin, frozmin, frozmax, winmax = wanenergyranges(Emin, nbands_to_find, bands, Epad)
     map(x->setflags!(x, :dis_win_min => winmin, :dis_froz_min => frozmin, :dis_froz_max => frozmax, :dis_win_max => winmax, :num_wann => nbnd, :num_bands=>length(bands)), wancalcs)
     return job
 end
@@ -592,26 +593,3 @@ function gencalc_wan(job::DFJob, min_window_determinator::Real, extra_wan_flags.
     end
 end
 
-#TODO: only for QE
-"Reads the pdos for a particular atom. Only works for QE." 
-function pdos(job, atsym)
-    projwfc = getfirst(isprojwfccalc, inputs(job))
-    scfcalc = getfirst(isscfcalc, inputs(job))
-    magnetic = ismagneticcalc(scfcalc)
-
-    if package(projwfc) == QE
-        files = filter(x->occursin("$atsym",x) && occursin("#", x), find_files(job, "pdos"))
-        if isempty(files)
-            @error "No pdos files found in jobdir"
-        end
-        energies, = qe_read_pdos(files[1])
-        atdos = magnetic ? zeros(length(energies), 2) : zeros(length(energies))
-
-        for f in files
-            atdos .+= magnetic ? qe_read_pdos(f)[2][:,1:2] : qe_read_pdos(f)[2][:,1]
-        end
-        return (energies=energies, pdos=atdos)
-    else
-        @error "Not implemented for non-QE calculations"
-    end
-end
