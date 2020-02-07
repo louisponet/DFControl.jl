@@ -62,7 +62,7 @@ NearestNeighbors.KDTree(str::AbstractStructure, args...; kwargs...) =
 Sets the projections of the specified atoms. `projs` has to be of form `:atsym => [:proj]`,
 where proj = :s, :p, :d, :f, etc. If `soc` is set to `true` both up and down projections will be taken into account.
 """
-function setprojections!(str::Structure, projs::Pair...; soc=false)
+function setprojections!(str::Structure, projs::Pair...; soc=false, kwargs...)
     projdict = Dict(projs)
     for at in unique(str.atoms)
         if !haskey(projdict, name(at))
@@ -70,7 +70,7 @@ function setprojections!(str::Structure, projs::Pair...; soc=false)
         end
     end
     emptyprojections!(str)
-    addprojections!(atoms(str), projdict, soc)
+    addprojections!(atoms(str), projdict, soc; kwargs...)
 end
 
 function emptyprojections!(str::Structure)

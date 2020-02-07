@@ -39,7 +39,7 @@ end
 """
 Adds projections to atoms.
 """
-function addprojections!(atoms, projections_, soc)
+function addprojections!(atoms, projections_, soc; print=true)
     t_start = 1
     for (proj_at, projs) in projections_
         for proj in projs
@@ -56,12 +56,12 @@ function addprojections!(atoms, projections_, soc)
             end
         end
     end
-    @info "Projections are now:"
+    print && @info "Projections are now:"
     for at in atoms
         if !isempty(projections(at))
-            @info "$(name(at));$(position_cryst(at)) :"
+            print && @info "$(name(at));$(position_cryst(at)) :"
             for p in projections(at)
-                Base.show(p)
+                print && Base.show(p)
             end
         end
     end

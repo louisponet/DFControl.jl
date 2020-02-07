@@ -246,8 +246,8 @@ function sanitize_magnetization!(job::DFJob)
                 else
                     tid2 = dftuid
                 end
-                atid = max(tid1, tid2)
-                a.name = Symbol(string(e.symbol)*"$atid")
+                atid = max(tid1, tid2) - 1
+                a.name = atid == 0 ? a.name : Symbol(string(e.symbol)*"$atid")
             end
         end
     end
@@ -259,7 +259,7 @@ function sanitize_projections!(job::DFJob)
     end
     uats = unique(atoms(job))
     projs = unique([name(at) => [p.orb.name for p in projections(at)] for at in uats])
-    setprojections!(job, projs...)
+    setprojections!(job, projs...;print=false)
 end
 
 "Checks the last created output file for a certain job."

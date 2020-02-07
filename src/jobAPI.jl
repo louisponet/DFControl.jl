@@ -458,9 +458,9 @@ projections(job::DFJob) = projections(structure(job))
 """
 sets the projections of the specified atoms inside the job structure.
 """
-function setprojections!(job::DFJob, projections...)
+function setprojections!(job::DFJob, projections...; kwargs...)
     socid = findfirst(issoccalc, inputs(job))
-    setprojections!(job.structure, projections...; soc=socid !== nothing)
+    setprojections!(job.structure, projections...; soc=socid !== nothing, kwargs...)
 end
 
 for hub_param in (:U, :J0, :α, :β)

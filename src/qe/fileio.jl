@@ -209,7 +209,6 @@ function qe_read_output(filename::String, T=Float64)
         if !haskey(out, :k_cryst)
             out[:k_cryst] = (out[:in_recip_cell]^-1,) .* out[:k_cart]
         end
-        @show unique(k_eigvals)
         if !isempty(k_eigvals)
             if colincalc
                 out[:bands_up]   = [DFBand(out[:k_cart], out[:k_cryst], zeros(length(out[:k_cart]))) for i = 1:length(k_eigvals[1])]
@@ -217,7 +216,6 @@ function qe_read_output(filename::String, T=Float64)
             else
                 out[:bands] = [DFBand(out[:k_cart], out[:k_cryst], zeros(length(out[:k_cart]))) for i = 1:length(k_eigvals[1])]
             end
-            @show length(k_eigvals)
             for i = 1:length(k_eigvals)
                 for i1=1:length(k_eigvals[i])
                     if colincalc
