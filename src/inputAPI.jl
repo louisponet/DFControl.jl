@@ -200,6 +200,8 @@ function readbands(input::DFInput)
     to = readoutput(input)
     if haskey(to, :bands)
         return to[:bands]
+    elseif haskey(to, :bands_up)
+        return (up=to[:bands_up], down=to[:bands_down])
     else
         error("No bands found in $(name(input)).")
     end
@@ -230,11 +232,25 @@ Automatically calculates and sets the wannier energies. This uses the projection
 function setwanenergies!(input::DFInput{Wannier90}, structure::AbstractStructure, nscf::DFInput, Emin::Real; Epad=5.0)
     hasoutput_assert(nscf)
     iscalc_assert(nscf, "nscf")
-    nbnd = isnoncolincalc(nscf) ? 2 * nprojections(structure) : nprojections(structure)
-    print && (@info "num_bands=$nbnd (inferred from provided projections).")
+    hasprojections_assert(structure)
+
     bands = readbands(nscf)
-    winmin, frozmin, frozmax, winmax = wanenergyranges(Emin, nbnd, bands, Epad)
-    setflags!(input, :dis_win_min => winmin, :dis_froz_min => frozmin, :dis_froz_max => frozmax, :dis_win_max => winmax, :num_wann => nbnd, :num_bands=>length(bands))
+    nwann = nprojections(structure)
+    @info "num_wann=$nwann (inferred from provided projections)."
+
+    if length(bands) == 2
+        num_bands = length(bands[1])
+        if hasflag(input, :spin) && input[:spin] == "up"
+            winmin, frozmin, frozmax, winmax = wanenergyranges(Emin, nwann, bands.up, Epad)
+        elseif hasflag(input, :spin) && input[:spin] == "down"
+            winmin, frozmin, frozmax, winmax = wanenergyranges(Emin, nwann, bands.down, Epad)
+        end
+    else
+        num_bands = length(bands)
+        winmin, frozmin, frozmax, winmax = wanenergyranges(Emin, nwann, bands, Epad)
+    end
+
+    setflags!(input, :dis_win_min => winmin, :dis_froz_min => frozmin, :dis_froz_max => frozmax, :dis_win_max => winmax, :num_wann => nwann, :num_bands=>num_bands;print=false)
     return input
 end
 
@@ -339,24 +355,16 @@ function gencalc_wan(nscf::DFInput{QE}, structure::AbstractStructure, Emin, wanf
                 If this was not intended please set it and rerun the nscf calculation.
                 This generally gives errors because of omitted kpoints, needed for pw2wannier90.x"
     end
+    wanflags = wanflags != nothing ? SymAnyDict(wanflags) : SymAnyDict()
 
     nwann = nprojections(structure)
     @info "num_wann=$nwann (inferred from provided projections)."
-
-    bands = readbands(nscf)
-    wanflags = wanflags != nothing ? SymAnyDict(wanflags) : SymAnyDict()
-    nbands_to_find = ismagneticcalc(nscf) && !isnoncolincalc(nscf) ? 2*nwann : nwann
-    wanflags[:dis_win_min], wanflags[:dis_froz_min], wanflags[:dis_froz_max], wanflags[:dis_win_max] = wanenergyranges(Emin, nbands_to_find, bands, Epad)
-
-    wanflags[:num_bands] = length(bands)
     wanflags[:num_wann]  = nwann
     kpoints = data(nscf, :k_points).data
     wanflags[:mp_grid] = kakbkc(kpoints)
-    wanflags[:preprocess] = true
     @info "mp_grid=$(join(wanflags[:mp_grid]," ")) (inferred from nscf input)."
-
+    wanflags[:preprocess] = true
 	isnoncolincalc(nscf) && (wanflags[:spinors] = true)
-
     kdata = InputData(:kpoints, :none, [k[1:3] for k in kpoints])
 
     waninputs = DFInput{Wannier90}[]
@@ -368,6 +376,8 @@ function gencalc_wan(nscf::DFInput{QE}, structure::AbstractStructure, Emin, wanf
         setflags!(waninputs[1], :spin => "up")
         setflags!(waninputs[2], :spin => "down")
     end
+
+    map(x -> setwanenergies!(x, structure, nscf, Emin; Epad=Epad), waninputs)
     return waninputs
 end
 

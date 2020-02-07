@@ -323,9 +323,3 @@ end
 
 Base.:(==)(i1::DFInput, i2::DFInput) =
     all(x -> x == :outdata ? true : getfield(i1, x) == getfield(i2, x), fieldnames(DFInput)) 
-
-
-
-
-
-

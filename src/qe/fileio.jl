@@ -35,6 +35,7 @@ Possible keys:
 """
 function qe_read_output(filename::String, T=Float64)
     out = Dict{Symbol,Any}()
+    colincalc = false
     open(filename, "r") do f
         prefac_k     = nothing
         k_eigvals    = Array{Array{T,1},1}()
@@ -112,6 +113,9 @@ function qe_read_output(filename::String, T=Float64)
                 end
 
                 #bands
+            elseif occursin("SPIN UP", line)
+                colincalc = true
+                
             elseif occursin("k", line) && occursin("PWs)", line)
                 tmp = T[]
                 readline(f)
@@ -121,6 +125,8 @@ function qe_read_output(filename::String, T=Float64)
                     line = readline(f)
                 end
                 push!(k_eigvals, tmp)
+            elseif occursin("End of self-consistent", line)
+                empty!(k_eigvals)
 
                 #errors
             elseif occursin("mpirun noticed", line)
@@ -200,21 +206,32 @@ function qe_read_output(filename::String, T=Float64)
         end
 
         #process bands
+        if !haskey(out, :k_cryst)
+            out[:k_cryst] = (out[:in_recip_cell]^-1,) .* out[:k_cart]
+        end
+        @show unique(k_eigvals)
         if !isempty(k_eigvals)
-            out[:bands] = Vector{DFBand{T}}()
-            for i1=1:length(k_eigvals[1])
-                eig_band = T[]
-                for i = 1:length(out[:k_cart])
-                    push!(eig_band, k_eigvals[i][i1])
+            if colincalc
+                out[:bands_up]   = [DFBand(out[:k_cart], out[:k_cryst], zeros(length(out[:k_cart]))) for i = 1:length(k_eigvals[1])]
+                out[:bands_down] = [DFBand(out[:k_cart], out[:k_cryst], zeros(length(out[:k_cart]))) for i = 1:length(k_eigvals[1])]
+            else
+                out[:bands] = [DFBand(out[:k_cart], out[:k_cryst], zeros(length(out[:k_cart]))) for i = 1:length(k_eigvals[1])]
+            end
+            @show length(k_eigvals)
+            for i = 1:length(k_eigvals)
+                for i1=1:length(k_eigvals[i])
+                    if colincalc
+                        if i <= length(out[:k_cart])
+                            out[:bands_up][i1].eigvals[i] = k_eigvals[i][i1]
+                        else
+                            out[:bands_down][i1].eigvals[i-length(out[:k_cart])] = k_eigvals[i][i1]
+                        end
+                    else
+                        out[:bands][i1].eigvals[i] = k_eigvals[i][i1]
+                    end
                 end
-                if !haskey(out, :k_cryst)
-                    out[:k_cryst] = (out[:in_recip_cell]^-1,) .* out[:k_cart]
-                end
-
-                push!(out[:bands], DFBand(out[:k_cart], out[:k_cryst], eig_band))
             end
         end
-
         return out
     end
 end

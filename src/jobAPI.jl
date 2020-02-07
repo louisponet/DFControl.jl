@@ -358,18 +358,9 @@ DOS, and what the size of the frozen window needs to be to fit enough bands insi
 depending on the projections.
 """
 function setwanenergies!(job::DFJob, nscf::DFInput{QE}, Emin::Real; Epad=5.0)
-    hasoutput_assert(nscf)
-    iscalc_assert(nscf, "nscf")
-    hasprojections_assert(structure(job))
-
-    bands = readbands(nscf)
     wancalcs = searchinputs(job, Wannier90)
     @assert length(wancalcs) != 0 "Job ($(job.name)) has no Wannier90 calculations, nothing to do."
-    nbnd = nprojections(structure(job))
-    @info "num_bands=$nbnd (inferred from provided projections)."
-    nbands_to_find = ismagneticcalc(nscf) && !isnoncolincalc(nscf) ? 2*nbnd : nbnd
-    winmin, frozmin, frozmax, winmax = wanenergyranges(Emin, nbands_to_find, bands, Epad)
-    map(x->setflags!(x, :dis_win_min => winmin, :dis_froz_min => frozmin, :dis_froz_max => frozmax, :dis_win_max => winmax, :num_wann => nbnd, :num_bands=>length(bands)), wancalcs)
+    map(x->setwanenergies!(x, structure(job), nscf, Emin; Epad=Epad), wancalcs)
     return job
 end
 
@@ -387,6 +378,27 @@ function setwanenergies!(job::DFJob, nscf::DFInput{QE}, projwfc::DFInput{QE}, th
     hasexec_assert(projwfc, "projwfc.x")
     Emin = Emin_from_projwfc(job.structure, projwfc, threshold)
     setwanenergies!(job, nscf, Emin; Epad=Epad)
+end
+
+"""
+    setwanenergies!(job::DFJob, min_window_determinator::Real; kwargs...)
+
+Sets the energy windows of wannier calculations based on the `job`.
+When a projwfc calculation is present in the `job`, `min_window_determinator` will be used to
+determine the threshold value for including a band in the window based on the projections, otherwise
+it will be used as the `Emin` value from which to start counting the number of bands needed for all
+projections.
+"""
+function setwanenergies!(job::DFJob, min_window_determinator::Real; kwargs...)
+    nscf_input = input(job, "nscf")
+    projwfc_input = input(job, "projwfc")
+    if projwfc_input === nothing || !hasoutput(projwfc_input)
+        @info "No projwfc input found with valid output, using $min_window_determinator as Emin"
+        return setwanenergies!(job, nscf_input, min_window_determinator; kwargs...)
+    else
+        @info "Valid projwfc output found, using $min_window_determinator as the dos threshold."
+        return setwanenergies!(job, nscf_input, projwfc_input, min_window_determinator; kwargs...)
+    end
 end
 
 #--------------- Interacting with the Structure inside the DFJob ---------------#
@@ -572,7 +584,7 @@ for (calc, tn) in zip((:gencalc_bands, :gencalc_nscf, :gencalc_projwfc), ("scf",
 end
 
 """
-    gencalc_wan(job::DFJob, min_window_determinator::Real; kwargs...)
+    gencalc_wan(job::DFJob, min_window_determinator::Real, extra_wan_flags...; kwargs...)
 
 Automates the generation of wannier calculations based on the `job`.
 When a projwfc calculation is present in the `job`, `min_window_determinator` will be used to
