@@ -365,7 +365,7 @@ function setwanenergies!(job::DFJob, nscf::DFInput{QE}, Emin::Real; Epad=5.0)
     bands = readbands(nscf)
     wancalcs = searchinputs(job, Wannier90)
     @assert length(wancalcs) != 0 "Job ($(job.name)) has no Wannier90 calculations, nothing to do."
-    nbnd = nprojections(structure(job))
+    nbnd = ismagneticcalc(nscf) && !isnoncolincalc(nscf) ? 2 * nprojections(structure(job)) : nprojections(structure(job))
     @info "num_bands=$nbnd (inferred from provided projections)."
     winmin, frozmin, frozmax, winmax = wanenergyranges(Emin, nbnd, bands, Epad)
     map(x->setflags!(x, :dis_win_min => winmin, :dis_froz_min => frozmin, :dis_froz_max => frozmax, :dis_win_max => winmax, :num_wann => nbnd, :num_bands=>length(bands)), wancalcs)
