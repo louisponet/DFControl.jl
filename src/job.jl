@@ -247,7 +247,7 @@ function sanitize_magnetization!(job::DFJob)
                     tid2 = dftuid
                 end
                 atid = max(tid1, tid2) - 1
-                a.name = atid == 0 ? a.name : Symbol(string(e.symbol)*"$atid")
+                a.name = atid == 0 ? e.symbol : Symbol(string(e.symbol)*"$atid")
             end
         end
     end
