@@ -611,3 +611,26 @@ function gencalc_wan(job::DFJob, min_window_determinator::Real, extra_wan_flags.
     end
 end
 
+#TODO: only for QE 
+"Reads the pdos for a particular atom. Only works for QE."  
+function pdos(job, atsym) 
+    projwfc = getfirst(isprojwfccalc, inputs(job)) 
+    scfcalc = getfirst(isscfcalc, inputs(job)) 
+    magnetic = ismagneticcalc(scfcalc) 
+ 
+    if package(projwfc) == QE 
+        files = filter(x->occursin("$atsym",x) && occursin("#", x), find_files(job, "pdos")) 
+        if isempty(files) 
+            @error "No pdos files found in jobdir" 
+        end 
+        energies, = qe_read_pdos(files[1]) 
+        atdos = magnetic ? zeros(length(energies), 2) : zeros(length(energies)) 
+ 
+        for f in files 
+            atdos .+= magnetic ? qe_read_pdos(f)[2][:,1:2] : qe_read_pdos(f)[2][:,1] 
+        end 
+        return (energies=energies, pdos=atdos) 
+    else 
+        @error "Not implemented for non-QE calculations" 
+    end 
+end 
