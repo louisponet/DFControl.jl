@@ -184,7 +184,7 @@ issoccalc(input::DFInput) = false
 
 #TODO review this!
 outdata(input::DFInput) = input.outdata
-hasoutput(input::DFInput) = !isempty(outdata(input))
+hasoutput(input::DFInput) = !isempty(outdata(input)) || hasoutfile(input)
 
 hasoutfile(input::DFInput) = ispath(outpath(input))
 hasnewout(input::DFInput, time) = mtime(outpath(input)) > time
