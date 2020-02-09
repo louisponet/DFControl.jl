@@ -134,6 +134,10 @@ Base.pop!(job::DFJob) = pop!(job.inputs)
 
 Base.append!(job::DFJob, args...) = append!(job.inputs, args...)
 
+Base.getindex(job::DFJob, i::Integer) = inputs(job)[i]
+Base.length(job::DFJob) = length(inputs(job))
+Base.lastindex(job::DFJob) = length(job)
+
 """Access an input inside the job using it's name. E.g `job["scf"]`"""
 function Base.getindex(job::DFJob, id::String)
     tmp = getfirst(x -> name(x)==id, inputs(job))
@@ -390,8 +394,8 @@ it will be used as the `Emin` value from which to start counting the number of b
 projections.
 """
 function setwanenergies!(job::DFJob, min_window_determinator::Real; kwargs...)
-    nscf_input = input(job, "nscf")
-    projwfc_input = input(job, "projwfc")
+    nscf_input = getfirst(isnscfcalc, inputs(job))
+    projwfc_input = getfirst(isprojwfccalc, inputs(job))
     if projwfc_input === nothing || !hasoutput(projwfc_input)
         @info "No projwfc input found with valid output, using $min_window_determinator as Emin"
         return setwanenergies!(job, nscf_input, min_window_determinator; kwargs...)
@@ -518,23 +522,25 @@ create_supercell(job::DFJob, args...) =
 volume(job::DFJob) = volume(structure(job))
 
 """
-	bandgap(job::DFJob, fermi=readfermi(getfirst(isscfcalc, inputs(job))))
+	bandgap(job::DFJob, fermi=nothing)
 
 Calculates the bandgap (possibly indirect) around the fermi level.
 Uses the first found bands calculation, if there is none it uses the first found nscf calculation.
 """
-function bandgap(job::DFJob, fermi=readfermi(getfirst(isscfcalc, inputs(job))))
-	bandscalc = getfirst(isbandscalc, inputs(job))
-	if bandscalc === nothing
-		nscfcalc = getfirst(isnscfcalc, inputs(job))
-		if nscfcalc === nothing
-			error("No valid calculation found to calculate the bandgap.\nMake sure the job has either a valid bands or nscf calculation.")
-		else
-			bands = readbands(nscfcalc)
-		end
-	else
-		bands = readbands(bandscalc)
+function bandgap(job::DFJob, fermi=nothing)
+	band_calcs = getfirst.((isbandscalc, isnscfcalc, isscfcalc), (inputs(job),))
+	if all(x -> x === nothing, band_calcs)
+		error("No valid calculation found to calculate the bandgap.\nMake sure the job has either a valid bands or nscf calculation.")
 	end
+	bands = readbands(getfirst(x -> x!==nothing, band_calcs))
+	if fermi === nothing
+    	fermi_calcs = getfirst.((isnscfcalc, isscfcalc), (inputs(job),))
+    	if all(x -> x === nothing, band_calcs)
+    		error("No valid calculation found to extract the fermi level.\nPlease supply the fermi level manually.")
+		end
+		fermi = readfermi(getfirst(x -> x!==nothing, fermi_calcs))
+	end
+
 	return bandgap(bands, fermi)
 end
 
