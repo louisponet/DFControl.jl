@@ -613,13 +613,13 @@ end
 
 #TODO: only for QE 
 "Reads the pdos for a particular atom. Only works for QE."  
-function pdos(job, atsym) 
+function pdos(job, atsym, filter_word="") 
     projwfc = getfirst(isprojwfccalc, inputs(job)) 
     scfcalc = getfirst(isscfcalc, inputs(job)) 
     magnetic = ismagneticcalc(scfcalc) 
  
     if package(projwfc) == QE 
-        files = filter(x->occursin("$atsym",x) && occursin("#", x), find_files(job, "pdos")) 
+        files = filter(x->occursin("$atsym",x) && occursin("#", x) && occursin(filter_word, x), find_files(job, "pdos")) 
         if isempty(files) 
             @error "No pdos files found in jobdir" 
         end 
