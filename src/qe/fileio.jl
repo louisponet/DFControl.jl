@@ -88,9 +88,6 @@ function qe_read_output(filename::String, T=Float64)
             elseif occursin("lowest unoccupied", line) && occursin("highest occupied", line)
                 out[:fermi]        = parse(T, split(line)[7])
 
-            elseif occursin("lowest unoccupied", line) || occursin("highest occupied", line)
-                out[:fermi]        = parse(T, split(line)[5])
-
             elseif occursin("total energy", line) && line[1] == '!'
                 out[:total_energy]        = parse(T, split(line)[5])
 
@@ -206,10 +203,10 @@ function qe_read_output(filename::String, T=Float64)
         end
 
         #process bands
-        if !haskey(out, :k_cryst)
-            out[:k_cryst] = (out[:in_recip_cell]^-1,) .* out[:k_cart]
-        end
         if !isempty(k_eigvals)
+            if !haskey(out, :k_cryst)
+                out[:k_cryst] = (out[:in_recip_cell]^-1,) .* out[:k_cart]
+            end
             if colincalc
                 out[:bands_up]   = [DFBand(out[:k_cart], out[:k_cryst], zeros(length(out[:k_cart]))) for i = 1:length(k_eigvals[1])]
                 out[:bands_down] = [DFBand(out[:k_cart], out[:k_cryst], zeros(length(out[:k_cart]))) for i = 1:length(k_eigvals[1])]
