@@ -619,14 +619,14 @@ function pdos(job, atsym, filter_word="")
     magnetic = ismagneticcalc(scfcalc) 
  
     if package(projwfc) == QE 
-        files = filter(x->occursin("$atsym",x) && occursin("#", x) && occursin(filter_word, x), find_files(job, "pdos")) 
+        files = filter(x->occursin("($atsym",x) && occursin("#", x) && occursin(filter_word, x), find_files(job, "pdos"))
         if isempty(files) 
             @error "No pdos files found in jobdir" 
         end 
-        energies, = qe_read_pdos(files[1]) 
+        energies, = qe_read_pdos(files[1])
         atdos = magnetic ? zeros(length(energies), 2) : zeros(length(energies)) 
  
-        for f in files 
+        for f in files
             atdos .+= magnetic ? qe_read_pdos(f)[2][:,1:2] : qe_read_pdos(f)[2][:,1] 
         end 
         return (energies=energies, pdos=atdos) 
