@@ -303,7 +303,7 @@ function outputdata(job::DFJob, inputs::Vector{DFInput}; print=true, onlynew=fal
             datadict[name(input)] = tout
         end
     end
-    datadict
+    return datadict
 end
 outputdata(job::DFJob; kwargs...) = outputdata(job, inputs(job); kwargs...)
 outputdata(job::DFJob, names::String...; kwargs...) =
@@ -528,20 +528,20 @@ Calculates the bandgap (possibly indirect) around the fermi level.
 Uses the first found bands calculation, if there is none it uses the first found nscf calculation.
 """
 function bandgap(job::DFJob, fermi=nothing)
-	band_calcs = getfirst.((isbandscalc, isnscfcalc, isscfcalc), (inputs(job),))
+	band_calcs = getfirst.([isbandscalc, isnscfcalc, isscfcalc], (inputs(job),))
 	if all(x -> x === nothing, band_calcs)
 		error("No valid calculation found to calculate the bandgap.\nMake sure the job has either a valid bands or nscf calculation.")
 	end
-	bands = readbands(getfirst(x -> x!==nothing, band_calcs))
 	if fermi === nothing
-    	fermi_calcs = getfirst.((isnscfcalc, isscfcalc), (inputs(job),))
+    	fermi_calcs = getfirst.([isnscfcalc, isscfcalc], (inputs(job),))
     	if all(x -> x === nothing, band_calcs)
     		error("No valid calculation found to extract the fermi level.\nPlease supply the fermi level manually.")
 		end
-		fermi = readfermi(getfirst(x -> x!==nothing, fermi_calcs))
+		fermi = maximum(readfermi.(filter(x -> x!==nothing, fermi_calcs)))
 	end
 
-	return bandgap(bands, fermi)
+	bands = readbands.(filter(x -> x!==nothing, band_calcs))
+	return minimum(bandgap.(bands, fermi))
 end
 
 "Searches for the first scf or nscf calculation with output, and reads the fermi level from it."
@@ -619,7 +619,7 @@ function pdos(job, atsym, filter_word="")
     magnetic = ismagneticcalc(scfcalc) 
  
     if package(projwfc) == QE 
-        files = filter(x->occursin("($atsym",x) && occursin("#", x) && occursin(filter_word, x), find_files(job, "pdos"))
+        files = filter(x->occursin("($atsym",x) && occursin("#", x) && occursin(filter_word, x), searchdir(job, "pdos"))
         if isempty(files) 
             @error "No pdos files found in jobdir" 
         end 

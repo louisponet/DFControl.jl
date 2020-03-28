@@ -3,7 +3,6 @@ using DFControl, Test
 testjobpath = joinpath(testdir, "testassets", "test_job")
 
 job = DFJob(testjobpath);
-@test deepcopy(job["scf"]) == job["scf"]
 job4 = DFJob(testjobpath)
 
 #output stuff
@@ -245,7 +244,7 @@ scale_bondlength!(at, at2, 0.5, c)
 @test isapprox((position_cart(at) + position_cart(at2))/2, mid)
 @test isapprox(distance(at, at2), bondlength/2) 
 
-@test isapprox(bandgap(job), 3.6522999999999994)
+@test isapprox(bandgap(job), 2.6701999999999995)
 
 t = job["nscf"]
 curlen = length(job.inputs)
@@ -281,14 +280,14 @@ orig_projs = projections(atoms(job, :Pt)[1])
 job.structure = create_supercell(structure(job), 1, 0, 0, make_afm=true)
 
 DFControl.sanitize_magnetization!(job)
+@test length(atoms(job, :Pt)) == prevlen_Pt
 @test length(atoms(job, :Pt1)) == prevlen_Pt
-@test length(atoms(job, :Pt2)) == prevlen_Pt
 
-@test magnetization(atoms(job, :Pt1)[1]) == [0, 0, 1]
-@test magnetization(atoms(job, :Pt2)[1]) == [0, 0, -1]
+@test magnetization(atoms(job, :Pt)[1]) == [0, 0, 1]
+@test magnetization(atoms(job, :Pt1)[1]) == [0, 0, -1]
 
 DFControl.sanitize_projections!(job)
-@test projections(atoms(job, :Pt1)[1]) != projections(atoms(job, :Pt2)[1])
+@test projections(atoms(job, :Pt)[1]) != projections(atoms(job, :Pt1)[1])
 
 job4.server_dir = "/tmp"
 save(job4)

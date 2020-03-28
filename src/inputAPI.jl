@@ -128,12 +128,13 @@ runcommand(input::DFInput) = input.execs[1]
 
 "Returns the outputdata for the input."
 function outputdata(input::DFInput; print=true, overwrite=true)
-    if hasoutput(input) && !overwrite
-        return outdata(input)
-    end
-    if hasoutfile(input)
-        input.outdata = readoutput(input)
-        return input.outdata
+    if hasoutput(input)
+        if !overwrite && !isempty(outdata(input))
+            return outdata(input)
+        else
+            input.outdata = readoutput(input)
+            return input.outdata
+        end
     end
     print && (@warn "No output data or output file found for input: $(name(input)).")
     return SymAnyDict()

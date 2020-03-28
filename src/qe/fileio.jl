@@ -86,7 +86,8 @@ function qe_read_output(filename::String, T=Float64)
             elseif occursin("Fermi", line)
                 out[:fermi]        = parse(T, split(line)[5])
             elseif occursin("lowest unoccupied", line) && occursin("highest occupied", line)
-                out[:fermi]        = parse(T, split(line)[7])
+                sline = split(line)
+                out[:fermi]        = (parse(T, sline[7]) + parse(T, sline[8]))/2
 
             elseif occursin("total energy", line) && line[1] == '!'
                 out[:total_energy]        = parse(T, split(line)[5])

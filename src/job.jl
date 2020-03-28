@@ -292,5 +292,5 @@ function Base.pop!(job::DFJob, name::String)
     return out
 end
 
-find_files(job::DFJob, str::AbstractString) = joinpath.((job,), searchdir(job.local_dir, str))
+searchdir(job::DFJob, str::AbstractString) = joinpath.((job,), searchdir(job.local_dir, str))
 
