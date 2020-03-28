@@ -1,6 +1,6 @@
 environment:
   matrix:
-    - julia_version: 1.0 # latest 1.0.x
+    - julia_version: 1.4 # latest 1.0.x
     - julia_version: nightly
 ## uncomment the following lines to allow failures on nightly julia
 ## (tests will run but not make your overall status red)

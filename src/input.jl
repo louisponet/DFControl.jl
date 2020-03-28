@@ -10,11 +10,11 @@ Base.:(==)(d1::InputData, d2::InputData) =
 
 @with_kw_noshow mutable struct DFInput{P <: Package}
     name     ::String
-    dir      ::String
-    flags    ::SymAnyDict
+    dir      ::String = ""
+    flags    ::SymAnyDict = SymAnyDict()
     data     ::Vector{InputData} = InputData[]
     execs    ::Vector{Exec}
-    run      ::Bool
+    run      ::Bool = true
     outdata  ::SymAnyDict=SymAnyDict()
 end
 DFInput{P}(name, dir, flags, data, execs, run) where P<:Package = DFInput{P}(name, abspath(dir), flags, data, execs, run, SymAnyDict())
