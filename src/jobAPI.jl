@@ -6,6 +6,7 @@ Saves a DFJob, it's job file and all it's input files.
 """
 function save(job::DFJob, local_dir=job.local_dir; kwargs...)
     local_dir = local_dir != "" ? local_dir : error("Please specify a valid local_dir!")
+    setlocaldir!(job, local_dir)
     if !ispath(local_dir)
         mkpath(local_dir)
         @info "$local_dir did not exist, it was created."
@@ -13,7 +14,6 @@ function save(job::DFJob, local_dir=job.local_dir; kwargs...)
     sanitize_magnetization!(job)
     sanitize_projections!(job)
     sanitizeflags!(job)
-    job.local_dir = local_dir
     return writejobfiles(job; kwargs...)
 end
 
@@ -330,28 +330,9 @@ end
 
 
 "Reads throught the pseudo files and tries to figure out the correct cutoffs"
-function setcutoffs!(job::DFJob)
-    @assert job.server == "localhost" "Cutoffs can only be automatically set if the pseudo files live on the local machine."
-    pseudofiles = map(x->x.name, filter(!isempty, [pseudo(at) for at in atoms(job)]))
-    pseudodirs  = map(x->x.dir, filter(!isempty, [pseudo(at) for at in atoms(job)]))
-    @assert !isempty(pseudofiles) "No atoms with pseudo files found."
-    @assert !isempty(pseudodirs) "No valid pseudo directories found in the inputs."
-    maxecutwfc = 0.0
-    maxecutrho = 0.0
-    for d in pseudodirs
-        for f in pseudofiles
-            pth = joinpath(d, f)
-            if ispath(pth)
-                ecutwfc, ecutrho = read_cutoffs_from_pseudofile(pth)
-                if ecutwfc != nothing && ecutrho != nothing
-                    maxecutwfc = ecutwfc > maxecutwfc ? ecutwfc : maxecutwfc
-                    maxecutrho = ecutrho > maxecutrho ? ecutrho : maxecutrho
-                end
-            end
-        end
-    end
-    setcutoffs!.(inputs(job), maxecutwfc, maxecutrho)
-end
+setcutoffs!(job::DFJob) = 
+    setcutoffs!.(inputs(job), find_cutoffs(job)...)
+
 
 """
     setwanenergies!(job::DFJob, nscf::DFInput{QE}, Emin::Real; Epad=5.0)

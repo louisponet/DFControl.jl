@@ -12,8 +12,6 @@
   nat = 1
   ntyp = 1
   ecutwfc = 32.0
-  ecutrho = 165.0
-  nbnd = 8
 /
 
 &electrons

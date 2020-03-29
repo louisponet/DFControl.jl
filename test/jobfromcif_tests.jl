@@ -16,28 +16,26 @@ header = ["#SBATCH -N 1", "#SBATCH --ntasks-per-node=24",
           "module load open-mpi/gcc/1.10.4-hfi", "module load mkl/2016.1.056"
          ]
 
-scf_data = Dict(:kpoints => [6, 6, 6, 1, 1, 1], :flags => [:verbosity => "low"])
-bands_data = Dict(:kpoints => [[0.5, 0.5, 0.5, 100.],
-                                [0.0, 0.0, 0.0, 100.],
-                                [0.0, 0.5, 0.0, 1.]],
-                  :flags => [:verbosity => "high", :nbnd => 8])
+calculations = [DFInput{QE}(name="vc_relax", execs = excs,flags = Dict(:calculation => "vc-relax", :verbosity => "low"), data = [InputData(:k_points, :automatic, [6,6,6,1,1,1])]),
+                DFInput{QE}(name="scf", execs = excs,   flags = Dict(:calculation => "scf", :verbosity => "low"), data = [InputData(:k_points, :automatic, [6,6,6,1,1,1])]),
+                DFInput{QE}(name="bands", execs = excs, flags = Dict(:calculation => "bands", :verbosity => "high", :nbnd=>8), data = [InputData(:k_points,:crystal_b, [[0.5, 0.5, 0.5, 100.],
+                                                                                                                                    [0.0, 0.0, 0.0, 100.],
+                                                                                                                                    [0.0, 0.5, 0.0, 1.]])]),
+                DFInput{QE}(name="nscf", execs = excs, flags = Dict(:calculation => "nscf", :verbosity => "low"))]
 
-nscf_data = merge(bands_data, Dict(:kpoints => [10, 10, 10]))
-calculations = [:vc_relax => (excs, scf_data), :scf => (excs, scf_data), :bands => (excs, bands_data), :nscf =>(excs, nscf_data)]
-
-job = DFJob(name, local_dir, joinpath(testjobpath, "Pt.cif"), calculations,
+job = DFJob(name, joinpath(testjobpath, "Pt.cif"), calculations,
       :prefix       => "$name",
       :restart_mode => "from_scratch",
       :mixing_mode  => "plain",
       :mixing_beta  => 0.7,
       :conv_thr     => 1.0e-8,
       #kwargs
-      server_dir  = server_dir,
-      bin_dir     = bin_dir,
-      header      = header,
       pseudoset  = :test,
+      server_dir  = server_dir,
+      header      = header,
+      local_dir = local_dir
      )
-
+setkpoints!(job["nscf"], (10,10,10))
 save(job)
 show(job)
 @test data(job["scf"], :k_points).data == [6, 6, 6, 1, 1, 1]

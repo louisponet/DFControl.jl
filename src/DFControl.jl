@@ -41,7 +41,7 @@ module DFControl
 
     include("job.jl")
 
-    export DFJob, Exec, DFInput
+    export DFJob, Exec, DFInput, InputData
     include("server.jl")
     include("API.jl")
 

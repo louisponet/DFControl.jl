@@ -64,17 +64,19 @@ function show(io::IO, job::DFJob)
         dfprintln(io, crayon"cyan", "|", reset)
     end
     is = inputs(job)
-    dfprintln(io, crayon"cyan", line, reset)
-    dfprintln(io, reset,"(", crayon"green", "scheduled", reset, ", ", crayon"red", "not scheduled", reset, ")")
-    ln = maximum(length.(string.(name.(is))))
-    for (si, i) in enumerate(is)
-        n = name(i)
-        l = length(n)
-        for j=1:ln-l
-            n *= " "
+    if !isempty(is)
+        dfprintln(io, crayon"cyan", line, reset)
+        dfprintln(io, reset,"(", crayon"green", "scheduled", reset, ", ", crayon"red", "not scheduled", reset, ")")
+        ln = maximum(length.(string.(name.(is))))
+        for (si, i) in enumerate(is)
+            n = name(i)
+            l = length(n)
+            for j=1:ln-l
+                n *= " "
+            end
+            cr = i.run ? crayon"green" : crayon"red"
+            dfprint(io, cr, "\t\t$n\n")
         end
-        cr = i.run ? crayon"green" : crayon"red"
-        dfprint(io, cr, "\t\t$n\n")
     end
     dfprint(io, reset)
 end
@@ -89,14 +91,16 @@ function show(io::IO, in::DFInput)
     data  = $([e.name for e in data(in)])
     $(crayon"cyan")flags$(crayon"reset"):"""
     dfprintln(io, s)
-    fl = maximum(length.(string.(keys(flags(in)))))
-    for (f, v) in flags(in)
-        fs = string(f)
-        l = length(fs)
-        for i=1:fl - l
-            fs *= " "
+    if !isempty(flags(in))
+        fl = maximum(length.(string.(keys(flags(in)))))
+        for (f, v) in flags(in)
+            fs = string(f)
+            l = length(fs)
+            for i=1:fl - l
+                fs *= " "
+            end
+            dfprint(io, crayon"cyan", "\t$fs", crayon"yellow"," => ", crayon"magenta", "$v\n")
         end
-        dfprint(io, crayon"cyan", "\t$fs", crayon"yellow"," => ", crayon"magenta", "$v\n")
     end
     dfprint(io, crayon"reset")
 end

@@ -4,93 +4,40 @@
 """
 Represents a full DFT job with multiple input files and calculations.
 """
-mutable struct DFJob
-    id           ::Int #REVIEW: For now ID does nothing but I can see it doing things later
+@with_kw_noshow mutable struct DFJob
     name         ::String
     structure    ::AbstractStructure
-    inputs       ::Vector{DFInput}
-    local_dir    ::String
-    server       ::String
-    server_dir   ::String
-    header       ::Vector{String}
-    metadata     ::Dict
-    function DFJob(name, structure, calculations, local_dir, server, server_dir, header = getdefault_jobheader())
-        if !isabspath(local_dir)
-            local_dir = abspath(local_dir)
-        end
-        return new(0, name, structure, calculations, local_dir, server, server_dir, header, Dict())
-    end
+    inputs       ::Vector{DFInput} = DFInput[]
+    local_dir    ::String = pwd()
+    server       ::String = getdefault_server()
+    server_dir   ::String = ""
+    header       ::Vector{String} = getdefault_jobheader()
+    metadata     ::Dict = Dict()
+    # function DFJob(name, structure, calculations, local_dir, server, server_dir, header)
+    #     if !isabspath(local_dir)
+    #         local_dir = abspath(local_dir)
+    #     end
+    #     return new(name, structure, calculations, local_dir, server, server_dir, header)
+    # end
 end
 
 #TODO implement abinit
-function DFJob(job_name, local_dir, structure::AbstractStructure, calculations::Vector, common_flags...;
-                    server=getdefault_server(),
-                    server_dir="",
-                    package=QE,
-                    bin_dir=joinpath("usr","local","bin"),
+function DFJob(job_name, structure::AbstractStructure, calculations::Vector{<:DFInput}, common_flags::Pair{Symbol, <:Any}...;
                     pseudoset=:default,
                     pseudospecifier="",
-                    header=getdefault_jobheader())
+                    job_kwargs...)
 
-    @assert package==QE "Only implemented for Quantum Espresso!"
-
-    job_calcs = DFInput[]
-    if typeof(common_flags) != Dict
-        common_flags = Dict(common_flags)
+    shared_flags = typeof(common_flags) <: Dict ? common_flags : Dict(common_flags...)
+    for i in calculations
+        i.flags = merge(shared_flags, i.flags)
     end
-    bin_dir = bin_dir
-    for (calc, (excs, data)) in calculations
-        if !isa(data, SymAnyDict)
-            data = SymAnyDict(data)
-        end
-        calc_ = typeof(calc) == String ? Symbol(calc) : calc
-        if in(calc_, [:vc_relax, :relax, :scf])
-            k_points = get(data, :kpoints, [1, 1, 1, 0, 0, 0])
-            k_option = :automatic
-        elseif calc_ == :nscf
-            k_points = kgrid(get(data, :kpoints, [1, 1, 1])[1:3]..., QE)
-            k_option = :crystal
-        elseif calc_ == :bands
-            k_points = get(data, :kpoints, [[0., 0., 0., 1.]])
-            num_k = 0.0
-            for point in k_points
-                num_k += point[4]
-            end
-            if num_k > 100.
-                if !haskey(data, :flags)
-                    data[:flags] = Pair{Symbol, Any}[]
-                end
-                push!(data[:flags], :verbosity => "high")
-            end
-            k_option = :crystal_b
-        end
-        flags  = convert(Vector{Pair{Symbol, Any}}, get(data, :flags, Pair{Symbol, Any}[]))
-        if excs[2].exec == "pw.x"
-            push!(flags, :calculation => "$(string(calc_))")
-            datablocks = [InputData(:k_points, k_option, k_points)]
-        else
-            datablocks =  InputData[]
-        end
-        input_ = DFInput{package}(string(calc_), local_dir,
-                         Dict{Symbol, Any}(),
-                         datablocks, excs, true)
-        setflags!(input_, common_flags..., print=false) #This could be changed to use suppressor
-        setflags!(input_, flags..., print=false)
-        push!(job_calcs, input_)
-    end
-    out = DFJob(job_name, structure, job_calcs, local_dir, server, server_dir, header)
-    setatoms!(out, structure.atoms, pseudoset = pseudoset, pseudospecifier= pseudospecifier)
-    if !haskey(common_flags, :ecutwfc)
-        @info "No :ecutwfc specified in the flags, determining minimum cutoff from pseudos."
-        setcutoffs!(out)
-    end
+    out = DFJob(name = job_name, structure = structure, inputs = calculations; job_kwargs...)
+    setatoms!(out, structure.atoms, pseudoset = pseudoset, pseudospecifier = pseudospecifier)
     return out
 end
 
-function DFJob(job_name, local_dir, ciffile::String, calculations::Vector, args...; kwargs...)
-    structure = Structure(ciffile, name=job_name)
-    return DFJob(job_name, local_dir, structure, calculations, args... ; kwargs...)
-end
+DFJob(job_name, ciffile::String, calculations::Vector{<:DFInput}, args...; kwargs...) =
+    DFJob(job_name, Structure(ciffile, name = job_name), calculations, args... ; kwargs...)
 
 function DFJob(job::DFJob, flagstoset...; cell_=copy(cell(job)), atoms_=copy(atoms(job)), name=job.name,
                                           server_dir = job.server_dir,
@@ -116,11 +63,11 @@ function DFJob(job::DFJob, flagstoset...; cell_=copy(cell(job)), atoms_=copy(ato
 end
 
 """
-    DFJob(job_dir::String, T=Float64; job_fuzzy = "job", new_job_name=nothing, new_local_dir=nothing, server=getdefault_server(),server_dir="")
+    DFJob(job_dir::String; job_fuzzy = "job", new_job_name=nothing, new_local_dir=nothing, server=getdefault_server(),server_dir="")
 
 Loads and returns a local DFJob. If local_dir is not specified the job directory will be registered as the local one.
 """
-function DFJob(job_dir::String, T=Float64;
+function DFJob(job_dir::String;
                   job_fuzzy     = "job",
                   new_job_name  = "",
                   new_local_dir = nothing,
@@ -131,9 +78,9 @@ function DFJob(job_dir::String, T=Float64;
     structure.name = structure_name
 
     if new_local_dir != nothing
-        return DFJob(j_name, structure, inputs, new_local_dir, server, server_dir, header)
+        return DFJob(j_name, structure, inputs, new_local_dir, server, server_dir, header, Dict())
     else
-        return DFJob(j_name, structure, inputs, job_dir, server, server_dir, header)
+        return DFJob(j_name, structure, inputs, job_dir, server, server_dir, header, Dict())
     end
 end
 
@@ -197,6 +144,13 @@ function sanitizeflags!(job::DFJob)
         setflags!(i, :outdir => "$outdir", print=false)
 	    set_hubbard_flags!(i, job.structure)
 	    set_starting_magnetization_flags!(i, job.structure)
+	    ecutwfc, ecutrho = find_cutoffs(job)
+	    if exec(i, "pw.x") !== nothing
+    	    if !hasflag(i, :ecutwfc)
+        	    @info "No energy cutoff was specified in input with name: $(name(i))\nCalculating one from the pseudo files.\nCalculated ecutwfc=$ecutwfc, ecutrho=$ecutrho."
+        	    setflags!(i, :ecutwfc => ecutwfc, :ecuthro => ecutrho, print=false)
+    	    end
+	    end
     end
     sanitize_pseudos!(job)
     sanitizeflags!.(inputs(job))
@@ -251,6 +205,29 @@ function sanitize_magnetization!(job::DFJob)
             end
         end
     end
+end
+
+function find_cutoffs(job::DFJob)
+    @assert job.server == "localhost" "Cutoffs can only be automatically set if the pseudo files live on the local machine."
+    pseudofiles = map(x->x.name, filter(!isempty, [pseudo(at) for at in atoms(job)]))
+    pseudodirs  = map(x->x.dir, filter(!isempty, [pseudo(at) for at in atoms(job)]))
+    @assert !isempty(pseudofiles) "No atoms with pseudo files found."
+    @assert !isempty(pseudodirs) "No valid pseudo directories found in the inputs."
+    maxecutwfc = 0.0
+    maxecutrho = 0.0
+    for d in pseudodirs
+        for f in pseudofiles
+            pth = joinpath(d, f)
+            if ispath(pth)
+                ecutwfc, ecutrho = read_cutoffs_from_pseudofile(pth)
+                if ecutwfc != nothing && ecutrho != nothing
+                    maxecutwfc = ecutwfc > maxecutwfc ? ecutwfc : maxecutwfc
+                    maxecutrho = ecutrho > maxecutrho ? ecutrho : maxecutrho
+                end
+            end
+        end
+    end
+    return maxecutwfc, maxecutrho
 end
 
 function sanitize_projections!(job::DFJob)

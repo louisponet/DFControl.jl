@@ -11,7 +11,7 @@ Base.:(==)(d1::InputData, d2::InputData) =
 @with_kw_noshow mutable struct DFInput{P <: Package}
     name     ::String
     dir      ::String = ""
-    flags    ::SymAnyDict = SymAnyDict()
+    flags    ::AbstractDict = SymAnyDict()
     data     ::Vector{InputData} = InputData[]
     execs    ::Vector{Exec}
     run      ::Bool = true
@@ -121,6 +121,9 @@ function sanitizeflags!(input::DFInput{QE})
 	    !hasflag(input, :cell_dynamics) && setflags!(input, :cell_dynamics => "bfgs", print=false)
     end
     #TODO add all the required flags
+    if exec(input, "pw.x") !== nothing
+        @assert hasflag(input, :calculation) "Please set the flag for calculation with name: $(name(input))"
+    end
 end
 
 
