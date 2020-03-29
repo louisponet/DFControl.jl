@@ -85,11 +85,11 @@ function DFJob(job_dir::String;
 end
 
 """
-    DFJob(server_dir::String, local_dir::String, server=getdefault_server(); job_fuzzy="*job*", new_job_name="")
+    DFJob(server_dir::String, local_dir::String, server::String=getdefault_server(); job_fuzzy="*job*", new_job_name="")
 
 Pulls a server job to local directory and then loads it. A fuzzy search for the job file will be performed and the found input files will be pulled.
 """
-function DFJob(server_dir::String, local_dir::String, server = getdefault_server();
+function DFJob(server_dir::String, local_dir::String, server::String = getdefault_server();
                          job_fuzzy    = "*job*",
                          new_job_name = "")
 
