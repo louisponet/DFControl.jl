@@ -13,12 +13,12 @@ Represents a full DFT job with multiple input files and calculations.
     server_dir   ::String = ""
     header       ::Vector{String} = getdefault_jobheader()
     metadata     ::Dict = Dict()
-    # function DFJob(name, structure, calculations, local_dir, server, server_dir, header)
-    #     if !isabspath(local_dir)
-    #         local_dir = abspath(local_dir)
-    #     end
-    #     return new(name, structure, calculations, local_dir, server, server_dir, header)
-    # end
+    function DFJob(name, structure, calculations, local_dir, server, server_dir, header, metadata)
+        if !isabspath(local_dir)
+            local_dir = abspath(local_dir)
+        end
+        return new(name, structure, calculations, local_dir, server, server_dir, header, metadata)
+    end
 end
 
 #TODO implement abinit
