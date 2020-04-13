@@ -17,6 +17,9 @@ Represents a full DFT job with multiple input files and calculations.
         if !isabspath(local_dir)
             local_dir = abspath(local_dir)
         end
+        if isempty(structure.name)
+            structure.name = split(name, "_")[1]
+        end
         return new(name, structure, calculations, local_dir, server, server_dir, header, metadata)
     end
 end
@@ -63,39 +66,12 @@ function DFJob(job::DFJob, flagstoset...; cell_=copy(cell(job)), atoms_=copy(ato
 end
 
 """
-    DFJob(job_dir::String; job_fuzzy = "job", new_job_name=nothing, new_local_dir=nothing, server=getdefault_server(),server_dir="")
+    DFJob(job_dir::String, job_fuzzy = "job"; kwargs...)
 
-Loads and returns a local DFJob. If local_dir is not specified the job directory will be registered as the local one.
+Loads and returns a local DFJob. kwargs will be passed to the constructor.
 """
-function DFJob(job_dir::String;
-                  job_fuzzy     = "job",
-                  new_job_name  = "",
-                  new_local_dir = nothing,
-                  server        = getdefault_server())
-    name, header, inputs, structure, server_dir = read_job_inputs(joinpath(job_dir, searchdir(job_dir, job_fuzzy)[1]))
-    j_name = isempty(new_job_name) ? name : new_job_name
-    structure_name = split(j_name, "_")[1]
-    structure.name = structure_name
-
-    if new_local_dir != nothing
-        return DFJob(j_name, structure, inputs, new_local_dir, server, server_dir, header, Dict())
-    else
-        return DFJob(j_name, structure, inputs, job_dir, server, server_dir, header, Dict())
-    end
-end
-
-"""
-    DFJob(server_dir::String, local_dir::String, server::String=getdefault_server(); job_fuzzy="*job*", new_job_name="")
-
-Pulls a server job to local directory and then loads it. A fuzzy search for the job file will be performed and the found input files will be pulled.
-"""
-function DFJob(server_dir::String, local_dir::String, server::String = getdefault_server();
-                         job_fuzzy    = "*job*",
-                         new_job_name = "")
-
-    pulljob(server, server_dir, local_dir)
-    return DFJob(local_dir, server=server, server_dir=server_dir, new_job_name=new_job_name)
-end
+DFJob(job_dir::String, job_fuzzy="job"; kwargs...) =
+    DFJob(;merge(merge((local_dir=job_dir,), read_job_inputs(joinpath(job_dir, searchdir(job_dir, job_fuzzy)[1]))), kwargs)...)
 
 name(job) = job.name
 #-------------------BEGINNING GENERAL SECTION-------------#

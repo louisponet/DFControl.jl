@@ -226,9 +226,9 @@ struct SPGStructure
 end
 
 function SPGStructure(s::Structure)
-    clattice = convert(Matrix{Cdouble}, ustrip.(cell(s)'))
+    clattice   = convert(Matrix{Cdouble}, ustrip.(cell(s)'))
     cpositions = convert(Matrix{Cdouble}, hcat(position_cryst.(atoms(s))...))
-    uats         = unique(atoms(s))
+    uats       = unique(atoms(s))
     species_indices = Cint[findfirst(x -> isequal_species(x, at), uats) for at in atoms(s)]
     return SPGStructure(clattice, cpositions, species_indices)
 end
@@ -273,7 +273,18 @@ function niggli_reduce!(s::SPGStructure; tolerance = DEFAULT_TOLERANCE)
 
     return s
 end
-niggli_reduce(s::Structure; kwargs...) = niggli_reduce!(SPGStructure(s); kwargs...).*unit(eltype(cell(s)))
+function niggli_reduce(s::Structure; kwargs...)
+    reduced_spg_structure = niggli_reduce!(SPGStructure(s); kwargs...)
+    uats = unique(atoms(s))
+    c = Mat3{Float64}(reduced_spg_structure.lattice').*1angstrom
+    return Structure(s.name, c, map(1:length(reduced_spg_structure.species_indices)) do i
+        at = deepcopy(uats[reduced_spg_structure.species_indices[i]])
+        pos = reduced_spg_structure.positions[:, i]
+        set_position!(at, pos, c)
+        at
+    end, s.data)
+end
+
 
 function find_primitive!(s::SPGStructure; tolerance = DEFAULT_TOLERANCE)
     numats = ccall((:spg_find_primitive, SPGLIB), Cint,

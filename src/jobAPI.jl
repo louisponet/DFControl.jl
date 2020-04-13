@@ -594,7 +594,7 @@ end
 
 #TODO: only for QE 
 "Reads the pdos for a particular atom. Only works for QE."  
-function pdos(job, atsym, filter_word="") 
+function pdos(job::DFJob, atsym::Symbol, filter_word="") 
     projwfc = getfirst(isprojwfccalc, inputs(job)) 
     scfcalc = getfirst(isscfcalc, inputs(job)) 
     magnetic = ismagneticcalc(scfcalc) 
@@ -614,4 +614,16 @@ function pdos(job, atsym, filter_word="")
     else 
         @error "Not implemented for non-QE calculations" 
     end 
-end 
+end
+
+pdos(job::DFJob, atom::AbstractAtom, args...) = pdos(job, element(atom).symbol, args...)
+
+function pdos(job::DFJob, atoms::Vector{AbstractAtom} = atoms(job), args...)
+    t_energies, t_pdos = pdos(job, atoms[1], args...)
+    for i in 2:length(atoms)
+        t1, t2 = pdos(job, atoms[i], args...)
+        t_pdos .+= t2
+    end
+    return (energies=t_energies, pdos=t_pdos)
+end
+
