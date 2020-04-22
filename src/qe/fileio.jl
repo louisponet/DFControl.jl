@@ -63,6 +63,7 @@ function qe_read_output(filename::String, T=Float64)
                 cell_2 = parse.(Float64, split(readline(f))[4:6]) .* out[:in_alat]
                 cell_3 = parse.(Float64, split(readline(f))[4:6]) .* out[:in_alat]
                 out[:in_cell] = Mat3([cell_1 cell_2 cell_3])
+                out[:cell_parameters] = Mat3([cell_1 cell_2 cell_3])
 
             elseif occursin("reciprocal axes", line)
                 cell_1 = parse.(Float64, split(readline(f))[4:6]) .* 2π/out[:in_alat]
@@ -137,7 +138,7 @@ function qe_read_output(filename::String, T=Float64)
                 while !occursin("End final coordinates", line)
                     if occursin("CELL_PARAMETERS", line)
                         out[:alat]            = occursin("angstrom", line) ? :angstrom : parse(T, split(line)[end][1:end-1])
-                        out[:cell_parameters] = reshape(T[parse.(T, split(readline(f))); parse.(T, split(readline(f))); parse.(T, split(readline(f)))], (3,3))'
+                        out[:cell_parameters] = Mat3(reshape(T[parse.(T, split(readline(f))); parse.(T, split(readline(f))); parse.(T, split(readline(f)))], (3,3))')
                     elseif occursin("ATOMIC_POSITIONS", line)
                         out[:pos_option]      = cardoption(line)
                         line  = readline(f)
@@ -169,7 +170,7 @@ function qe_read_output(filename::String, T=Float64)
                     else
                         tmp_flags[:A] = 1.0
                     end
-                    cell_data = InputData(:cell_parameters, :alat, Mat3(out[:cell_parameters]))
+                    cell_data = InputData(:cell_parameters, :alat, out[:cell_parameters])
                     atoms_data = InputData(:atomic_positions, out[:pos_option], out[:atomic_positions])
                     out[:final_structure] = extract_structure!("newstruct", tmp_flags, cell_data, atsyms, atoms_data, pseudo_data)
                 end
