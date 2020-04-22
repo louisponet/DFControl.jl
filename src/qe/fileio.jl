@@ -57,6 +57,7 @@ function qe_read_output(filename::String, T=Float64)
             #input structure parameters
             elseif occursin("lattice parameter", line)
                 out[:in_alat] = uconvert(Ang, parse(Float64, split(line)[5])*1a₀)
+                out[:alat] = out[:in_alat]
 
             elseif occursin("crystal axes", line)
                 cell_1 = parse.(Float64, split(readline(f))[4:6]) .* out[:in_alat]
