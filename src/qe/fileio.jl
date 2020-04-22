@@ -57,14 +57,14 @@ function qe_read_output(filename::String, T=Float64)
             #input structure parameters
             elseif occursin("lattice parameter", line)
                 out[:in_alat] = uconvert(Ang, parse(Float64, split(line)[5])*1a₀)
-                out[:alat] = out[:in_alat]
+                out[:alat] = :angstrom
 
             elseif occursin("crystal axes", line)
                 cell_1 = parse.(Float64, split(readline(f))[4:6]) .* out[:in_alat]
                 cell_2 = parse.(Float64, split(readline(f))[4:6]) .* out[:in_alat]
                 cell_3 = parse.(Float64, split(readline(f))[4:6]) .* out[:in_alat]
                 out[:in_cell] = Mat3([cell_1 cell_2 cell_3])
-                out[:cell_parameters] = Mat3([cell_1 cell_2 cell_3])
+                out[:cell_parameters] = ustrip.(Mat3([cell_1 cell_2 cell_3]))
 
             elseif occursin("reciprocal axes", line)
                 cell_1 = parse.(Float64, split(readline(f))[4:6]) .* 2π/out[:in_alat]
