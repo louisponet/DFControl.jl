@@ -264,7 +264,7 @@ function set_hubbard_flags!(input::DFInput{QE}, str::AbstractStructure{T}) where
     isdftucalc = any(x -> dftu(x).U != 0 || dftu(x).J0 != 0.0 || sum(dftu(x).J) != 0, u_ats)
 
 	if isdftucalc
-		Jmap = map(x -> dftu(x).J, u_ats)
+		Jmap = map(x -> copy(dftu(x).J), u_ats)
 		Jdim = maximum(length.(Jmap))
 		Jarr = zeros(Jdim, length(u_ats))
 		for (i, J) in enumerate(Jmap)

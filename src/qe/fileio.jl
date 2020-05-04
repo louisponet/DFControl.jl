@@ -473,7 +473,7 @@ function qe_DFTU(speciesid::Int, parsed_flags::SymAnyDict)
 	if haskey(parsed_flags, :Hubbard_beta) && length(parsed_flags[:Hubbard_beta]) >= speciesid
 		β = parsed_flags[:Hubbard_beta][speciesid]
 	end
-	return DFTU{Float64}(U=U, J0=J0, α=α, β=β, J=J)
+	return DFTU{Float64}(U=U, J0=J0, α=α, β=β, J = sum(J) == 0 ? [0.0] : J)
 end
 
 degree2π(ang) = ang / 180 * π
