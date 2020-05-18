@@ -132,12 +132,13 @@ for interface_function in fieldnames(Atom)
 	@eval export $interface_function
 end
 
-
 function Base.range(at::AbstractAtom)
 	projs = projections(at)
 	@assert length(projs) != 0 "At $(name(at)) has no defined projections. Please use `setprojections!` first."
 	return projs[1].start : projs[end].last
 end
+
+Base.range(v::Vector{AbstractAtom}) = vcat(range.(v)...)
 
 setname!(at::AbstractAtom, name::Symbol) =
 	atom(at).name = name
