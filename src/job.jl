@@ -155,32 +155,7 @@ function sanitize_magnetization!(job::DFJob)
     if !any(x->package(x) == QE, inputs(job))
         return
     end
-    magnetic_ats = filter(ismagnetic, atoms(job))
-    magnetic_elements = map(element, magnetic_ats)
-    for e in magnetic_elements
-        magnetizations = Vec3[]
-        dftus          = DFTU[]
-        for a in magnetic_ats
-            if e == element(a)
-                magid = findfirst(x -> x == magnetization(a), magnetizations)
-                dftuid = findfirst(x-> x == dftu(a), dftus)
-                if magid === nothing
-                    push!(magnetizations, magnetization(a))
-                    tid1 = length(magnetizations)
-                else
-                    tid1 = magid
-                end
-                if dftuid === nothing
-                    push!(dftus, dftu(a))
-                    tid2 = length(dftus)
-                else
-                    tid2 = dftuid
-                end
-                atid = max(tid1, tid2) - 1
-                a.name = atid == 0 ? e.symbol : Symbol(string(e.symbol)*"$atid")
-            end
-        end
-    end
+    sanitize_magnetization!(job.structure)
 end
 
 function find_cutoffs(job::DFJob)

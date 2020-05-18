@@ -207,6 +207,37 @@ function set_magnetization!(str::Structure, atsym_mag::Pair{Symbol, <:AbstractVe
 	end
 end
 
+function sanitize_magnetization!(str::Structure)
+    magnetic_ats = filter(ismagnetic, atoms(str))
+    magnetic_elements = map(element, magnetic_ats)
+    for e in magnetic_elements
+        magnetizations = Vec3[]
+        dftus          = DFTU[]
+        for a in magnetic_ats
+            if e == element(a)
+                magid = findfirst(x -> x == magnetization(a), magnetizations)
+                dftuid = findfirst(x-> x == dftu(a), dftus)
+                if magid === nothing
+                    push!(magnetizations, magnetization(a))
+                    tid1 = length(magnetizations)
+                else
+                    tid1 = magid
+                end
+                if dftuid === nothing
+                    push!(dftus, dftu(a))
+                    tid2 = length(dftus)
+                else
+                    tid2 = dftuid
+                end
+                atid = max(tid1, tid2) - 1
+                old_name = at.name
+                a.name = atid == 0 ? e.symbol : Symbol(string(e.symbol)*"$atid")
+                @info "Renamed atom from $old_name to $(name(at)) in order to distinguish different magnetization species."
+            end
+        end
+    end
+end
+
 """
     volume(cell::Mat3)
 	volume(str::Structure)
