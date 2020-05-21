@@ -230,9 +230,9 @@ function sanitize_magnetization!(str::Structure)
                     tid2 = dftuid
                 end
                 atid = max(tid1, tid2) - 1
-                old_name = at.name
+                old_name = a.name
                 a.name = atid == 0 ? e.symbol : Symbol(string(e.symbol)*"$atid")
-                @info "Renamed atom from $old_name to $(name(at)) in order to distinguish different magnetization species."
+                @info "Renamed atom from $old_name to $(name(a)) in order to distinguish different magnetization species."
             end
         end
     end
