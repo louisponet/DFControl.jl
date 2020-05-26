@@ -598,9 +598,9 @@ function pdos(job::DFJob, atsym::Symbol, filter_word="")
     projwfc = getfirst(isprojwfccalc, inputs(job)) 
     scfcalc = getfirst(isscfcalc, inputs(job)) 
     magnetic = ismagneticcalc(scfcalc) 
- 
+
     if package(projwfc) == QE 
-        files = filter(x->occursin("($atsym",x) && occursin("#", x) && occursin(filter_word, x), searchdir(job, "pdos"))
+        files = filter(x->occursin("($atsym)",x) && occursin("#", x) && occursin(filter_word, x), searchdir(job, "pdos"))
         if isempty(files) 
             @error "No pdos files found in jobdir" 
         end 
@@ -616,7 +616,7 @@ function pdos(job::DFJob, atsym::Symbol, filter_word="")
     end 
 end
 
-pdos(job::DFJob, atom::AbstractAtom, args...) = pdos(job, element(atom).symbol, args...)
+pdos(job::DFJob, atom::AbstractAtom, args...) = pdos(job, name(atom), args...)
 
 function pdos(job::DFJob, atoms::Vector{AbstractAtom} = atoms(job), args...)
     t_energies, t_pdos = pdos(job, atoms[1], args...)

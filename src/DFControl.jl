@@ -10,6 +10,8 @@ module DFControl
     using RecipesBase
     @reexport using StaticArrays
     using Parameters
+    using FileIO
+    import FileIO: save
 
     using spglib_jll
     const SPGLIB = spglib_jll.libsymspg
