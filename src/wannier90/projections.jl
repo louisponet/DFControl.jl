@@ -12,8 +12,9 @@ const orbitals = [
     Orbital(:dz2, 1, 2),
     Orbital(:dxz, 1, 2),
     Orbital(:dyz, 1, 2),
-    Orbital(Symbol("dx2-y2"), 1, 2),
     Orbital(:dxy, 1, 2),
+    Orbital(Symbol("dx2-y2"), 1, 2),
+    Orbital(:sp3d2, 6, -5),
 ]
 orbital(s::Symbol) = getfirst(x -> x.name == s, orbitals)
 

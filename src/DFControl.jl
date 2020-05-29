@@ -75,7 +75,6 @@ module DFControl
     using Requires
     function __init__()
         @require Juno = "e5e0dc1b-0480-54bc-9374-aad01c23163d" include("display/printing_juno.jl")
-        init_defaults(default_file)
 		merge!(Unitful.basefactors, localunits)
 		Unitful.register(@__MODULE__)
     end
