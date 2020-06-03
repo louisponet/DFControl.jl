@@ -164,6 +164,7 @@ isscfcalc(input::DFInput{Elk})     = input.name ∈ ["0", "1"]
 isscfcalc(input::DFInput)          = false
 
 iscolincalc(input::DFInput{QE})    = flag(input, :nspin) == 2
+iscolincalc(input::DFInput{Wannier90}) = flag(input, :spin) !== nothing
 iscolincalc(input::DFInput)        = false
 
 isnoncolincalc(input::DFInput{QE}) = flag(input, :noncolin) == true
