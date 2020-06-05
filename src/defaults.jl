@@ -9,14 +9,14 @@ for el in ELEMENTS
     default_pseudos[el.symbol] = Dict{Symbol, Vector{Pseudo}}()
 end
 
-const user_defaults_initialized = false
+const user_defaults_initialized = Ref(false)
 
 const default_server = "localhost"
 
 function maybe_init_defaults(filename::String)
-    if !user_defaults_initialized
+    if !user_defaults_initialized[]
         include(default_file)
-        global user_defaults_initialized = true
+        global user_defaults_initialized[] = true
     end
 end
 
