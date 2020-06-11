@@ -50,9 +50,9 @@ function DFJob(job::DFJob, flagstoset...; cell_=copy(cell(job)), atoms_=copy(ato
     newjob = deepcopy(job)
 
     setcell!(newjob, cell_)
-    if pseudoset == nothing
+    if pseudoset === nothing
         pseudoset, specifier = getpseudoset(job.structure.atoms[1])
-        specifier = pseudospecifier == nothing ? specifier : pseudospecifier
+        specifier = pseudospecifier === nothing ? specifier : pseudospecifier
         setatoms!(newjob, atoms_, pseudoset = pseudoset, pseudospecifier=specifier)
     else
         setatoms!(newjob, atoms_, pseudoset = pseudoset, pseudospecifier= pseudospecifier)

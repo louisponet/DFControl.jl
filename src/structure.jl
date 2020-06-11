@@ -1,25 +1,25 @@
 
-abstract type AbstractStructure{T, LT} end
+abstract type AbstractStructure{T,LT} end
 
-mutable struct Structure{T <: AbstractFloat, AA<:AbstractAtom{T}, LT <: Length{T}} <: AbstractStructure{T, LT}
-    name ::AbstractString
-    cell ::Mat3{LT}
+mutable struct Structure{T <: AbstractFloat,AA <: AbstractAtom{T},LT <: Length{T}} <: AbstractStructure{T,LT}
+    name::AbstractString
+    cell::Mat3{LT}
     atoms::Vector{AA}
-    data ::Dict{Symbol, Any}
+    data::Dict{Symbol,Any}
 end
 Structure() =
-	Structure("NoName", eye(3), Atom[], Dict{Symbol, Any}())
+	Structure("NoName", eye(3), Atom[], Dict{Symbol,Any}())
 
-Structure(name, cell::Mat3{LT}, atoms::Vector{Atom{T, LT}}) where {T<:AbstractFloat,LT<:Length{T}} =
-	Structure{T, Atom{T, LT}, LT}(name, cell, atoms, Dict{Symbol, Any}())
+Structure(name, cell::Mat3{LT}, atoms::Vector{Atom{T,LT}}) where {T <: AbstractFloat,LT <: Length{T}} =
+	Structure{T,Atom{T,LT},LT}(name, cell, atoms, Dict{Symbol,Any}())
 
-Structure(str::AbstractStructure{T}, atoms::Vector{AT}) where {T<:AbstractFloat, AT<:AbstractAtom{T}} =
-	Structure{T, AT}(name(str), cell(str), atoms, data(str))
+Structure(str::AbstractStructure{T}, atoms::Vector{AT}) where {T <: AbstractFloat,AT <: AbstractAtom{T}} =
+	Structure{T,AT}(name(str), cell(str), atoms, data(str))
 
-Structure(cell::Matrix{LT}, atoms::Vector{Atom{T, LT}}) where {T<:AbstractFloat,LT<:Length{T}} =
-	Structure{T, Atom{T, LT}, LT}("NoName", cell, atoms, Dict{Symbol, Any}())
+Structure(cell::Matrix{LT}, atoms::Vector{Atom{T,LT}}) where {T <: AbstractFloat,LT <: Length{T}} =
+	Structure{T,Atom{T,LT},LT}("NoName", cell, atoms, Dict{Symbol,Any}())
 
-Structure(cif_file::String; name="NoName") =
+Structure(cif_file::String; name = "NoName") =
 	cif2structure(cif_file, structure_name = name)
 
 structure(str::Structure) = str
@@ -62,7 +62,7 @@ NearestNeighbors.KDTree(str::AbstractStructure, args...; kwargs...) =
 Sets the projections of the specified atoms. `projs` has to be of form `:atsym => [:proj]`,
 where proj = :s, :p, :d, :f, etc. If `soc` is set to `true` both up and down projections will be taken into account.
 """
-function setprojections!(str::Structure, projs::Pair...; soc=false, kwargs...)
+function setprojections!(str::Structure, projs::Pair...; soc = false, kwargs...)
     projdict = Dict(projs)
     for at in unique(str.atoms)
         if !haskey(projdict, name(at))
@@ -90,10 +90,10 @@ function nprojections(structure)
     return n
 end
 
-#TODO extend base.merge
+# TODO extend base.merge
 "Takes a vector of structures and merges all the attributes of the atoms."
 function mergestructures(structures::Vector{<:AbstractStructure})
-    nonvoid = filter(x -> x != nothing, structures)
+    nonvoid = filter(x->x != nothing, structures)
     out = nonvoid[1]
     for structure in nonvoid[2:end]
         for at1 in atoms(out), at2 in atoms(structure)
@@ -116,7 +116,7 @@ function mergestructures(structures::Vector{<:AbstractStructure})
 end
 
 "Uses cif2cell to Meta.parse a cif file, then returns the parsed structure."
-function cif2structure(cif_file::String; structure_name="NoName")
+function cif2structure(cif_file::String; structure_name = "NoName")
     tmpdir = dirname(cif_file)
     tmpfile = joinpath(tmpdir, "tmp.in")
     @assert splitext(cif_file)[2] == ".cif" error("Please specify a valid cif input file")
@@ -127,14 +127,14 @@ function cif2structure(cif_file::String; structure_name="NoName")
     return structure
 end
 
-function setpseudos!(structure::AbstractStructure, atoms::Vector{<:AbstractAtom}, set::Symbol, specifier::String=""; kwargs...)
+function setpseudos!(structure::AbstractStructure, atoms::Vector{<:AbstractAtom}, set::Symbol, specifier::String = ""; kwargs...)
 	dir = getdefault_pseudodir(set)
 	if dir == nothing
 		@warn "No pseudos found for set $set."
 		return
 	end
     for (i, at) in enumerate(atoms)
-        pseudo = getdefault_pseudo(name(at), set, specifier=specifier)
+        pseudo = getdefault_pseudo(name(at), set, specifier = specifier)
         if pseudo == nothing
             @warn "Pseudo for $(name(at)) at index $i not found in set $set."
         else
@@ -143,13 +143,13 @@ function setpseudos!(structure::AbstractStructure, atoms::Vector{<:AbstractAtom}
     end
 end
 
-setpseudos!(structure::AbstractStructure, atname::Symbol, set::Symbol, specifier::String=""; kwargs...) =
+setpseudos!(structure::AbstractStructure, atname::Symbol, set::Symbol, specifier::String = ""; kwargs...) =
 	setpseudos!(structure, atoms(structure, atname), set, specifier; kwargs...)
 
-setpseudos!(structure::AbstractStructure, set::Symbol, specifier::String=""; kwargs...) =
+setpseudos!(structure::AbstractStructure, set::Symbol, specifier::String = ""; kwargs...) =
 	setpseudos!(structure, atoms(structure), set, specifier; kwargs...)
 
-function setpseudos!(structure::AbstractStructure, at_pseudos::Pair{Symbol, Pseudo}...; kwargs...)
+function setpseudos!(structure::AbstractStructure, at_pseudos::Pair{Symbol,Pseudo}...; kwargs...)
     for (atsym, pseudo) in at_pseudos
         for at in atoms(structure, atsym)
             setpseudo!(at, pseudo; kwargs...)
@@ -163,7 +163,7 @@ end
 Takes a structure and creates a supercell from it with the given amount of extra cells (`na, nb, nc`) along the a, b, c direction.
 If `make_afm` is set to `true` all the labels and magnetizations of the magnetic atoms will be reversed.
 """
-function create_supercell(structure::AbstractStructure, na::Int, nb::Int, nc::Int; make_afm=false)
+function create_supercell(structure::AbstractStructure, na::Int, nb::Int, nc::Int; make_afm = false)
     orig_ats   = atoms(structure)
     orig_cell  = cell(structure)
     scale_mat  = diagm(0 => 1 .+ [na, nb, nc])
@@ -172,17 +172,17 @@ function create_supercell(structure::AbstractStructure, na::Int, nb::Int, nc::In
 
     new_cell   = orig_cell * scale_mat
     new_atoms  = eltype(orig_ats)[]
-    for ia=0:na, ib=0:nb, ic=0:nc
+    for ia in 0:na, ib in 0:nb, ic in 0:nc
         transl_vec = orig_cell * [ia, ib, ic]
         factor = isodd(ia + ib + ic) ? -1 : 1
         for at in orig_ats
 	        cart_pos = position_cart(at) + transl_vec
 	        cryst_pos = inv(new_cell) * cart_pos
             if make_afm && ismagnetic(at)
-                new_magnetization = factor*magnetization(at)
-                push!(new_atoms, Atom(at, projections=deepcopy(projections(at)), magnetization=new_magnetization, position_cart = cart_pos, position_cryst = Point3(cryst_pos)))
+                new_magnetization = factor * magnetization(at)
+                push!(new_atoms, Atom(at, projections = deepcopy(projections(at)), magnetization = new_magnetization, position_cart = cart_pos, position_cryst = Point3(cryst_pos)))
             else
-                push!(new_atoms, Atom(at, projections=deepcopy(projections(at)), position_cart=cart_pos, position_cryst=Point3(cryst_pos)))
+                push!(new_atoms, Atom(at, projections = deepcopy(projections(at)), position_cart = cart_pos, position_cryst = Point3(cryst_pos)))
             end
         end
     end
@@ -197,9 +197,9 @@ function scale_cell!(structure::Structure, v)
 		at.position_cart = structure.cell * at.position_cryst
 	end
 	structure.cell
-end
+    end
 
-function set_magnetization!(str::Structure, atsym_mag::Pair{Symbol, <:AbstractVector}...)
+function set_magnetization!(str::Structure, atsym_mag::Pair{Symbol,<:AbstractVector}...)
 	for (atsym, mag) in atsym_mag
 		for at in atoms(str, atsym)
 			set_magnetization!(at, mag)
@@ -215,8 +215,8 @@ function sanitize_magnetization!(str::Structure)
         dftus          = DFTU[]
         for a in magnetic_ats
             if e == element(a)
-                magid = findfirst(x -> x == magnetization(a), magnetizations)
-                dftuid = findfirst(x-> x == dftu(a), dftus)
+                magid = findfirst(x->x == magnetization(a), magnetizations)
+                dftuid = findfirst(x->x == dftu(a), dftus)
                 if magid === nothing
                     push!(magnetizations, magnetization(a))
                     tid1 = length(magnetizations)
@@ -231,8 +231,9 @@ function sanitize_magnetization!(str::Structure)
                 end
                 atid = max(tid1, tid2) - 1
                 old_name = a.name
-                a.name = atid == 0 ? e.symbol : Symbol(string(e.symbol)*"$atid")
-                @info "Renamed atom from $old_name to $(name(a)) in order to distinguish different magnetization species."
+                new_name = Symbol(string(e.symbol) * "$atid")
+                a.name = atid == 0 ? e.symbol : new_name 
+                new_name != old_name && @info "Renamed atom from $old_name to $(name(a)) in order to distinguish different magnetization species."
             end
         end
     end
@@ -260,18 +261,18 @@ function SPGStructure(s::Structure)
     clattice   = convert(Matrix{Cdouble}, ustrip.(cell(s)'))
     cpositions = convert(Matrix{Cdouble}, hcat(position_cryst.(atoms(s))...))
     uats       = unique(atoms(s))
-    species_indices = Cint[findfirst(x -> isequal_species(x, at), uats) for at in atoms(s)]
+    species_indices = Cint[findfirst(x->isequal_species(x, at), uats) for at in atoms(s)]
     return SPGStructure(clattice, cpositions, species_indices)
 end
 
-function symmetry_operators(s::SPGStructure; maxsize=52, tolerance = DEFAULT_TOLERANCE)
+function symmetry_operators(s::SPGStructure; maxsize = 52, tolerance = DEFAULT_TOLERANCE)
     rotations    = Array{Cint}(undef, 3, 3, maxsize)
     translations = Array{Cdouble}(undef, 3, maxsize)
 
     num_ops = ccall((:spg_get_symmetry, SPGLIB), Cint,
       (Ptr{Cint}, Ptr{Cdouble}, Cint, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cint}, Cint, Cdouble),
        rotations, translations, maxsize, s.lattice, s.positions, s.species_indices, length(s.species_indices), tolerance)
-    return (rotations=[Mat3{Int}(rotations[:, :, i]) for i=1:num_ops], translations=[Vec3(translations[:, i]) for i=1:num_ops])
+    return (rotations = [Mat3{Int}(rotations[:, :, i]) for i = 1:num_ops], translations = [Vec3(translations[:, i]) for i = 1:num_ops])
 end
 symmetry_operators(s::Structure; kwargs...) = symmetry_operators(SPGStructure(s); kwargs...)
 
@@ -307,7 +308,7 @@ end
 function niggli_reduce(s::Structure; kwargs...)
     reduced_spg_structure = niggli_reduce!(SPGStructure(s); kwargs...)
     uats = unique(atoms(s))
-    c = Mat3{Float64}(reduced_spg_structure.lattice').*1angstrom
+    c = Mat3{Float64}(reduced_spg_structure.lattice') .* 1angstrom
     return Structure(s.name, c, map(1:length(reduced_spg_structure.species_indices)) do i
         at = deepcopy(uats[reduced_spg_structure.species_indices[i]])
         pos = reduced_spg_structure.positions[:, i]
@@ -328,7 +329,7 @@ end
 function find_primitive(s::Structure; kwargs...)
     uats = unique(atoms(s))
     spg = find_primitive!(SPGStructure(s))
-    new_cell = Mat3{Float64}(spg.lattice)*unit(eltype(cell(s)))
+    new_cell = Mat3{Float64}(spg.lattice) * unit(eltype(cell(s)))
     newats = eltype(uats)[]
     for i = 1:length(spg.species_indices)
         tat = deepcopy(uats[spg.species_indices[i]])
@@ -336,7 +337,7 @@ function find_primitive(s::Structure; kwargs...)
         push!(newats, tat)
     end
       
-    return Structure(s.name, new_cell,newats, s.data) 
+    return Structure(s.name, new_cell, newats, s.data) 
 end
 
 
@@ -349,17 +350,17 @@ Parameters (a, b, c, α, β, γ) of the input cell returned in a named tuple.
 function cell_parameters(cell::Mat3)
     G = transpose(cell) * cell
     a, b, c = sqrt.(diag(G))
-    α = acos(0.5(G[2, 3] + G[3, 2])/(c * b))
-    β = acos(0.5(G[3, 1] + G[1, 3])/(a * c))
-    γ = acos(0.5(G[1, 2] + G[2, 1])/(a * b))
+    α = acos(0.5(G[2, 3] + G[3, 2]) / (c * b))
+    β = acos(0.5(G[3, 1] + G[1, 3]) / (a * c))
+    γ = acos(0.5(G[1, 2] + G[2, 1]) / (a * b))
     a, b, c, α, β, γ
 end
 
 cell_parameters(s::Structure) = cell_parameters(ustrip.(cell(s)))
 
-function crystal_kind(s::Structure; tolerance=DEFAULT_TOLERANCE)
+function crystal_kind(s::Structure; tolerance = DEFAULT_TOLERANCE)
     n, sym = international(s)
-    f = (i, j) -> i <= n <= j
+    f = (i, j)->i <= n <= j
     cs = [:triclinic => (1, 2), :monoclinic => (3, 15),
           :orthorhombic => (16, 74), :tetragonal => (75, 142),
           :trigonal => (143, 167), :hexagonal => (168, 194),
@@ -372,9 +373,9 @@ function crystal_kind(s::Structure; tolerance=DEFAULT_TOLERANCE)
     error("Crystal kind could not be determined")
 end
 
-function lattice_kind(s::Structure; tolerance=DEFAULT_TOLERANCE)
+function lattice_kind(s::Structure; tolerance = DEFAULT_TOLERANCE)
     n, sym = international(s)
-    kind = crystal_kind(s; tolerance=tolerance)
+    kind = crystal_kind(s; tolerance = tolerance)
     if n ∈ (146, 148, 155, 160, 161, 166, 167)
         return :rhombohedral
     elseif kind == :trigonal
@@ -389,7 +390,7 @@ function high_symmetry_kpath(s::Structure, npoints_per_segment::Int; kwargs...)
 
 end
 
-function high_symmetry_kpoints(s::Structure; tolerance=DEFAULT_TOLERANCE)
+function high_symmetry_kpoints(s::Structure; tolerance = DEFAULT_TOLERANCE)
     n, sym       = international(s)
     kind = lattice_kind(s)
     primitive    = find_primitive(s)
@@ -398,7 +399,7 @@ function high_symmetry_kpoints(s::Structure; tolerance=DEFAULT_TOLERANCE)
 
     a, b, c, α, β, γ = cell_parameters(ustrip.(cell(s)))
 
-    symerror = () -> error("Unexpected value for international symbol: $sym")
+    symerror = ()->error("Unexpected value for international symbol: $sym")
     if kind == :cubic
         if occursin("P", sym)
             return cubic()
@@ -418,7 +419,7 @@ function high_symmetry_kpoints(s::Structure; tolerance=DEFAULT_TOLERANCE)
             else
                 return bctet2(c, a)
             end
-        else
+            else
             symerror()
         end
     elseif kind == :orthorhombic
@@ -446,7 +447,7 @@ function high_symmetry_kpoints(s::Structure; tolerance=DEFAULT_TOLERANCE)
         return hex()
 
     elseif kind == :rhombohedral
-        if α < π/2
+        if α < π / 2
             return rhl1(α)
         else
             return rhl2(α)
@@ -459,11 +460,11 @@ function high_symmetry_kpoints(s::Structure; tolerance=DEFAULT_TOLERANCE)
             return mcl(b, c, α)
 
         elseif occursin("C", sym)
-            if kγ > π/2
+            if kγ > π / 2
                 return mclc1(a, b, c, α)
-            elseif kγ == π/2
+            elseif kγ == π / 2
                 return mclc2(a, b, c, α)
-            elseif kγ < π/2
+            elseif kγ < π / 2
                 if b * cos(α) / c + b^2 * sin(α)^2 / a^2 < 1
                     return mclc3(a, b, c, α)
                 elseif b * cos(α) / c + b^2 * sin(α)^2 / a^2 == 1
@@ -472,20 +473,20 @@ function high_symmetry_kpoints(s::Structure; tolerance=DEFAULT_TOLERANCE)
                     return mclc5(a, b, c, α)
                 end
             end
-        else
+            else
             symerror()
         end
 
     elseif kind == :triclinic
         prim_rec = inv(primcell)
         ka, kb, kc, kα, kβ, kγ = cell_parameters(prim_rec)
-        if kα > π/2 && kβ > π/2 && kγ > π/2
+        if kα > π / 2 && kβ > π / 2 && kγ > π / 2
             return tria()
-        elseif kα < π/2 && kβ < π/2 && kγ < π/2
+        elseif kα < π / 2 && kβ < π / 2 && kγ < π / 2
             return trib()
-        elseif kα > π/2 && kβ > π/2 && kγ == π/2
+        elseif kα > π / 2 && kβ > π / 2 && kγ == π / 2
             return tria()
-        elseif kα < π/2 && kβ < π/2 && kγ == π/2
+        elseif kα < π / 2 && kβ < π / 2 && kγ == π / 2
             return trib()
         end
 
@@ -501,7 +502,7 @@ function cubic()
                    :R => Vec3([0.5, 0.5, 0.5]),
                    :M => Vec3([0.5, 0.5, 0.0]))
     path = [[:Γ, :X, :M, :Γ, :R, :X], [:M, :R]]
-    return (kpoints=kpoints, path=path)
+    return (kpoints = kpoints, path = path)
 end
 
 function fcc()
@@ -514,7 +515,7 @@ function fcc()
 
     path = [[:Γ, :X, :W, :K,
                  :Γ, :L, :U, :W, :L, :K], [:U, :X]]
-    return (kpoints=kpoints, path=path)
+    return (kpoints = kpoints, path = path)
 end
 
 function bcc()
@@ -523,7 +524,7 @@ function bcc()
                    :P => Vec3([0.25, 0.25, 0.25]),
                    :N => Vec3([0.0, 0.0, 0.5]))
     path = [[:Γ, :H, :N, :Γ, :P, :H], [:P, :N]]
-    return (kpoints=kpoints, path=path)
+    return (kpoints = kpoints, path = path)
 end
 
 function tet()
@@ -536,7 +537,7 @@ function tet()
         path = [[:Γ, :X, :M, :Γ, :Z, :R, :A, :Z], [:X, :R],
                 [:M, :A]]
 
-    return (kpoints=kpoints, path=path)
+    return (kpoints = kpoints, path = path)
 end
 
 function bctet1(c, a)
@@ -550,7 +551,7 @@ function bctet1(c, a)
                :Z_1 => Vec3([-eta, 1 - eta, eta]))
     path = [[:Γ, :X, :M, :Γ, :Z, :P, :N, :Z_1, :M],
             [:X, :P]]
-    return (kpoints=kpoints, path=path)
+    return (kpoints = kpoints, path = path)
 end
 
 
@@ -568,7 +569,7 @@ function bctet2(c, a)
                :Z => Vec3([0.5, 0.5, -0.5]))
     path = [[:Γ, :X, :Y, :Sigma, :Γ, :Z,
              :Sigma_1, :N, :P, :Y_1, :Z], [:X, :P]]
-    return (kpoints=kpoints, path=path)
+    return (kpoints = kpoints, path = path)
 end
 
 
@@ -583,7 +584,7 @@ function orc()
                :Z => Vec3([0.0, 0.0, 0.5]))
     path = [[:Γ, :X, :S, :Y, :Γ,
              :Z, :U, :R, :T, :Z], [:Y, :T], [:U, :X], [:S, :R]]
-    return (kpoints=kpoints, path=path)
+    return (kpoints = kpoints, path = path)
 end
 
 
@@ -602,7 +603,7 @@ function orcf1(a, b, c)
                :Z => Vec3([0.5, 0.5, 0.0]))
     path = [[:Γ, :Y, :T, :Z, :Γ, :X, :A_1, :Y],
             [:T, :X_1], [:X, :A, :Z], [:L, :Γ]]
-    return (kpoints=kpoints, path=path)
+    return (kpoints = kpoints, path = path)
 end
 
 
@@ -624,7 +625,7 @@ function orcf2(a, b, c)
     path = [[:Γ, :Y, :C, :D, :X, :Γ,
              :Z, :D_1, :H, :C], [:C_1, :Z], [:X, :H_1], [:H, :Y],
             [:L, :Γ]]
-    return (kpoints=kpoints, path=path)
+    return (kpoints = kpoints, path = path)
 end
 
 
@@ -642,7 +643,7 @@ function orcf3(a, b, c)
                :Z => Vec3([0.5, 0.5, 0.0]))
     path = [[:Γ, :Y, :T, :Z, :Γ, :X, :A_1, :Y],
             [:X, :A, :Z], [:L, :Γ]]
-    return (kpoints=kpoints, path=path)
+    return (kpoints = kpoints, path = path)
 end
 
 
@@ -666,7 +667,7 @@ function orci(a, b, c)
                :Z => Vec3([0.5, 0.5, -0.5]))
     path = [[:Γ, :X, :L, :T, :W, :R, :X_1, :Z,
              :Γ, :Y, :S, :W], [:L_1, :Y], [:Y_1, :Z]]
-    return (kpoints=kpoints, path=path)
+    return (kpoints = kpoints, path = path)
 end
 
 
@@ -684,7 +685,7 @@ function orcc(a, b, c)
                :Z => Vec3([0.0, 0.0, 0.5]))
     path = [[:Γ, :X, :S, :R, :A, :Z,
              :Γ, :Y, :X_1, :A_1, :T, :Y], [:Z, :T]]
-    return (kpoints=kpoints, path=path)
+    return (kpoints = kpoints, path = path)
 end
 
 
@@ -697,7 +698,7 @@ function hex()
                :M => Vec3([0.5, 0.0, 0.0]))
     path = [[:Γ, :M, :K, :Γ, :A, :L, :H, :A], [:L, :M],
             [:K, :H]]
-    return (kpoints=kpoints, path=path)
+    return (kpoints = kpoints, path = path)
 end
 
 
@@ -718,7 +719,7 @@ function rhl1(alpha)
                :Z => Vec3([0.5, 0.5, 0.5]))
     path = [[:Γ, :L, :B_1], [:B, :Z, :Γ, :X],
             [:Q, :F, :P_1, :Z], [:L, :P]]
-    return (kpoints=kpoints, path=path)
+    return (kpoints = kpoints, path = path)
 end
 
 
@@ -735,7 +736,7 @@ function rhl2(alpha)
                :Z => Vec3([0.5, -0.5, 0.5]))
     path = [[:Γ, :P, :Z, :Q, :Γ,
              :F, :P_1, :Q_1, :L, :Z]]
-    return (kpoints=kpoints, path=path)
+    return (kpoints = kpoints, path = path)
 end
 
 
@@ -760,7 +761,7 @@ function mcl(b, c, beta)
                :Z => Vec3([0.5, 0.0, 0.0]))
     path = [[:Γ, :Y, :H, :C, :E, :M_1, :A, :X, :H_1],
             [:M, :D, :Z], [:Y, :D]]
-    return (kpoints=kpoints, path=path)
+    return (kpoints = kpoints, path = path)
 end
 
 
@@ -788,7 +789,7 @@ function mclc1(a, b, c, alpha)
                :Z => Vec3([0.0, 0.0, 0.5]))
     path = [[:Γ, :Y, :F, :L, :I], [:I_1, :Z, :F_1],
             [:Y, :X_1], [:X, :Γ, :N], [:M, :Γ]]
-    return (kpoints=kpoints, path=path)
+    return (kpoints = kpoints, path = path)
 end
 
 
@@ -816,7 +817,7 @@ function mclc2(a, b, c, alpha)
                :Z => Vec3([0.0, 0.0, 0.5]))
     path = [[:Γ, :Y, :F, :L, :I], [:I_1, :Z, :F_1],
             [:N, :Γ, :M]]
-    return (kpoints=kpoints, path=path)
+    return (kpoints = kpoints, path = path)
 end
 
 
@@ -846,7 +847,7 @@ function mclc3(a, b, c, alpha)
                :Z => Vec3([0.0, 0.0, 0.5]))
     path = [[:Γ, :Y, :F, :H, :Z, :I, :F_1],
             [:H_1, :Y_1, :X, :Γ, :N], [:M, :Γ]]
-    return (kpoints=kpoints, path=path)
+    return (kpoints = kpoints, path = path)
 end
 
 
@@ -876,7 +877,7 @@ function mclc4(a, b, c, alpha)
                :Z => Vec3([0.0, 0.0, 0.5]))
     path = [[:Γ, :Y, :F, :H, :Z, :I],
             [:H_1, :Y_1, :X, :Γ, :N], [:M, :Γ]]
-    return (kpoints=kpoints, path=path)
+    return (kpoints = kpoints, path = path)
 end
 
 
@@ -910,7 +911,7 @@ function mclc5(a, b, c, alpha)
                :Z => Vec3([0.0, 0.0, 0.5]))
     path = [[:Γ, :Y, :F, :L, :I], [:I_1, :Z, :H, :F_1],
             [:H_1, :Y_1, :X, :Γ, :N], [:M, :Γ]]
-    return (kpoints=kpoints, path=path)
+    return (kpoints = kpoints, path = path)
 end
 
 
@@ -925,7 +926,7 @@ function tria()
                :Z => Vec3([0.0, 0.0, 0.5]))
     path = [[:X, :Γ, :Y], [:L, :Γ, :Z],
             [:N, :Γ, :M], [:R, :Γ]]
-    return (kpoints=kpoints, path=path)
+    return (kpoints = kpoints, path = path)
 end
 
 
@@ -940,5 +941,5 @@ function trib()
                :Z => Vec3([-0.5, 0.0, 0.5]))
     path = [[:X, :Γ, :Y], [:L, :Γ, :Z],
             [:N, :Γ, :M], [:R, :Γ]]
-    return (kpoints=kpoints, path=path)
+    return (kpoints = kpoints, path = path)
 end

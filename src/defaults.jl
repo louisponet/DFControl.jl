@@ -13,7 +13,7 @@ const user_defaults_initialized = Ref(false)
 
 const default_server = "localhost"
 
-function maybe_init_defaults(filename::String)
+function maybe_init_defaults()
     if !user_defaults_initialized[]
         include(default_file)
         global user_defaults_initialized[] = true
@@ -26,7 +26,7 @@ end
 Adds an entry inside the `default_pseudodirs` with flag `pseudo_symbol`, and adds it to the `user_defaults.jl` file.
 """
 function setdefault_pseudodir(pseudo_symbol::Symbol, dir::String)
-    maybe_init_defaults(default_file) 
+    maybe_init_defaults() 
     default_pseudodirs[pseudo_symbol] = dir
     expr2file(default_file, :(default_pseudodirs[$(QuoteNode(pseudo_symbol))] = $dir))
 end
@@ -37,7 +37,7 @@ end
 Removes entry with flag `pseudo_symbol` from the `default_pseudodirs` and `user_defaults.jl` file.
 """
 function removedefault_pseudodir(pseudo_symbol::Symbol)
-    maybe_init_defaults(default_file) 
+    maybe_init_defaults() 
     if haskey(default_pseudodirs, pseudo_symbol)
         delete!(default_pseudodirs, pseudo_symbol)
         rm_expr_lhs(default_file, :(default_pseudodirs[$(QuoteNode(pseudo_symbol))]))
@@ -51,7 +51,7 @@ end
 Removes all pseudo entries with flag `pseudo_symbol` from the `default_pseudos`.
 """
 function removedefault_pseudos(pseudo_symbol::Symbol)
-    maybe_init_defaults(default_file) 
+    maybe_init_defaults() 
     found = false
     for (at, pseudos) in default_pseudos
         if haskey(pseudos, pseudo_symbol)
@@ -71,7 +71,7 @@ end
 Sets the default server variable, and also adds it to the `user_defaults.jl` file.
 """
 function setdefault_server(server::String)
-    maybe_init_defaults(default_file) 
+    maybe_init_defaults() 
     default_server = server
     expr2file(default_file, :(default_server = $server))
 end
@@ -81,7 +81,7 @@ end
 
 Returns the default server if it's defined. If it is not defined return "".
 """
-getdefault_server() = (maybe_init_defaults(default_file); DFControl.default_server)
+getdefault_server() = (maybe_init_defaults(); DFControl.default_server)
      
 
 """
@@ -89,10 +89,10 @@ getdefault_server() = (maybe_init_defaults(default_file); DFControl.default_serv
 
 Returns the default pseudo dirs if it's defined. If it is not defined return nothing.
 """
-getdefault_pseudodirs() = (maybe_init_defaults(default_file); DFControl.default_pseudodirs)
+getdefault_pseudodirs() = (maybe_init_defaults(); DFControl.default_pseudodirs)
 
 getdefault_pseudodir(pseudoset) =
-    (maybe_init_defaults(default_file); haskey(getdefault_pseudodirs(), pseudoset) ? getdefault_pseudodirs()[pseudoset] : nothing)
+    (maybe_init_defaults(); haskey(getdefault_pseudodirs(), pseudoset) ? getdefault_pseudodirs()[pseudoset] : nothing)
 
 """
     configuredefault_pseudos(server = getdefault_server(), pseudo_dirs=getdefault_pseudodirs())
@@ -100,12 +100,12 @@ getdefault_pseudodir(pseudoset) =
 Reads the specified `default_pseudo_dirs` on the `default_server` and sets up the `default_pseudos` variable, and also adds all the entries to the `user_defaults.jl` file.
 """
 function configuredefault_pseudos(;server = getdefault_server(), pseudo_dirs=getdefault_pseudodirs())
-    maybe_init_defaults(default_file) 
+    maybe_init_defaults() 
     if server == ""
         error("Either supply a valid server string or setup a default server through 'setdefault_server!()'.")
     end
 
-    if pseudo_dirs == nothing
+    if pseudo_dirs === nothing
         error("Either supply valid pseudo directories or setup a default pseudo dir through 'setdefault_pseudodir()'.")
     end
 
@@ -145,8 +145,8 @@ end
 Returns the pseudo potential string linked to the atom.
 """
 function getdefault_pseudo(atom::Symbol, set=:default; specifier="")
-    maybe_init_defaults(default_file) 
-    if tryparse(Int, String(atom)[end:end]) != nothing
+    maybe_init_defaults() 
+    if tryparse(Int, String(atom)[end:end]) !== nothing
         pp_atom = Symbol(String(atom)[1:end-1])
     else
         pp_atom = atom
@@ -166,16 +166,16 @@ end
 Sets the header that will get added to each job.tt file, if no other header was specified.
 """
 function setdefault_jobheader(lines)
-    maybe_init_defaults(default_file) 
+    maybe_init_defaults() 
     expr = :(default_jobheader = $lines)
     expr2file(default_file,expr)
     default_jobheader = lines
 end
 
 function getdefault_jobheader()
-    maybe_init_defaults(default_file) 
+    maybe_init_defaults() 
     if isdefined(DFControl, :default_job_header)
-        return default_job_header
+        return default_jobheader
     else
         return [""]
     end
@@ -208,7 +208,7 @@ function findspecifier(str, strs::Vector{<:AbstractString})
 end
 
 function getpseudoset(elsym::Symbol, ps::Pseudo)
-    maybe_init_defaults(default_file) 
+    maybe_init_defaults() 
 	str = ps.name
     for (key, val) in default_pseudos[elsym]
         if length(val) == 1

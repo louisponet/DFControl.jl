@@ -321,7 +321,7 @@ end
 
 sets the data in the k point `DataBlock` inside the specified inputs.
 """
-function setkpoints!(job::DFJob, name::String, k_points; print=true)
+function setkpoints!(job::DFJob, n::String, k_points; print=true)
     for calc in inputs(job, n)
         setkpoints!(calc, k_points, print=print)
     end
