@@ -596,8 +596,10 @@ end
 "Reads the pdos for a particular atom. Only works for QE."  
 function pdos(job::DFJob, atsym::Symbol, filter_word="") 
     projwfc = getfirst(isprojwfccalc, inputs(job)) 
-    scfcalc = getfirst(isscfcalc, inputs(job)) 
-    magnetic = ismagneticcalc(scfcalc) 
+    scfcalc = getfirst(isscfcalc, inputs(job))
+    ats = atoms(job, atsym)
+    @assert length(ats) > 0 "No atoms found with name $atsym."
+    magnetic = any(ismagnetic, ats) 
 
     if package(projwfc) == QE 
         files = filter(x->occursin("($atsym)",x) && occursin("#", x) && occursin(filter_word, x), searchdir(job, "pdos"))

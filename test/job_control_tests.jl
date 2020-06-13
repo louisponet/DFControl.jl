@@ -70,13 +70,15 @@ wanout = outputdata(job, "wan")
 @test length(wanout[:wannierise]) == 203
 job.inputs = job.inputs[1:4]
 
-setflags!(job, :nspin => 2, print=false)
-@test job["nscf"][:nspin] == 2
-job["nscf"][:nspin] = 3
-@test job["nscf"][:nspin] == 3
+job[:nbnd] = 300
+@test job["scf"][:nbnd] == 300
+@test job["nscf"][:nbnd] == 300
+rmflags!(job, :nbnd)
+@test !haskey(job["scf"].flags, :nbnd)
 
-job[:nspin] = 2
-@test job["nscf"][:nspin] == 2
+job["scf"][:nbnd] = 300
+@test job["scf"][:nbnd] == 300
+rmflags!(job, :nbnd)
 
 job["nscf"][:Hubbard_U] = [1.0]
 @test job["nscf"][:Hubbard_U] == [1.0]
@@ -86,8 +88,10 @@ job["nscf"][:starting_magnetization] = [[1.0, 2.0, 1.0]]
 
 job["nscf"][:Hubbard_J] = [0 1 2]
 @test job["nscf"][:Hubbard_J] == [0 1 2]
-push!.((job,), gencalc_wan(nscf, structure(job), fermi-7.0, wanflags..., Epad=5.0))
+rmflags!(job, :Hubbard_J, :starting_magnetization, :Hubbard_U)
+set_magnetization!(job, :Pt => [0.,0.,1.0])
 
+push!.((job,), gencalc_wan(nscf, structure(job), fermi-7.0, wanflags..., Epad=5.0))
 #TODO: add test with the new wancalc from projwfc
 
 setflow!(job, ""=>false)
@@ -260,6 +264,7 @@ DFControl.sanitizeflags!(job)
 set_Hubbard_U!(job, :Pt => 2.3)
 @test job["scf"][:lda_plus_u]
 @test job["scf"][:noncolin]
+@test job["scf"][:lda_plus_u_kind] == 1
 
 rmflags!(job, :nspin, :lda_plus_u, :noncolin)
 set_magnetization!(job, :Pt => [0.0, 0.0, 0.5])

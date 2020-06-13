@@ -344,7 +344,7 @@ function gencalc_wan(nscf::DFInput{QE}, structure::AbstractStructure, Emin, wanf
     hasoutput_assert(nscf)
     iscalc_assert(nscf, "nscf")
     hasprojections_assert(structure)
-    if iscolincalc(nscf)
+    if iscolin(structure)
         wannames = ["wanup", "wandn"]
         @info "Spin polarized calculation found (inferred from nscf input)."
     else
@@ -365,7 +365,7 @@ function gencalc_wan(nscf::DFInput{QE}, structure::AbstractStructure, Emin, wanf
     wanflags[:mp_grid] = kakbkc(kpoints)
     @info "mp_grid=$(join(wanflags[:mp_grid]," ")) (inferred from nscf input)."
     wanflags[:preprocess] = true
-	isnoncolincalc(nscf) && (wanflags[:spinors] = true)
+	isnoncolin(structure) && (wanflags[:spinors] = true)
     kdata = InputData(:kpoints, :none, [k[1:3] for k in kpoints])
 
     waninputs = DFInput{Wannier90}[]

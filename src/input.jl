@@ -163,26 +163,13 @@ isscfcalc(input::DFInput{QE})      = flag(input, :calculation) == "scf"
 isscfcalc(input::DFInput{Elk})     = input.name ∈ ["0", "1"]
 isscfcalc(input::DFInput)          = false
 
-iscolincalc(input::DFInput{QE})    = flag(input, :nspin) == 2
-iscolincalc(input::DFInput{Wannier90}) = flag(input, :spin) !== nothing
-iscolincalc(input::DFInput)        = false
-
-isnoncolincalc(input::DFInput{QE}) = flag(input, :noncolin) == true
-isnoncolincalc(input::DFInput)     = false
-
 isvcrelaxcalc(input::DFInput{QE})  = flag(input, :calculation) == "vc-relax"
 isvcrelaxcalc(input::DFInput)      = false
 
 isprojwfccalc(input::DFInput{QE})  = hasexec(input, "projwfc.x")
 isprojwfccalc(input::DFInput)      = false
 
-isdftucalc(input::DFInput{QE})     = flag(input, :lda_plus_u) == true
-isdftucalc(input::DFInput)         = false
-
-ismagneticcalc(input::DFInput{QE}) = flag(input, :nspin) ∈ [2, 4] || (flag(input, :lda_plus_u) == true && flag(input, :noncolin) == true)
-ismagneticcalc(input::DFInput)     = false
-
-issoccalc(input::DFInput{QE}) = flag(input, :lspinorb) == true && flag(input, :noncolin) == true
+issoccalc(input::DFInput{QE}) = flag(input, :lspinorb) == true
 issoccalc(input::DFInput{Wannier90}) = flag(input, :spinors) == true
 issoccalc(input::DFInput) = false
 
@@ -263,7 +250,7 @@ end
 function set_hubbard_flags!(input::DFInput{QE}, str::AbstractStructure{T}) where {T}
 	u_ats = unique(atoms(str))
     isdftucalc = any(x -> dftu(x).U != 0 || dftu(x).J0 != 0.0 || sum(dftu(x).J) != 0, u_ats)
-
+    isnc = isnoncolin(str)
 	if isdftucalc
 		Jmap = map(x -> copy(dftu(x).J), u_ats)
 		Jdim = maximum(length.(Jmap))
@@ -285,6 +272,7 @@ function set_hubbard_flags!(input::DFInput{QE}, str::AbstractStructure{T}) where
     	          :Hubbard_J     => Jarr,
     	          :Hubbard_J0    => map(x -> dftu(x).J0, u_ats);
 	              print=false)
+        isnc && setflags!(input, :lda_plus_u_kind => 1; print=false)
 	end
 end
 
@@ -294,8 +282,8 @@ function set_starting_magnetization_flags!(input::DFInput{QE}, str::AbstractStru
 	starts= T[]
 	θs    = T[]
 	ϕs    = T[]
-    ismagcalc      = any(x -> sum(magnetization(x)) != 0, u_ats)
-    isnc =  isnoncolincalc(input) || any(x -> sum(magnetization(x)) !=0 && !isapprox(abs(normalize(magnetization(x)) ⋅ [0,0,1]), 1.0), u_ats)
+    ismagcalc = any(x -> norm(x) != 0, mags)
+    isnc =  any(x -> norm(x) != 0 && !isapprox(abs(normalize(x) ⋅ [0, 0, 1]), 1.0), mags)
 	if ismagcalc && isnc
 		for m in mags
 			tm = normalize(m)
@@ -310,7 +298,8 @@ function set_starting_magnetization_flags!(input::DFInput{QE}, str::AbstractStru
 				push!(starts, start)
 			end
 		end
-		setflags!(input, :noncolin=>true; print=false)
+		setflags!(input, :noncolin => true; print=false)
+		rmflags!(input, :nspin; print=false)
 	elseif ismagcalc 
 		for m in mags
 			push!.((θs, ϕs), 0.0)
