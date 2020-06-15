@@ -206,17 +206,15 @@ function qe_read_output(filename::String, T=Float64)
         end
 
         #process bands
-        if !isempty(k_eigvals)
+        if !isempty(k_eigvals) && haskey(haskey(out, :k_cart) && haskey(out, :in_recip_cell))
             if !haskey(out, :k_cryst) && haskey(out, :in_recip_cell) && haskey(out, :k_cart)
                 out[:k_cryst] = (out[:in_recip_cell]^-1,) .* out[:k_cart]
             end
-            if haskey(out,:k_cart) && haskey(out,:k_cryst)
-                if colincalc
-                    out[:bands_up]   = [DFBand(out[:k_cart], out[:k_cryst], zeros(length(out[:k_cart]))) for i = 1:length(k_eigvals[1])]
-                    out[:bands_down] = [DFBand(out[:k_cart], out[:k_cryst], zeros(length(out[:k_cart]))) for i = 1:length(k_eigvals[1])]
-                else
-                    out[:bands] = [DFBand(out[:k_cart], out[:k_cryst], zeros(length(out[:k_cart]))) for i = 1:length(k_eigvals[1])]
-                end
+            if colincalc
+                out[:bands_up]   = [DFBand(out[:k_cart], out[:k_cryst], zeros(length(out[:k_cart]))) for i = 1:length(k_eigvals[1])]
+                out[:bands_down] = [DFBand(out[:k_cart], out[:k_cryst], zeros(length(out[:k_cart]))) for i = 1:length(k_eigvals[1])]
+            else
+                out[:bands] = [DFBand(out[:k_cart], out[:k_cryst], zeros(length(out[:k_cart]))) for i = 1:length(k_eigvals[1])]
             end
             for i = 1:length(k_eigvals)
                 for i1=1:length(k_eigvals[i])
