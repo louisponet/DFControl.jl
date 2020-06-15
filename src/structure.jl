@@ -59,10 +59,10 @@ ismagnetic(str::Structure) =
     any(x -> norm(magnetization(x)) > 0, atoms(str))
 
 iscolin(str::Structure) =
-    all(x -> isapprox(abs(normalize(magnetization(x)) ⋅ [0, 0, 1]), 1.0), atoms(str))
+    all(x -> isapprox(abs(normalize(magnetization(x)) ⋅ [0, 0, 1]), 1.0), filter(x-> norm(magnetization(x)) > 0, atoms(str)))
 
 isnoncolin(str::Structure) =
-    any(x -> norm(magnetization(x)) > 0 && !isapprox(abs(normalize(magnetization(x)) ⋅ [0, 0, 1]), 1.0), atoms(str))
+    any(x -> norm(magnetization(x)) > 0 &&!isapprox(abs(normalize(magnetization(x)) ⋅ [0, 0, 1]), 1.0), atoms(str))
 
 """
     setprojections!(str::Structure, projs::Pair...; soc=false)

@@ -207,7 +207,7 @@ function qe_read_output(filename::String, T=Float64)
 
         #process bands
         if !isempty(k_eigvals)
-            if !haskey(out, :k_cryst)
+            if !haskey(out, :k_cryst) && haskey(out, :in_recip_cell) && haskey(out, :k_cart)
                 out[:k_cryst] = (out[:in_recip_cell]^-1,) .* out[:k_cart]
             end
             if colincalc
