@@ -62,6 +62,7 @@ wanflags = [:write_hr => true, :wannier_plot => true]
 setprojections!(job, :Pt => [:s, :p, :d])
 wancalc = gencalc_wan(job["nscf"], structure(job), fermi-7.0, wanflags...; Epad=5.0)
 @test wancalc == gencalc_wan(job, fermi-7.0, wanflags...; Epad=5.0)
+@show DFControl.iscolin(job.structure)
 append!(job, wancalc)
 @test job["wan"][:write_hr] == job["wan"][:wannier_plot] == true
 

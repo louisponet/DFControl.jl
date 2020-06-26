@@ -600,7 +600,7 @@ function qe_read_input(filename; execs=[Exec("pw.x")], run=true, structure_name=
         ntyp = parsed_flags[:ntyp]
 
         pseudos = InputData(:atomic_species, :none, Dict{Symbol, Pseudo}())
-        pseudo_dir = pop!(parsed_flags, :pseudo_dir, "./")
+        pseudo_dir = string(pop!(parsed_flags, :pseudo_dir, "./"))
         atsyms = Symbol[]
         for k=1:ntyp
             push!(used_lineids, i + k)

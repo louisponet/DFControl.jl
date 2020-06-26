@@ -58,8 +58,10 @@ NearestNeighbors.KDTree(str::AbstractStructure, args...; kwargs...) =
 ismagnetic(str::Structure) =
     any(x -> norm(magnetization(x)) > 0, atoms(str))
 
-iscolin(str::Structure) =
-    all(x -> isapprox(abs(normalize(magnetization(x)) ⋅ [0, 0, 1]), 1.0), filter(x-> norm(magnetization(x)) > 0, atoms(str)))
+function iscolin(str::Structure)
+    magats = filter(x -> norm(magnetization(x)) > 0, atoms(str))
+    return !isempty(magats) && all(x -> isapprox(abs(normalize(magnetization(x)) ⋅ [0, 0, 1]), 1.0), magats)
+end
 
 isnoncolin(str::Structure) =
     any(x -> norm(magnetization(x)) > 0 &&!isapprox(abs(normalize(magnetization(x)) ⋅ [0, 0, 1]), 1.0), atoms(str))
