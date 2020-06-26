@@ -241,7 +241,7 @@ function sanitize_magnetization!(str::Structure)
                 old_name = a.name
                 new_name = Symbol(string(e.symbol) * "$atid")
                 a.name = atid == 0 ? e.symbol : new_name 
-                new_name != old_name && @info "Renamed atom from $old_name to $(name(a)) in order to distinguish different magnetization species."
+                a.name != old_name && @info "Renamed atom from $old_name to $(name(a)) in order to distinguish different magnetization species."
             end
         end
     end

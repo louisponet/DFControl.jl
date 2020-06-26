@@ -11,7 +11,8 @@ function parse_k_line(line, T)
     k1   = parse(T, splt[5])
     k2   = parse(T, splt[6])
     k3   = parse(T, splt[7][1:1:end-2])
-    return Vec3([k1, k2, k3])
+    w    = parse(T, splt[10])
+    return (v=Vec3([k1, k2, k3]),w=w)
 end
 
 function write_flag_line(f, flag, data, seperator="=", i="")

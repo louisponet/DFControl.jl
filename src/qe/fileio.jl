@@ -95,10 +95,12 @@ function qe_read_output(filename::String, T=Float64)
                 out[:total_energy]        = parse(T, split(line)[5])
 
             elseif occursin("cryst.", line) && length(split(line)) == 2
-                out[:k_cryst] = Vector{Vec3{T}}()
+                out[:k_cryst] = (v=Vec3{T}[], w=Float64[])
                 line = readline(f)
                 while line != "" && !occursin("--------", line)
-                    push!(out[:k_cryst], parse_k_line(line, T))
+                    parsed = parse_k_line(line, T)
+                    push!(out[:k_cryst].v, parsed.v)
+                    push!(out[:k_cryst].w, parsed.w)
                     line = readline(f)
                 end
 
@@ -106,9 +108,11 @@ function qe_read_output(filename::String, T=Float64)
             elseif occursin("cart.", line) && length(split(line)) == 5
                 line = readline(f)
                 alat = out[:in_alat]
-                out[:k_cart] = Vector{Vec3{typeof(2π/alat)}}()
+                out[:k_cart] = (v=Vec3{typeof(2π/alat)}[], w=Float64[])
                 while line != "" && !occursin("--------", line)
-                    push!(out[:k_cart], parse_k_line(line, T) .* 2π/alat)
+                    tparse = parse_k_line(line, T)
+                    push!(out[:k_cart].v,  tparse.v .* 2π/alat)
+                    push!(out[:k_cart].w,  tparse.w)
                     line = readline(f)
                 end
 
@@ -208,21 +212,21 @@ function qe_read_output(filename::String, T=Float64)
         #process bands
         if !isempty(k_eigvals) && haskey(out, :k_cart) && haskey(out, :in_recip_cell)
             if !haskey(out, :k_cryst) && haskey(out, :in_recip_cell) && haskey(out, :k_cart)
-                out[:k_cryst] = (out[:in_recip_cell]^-1,) .* out[:k_cart]
+                out[:k_cryst] = (v=(out[:in_recip_cell]^-1,) .* out[:k_cart].v, w=out[:k_cart].w)
             end
             if colincalc
-                out[:bands_up]   = [DFBand(out[:k_cart], out[:k_cryst], zeros(length(out[:k_cart]))) for i = 1:length(k_eigvals[1])]
-                out[:bands_down] = [DFBand(out[:k_cart], out[:k_cryst], zeros(length(out[:k_cart]))) for i = 1:length(k_eigvals[1])]
+                out[:bands_up]   = [DFBand(out[:k_cart].v, out[:k_cryst].v, zeros(length(out[:k_cart].v))) for i = 1:length(k_eigvals[1])]
+                out[:bands_down] = [DFBand(out[:k_cart].v, out[:k_cryst].v, zeros(length(out[:k_cart].v))) for i = 1:length(k_eigvals[1])]
             else
-                out[:bands] = [DFBand(out[:k_cart], out[:k_cryst], zeros(length(out[:k_cart]))) for i = 1:length(k_eigvals[1])]
+                out[:bands] = [DFBand(out[:k_cart].v, out[:k_cryst].v, zeros(length(out[:k_cart].v))) for i = 1:length(k_eigvals[1])]
             end
             for i = 1:length(k_eigvals)
                 for i1=1:length(k_eigvals[i])
                     if colincalc
-                        if i <= length(out[:k_cart])
+                        if i <= length(out[:k_cart].v)
                             out[:bands_up][i1].eigvals[i] = k_eigvals[i][i1]
                         else
-                            out[:bands_down][i1].eigvals[i-length(out[:k_cart])] = k_eigvals[i][i1]
+                            out[:bands_down][i1].eigvals[i-length(out[:k_cart].v)] = k_eigvals[i][i1]
                         end
                     else
                         out[:bands][i1].eigvals[i] = k_eigvals[i][i1]

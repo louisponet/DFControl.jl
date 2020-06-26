@@ -282,9 +282,9 @@ function set_starting_magnetization_flags!(input::DFInput{QE}, str::AbstractStru
 	starts= T[]
 	θs    = T[]
 	ϕs    = T[]
-    ismagcalc = any(x -> norm(x) != 0, mags)
-    isnc =  any(x -> norm(x) != 0 && !isapprox(abs(normalize(x) ⋅ [0, 0, 1]), 1.0), mags)
-	if ismagcalc && isnc
+    ismagcalc = ismagnetic(str)
+    isnc =  isnoncolin(str)
+	if (ismagcalc && isnc) || (flag(input, :noncolin) !== nothing && flag(input, :noncolin))
 		for m in mags
 			tm = normalize(m)
 			if norm(m) == 0
