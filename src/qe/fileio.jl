@@ -90,6 +90,10 @@ function qe_read_output(filename::String, T=Float64)
             elseif occursin("lowest unoccupied", line) && occursin("highest occupied", line)
                 sline = split(line)
                 out[:fermi]        = (parse(T, sline[7]) + parse(T, sline[8]))/2
+                
+            elseif occursin("highest occupied", line)
+                sline = split(line)
+                out[:fermi]        = parse(T, sline[5])
 
             elseif occursin("total energy", line) && line[1] == '!'
                 out[:total_energy]        = parse(T, split(line)[5])
@@ -317,7 +321,7 @@ function qe_read_kpdos(filename::String, column=1; fermi=0)
         push!(ytickvals, findnext(x -> norm(tick + fermi - x) <= 0.1, read_tmp[:, 2], ytickvals[i]))
     end
 
-    return  zmat', ytickvals, yticks
+    return  unique(read_tmp[:,2]), zmat', ytickvals, yticks
 end
 
 """

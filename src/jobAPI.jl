@@ -596,22 +596,39 @@ end
 "Reads the pdos for a particular atom. Only works for QE."  
 function pdos(job::DFJob, atsym::Symbol, filter_word="") 
     projwfc = getfirst(isprojwfccalc, inputs(job)) 
-    scfcalc = getfirst(isscfcalc, inputs(job))
     ats = atoms(job, atsym)
     @assert length(ats) > 0 "No atoms found with name $atsym."
     magnetic = any(ismagnetic, ats) 
 
-    if package(projwfc) == QE 
+    if package(projwfc) == QE
+        kresolved = hasflag(projwfc, :kresolveddos) && projwfc[:kresolveddos]
         files = filter(x->occursin("($atsym)",x) && occursin("#", x) && occursin(filter_word, x), searchdir(job, "pdos"))
         if isempty(files) 
             @error "No pdos files found in jobdir" 
         end 
-        energies, = qe_read_pdos(files[1])
-        atdos = magnetic ? zeros(length(energies), 2) : zeros(length(energies)) 
- 
-        for f in files
-            atdos .+= magnetic ? qe_read_pdos(f)[2][:,1:2] : qe_read_pdos(f)[2][:,1] 
-        end 
+        energies, = kresolved ? qe_read_kpdos(files[1]) : qe_read_pdos(files[1])
+        atdos = magnetic ? zeros(size(energies, 1), 2) : zeros(size(energies, 1)) 
+        if kresolved 
+            for f in files
+                if occursin(".5", f)
+                    t = qe_read_kpdos(f, 1)[2]
+                    atdos .+= (reshape(reduce(+, t, dims = 2), size(atdos, 1))./size(t,2))
+                elseif magnetic
+                    tu = qe_read_kpdos(f, 2)[2]
+                    td = qe_read_kpdos(f, 3)[2]
+                    atdos[:, 1] .+= reduce(+, tu, dims = 2)./size(tu,2)
+                    atdos[:, 2] .+= reduce(+, td, dims = 2)./size(tu,2)
+                end
+            end
+        else
+            for f in files
+                if occursin(".5", f)
+                    atdos .+= qe_read_pdos(f)[2][:,1]
+                elseif magnetic
+                    atdos.+= qe_read_pdos(f)[2][:,1:2]
+                end
+            end
+        end
         return (energies=energies, pdos=atdos) 
     else 
         @error "Not implemented for non-QE calculations" 
