@@ -35,6 +35,7 @@ module DFControl
 
     include("types.jl")
     include("atom.jl")
+    export element
     include("structure.jl")
 
     include("input.jl")
@@ -59,15 +60,11 @@ module DFControl
     export removedefault_pseudodir
     export removedefault_pseudos
     export setdefault_jobheader
-    export @add_default
-    export setdefault_input
-    export removedefault_input
     export getdefault_pseudo
     export getdefault_server
     export getdefault_jobheader
     export getdefault_pseudodir
     export getdefault_pseudodirs
-    export removedefault
 
     const dfprintln = println
     const dfprint = print

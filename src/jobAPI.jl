@@ -169,6 +169,8 @@ function Base.setindex!(job::DFJob, dat, key::Symbol)
     end
 end
 
+Base.getindex(job::DFJob, el::Element) = job.structure[el]
+
 "Fuzzily search inputs in the job whose name contain the fuzzy."
 searchinputs(job::DFJob, fuzzy::AbstractString) = inputs(job, fuzzy, true)
 

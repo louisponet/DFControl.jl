@@ -9,13 +9,9 @@ const Ang = angstrom
 @unit Ry  "Ry"  RydbergEnergy         0.5Eₕ                   true
 
 const localunits = Unitful.basefactors
-const LengthType{T, A} = Quantity{T,𝐋,FreeUnits{A,𝐋,nothing}}
 const ReciprocalType{T, A} = Quantity{T,𝐋^-1,FreeUnits{A,𝐋^-1,nothing}}
 
-Base.show(io::IO, ::Type{Quantity{T,𝐋,FreeUnits{A,𝐋,nothing}}}) where {T,A} =
-    dfprint(io, "LengthType{$T, $A}")
-
-@inline function StaticArrays._inv(::StaticArrays.Size{(3,3)}, A::SMatrix{3,3, LT}) where {LT<:Union{LengthType, ReciprocalType}}
+@inline function StaticArrays._inv(::StaticArrays.Size{(3,3)}, A::SMatrix{3,3, LT}) where {LT<:Union{Length, ReciprocalType}}
 
     @inbounds x0 = SVector{3}(A[1], A[2], A[3])
     @inbounds x1 = SVector{3}(A[4], A[5], A[6])
