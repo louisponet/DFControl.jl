@@ -34,6 +34,7 @@ module DFControl
     const depsdir = joinpath(dirname(@__DIR__), "deps")
 
     include("types.jl")
+    export Vec3, Point3
     include("atom.jl")
     export element
     include("structure.jl")
