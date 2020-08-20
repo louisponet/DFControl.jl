@@ -549,12 +549,12 @@ Finds and returns all the rotations and translations that are symmetry operators
 symmetry_operators(j::DFJob; kwargs...) = symmetry_operators(j.structure; kwargs...)
 
 """
-    international_symbol(j::DFJob; tolerance=$DEFAULT_TOLERANCE)
-    international_symbol(s::Structure; tolerance=$DEFAULT_TOLERANCE)
+    international(j::DFJob; tolerance=$DEFAULT_TOLERANCE)
+    international(s::Structure; tolerance=$DEFAULT_TOLERANCE)
 
 Returns the international symbol of the space group of the structure.
 """
-international_symbol(j::DFJob; kwargs...) = international_symbol(j.structure; kwargs...)
+international(j::DFJob; kwargs...) = international(j.structure; kwargs...)
 
 """
     niggli_reduce(j::DFJob; tolerance=$DEFAULT_TOLERANCE)
