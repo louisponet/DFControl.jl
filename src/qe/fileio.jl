@@ -401,8 +401,8 @@ function qe_read_projwfc(filename::String)
 
     for (i, (k, energies)) in enumerate(kdos)
         for (ie, etuple) in enumerate(energies)
-            bands[ie].k_points_cryst[i] = zero(Vec{3, Float64})
-            bands[ie].k_points_cart[i]  = k
+            bands[ie].k_points_cryst[i] = k
+            bands[ie].k_points_cart[i]  = zero(Vec3{Float64})
             bands[ie].eigvals[i]    = etuple.e
             bands[ie].extra[:ψ][i]  = etuple.ψ
             bands[ie].extra[:ψ²][i] = etuple.ψ²
@@ -410,7 +410,6 @@ function qe_read_projwfc(filename::String)
     end
     return states, bands
 end
-
 
 """
     qe_read_polarization(filename::String, T=Float64)

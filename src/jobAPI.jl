@@ -529,17 +529,33 @@ end
 
 "Searches for the first scf or nscf calculation with output, and reads the fermi level from it."
 function readfermi(job::DFJob)
-    input = getfirst(x -> (isscfcalc(x) || isnscfcalc(x)) && hasoutfile(x), inputs(job))
-    @assert input !== nothing "Job does not have a valid scf or nscf output."
-    return readfermi(input)
+    ins = filter(x -> (isscfcalc(x) || isnscfcalc(x)) && hasoutfile(x), inputs(job))
+    @assert isempty(ins) !== nothing "Job does not have a valid scf or nscf output."
+    for i in ins
+        o = outputdata(i)
+        if haskey(o, :fermi)
+            return o[:fermi]
+        end
+    end
+    @warn "No output files with fermi level found." 
+    return 0.0
 end
 
 "Searches for the first bands calculation with output, and reads the fermi level from it."
 function readbands(job::DFJob)
     input = getfirst(x -> isbandscalc(x) && hasoutfile(x), inputs(job))
-    @assert input !== nothing "Job does not have a valid bands output."
+    if input === nothing
+        input = getfirst(x -> isnscfcalc(x) && hasoutfile(x), inputs(job))
+        if input === nothing
+            @warn "Job does not have a valid bands output."
+            return nothing
+        end
+        @warn "No bands calculation found, return bands from nscf calculation." 
+        return readbands(input)
+    end
     return readbands(input)
 end
+
 """
     symmetry_operators(j::DFJob; maxsize=52, tolerance=$DEFAULT_TOLERANCE)
     symmetry_operators(s::Structure; maxsize=52, tolerance=$DEFAULT_TOLERANCE)
@@ -600,7 +616,8 @@ function pdos(job::DFJob, atsym::Symbol, filter_word="")
     projwfc = getfirst(isprojwfccalc, inputs(job)) 
     ats = atoms(job, atsym)
     @assert length(ats) > 0 "No atoms found with name $atsym."
-    magnetic = any(ismagnetic, ats) 
+    magnetic = any(ismagnetic, atoms(job))
+    soc = issoccalc(getfirst(isscfcalc, inputs(job)))
 
     if package(projwfc) == QE
         kresolved = hasflag(projwfc, :kresolveddos) && projwfc[:kresolveddos]
@@ -609,7 +626,7 @@ function pdos(job::DFJob, atsym::Symbol, filter_word="")
             @error "No pdos files found in jobdir" 
         end 
         energies, = kresolved ? qe_read_kpdos(files[1]) : qe_read_pdos(files[1])
-        atdos = magnetic ? zeros(size(energies, 1), 2) : zeros(size(energies, 1)) 
+        atdos = magnetic && !soc ? zeros(size(energies, 1), 2) : zeros(size(energies, 1))
         if kresolved 
             for f in files
                 if occursin(".5", f)
@@ -625,7 +642,7 @@ function pdos(job::DFJob, atsym::Symbol, filter_word="")
         else
             for f in files
                 if occursin(".5", f)
-                    atdos .+= qe_read_pdos(f)[2][:,1]
+                    atdos .+= qe_read_pdos(f)[2][:, 1]
                 elseif magnetic
                     atdos.+= qe_read_pdos(f)[2][:,1:2]
                 end

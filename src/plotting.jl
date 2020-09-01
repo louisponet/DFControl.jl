@@ -48,3 +48,106 @@ To plot multiple bands on one plot.
         end
     end
 end
+
+@recipe function f(job::DFJob, ymin, ymax, occupy_ratio=0.2)
+    ylims --> [ymin, ymax]
+    if !isQEjob(job)
+        error("output plotting only implemented for QE jobs.")
+    end
+    frmi = readfermi(job)
+    fermi --> frmi
+    bands = readbands(job)
+    if bands === nothing
+        error("No bands found in job $(job.name).")
+    end
+
+    if bands isa NamedTuple
+        layout := (1,2)
+    else
+        layout := (1,2)
+    end 
+    # Bands part
+    kpath = high_symmetry_kpoints(job.structure)
+    tick_vals = Int[]
+    tick_syms = String[]
+    kpoints = bands isa NamedTuple ? bands.up[1].k_points_cryst : bands[1].k_points_cryst
+    for (i, k) in enumerate(kpoints)
+        for (sym, vec) in kpath
+            if vec == k
+                push!(tick_vals, i)
+                push!(tick_syms, string(sym))
+            end
+        end
+    end
+    subplot_counter = 1
+    if bands isa NamedTuple
+        @series begin
+            ticks --> (tick_vals, tick_syms)
+            label := "up"
+            subplot := subplot_counter
+            seriescolor := :red
+            legend := true
+            bands.up
+        end
+        @series begin
+            ticks --> (tick_vals, tick_syms)
+            label := "down"
+            subplot := subplot_counter
+            seriescolor := :blue
+            marker := :dot
+            legend := true
+            bands.down
+        end
+        subplot_counter += 1
+    else
+        @series begin
+            ticks --> (tick_vals, tick_syms)
+            title := "Eigenvalues"
+            subplot := 1
+            bands
+        end
+        subplot_counter += 1
+    end
+    @show subplot_counter
+    # PDOS part
+    projwfc = getfirst(x -> isprojwfccalc(x) && hasoutfile(x), inputs(job))
+    states, projbands = qe_read_projwfc(outpath(projwfc))
+    window_ids = bands isa NamedTuple ? findall(x -> minimum(x.eigvals .- frmi) > ymin && maximum(x.eigvals .- frmi) < ymax, bands.up) : findall(x -> minimum(x.eigvals .- frmi) > ymin && maximum(x.eigvals .- frmi) < ymax, bands)
+    # First we find the amount that all the states appear in the window
+    state_occupations = zeros(length(states))
+    for wid in window_ids
+        b = projbands[wid]
+        for ψ in b.extra[:ψ]
+            for is in eachindex(states)
+                state_occupations[is] += ψ[is]
+            end
+        end
+    end
+    # Now we take the most occupied ones, and somehow find out where there's a sudden dropoff
+    max_occ = maximum(state_occupations)
+    sorted_occ = sortperm(state_occupations, rev=true)
+    goodids = findall(i -> state_occupations[sorted_occ][i] > occupy_ratio * max_occ, 1:length(state_occupations))
+    ats_orbs = unique(map(x -> (atoms(job)[x.atom_id].name, orbital(x.l).name), states[sorted_occ][goodids]))
+    
+    for (atsym, orb) in ats_orbs
+        energies, pd = pdos(job, atsym, string(orb))
+        if size(pd, 2) == 2
+            @series begin
+                label --> "$(atsym)_$(orb)_up"
+                subplot := subplot_counter
+                pd[:,1], energies .- frmi
+            end
+            @series begin
+                label --> "$(atsym)_$(orb)_down"
+                subplot := subplot_counter
+                pd[:,2], energies .- frmi
+            end
+        else
+            @series begin
+                label --> "$(atsym)_$(orb)"
+                subplot := subplot_counter
+                pd, energies .- frmi
+            end
+        end
+    end
+end

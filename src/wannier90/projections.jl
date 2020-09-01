@@ -17,6 +17,7 @@ const orbitals = [
     Orbital(:sp3d2, 6, -5),
 ]
 orbital(s::Symbol) = getfirst(x -> x.name == s, orbitals)
+orbital(l::Number) = getfirst(x -> x.l == l, orbitals)
 
 Base.convert(::Type{Symbol}, x::Orbital) = x.name
 orbsize(orb::Orbital) = orb.size
