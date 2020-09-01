@@ -157,12 +157,13 @@ end
         sorted_occ = sortperm(state_occupations, rev=true)
         goodids = findall(i -> state_occupations[sorted_occ][i] > occupy_ratio * max_occ, 1:length(state_occupations))
         ats_orbs = unique(map(x -> (atoms(job)[x.atom_id].name, orbital(x.l).name), states[sorted_occ][goodids]))
-
+        @info "Found $(length(ats_orbs)) atomic orbitals that satisfy the minimum occupation:\n$ats_orbs" 
         atom_colors = PLOT_COLORS[1:length(ats_orbs)]
 
         bands = bands isa NamedTuple ? bands : [bands]
         band_contribs = [[[zeros(length(ats_orbs)) for i = 1:length(kpoints)] for i1 = 1:length(window_ids)] for d = 1:length(bands)]
 
+        @info "Reading pdos files and generating band coloring..."
         for (ia, (c, (atsym, orb))) in enumerate(zip(atom_colors, ats_orbs))
             energies, pd = pdos(job, atsym, "("*string(orb))
             
@@ -212,6 +213,7 @@ end
          contribs .= [normalize.(contribs[ib]) for ib =1:length(window_ids)]
      end
     band_colors = [[[blend_color(band_contribs[i][ib][ik]) for ik = 1:length(kpoints)] for ib = 1:length(window_ids)] for i=1:length(band_contribs)]
+    @info "Plotting bands..."
     for (iplt, (bnds, colors)) in enumerate(zip(bands, band_colors))
         if length(bands) == 2
             lab = iplt == 1 ? "up" : "down"
