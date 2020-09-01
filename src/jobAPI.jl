@@ -629,22 +629,24 @@ function pdos(job::DFJob, atsym::Symbol, filter_word="")
         atdos = magnetic && !soc ? zeros(size(energies, 1), 2) : zeros(size(energies, 1))
         if kresolved 
             for f in files
-                if occursin(".5", f)
-                    t = qe_read_kpdos(f, 1)[2]
-                    atdos .+= (reshape(reduce(+, t, dims = 2), size(atdos, 1))./size(t,2))
-                elseif magnetic
+                if magnetic && !occursin(".5", f)
                     tu = qe_read_kpdos(f, 2)[2]
                     td = qe_read_kpdos(f, 3)[2]
                     atdos[:, 1] .+= reduce(+, tu, dims = 2)./size(tu,2)
                     atdos[:, 2] .+= reduce(+, td, dims = 2)./size(tu,2)
+                # elseif occursin(".5", f)
+                else 
+                    t = qe_read_kpdos(f, 1)[2]
+                    atdos .+= (reshape(reduce(+, t, dims = 2), size(atdos, 1))./size(t,2))
                 end
             end
         else
             for f in files
-                if occursin(".5", f)
-                    atdos .+= qe_read_pdos(f)[2][:, 1]
-                elseif magnetic
+                if magnetic && !occursin(".5", f)
                     atdos.+= qe_read_pdos(f)[2][:,1:2]
+                # elseif occursin(".5", f)
+                else
+                    atdos .+= qe_read_pdos(f)[2][:, 1]
                 end
             end
         end

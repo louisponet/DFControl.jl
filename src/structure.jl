@@ -509,44 +509,44 @@ function high_symmetry_kpoints(s::Structure; tolerance = DEFAULT_TOLERANCE)
 end
 
 function cubic()
-    kpoints = Dict(:Γ => Vec3([0.0, 0.0, 0.0]),
+    kpoints = Dict(:Gamma => Vec3([0.0, 0.0, 0.0]),
                    :X => Vec3([0.0, 0.5, 0.0]),
                    :R => Vec3([0.5, 0.5, 0.5]),
                    :M => Vec3([0.5, 0.5, 0.0]))
-    path = [[:Γ, :X, :M, :Γ, :R, :X], [:M, :R]]
+    path = [[:Gamma, :X, :M, :Gamma, :R, :X], [:M, :R]]
     return (kpoints = kpoints, path = path)
 end
 
 function fcc()
-    kpoints = Dict(:Γ => Vec3([0.0, 0.0, 0.0]),
+    kpoints = Dict(:Gamma => Vec3([0.0, 0.0, 0.0]),
                    :K => Vec3([3.0 / 8.0, 3.0 / 8.0, 3.0 / 4.0]),
                    :L => Vec3([0.5, 0.5, 0.5]),
                    :U => Vec3([5.0 / 8.0, 1.0 / 4.0, 5.0 / 8.0]),
                    :W => Vec3([0.5, 1.0 / 4.0, 3.0 / 4.0]),
                    :X => Vec3([0.5, 0.0, 0.5]))
 
-    path = [[:Γ, :X, :W, :K,
-                 :Γ, :L, :U, :W, :L, :K], [:U, :X]]
+    path = [[:Gamma, :X, :W, :K,
+                 :Gamma, :L, :U, :W, :L, :K], [:U, :X]]
     return (kpoints = kpoints, path = path)
 end
 
 function bcc()
-    kpoints = Dict(:Γ => Vec3([0.0, 0.0, 0.0]),
+    kpoints = Dict(:Gamma => Vec3([0.0, 0.0, 0.0]),
                    :H => Vec3([0.5, -0.5, 0.5]),
                    :P => Vec3([0.25, 0.25, 0.25]),
                    :N => Vec3([0.0, 0.0, 0.5]))
-    path = [[:Γ, :H, :N, :Γ, :P, :H], [:P, :N]]
+    path = [[:Gamma, :H, :N, :Gamma, :P, :H], [:P, :N]]
     return (kpoints = kpoints, path = path)
 end
 
 function tet()
-    kpoints = Dict(:Γ => Vec3([0.0, 0.0, 0.0]),
+    kpoints = Dict(:Gamma => Vec3([0.0, 0.0, 0.0]),
                    :A => Vec3([0.5, 0.5, 0.5]),
                    :M => Vec3([0.5, 0.5, 0.0]),
                    :R => Vec3([0.0, 0.5, 0.5]),
                    :X => Vec3([0.0, 0.5, 0.0]),
                    :Z => Vec3([0.0, 0.0, 0.5]))
-        path = [[:Γ, :X, :M, :Γ, :Z, :R, :A, :Z], [:X, :R],
+        path = [[:Gamma, :X, :M, :Gamma, :Z, :R, :A, :Z], [:X, :R],
                 [:M, :A]]
 
     return (kpoints = kpoints, path = path)
@@ -554,14 +554,14 @@ end
 
 function bctet1(c, a)
     eta = (1 + c^2 / a^2) / 4.0
-    kpoints = Dict(:Γ => Vec3([0.0, 0.0, 0.0]),
+    kpoints = Dict(:Gamma => Vec3([0.0, 0.0, 0.0]),
                :M => Vec3([-0.5, 0.5, 0.5]),
                :N => Vec3([0.0, 0.5, 0.0]),
                :P => Vec3([0.25, 0.25, 0.25]),
                :X => Vec3([0.0, 0.0, 0.5]),
                :Z => Vec3([eta, eta, -eta]),
                :Z_1 => Vec3([-eta, 1 - eta, eta]))
-    path = [[:Γ, :X, :M, :Γ, :Z, :P, :N, :Z_1, :M],
+    path = [[:Gamma, :X, :M, :Gamma, :Z, :P, :N, :Z_1, :M],
             [:X, :P]]
     return (kpoints = kpoints, path = path)
 end
@@ -570,7 +570,7 @@ end
 function bctet2(c, a)
     eta = (1 + a^2 / c^2) / 4.0
     zeta = a^2 / (2 * c^2)
-    kpoints = Dict(:Γ => Vec3([0.0, 0.0, 0.0]),
+    kpoints = Dict(:Gamma => Vec3([0.0, 0.0, 0.0]),
                :N => Vec3([0.0, 0.5, 0.0]),
                :P => Vec3([0.25, 0.25, 0.25]),
                :Sigma => Vec3([-eta, eta, eta]),
@@ -579,14 +579,14 @@ function bctet2(c, a)
                :Y => Vec3([-zeta, zeta, 0.5]),
                :Y_1 => Vec3([0.5, 0.5, -zeta]),
                :Z => Vec3([0.5, 0.5, -0.5]))
-    path = [[:Γ, :X, :Y, :Sigma, :Γ, :Z,
+    path = [[:Gamma, :X, :Y, :Sigma, :Gamma, :Z,
              :Sigma_1, :N, :P, :Y_1, :Z], [:X, :P]]
     return (kpoints = kpoints, path = path)
 end
 
 
 function orc()
-    kpoints = Dict(:Γ => Vec3([0.0, 0.0, 0.0]),
+    kpoints = Dict(:Gamma => Vec3([0.0, 0.0, 0.0]),
                :R => Vec3([0.5, 0.5, 0.5]),
                :S => Vec3([0.5, 0.5, 0.0]),
                :T => Vec3([0.0, 0.5, 0.5]),
@@ -594,7 +594,7 @@ function orc()
                :X => Vec3([0.5, 0.0, 0.0]),
                :Y => Vec3([0.0, 0.5, 0.0]),
                :Z => Vec3([0.0, 0.0, 0.5]))
-    path = [[:Γ, :X, :S, :Y, :Γ,
+    path = [[:Gamma, :X, :S, :Y, :Gamma,
              :Z, :U, :R, :T, :Z], [:Y, :T], [:U, :X], [:S, :R]]
     return (kpoints = kpoints, path = path)
 end
@@ -604,7 +604,7 @@ function orcf1(a, b, c)
     zeta = (1 + a^2 / b^2 - a^2 / c^2) / 4
     eta = (1 + a^2 / b^2 + a^2 / c^2) / 4
 
-    kpoints = Dict(:Γ => Vec3([0.0, 0.0, 0.0]),
+    kpoints = Dict(:Gamma => Vec3([0.0, 0.0, 0.0]),
                :A => Vec3([0.5, 0.5 + zeta, zeta]),
                :A_1 => Vec3([0.5, 0.5 - zeta, 1 - zeta]),
                :L => Vec3([0.5, 0.5, 0.5]),
@@ -613,8 +613,8 @@ function orcf1(a, b, c)
                :X_1 => Vec3([1, 1 - eta, 1 - eta]),
                :Y => Vec3([0.5, 0.0, 0.5]),
                :Z => Vec3([0.5, 0.5, 0.0]))
-    path = [[:Γ, :Y, :T, :Z, :Γ, :X, :A_1, :Y],
-            [:T, :X_1], [:X, :A, :Z], [:L, :Γ]]
+    path = [[:Gamma, :Y, :T, :Z, :Gamma, :X, :A_1, :Y],
+            [:T, :X_1], [:X, :A, :Z], [:L, :Gamma]]
     return (kpoints = kpoints, path = path)
 end
 
@@ -623,7 +623,7 @@ function orcf2(a, b, c)
     phi = (1 + c^2 / b^2 - c^2 / a^2) / 4
     eta = (1 + a^2 / b^2 - a^2 / c^2) / 4
     delta = (1 + b^2 / a^2 - b^2 / c^2) / 4
-    kpoints = Dict(:Γ => Vec3([0.0, 0.0, 0.0]),
+    kpoints = Dict(:Gamma => Vec3([0.0, 0.0, 0.0]),
                :C => Vec3([0.5, 0.5 - eta, 1 - eta]),
                :C_1 => Vec3([0.5, 0.5 + eta, eta]),
                :D => Vec3([0.5 - delta, 0.5, 1 - delta]),
@@ -634,9 +634,9 @@ function orcf2(a, b, c)
                :X => Vec3([0.0, 0.5, 0.5]),
                :Y => Vec3([0.5, 0.0, 0.5]),
                :Z => Vec3([0.5, 0.5, 0.0]))
-    path = [[:Γ, :Y, :C, :D, :X, :Γ,
+    path = [[:Gamma, :Y, :C, :D, :X, :Gamma,
              :Z, :D_1, :H, :C], [:C_1, :Z], [:X, :H_1], [:H, :Y],
-            [:L, :Γ]]
+            [:L, :Gamma]]
     return (kpoints = kpoints, path = path)
 end
 
@@ -644,7 +644,7 @@ end
 function orcf3(a, b, c)
     zeta = (1 + a^2 / b^2 - a^2 / c^2) / 4
     eta = (1 + a^2 / b^2 + a^2 / c^2) / 4
-    kpoints = Dict(:Γ => Vec3([0.0, 0.0, 0.0]),
+    kpoints = Dict(:Gamma => Vec3([0.0, 0.0, 0.0]),
                :A => Vec3([0.5, 0.5 + zeta, zeta]),
                :A_1 => Vec3([0.5, 0.5 - zeta, 1 - zeta]),
                :L => Vec3([0.5, 0.5, 0.5]),
@@ -653,8 +653,8 @@ function orcf3(a, b, c)
                :X_1 => Vec3([1, 1 - eta, 1 - eta]),
                :Y => Vec3([0.5, 0.0, 0.5]),
                :Z => Vec3([0.5, 0.5, 0.0]))
-    path = [[:Γ, :Y, :T, :Z, :Γ, :X, :A_1, :Y],
-            [:X, :A, :Z], [:L, :Γ]]
+    path = [[:Gamma, :Y, :T, :Z, :Gamma, :X, :A_1, :Y],
+            [:X, :A, :Z], [:L, :Gamma]]
     return (kpoints = kpoints, path = path)
 end
 
@@ -664,7 +664,7 @@ function orci(a, b, c)
     eta = (1 + b^2 / c^2) / 4
     delta = (b^2 - a^2) / (4 * c^2)
     mu = (a^2 + b^2) / (4 * c^2)
-    kpoints = Dict(:Γ => Vec3([0.0, 0.0, 0.0]),
+    kpoints = Dict(:Gamma => Vec3([0.0, 0.0, 0.0]),
                :L => Vec3([-mu, mu, 0.5 - delta]),
                :L_1 => Vec3([mu, -mu, 0.5 + delta]),
                :L_2 => Vec3([0.5 - delta, 0.5 + delta, -mu]),
@@ -677,15 +677,15 @@ function orci(a, b, c)
                :Y => Vec3([eta, -eta, eta]),
                :Y_1 => Vec3([1 - eta, eta, -eta]),
                :Z => Vec3([0.5, 0.5, -0.5]))
-    path = [[:Γ, :X, :L, :T, :W, :R, :X_1, :Z,
-             :Γ, :Y, :S, :W], [:L_1, :Y], [:Y_1, :Z]]
+    path = [[:Gamma, :X, :L, :T, :W, :R, :X_1, :Z,
+             :Gamma, :Y, :S, :W], [:L_1, :Y], [:Y_1, :Z]]
     return (kpoints = kpoints, path = path)
 end
 
 
 function orcc(a, b, c)
     zeta = (1 + a^2 / b^2) / 4
-    kpoints = Dict(:Γ => Vec3([0.0, 0.0, 0.0]),
+    kpoints = Dict(:Gamma => Vec3([0.0, 0.0, 0.0]),
                :A => Vec3([zeta, zeta, 0.5]),
                :A_1 => Vec3([-zeta, 1 - zeta, 0.5]),
                :R => Vec3([0.0, 0.5, 0.5]),
@@ -695,20 +695,20 @@ function orcc(a, b, c)
                :X_1 => Vec3([-zeta, 1 - zeta, 0.0]),
                :Y => Vec3([-0.5, 0.5, 0]),
                :Z => Vec3([0.0, 0.0, 0.5]))
-    path = [[:Γ, :X, :S, :R, :A, :Z,
-             :Γ, :Y, :X_1, :A_1, :T, :Y], [:Z, :T]]
+    path = [[:Gamma, :X, :S, :R, :A, :Z,
+             :Gamma, :Y, :X_1, :A_1, :T, :Y], [:Z, :T]]
     return (kpoints = kpoints, path = path)
 end
 
 
 function hex()
-    kpoints = Dict(:Γ => Vec3([0.0, 0.0, 0.0]),
+    kpoints = Dict(:Gamma => Vec3([0.0, 0.0, 0.0]),
                :A => Vec3([0.0, 0.0, 0.5]),
                :H => Vec3([1.0 / 3.0, 1.0 / 3.0, 0.5]),
                :K => Vec3([1.0 / 3.0, 1.0 / 3.0, 0.0]),
                :L => Vec3([0.5, 0.0, 0.5]),
                :M => Vec3([0.5, 0.0, 0.0]))
-    path = [[:Γ, :M, :K, :Γ, :A, :L, :H, :A], [:L, :M],
+    path = [[:Gamma, :M, :K, :Gamma, :A, :L, :H, :A], [:L, :M],
             [:K, :H]]
     return (kpoints = kpoints, path = path)
 end
@@ -717,7 +717,7 @@ end
 function rhl1(alpha)
     eta = (1 + 4 * cos(alpha)) / (2 + 4 * cos(alpha))
     nu = 3.0 / 4.0 - eta / 2.0
-    kpoints = Dict(:Γ => Vec3([0.0, 0.0, 0.0]),
+    kpoints = Dict(:Gamma => Vec3([0.0, 0.0, 0.0]),
                :B => Vec3([eta, 0.5, 1.0 - eta]),
                :B_1 => Vec3([1.0 / 2.0, 1.0 - eta, eta - 1.0]),
                :F => Vec3([0.5, 0.5, 0.0]),
@@ -729,7 +729,7 @@ function rhl1(alpha)
                :Q => Vec3([1.0 - nu, nu, 0.0]),
                :X => Vec3([nu, 0.0, -nu]),
                :Z => Vec3([0.5, 0.5, 0.5]))
-    path = [[:Γ, :L, :B_1], [:B, :Z, :Γ, :X],
+    path = [[:Gamma, :L, :B_1], [:B, :Z, :Gamma, :X],
             [:Q, :F, :P_1, :Z], [:L, :P]]
     return (kpoints = kpoints, path = path)
 end
@@ -738,7 +738,7 @@ end
 function rhl2(alpha)
     eta = 1 / (2 * tan(alpha / 2.0)^2)
     nu = 3.0 / 4.0 - eta / 2.0
-    kpoints = Dict(:Γ => Vec3([0.0, 0.0, 0.0]),
+    kpoints = Dict(:Gamma => Vec3([0.0, 0.0, 0.0]),
                :F => Vec3([0.5, -0.5, 0.0]),
                :L => Vec3([0.5, 0.0, 0.0]),
                :P => Vec3([1 - nu, -nu, 1 - nu]),
@@ -746,7 +746,7 @@ function rhl2(alpha)
                :Q => Vec3([eta, eta, eta]),
                :Q_1 => Vec3([1.0 - eta, -eta, -eta]),
                :Z => Vec3([0.5, -0.5, 0.5]))
-    path = [[:Γ, :P, :Z, :Q, :Γ,
+    path = [[:Gamma, :P, :Z, :Q, :Gamma,
              :F, :P_1, :Q_1, :L, :Z]]
     return (kpoints = kpoints, path = path)
 end
@@ -755,7 +755,7 @@ end
 function mcl(b, c, beta)
     eta = (1 - b * cos(beta) / c) / (2 * sin(beta)^2)
     nu = 0.5 - eta * c * cos(beta) / b
-    kpoints = Dict(:Γ => Vec3([0.0, 0.0, 0.0]),
+    kpoints = Dict(:Gamma => Vec3([0.0, 0.0, 0.0]),
                :A => Vec3([0.5, 0.5, 0.0]),
                :C => Vec3([0.0, 0.5, 0.5]),
                :D => Vec3([0.5, 0.0, 0.5]),
@@ -771,7 +771,7 @@ function mcl(b, c, beta)
                :Y => Vec3([0.0, 0.0, 0.5]),
                :Y_1 => Vec3([0.0, 0.0, -0.5]),
                :Z => Vec3([0.5, 0.0, 0.0]))
-    path = [[:Γ, :Y, :H, :C, :E, :M_1, :A, :X, :H_1],
+    path = [[:Gamma, :Y, :H, :C, :E, :M_1, :A, :X, :H_1],
             [:M, :D, :Z], [:Y, :D]]
     return (kpoints = kpoints, path = path)
 end
@@ -782,7 +782,7 @@ function mclc1(a, b, c, alpha)
     eta = 0.5 + 2 * zeta * c * cos(alpha) / b
     psi = 0.75 - a^2 / (4 * b^2 * sin(alpha)^2)
     phi = psi + (0.75 - psi) * b * cos(alpha) / c
-    kpoints = Dict(:Γ => Vec3([0.0, 0.0, 0.0]),
+    kpoints = Dict(:Gamma => Vec3([0.0, 0.0, 0.0]),
                :N => Vec3([0.5, 0.0, 0.0]),
                :N_1 => Vec3([0.0, -0.5, 0.0]),
                :F => Vec3([1 - zeta, 1 - zeta, 1 - eta]),
@@ -799,8 +799,8 @@ function mclc1(a, b, c, alpha)
                :Y => Vec3([0.5, 0.5, 0.0]),
                :Y_1 => Vec3([-0.5, -0.5, 0.0]),
                :Z => Vec3([0.0, 0.0, 0.5]))
-    path = [[:Γ, :Y, :F, :L, :I], [:I_1, :Z, :F_1],
-            [:Y, :X_1], [:X, :Γ, :N], [:M, :Γ]]
+    path = [[:Gamma, :Y, :F, :L, :I], [:I_1, :Z, :F_1],
+            [:Y, :X_1], [:X, :Gamma, :N], [:M, :Gamma]]
     return (kpoints = kpoints, path = path)
 end
 
@@ -810,7 +810,7 @@ function mclc2(a, b, c, alpha)
     eta = 0.5 + 2 * zeta * c * cos(alpha) / b
     psi = 0.75 - a^2 / (4 * b^2 * sin(alpha)^2)
     phi = psi + (0.75 - psi) * b * cos(alpha) / c
-    kpoints = Dict(:Γ => Vec3([0.0, 0.0, 0.0]),
+    kpoints = Dict(:Gamma => Vec3([0.0, 0.0, 0.0]),
                :N => Vec3([0.5, 0.0, 0.0]),
                :N_1 => Vec3([0.0, -0.5, 0.0]),
                :F => Vec3([1 - zeta, 1 - zeta, 1 - eta]),
@@ -827,8 +827,8 @@ function mclc2(a, b, c, alpha)
                :Y => Vec3([0.5, 0.5, 0.0]),
                :Y_1 => Vec3([-0.5, -0.5, 0.0]),
                :Z => Vec3([0.0, 0.0, 0.5]))
-    path = [[:Γ, :Y, :F, :L, :I], [:I_1, :Z, :F_1],
-            [:N, :Γ, :M]]
+    path = [[:Gamma, :Y, :F, :L, :I], [:I_1, :Z, :F_1],
+            [:N, :Gamma, :M]]
     return (kpoints = kpoints, path = path)
 end
 
@@ -840,7 +840,7 @@ function mclc3(a, b, c, alpha)
     eta = 0.5 + 2 * zeta * c * cos(alpha) / b
     phi = 1 + zeta - 2 * mu
     psi = eta - 2 * delta
-    kpoints = Dict(:Γ => Vec3([0.0, 0.0, 0.0]),
+    kpoints = Dict(:Gamma => Vec3([0.0, 0.0, 0.0]),
                :F => Vec3([1 - phi, 1 - phi, 1 - psi]),
                :F_1 => Vec3([phi, phi - 1, psi]),
                :F_2 => Vec3([1 - phi, -phi, 1 - psi]),
@@ -857,8 +857,8 @@ function mclc3(a, b, c, alpha)
                :Y_2 => Vec3([-mu, -mu, -delta]),
                :Y_3 => Vec3([mu, mu - 1, delta]),
                :Z => Vec3([0.0, 0.0, 0.5]))
-    path = [[:Γ, :Y, :F, :H, :Z, :I, :F_1],
-            [:H_1, :Y_1, :X, :Γ, :N], [:M, :Γ]]
+    path = [[:Gamma, :Y, :F, :H, :Z, :I, :F_1],
+            [:H_1, :Y_1, :X, :Gamma, :N], [:M, :Gamma]]
     return (kpoints = kpoints, path = path)
 end
 
@@ -870,7 +870,7 @@ function mclc4(a, b, c, alpha)
     eta = 0.5 + 2 * zeta * c * cos(alpha) / b
     phi = 1 + zeta - 2 * mu
     psi = eta - 2 * delta
-    kpoints = Dict(:Γ => Vec3([0.0, 0.0, 0.0]),
+    kpoints = Dict(:Gamma => Vec3([0.0, 0.0, 0.0]),
                :F => Vec3([1 - phi, 1 - phi, 1 - psi]),
                :F_1 => Vec3([phi, phi - 1, psi]),
                :F_2 => Vec3([1 - phi, -phi, 1 - psi]),
@@ -887,8 +887,8 @@ function mclc4(a, b, c, alpha)
                :Y_2 => Vec3([-mu, -mu, -delta]),
                :Y_3 => Vec3([mu, mu - 1, delta]),
                :Z => Vec3([0.0, 0.0, 0.5]))
-    path = [[:Γ, :Y, :F, :H, :Z, :I],
-            [:H_1, :Y_1, :X, :Γ, :N], [:M, :Γ]]
+    path = [[:Gamma, :Y, :F, :H, :Z, :I],
+            [:H_1, :Y_1, :X, :Gamma, :N], [:M, :Gamma]]
     return (kpoints = kpoints, path = path)
 end
 
@@ -902,7 +902,7 @@ function mclc5(a, b, c, alpha)
     rho = 1 - zeta * a^2 / b^2
     omega = (4 * nu - 1 - b^2 * sin(alpha)^2 / a^2) * c / (2 * b * cos(alpha))
     delta = zeta * c * cos(alpha) / b + omega / 2 - 0.25
-    kpoints = Dict(:Γ => Vec3([0.0, 0.0, 0.0]),
+    kpoints = Dict(:Gamma => Vec3([0.0, 0.0, 0.0]),
                :F => Vec3([nu, nu, omega]),
                :F_1 => Vec3([1 - nu, 1 - nu, 1 - omega]),
                :F_2 => Vec3([nu, nu - 1, omega]),
@@ -921,14 +921,14 @@ function mclc5(a, b, c, alpha)
                :Y_2 => Vec3([-mu, -mu, -delta]),
                :Y_3 => Vec3([mu, mu - 1, delta]),
                :Z => Vec3([0.0, 0.0, 0.5]))
-    path = [[:Γ, :Y, :F, :L, :I], [:I_1, :Z, :H, :F_1],
-            [:H_1, :Y_1, :X, :Γ, :N], [:M, :Γ]]
+    path = [[:Gamma, :Y, :F, :L, :I], [:I_1, :Z, :H, :F_1],
+            [:H_1, :Y_1, :X, :Gamma, :N], [:M, :Gamma]]
     return (kpoints = kpoints, path = path)
 end
 
 
 function tria()
-    kpoints = Dict(:Γ => Vec3([0.0, 0.0, 0.0]),
+    kpoints = Dict(:Gamma => Vec3([0.0, 0.0, 0.0]),
                :L => Vec3([0.5, 0.5, 0.0]),
                :M => Vec3([0.0, 0.5, 0.5]),
                :N => Vec3([0.5, 0.0, 0.5]),
@@ -936,14 +936,14 @@ function tria()
                :X => Vec3([0.5, 0.0, 0.0]),
                :Y => Vec3([0.0, 0.5, 0.0]),
                :Z => Vec3([0.0, 0.0, 0.5]))
-    path = [[:X, :Γ, :Y], [:L, :Γ, :Z],
-            [:N, :Γ, :M], [:R, :Γ]]
+    path = [[:X, :Gamma, :Y], [:L, :Gamma, :Z],
+            [:N, :Gamma, :M], [:R, :Gamma]]
     return (kpoints = kpoints, path = path)
 end
 
 
 function trib()
-    kpoints = Dict(:Γ => Vec3([0.0, 0.0, 0.0]),
+    kpoints = Dict(:Gamma => Vec3([0.0, 0.0, 0.0]),
                :L => Vec3([0.5, -0.5, 0.0]),
                :M => Vec3([0.0, 0.0, 0.5]),
                :N => Vec3([-0.5, -0.5, 0.5]),
@@ -951,7 +951,7 @@ function trib()
                :X => Vec3([0.0, -0.5, 0.0]),
                :Y => Vec3([0.5, 0.0, 0.0]),
                :Z => Vec3([-0.5, 0.0, 0.5]))
-    path = [[:X, :Γ, :Y], [:L, :Γ, :Z],
-            [:N, :Γ, :M], [:R, :Γ]]
+    path = [[:X, :Gamma, :Y], [:L, :Gamma, :Z],
+            [:N, :Gamma, :M], [:R, :Gamma]]
     return (kpoints = kpoints, path = path)
 end
