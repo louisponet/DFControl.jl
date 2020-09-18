@@ -563,7 +563,7 @@ function qe_read_input(filename; execs=[Exec("pw.x")], run=true, structure_name=
         x -> cut_after(x, '!')       .|>
         x -> cut_after(x, '#')
     lines = join(t_lines, "\n")       |>
-        x -> replace(x, ", " => "\n") |>
+    x -> replace(x, "," => "\n") |>
         x -> replace(x, "," => " ")   |>
         x -> replace(x, "'" => " ")   |>
         x -> split(x, "\n")          .|>
@@ -583,7 +583,7 @@ function qe_read_input(filename; execs=[Exec("pw.x")], run=true, structure_name=
         sym = Symbol(f)
         typ = flagtype(QE, exec, sym)
         if eltype(typ) <: Bool
-            v = strip(lowercase(v), '.')
+            v = replace(lowercase(v), "." => "")
         elseif eltype(typ) <: Number
             v = replace(v, "d" => "e")
         end

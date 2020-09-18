@@ -51,7 +51,7 @@ function parse_flag_val(val, T=Float64)
         val = replace(val, "d" => "e")
     end
 
-    val = strip(val, '.')
+    val = replace(val, "." => "")
     t = parse.(eltype(T), split(lowercase(val)))
     #deal with abinit constants -> all flags that are read which are not part of the abi[:structure] get cast into the correct atomic units!
     if length(t) > 1 && typeof(t[end]) == Symbol
