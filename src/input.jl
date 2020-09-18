@@ -16,8 +16,10 @@ Base.:(==)(d1::InputData, d2::InputData) =
     execs    ::Vector{Exec}
     run      ::Bool = true
     outdata  ::SymAnyDict=SymAnyDict()
+    infile   ::String = P == Wannier90 ? name * ".win" : name * ".in"
+    outfile  ::String = name * ".out"
 end
-DFInput{P}(name, dir, flags, data, execs, run) where P<:Package = DFInput{P}(name, abspath(dir), flags, data, execs, run, SymAnyDict())
+DFInput{P}(name, dir, flags, data, execs, run) where P<:Package = DFInput{P}(name, abspath(dir), flags, data, execs, run, SymAnyDict(), name * ".in", name*".out")
 
 """
     DFInput(template::DFInput, name, newflags...; excs=deepcopy(execs(template)), run=true, data=nothing, dir=copy(template.dir))
@@ -47,12 +49,9 @@ dir(input::DFInput)   = input.dir
 flags(input::DFInput) = input.flags
 setdir!(input::DFInput, dir) = (input.dir = dir)
 name_ext(input::DFInput, ext)          = name(input) * ext
-infilename(input::DFInput{QE})         = name_ext(input, ".in")
-infilename(input::DFInput{Wannier90})  = name_ext(input, ".win")
+infilename(input::DFInput)         = input.infile
 infilename(input::DFInput{Elk})        = "elk.in"
-outfilename(input::DFInput{QE})        = name_ext(input, ".out")
-outfilename(input::DFInput{Wannier90}) = name_ext(input, ".wout")
-outfilename(input::DFInput{Elk})       = "elk.out"
+outfilename(input::DFInput)        = input.outfile
 inpath(input::DFInput)                 = joinpath(dir(input),  infilename(input))
 outpath(input::DFInput)                = joinpath(dir(input),  outfilename(input))
 

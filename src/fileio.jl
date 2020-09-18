@@ -358,6 +358,10 @@ function read_job_inputs(job_file::String)
                     calccommand = getfirst(isparseable, execs)
                     input = calccommand != nothing ? inputparser(calccommand)(inpath, execs=execs, run=run) : (nothing, nothing)
                 end
+                if input[1] !== nothing
+                    input[1].outfile = output
+                    input[1].infile = inputfile
+                end
                 if input != (nothing, nothing)
                     id = findall(x -> infilename(x) == inputfile, inputs)
                     if !isempty(id) #this can only happen for stuff that needs to get preprocessed
