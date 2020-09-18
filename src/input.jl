@@ -19,7 +19,7 @@ Base.:(==)(d1::InputData, d2::InputData) =
     infile   ::String = P == Wannier90 ? name * ".win" : name * ".in"
     outfile  ::String = name * ".out"
 end
-DFInput{P}(name, dir, flags, data, execs, run) where P<:Package = DFInput{P}(name, abspath(dir), flags, data, execs, run, SymAnyDict(), name * ".in", name*".out")
+DFInput{P}(name, dir, flags, data, execs, run) where P<:Package = DFInput{P}(name, abspath(dir), flags, data, execs, run, SymAnyDict(), P == Wannier90 ? name * ".win" : name * ".in", P == Wannier90 ? name * ".wout" : name * ".out")
 
 """
     DFInput(template::DFInput, name, newflags...; excs=deepcopy(execs(template)), run=true, data=nothing, dir=copy(template.dir))
