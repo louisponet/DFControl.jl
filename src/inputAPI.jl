@@ -259,6 +259,8 @@ end
 
 function input_from_kpoints(template::DFInput, newname, kpoints, newflags...)
     newcalc = DFInput(template, newname, newflags...)
+    newcalc.infile = join(newname, ".", splitext(infile(newcalc))[2:end])
+    newcalc.outfile = join(newname, ".", splitext(outfile(newcalc))[2:end])
     setkpoints!(newcalc, kpoints, print=false)
     return newcalc
 end
