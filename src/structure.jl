@@ -261,6 +261,24 @@ volume(cell::Mat3) = det(cell)
    
 volume(str::Structure) = cell(str)
 
+"""
+    update_geometry!(str1::AbstractStructure, str2::AbstractStructure)
+    update_geometry!(job::DFJob, str2::AbstractStructure)
+
+Updates the spatial parameters of the atoms and cell of the first structure to those found in the second.
+"""
+function update_geometry!(str1::AbstractStructure, str2::AbstractStructure)
+    str1.cell = copy(str2.cell)
+    ats2 = atoms(str2)
+    for at1 in atoms(str1)
+        id = findmin(map(x -> distance(x, at1), filter(y -> y.name == name(at1),ats2)))[2]
+        if id === nothing
+            @error "No atom of the species $(name(at1)) found in the second structure"
+        end
+        setposition!(at1, atoms(str2)[id].position_cryst, cell(str1))
+    end
+end
+
 const DEFAULT_TOLERANCE = 1e-5
 
 struct SPGStructure

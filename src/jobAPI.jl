@@ -667,3 +667,5 @@ function pdos(job::DFJob, atoms::Vector{AbstractAtom} = atoms(job), args...)
     return (energies=t_energies, pdos=t_pdos)
 end
 
+update_geometry!(job::DFJob, new_str::AbstractStructure) = update_geometry!(job.structure, new_str)
+
