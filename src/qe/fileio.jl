@@ -742,6 +742,9 @@ function save(input::DFInput{QE}, structure, filename::String=inpath(input); rel
         setflags!(input, :calculation => replace(input[:calculation], "_" => "-"), print=false)
     end
     open(filename, "w") do f
+        if exec(input, "ph.x") !== nothing
+            write(f, "--\n")
+        end
         writeflag(flag_data) = qe_writeflag(f, flag_data[1], flag_data[2])
         write_dat(data)       = write_data(f, data)
 
