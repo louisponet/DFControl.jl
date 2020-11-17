@@ -104,13 +104,6 @@ end
         error("No bands found in job $(job.name).")
     end
 
-    if bands isa NamedTuple
-        doswindow = 3
-        layout := (1,3)
-    else
-        doswindow = 2
-        layout := (1,2)
-    end 
     # Bands part
     kpath = high_symmetry_kpoints(job.structure).kpoints
     tick_vals = Int[]
@@ -124,24 +117,46 @@ end
             end
         end
     end
+    if bands isa NamedTuple
+        window_ids = findall(bands.up) do b
+            min = minimum(b.eigvals) - frmi
+            max = maximum(b.eigvals) - frmi
+            return !((min < ymin && max < ymin) || (min > ymax && max > ymax))
+        end
+    else
+        window_ids = findall(bands) do b
+            min = minimum(b.eigvals) - frmi
+            max = maximum(b.eigvals) - frmi
+            return !((min < ymin && max < ymin) || (min > ymax && max > ymax))
+        end
+    end
+    window_ids === nothing && error("No bands inside window")
+
+    # We define a single band plotting series here
+    function plot_band(band, color, label, subplot)
+        @series begin
+            xticks --> (tick_vals, tick_syms)
+            title --> "Eigenvalues"
+            yguide := subplot == 1 ? "Energy (eV)" : "" 
+            label := label 
+            subplot := subplot
+            seriescolor := color
+            legend := true
+            1:length(kpoints), band.eigvals .- frmi
+        end
+    end
+
     # PDOS part
     projwfc = getfirst(x -> isprojwfccalc(x) && hasoutfile(x), inputs(job))
     if projwfc !== nothing
-        states, projbands = qe_read_projwfc(outpath(projwfc))
         if bands isa NamedTuple
-            window_ids = findall(bands.up) do b
-                min = minimum(b.eigvals) - frmi
-                max = maximum(b.eigvals) - frmi
-                return !((min < ymin && max < ymin) || (min > ymax && max > ymax))
-            end
+            doswindow = 3
+            layout := (1,3)
         else
-            window_ids = findall(bands) do b
-                min = minimum(b.eigvals) - frmi
-                max = maximum(b.eigvals) - frmi
-                return !((min < ymin && max < ymin) || (min > ymax && max > ymax))
-            end
-        end
-        window_ids === nothing && error("No bands inside window")
+            doswindow = 2
+            layout := (1,2)
+        end 
+        states, projbands = qe_read_projwfc(outpath(projwfc))
         # First we find the amount that all the states appear in the window
         state_occupations = zeros(length(states))
         for wid in window_ids
@@ -207,29 +222,44 @@ end
                 end
             end
         end
-    end
-    for contribs in band_contribs
-        
-         contribs .= [normalize.(contribs[ib]) for ib =1:length(window_ids)]
-     end
-    band_colors = [[[blend_color(band_contribs[i][ib][ik]) for ik = 1:length(kpoints)] for ib = 1:length(window_ids)] for i=1:length(band_contribs)]
-    @info "Plotting bands..."
-    for (iplt, (bnds, colors)) in enumerate(zip(bands, band_colors))
-        if length(bands) == 2
-            lab = iplt == 1 ? "up" : "down"
-        else
-            lab = ""
+        for contribs in band_contribs
+            
+             contribs .= [normalize.(contribs[ib]) for ib =1:length(window_ids)]
+         end
+        band_colors = [[[blend_color(band_contribs[i][ib][ik]) for ik = 1:length(kpoints)] for ib = 1:length(window_ids)] for i=1:length(band_contribs)]
+        @info "Plotting bands..."
+        for (iplt, (bnds, colors)) in enumerate(zip(bands, band_colors))
+            if length(bands) == 2
+                lab = iplt == 1 ? "up" : "down"
+            else
+                lab = ""
+            end
+            for (ib, (b, c)) in enumerate(zip(bnds[window_ids], colors))
+                plot_band(b, c, ib == 1 ? lab : "", iplt)
+            end
         end
-        for (ib, (b, c)) in enumerate(zip(bnds[window_ids], colors))
-            @series begin
-                xticks --> (tick_vals, tick_syms)
-                title --> "Eigenvalues"
-                yguide := iplt == 1 ? "Energy (eV)" : ""
-                label := ib == 1 ? lab : ""
-                subplot := iplt
-                seriescolor := c
-                legend := true
-                1:length(kpoints), b.eigvals .- frmi
+
+    # If no pdos is present
+    else
+        if bands isa NamedTuple
+            layout := (1,2)
+        else
+            layout := (1,1)
+        end 
+        @info "Plotting bands..."
+        if bands isa NamedTuple
+            #loop over up down
+            for (iplt, bnds) in enumerate(bands)
+                lab = iplt == 1 ? "up" : "down"
+                color = iplt == 1 ? :blue : :red
+                #loop over bands inside window
+                for (ib, b) in enumerate(bnds[window_ids])
+                    plot_band(b, color, ib == 1 ? lab : "", iplt)
+                end
+            end
+        else
+            for (ib, b) in enumerate(bands[window_ids])
+                plot_band(b, PLOT_COLORS[mod1(ib,length(PLOT_COLORS))], "", 1)
             end
         end
     end
