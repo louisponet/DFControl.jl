@@ -275,7 +275,7 @@ function update_geometry!(str1::AbstractStructure, str2::AbstractStructure)
         if id === nothing
             @error "No atom of the species $(name(at1)) found in the second structure"
         end
-        setposition!(at1, atoms(str2)[id].position_cryst, cell(str1))
+        set_position!(at1, atoms(str2)[id].position_cryst, cell(str1))
     end
 end
 
