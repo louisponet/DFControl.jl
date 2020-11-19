@@ -10,7 +10,7 @@ end
 Structure() =
 	Structure("NoName", eye(3), Atom[], Dict{Symbol,Any}())
 
-Structure(name, cell::Mat3{LT}, atoms::Vector{Atom{T,LT}}) where {T <: AbstractFloat,LT <: Length{T}} =
+Structure(name, cell::Mat3{LT}, atoms::Vector{<:Atom{T,LT}}) where {T <: AbstractFloat,LT <: Length{T}} =
 	Structure{T,Atom{T,LT},LT}(name, cell, atoms, Dict{Symbol,Any}())
 
 Structure(str::AbstractStructure{T}, atoms::Vector{AT}) where {T <: AbstractFloat,AT <: AbstractAtom{T}} =
@@ -27,9 +27,19 @@ structure(str::Structure) = str
 Returns all the atoms inside the structure with the specified symbol
 """
 function atoms(str::AbstractStructure, atsym::Symbol)
-    out = AbstractAtom[]
+    out = eltype(str.atoms)[]
     for at in str.atoms
         name(at) == atsym && push!(out, at)
+    end
+    return out
+end
+"""
+Returns all the atoms inside the structure with the specified element
+"""
+function atoms(str::AbstractStructure, el::Element)
+    out = eltype(str.atoms)[]
+    for at in str.atoms
+        element(at) == el && push!(out, at)
     end
     return out
 end

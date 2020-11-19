@@ -4,6 +4,7 @@ include("qe/fileio.jl")
 include("abinit/fileio.jl")
 include("wannier90/fileio.jl")
 include("elk/fileio.jl")
+include("vasp/fileio.jl")
 
 #--------------------Used by other file processing------------------#
 function parse_k_line(line, T)
