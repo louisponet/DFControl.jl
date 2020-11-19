@@ -105,16 +105,22 @@ end
     end
 
     # Bands part
-    kpath = high_symmetry_kpoints(job.structure).kpoints
+    ks = high_symmetry_kpoints(job.structure)
     tick_vals = Int[]
     tick_syms = String[]
     kpoints = bands isa NamedTuple ? bands.up[1].k_points_cryst : bands[1].k_points_cryst
     for (i, k) in enumerate(kpoints)
-        for (sym, vec) in kpath
-            if vec == k
-                push!(tick_vals, i)
-                push!(tick_syms, " " * string(sym) * " ")
+        if ks!==nothing
+            kpath = ks.kpoints
+            for (sym, vec) in kpath
+                if vec == k
+                    push!(tick_vals, i)
+                    push!(tick_syms, " " * string(sym) * " ")
+                end
             end
+        elseif norm(k) == 0
+            push!(tick_vals, i)
+            push!(tick_syms, " Gamma ")
         end
     end
     if bands isa NamedTuple
