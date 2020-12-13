@@ -32,6 +32,7 @@ Possible keys:
  - `:accuracy`
  - `:converged`
  - `:total_energy`
+ - `:magnetization`
 """
 function qe_read_output(filename::String, T=Float64)
     out = Dict{Symbol,Any}()
@@ -210,6 +211,17 @@ function qe_read_output(filename::String, T=Float64)
                 out[:converged] = false
             elseif occursin("convergence has been achieved", line)
                 out[:converged] = true
+            elseif occursin("atom number", line)
+                if !haskey(out, :magnetization)
+                    out[:magnetization] = Vec3{Float64}[]
+                end
+                atom_number = parse(Int, split(line)[3])
+                readline(f)
+                if length(out[:magnetization]) < atom_number
+                    push!(out[:magnetization], parse(Vec3{Float64}, split(readline(f))[3:5]))
+                else
+                    out[:magnetization][atom_number] = parse(Vec3{Float64}, split(readline(f))[3:5])
+               end 
             end
         end
 

@@ -35,3 +35,5 @@ deps/usr/
 deps/deps\.jl
 
 deps/spglib/
+
+deps/elkflags\.jl
