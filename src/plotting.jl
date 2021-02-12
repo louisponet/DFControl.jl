@@ -109,6 +109,7 @@ end
     tick_vals = Int[]
     tick_syms = String[]
     kpoints = bands isa NamedTuple ? bands.up[1].k_points_cryst : bands[1].k_points_cryst
+    @show ks.kpoints
     for (i, k) in enumerate(kpoints)
         if ks!==nothing
             kpath = ks.kpoints
@@ -157,10 +158,10 @@ end
     if projwfc !== nothing
         if bands isa NamedTuple
             doswindow = 3
-            layout := (1,3)
+            layout --> (1,3)
         else
             doswindow = 2
-            layout := (1,2)
+            layout --> (1,2)
         end 
         states, projbands = qe_read_projwfc(outpath(projwfc))
         # First we find the amount that all the states appear in the window
