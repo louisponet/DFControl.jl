@@ -127,11 +127,11 @@ function qdel(job::DFJob)
     end
 end
 
-function qsub(job::DFJob; rm_prev=true)
+function schedule_job(job::DFJob, submit_command; rm_prev=true)
     outstr = ""
     if !runslocal(job)
         push(job)
-        outstr = read(`ssh -t $(job.server) cd $(job.server_dir) '&&' qsub job.tt`, String)
+        outstr = read(`ssh -t $(job.server) cd $(job.server_dir) '&&' $submit_command job.tt`, String)
     else
         curdir = pwd()
         cd(job.local_dir)
@@ -142,14 +142,23 @@ function qsub(job::DFJob; rm_prev=true)
 	        end
         end
         try
-            outstr = read(`qsub job.tt`, String)
+            outstr = read(`$submit_command job.tt`, String)
         catch
             error("Tried submitting on the local machine but got an error executing `qsub`.")
         end
         cd(curdir)
     end
-    return parse(Int, chomp(outstr))
+    try
+        return parse(Int, chomp(outstr))
+    catch
+        return parse(Int, split(chomp(outstr))[end]) 
+    end
+    return 
 end
+
+qsub(job::DFJob; kwargs...) = schedule_job(job, "qsub"; kwargs...) 
+sbatch(job::DFJob; kwargs...) = schedule_job(job, "sbatch"; kwargs...) 
+
 
 "Tests whether a directory exists on a server and if not, creates it."
 function mkserverdir(server, dir)

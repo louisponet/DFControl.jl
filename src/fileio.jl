@@ -309,7 +309,8 @@ function read_job_line(line)
 	        input = "elk.in"
 	        output = "elk.out"
             push!(execs, Exec(efile, dir))
-
+        else
+            push!(execs, Exec(efile, dir))
         end
     end
     return execs, input, output, run

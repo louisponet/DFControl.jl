@@ -362,38 +362,40 @@ Returns:
 function qe_read_projwfc(filename::String)
     lines  = readlines(filename) .|> strip
 
+    i_prob_sizes = findfirst(x -> !isempty(x) && x[1:4] == "Prob", lines)
+    natomwfc = parse(Int, split(lines[i_prob_sizes + 1])[3])
+    nx = parse(Int, split(lines[i_prob_sizes + 2])[3])
+    nbnd = parse(Int, split(lines[i_prob_sizes + 3])[3])
+    nkstot =  parse(Int, split(lines[i_prob_sizes + 4])[3])
+    npwx =  parse(Int, split(lines[i_prob_sizes + 5])[3])
+    nkb =  parse(Int, split(lines[i_prob_sizes + 6])[3])
     state_tuple = NamedTuple{(:atom_id, :wfc_id, :j, :l, :m), Tuple{Int, Int, Float64, Float64, Float64}}
     states = state_tuple[]
-    istart = findfirst(x -> x == "Atomic states used for projection", lines) + 3
-    istop  = findnext(isempty, lines, istart) - 1
-    for i = istart:istop
-        l = replace_multiple(lines[i], "(" => " ", ")" => " ", "," => "", "=" => " ", ":" => "", "#" => " ") |> split
+    istart = findfirst(x -> x == "Atomic states used for projection", lines) + 2
+    for i = 1:natomwfc
+        l = replace_multiple(lines[i + istart], "(" => " ", ")" => " ", "," => "", "=" => " ", ":" => "", "#" => " ") |> split
         if length(l) == 11 #spinpolarized
             push!(states, state_tuple((parse.(Int,(l[4], l[7]))..., 0.0, parse.(Float64,( l[9], l[11]))...)))
         else #not spin polarized
             push!(states, state_tuple((parse.(Int,(l[4], l[7]))..., parse.(Float64, (l[9], l[11], l[13]))...)))
         end
     end
-
-    ilowd = findnext(x -> x == "Lowdin Charges:", lines, istop)
     ETuple = NamedTuple{(:e, :ψ, :ψ²), Tuple{Float64, Vector{Float64}, Float64}}
     kdos  = Pair{Vec3{Float64}, Vector{ETuple}}[]
-    while istop < ilowd - 2
-        istart = findnext(x -> occursin("k = ", x), lines, istop)
-        istop  = findnext(isempty, lines, istart) - 1
+    while length(kdos) < nkstot
+        istart = findnext(x -> occursin("k = ", x), lines, istart+1)
         k = Vec3(parse.(Float64, split(lines[istart])[3:end]))
         etuples = ETuple[]
         istop_ψ  = istart - 1
         istart_ψ = istart
-        while istop_ψ < istop - 1
+        while length(etuples) < nbnd
             eline = replace_multiple(lines[istop_ψ + 2], "="=>"", "(" => " ", ")"=>" ")
             e = parse(Float64, split(eline)[end-1])
             coeffs = zeros(length(states))
-            istart_ψ = findnext(x -> x[1:3] == "psi", lines, istop_ψ + 1)
-            istop_ψ  = findnext(x -> x[2:4] == "psi", lines, istart_ψ) - 1
-
+            istart_ψ = findnext(x -> !isempty(x) && x[1:3] == "===", lines, istop_ψ + 1) + 1
+            istop_ψ  = findnext(x -> !isempty(x) && x[2:4] == "psi", lines, istart_ψ) - 1
             for i=istart_ψ:istop_ψ
-                l = replace_multiple(lines[i], "psi =" => " ", "*[#" => " ", "]+" => " ") |> strip |> split
+                l = replace_multiple(lines[i], "psi =" => " ", "*[#" => " ", "]+" => " ", "]" => " ") |> strip |> split
                 for k=1:2:length(l)
                     coeffs[parse(Int, l[k+1])] = parse(Float64, l[k])
                 end
