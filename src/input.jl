@@ -48,12 +48,12 @@ name(input::DFInput)  = input.name
 dir(input::DFInput)   = input.dir
 flags(input::DFInput) = input.flags
 setdir!(input::DFInput, dir) = (input.dir = dir)
-name_ext(input::DFInput, ext)          = name(input) * ext
-infilename(input::DFInput)         = input.infile
-infilename(input::DFInput{Elk})        = "elk.in"
-outfilename(input::DFInput)        = input.outfile
-inpath(input::DFInput)                 = joinpath(dir(input),  infilename(input))
-outpath(input::DFInput)                = joinpath(dir(input),  outfilename(input))
+name_ext(input::DFInput, ext)   = name(input) * ext
+infilename(input::DFInput)      = input.infile
+infilename(input::DFInput{Elk}) = "elk.in"
+outfilename(input::DFInput)     = input.outfile
+inpath(input::DFInput)          = joinpath(dir(input),  infilename(input))
+outpath(input::DFInput)         = joinpath(dir(input),  outfilename(input))
 
 hasflag(i::DFInput, s::Symbol) = haskey(flags(i), s)
 
@@ -248,7 +248,7 @@ end
 #TODO Temporary handling of HubbardU situation
 function set_hubbard_flags!(input::DFInput{QE}, str::AbstractStructure{T}) where {T}
 	u_ats = unique(atoms(str))
-    isdftucalc = any(x -> dftu(x).U != 0 || dftu(x).J0 != 0.0 || sum(dftu(x).J) != 0, u_ats)
+    isdftucalc = any(x -> dftu(x).U != 0 || dftu(x).J0 != 0.0 || sum(dftu(x).J) != 0 || sum(dftu(x).α) != 0, u_ats)
     isnc = isnoncolin(str)
 	if isdftucalc
 		Jmap = map(x -> copy(dftu(x).J), u_ats)

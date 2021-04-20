@@ -119,9 +119,7 @@ function sanitizeflags!(job::DFJob)
     for i in filter(x -> package(x) == QE, inputs(job))
         outdir = isempty(job.server_dir) ? joinpath(job, "outputs") : joinpath(job.server_dir, splitdir(job.local_dir)[end], "outputs")
         setflags!(i, :outdir => "$outdir", print=false)
-	    set_hubbard_flags!(i, job.structure)
-	    set_starting_magnetization_flags!(i, job.structure)
-	    ecutwfc, ecutrho = find_cutoffs(job)
+	    ecutwfc, ecutrho = find_cutoffs(job) # Ideally this should also be at the end stage
 	    if exec(i, "pw.x") !== nothing
     	    if !hasflag(i, :ecutwfc)
         	    @info "No energy cutoff was specified in input with name: $(name(i))\nCalculating one from the pseudo files.\nCalculated ecutwfc=$ecutwfc, ecutrho=$ecutrho."
@@ -146,9 +144,6 @@ function sanitize_pseudos!(job::DFJob)
 	end
 	for p in all_pseudos
 		p.dir = pseudo_dir
-	end
-	for i in filter(x -> package(x) == QE, inputs(job))
-		setflags!(i, :pseudo_dir => pseudo_dir; print=false)
 	end
 end
 

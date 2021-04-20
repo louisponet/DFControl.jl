@@ -33,6 +33,7 @@ Possible keys:
  - `:converged`
  - `:total_energy`
  - `:magnetization`
+ - `:Hubbard_occupation`
 """
 function qe_read_output(filename::String, T=Float64)
     out = Dict{Symbol,Any}()
@@ -221,7 +222,18 @@ function qe_read_output(filename::String, T=Float64)
                     push!(out[:magnetization], parse(Vec3{Float64}, split(readline(f))[3:5]))
                 else
                     out[:magnetization][atom_number] = parse(Vec3{Float64}, split(readline(f))[3:5])
-               end 
+               end
+            elseif occursin("Tr[ns(na)]", line)
+                if !haskey(out, :Hubbard_occupation)
+                    out[:Hubbard_occupation] = Float64[]
+                end
+                sline = split(line)
+                id = parse(Int, split(line)[2])
+                if length(out[:Hubbard_occupation]) < id
+                    push!(out[:Hubbard_occupation], parse(Float64, sline[5]))
+                else
+                    out[:Hubbard_occupation][id] = parse(Float64, sline[5])
+                end
             end
         end
 
@@ -738,7 +750,7 @@ function qe_writeflag(f, flag, value)
                 end
             end
         end
-    elseif isa(value, String)
+    elseif isa(value, AbstractString)
         write(f, "  $flag = '$value'\n")
     else
         write(f, "  $flag = $value\n")
@@ -755,6 +767,14 @@ function save(input::DFInput{QE}, structure, filename::String=inpath(input); rel
     if haskey(flags(input), :calculation)
         setflags!(input, :calculation => replace(input[:calculation], "_" => "-"), print=false)
     end
+    # setting hubbard and magnetization flags
+    set_hubbard_flags!(input, structure)
+    set_starting_magnetization_flags!(input, structure)
+    
+    # setting hubbard flags 
+    pseudo_dir = pseudo(atoms(structure)[1]).dir # Pseudos should be all sanitized by now
+   	setflags!(input, :pseudo_dir => pseudo_dir; print=false)
+   	
     open(filename, "w") do f
         if exec(input, "ph.x") !== nothing
             write(f, "--\n")
@@ -819,7 +839,7 @@ function save(input::DFInput{QE}, structure, filename::String=inpath(input); rel
     end
     #TODO handle writing hubbard and magnetization better
     delete!.((input.flags,), (:Hubbard_U, :Hubbard_J0, :Hubbard_J, :Hubbard_alpha, :Hubbard_beta,
-    						  :starting_magnetization, :angle1, :angle2))
+    						  :starting_magnetization, :angle1, :angle2, :pseudo_dir))
 end
 
 function write_structure(f, input::DFInput{QE}, structure; relative_positions=true)
