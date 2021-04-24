@@ -73,6 +73,7 @@ module DFControl
     using Requires
     function __init__()
         @require Juno = "e5e0dc1b-0480-54bc-9374-aad01c23163d" include("display/printing_juno.jl")
+        @require Glimpse = "f6e19d58-12a4-5927-8606-ac30a9ce9b69" include("display/glimpse.jl")
 		merge!(Unitful.basefactors, localunits)
 		Unitful.register(@__MODULE__)
     end
