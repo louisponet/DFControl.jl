@@ -603,9 +603,12 @@ function qe_read_input(filename; execs=[Exec("pw.x")], run=true, structure_name=
     flaglines, lines = separate(x -> occursin("=", x), lines)
     flaglines = strip_split.(flaglines, "=")
     easy_flaglines, difficult_flaglines = separate(x-> !occursin("(", x[1]), flaglines)
+    @show difficult_flaglines
+    @show easy_flaglines
     parsed_flags = SymAnyDict()
     #easy flags
     for (f, v) in easy_flaglines
+        @show f
         sym = Symbol(f)
         typ = flagtype(QE, exec, sym)
         if eltype(typ) <: Bool
@@ -730,13 +733,7 @@ function qe_read_input(filename; execs=[Exec("pw.x")], run=true, structure_name=
 end
 
 function qe_writeflag(f, flag, value)
-    if isa(value, Matrix)
-        for i=1:size(value)[1], j=1:size(value)[2]
-            if !iszero(value[i,j])
-                write(f, "  $flag($i,$j) = $(value[i, j])\n")
-            end
-        end
-    elseif isa(value, Vector)
+    if isa(value, Vector)
         for i=1:length(value)
             if !iszero(value[i])
                 if length(value[i]) == 1
@@ -748,6 +745,13 @@ function qe_writeflag(f, flag, value)
                     end
                     write(f, "\n")
                 end
+            end
+        end
+    elseif isa(value, Array)
+        cids = CartesianIndices(value)
+        for i in eachindex(value)
+            if !iszero(value[i])
+                write(f, "  $(flag)$(Tuple(cids[i])) = $(value[i])\n")
             end
         end
     elseif isa(value, AbstractString)
