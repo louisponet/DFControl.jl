@@ -8,11 +8,12 @@ include("vasp/fileio.jl")
 
 #--------------------Used by other file processing------------------#
 function parse_k_line(line, T)
+    line = replace(replace(line, ")" => " "), "(" => " ") 
     splt = split(line)
-    k1   = parse(T, splt[5])
-    k2   = parse(T, splt[6])
-    k3   = parse(T, splt[7][1:1:end-2])
-    w    = parse(T, splt[10])
+    k1   = parse(T, splt[4])
+    k2   = parse(T, splt[5])
+    k3   = parse(T, splt[6])
+    w    = parse(T, splt[end])
     return (v=Vec3([k1, k2, k3]),w=w)
 end
 
@@ -299,11 +300,14 @@ function read_job_line(line)
     execs = Exec[]
     for (e, flags) in exec_and_flags
         dir, efile = splitdir(e)
+        if occursin("pw2wannier90", efile)
+            continue
+        end
         if occursin("mpi", e)
             push!(execs, Exec(efile, dir, parse_mpi_flags(flags)))
         elseif efile == "wannier90.x"
             push!(execs, Exec(efile, dir, parse_wan_execflags(flags)))
-        elseif any(occursin.(QE_EXECS, (efile,))) && !occursin("pw2wannier90", efile)
+        elseif any(occursin.(QE_EXECS, (efile,))) 
             push!(execs, Exec(efile, dir, parse_qeexecflags(flags)))
         elseif any(occursin.(ELK_EXECS, (efile,)))
 	        input = "elk.in"

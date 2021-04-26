@@ -222,7 +222,7 @@ scale_cell!(job, 2)
 @test prev_b .* 2 == cell(job)[2, :]
 @test prev_c .* 2 == cell(job)[3, :]
 for (p, at) in zip(prev_pos, atoms(job))
-	@test round.(DFControl.ustrip(p * 2), digits=5) == round.(DFControl.ustrip(position_cart(at)), digits=5)
+	@test round.(DFControl.ustrip.(p * 2), digits=5) == round.(DFControl.ustrip.(position_cart(at)), digits=5)
 end
 
 set_magnetization!(job, :Pt => [1.0, 0.0, 0.0])
@@ -263,6 +263,9 @@ rmflags!(job, :nspin, :lda_plus_u, :noncolin)
 set_magnetization!(job, :Pt => [0.2, 1.0, 0.2])
 DFControl.sanitizeflags!(job)
 set_Hubbard_U!(job, :Pt => 2.3)
+DFControl.sanitize_magnetization!(job)
+DFControl.set_hubbard_flags!.(filter(x -> DFControl.package(x) == QE, DFControl.inputs(job)), (job.structure,))
+DFControl.set_starting_magnetization_flags!.(filter(x -> DFControl.package(x) == QE, DFControl.inputs(job)), (job.structure,))
 @test job["scf"][:lda_plus_u]
 @test job["scf"][:noncolin]
 @test job["scf"][:lda_plus_u_kind] == 1
@@ -270,6 +273,9 @@ set_Hubbard_U!(job, :Pt => 2.3)
 rmflags!(job, :nspin, :lda_plus_u, :noncolin)
 set_magnetization!(job, :Pt => [0.0, 0.0, 0.5])
 DFControl.sanitizeflags!(job)
+DFControl.sanitize_magnetization!(job)
+DFControl.set_hubbard_flags!.(filter(x -> DFControl.package(x) == QE, DFControl.inputs(job)), (job.structure,))
+DFControl.set_starting_magnetization_flags!.(filter(x -> DFControl.package(x) == QE, DFControl.inputs(job)), (job.structure,))
 @test job["scf"][:nspin] == 2
 
 using LinearAlgebra
@@ -284,8 +290,8 @@ set_magnetization!(job, :Pt => [0, 0, 1])
 orig_projs = projections(atoms(job, :Pt)[1])
 
 job.structure = create_supercell(structure(job), 1, 0, 0, make_afm=true)
-
 DFControl.sanitize_magnetization!(job)
+DFControl.set_starting_magnetization_flags!.(filter(x -> DFControl.package(x) == QE, DFControl.inputs(job)), (job.structure,))
 @test length(atoms(job, :Pt)) == prevlen_Pt
 @test length(atoms(job, :Pt1)) == prevlen_Pt
 
@@ -303,8 +309,6 @@ job3 = DFJob(job4.local_dir)
 
 rm.(DFControl.inpath.(job.inputs))
 
-# rm(joinpath(splitdir(DFControl.inpath(job.inputs[1]))[1], "pw2wan_wanup.in"))
-# rm(joinpath(splitdir(DFControl.inpath(job.inputs[1]))[1], "pw2wan_wandn.in"))
 rm(joinpath(job.local_dir, "job.tt"))
 rm.(joinpath.((job.local_dir,), filter(x -> occursin("UPF", x), readdir(job.local_dir))))
 

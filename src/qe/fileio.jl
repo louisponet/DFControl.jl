@@ -135,7 +135,7 @@ function qe_read_output(filename::String, T=Float64)
                     line = readline(f)
                 end
                 push!(k_eigvals, tmp)
-            elseif occursin("End of self-consistent", line)
+            elseif occursin("End of self-consistent", line) || occursin("End of band structure", line) 
                 empty!(k_eigvals)
 
                 #errors
@@ -623,7 +623,7 @@ function qe_read_input(filename; execs=[Exec("pw.x")], run=true, structure_name=
     used_lineids = Int[]
     findcard(s) = findfirst(l -> occursin(s, lowercase(l)), lines)
     i = findcard("atomic_species")
-    if i!=nothing
+    if i !== nothing
         push!(used_lineids, i)
         nat  = parsed_flags[:nat]
         ntyp = parsed_flags[:ntyp]
@@ -696,7 +696,7 @@ function qe_read_input(filename; execs=[Exec("pw.x")], run=true, structure_name=
 
     datablocks = InputData[]
     i = findcard("k_points")
-    if i!=nothing
+    if i !== nothing
         append!(used_lineids, [i, i+1])
         k_option = cardoption(lines[i])
         if k_option == :automatic
@@ -801,7 +801,7 @@ function save(input::DFInput{QE}, structure, filename::String=inpath(input); rel
         for name in keys(controls)
             push!(blocks2file, name => pop!(controls, name, nothing))
         end
-        filter!(x->x[2]!=nothing, blocks2file)
+        filter!(x->x[2] !== nothing, blocks2file)
         for (name, flags) in blocks2file
             write(f, "&$name\n")
             if name == :system
@@ -817,7 +817,7 @@ function save(input::DFInput{QE}, structure, filename::String=inpath(input); rel
             map(writeflag, [(flag, data) for (flag, data) in flags])
             write(f, "/\n\n")
         end
-        if exec(input, "pw.x") != nothing
+        if exec(input, "pw.x") !== nothing
             write_structure(f, input, structure, relative_positions=relative_positions)
         end
         for dat in input.data
@@ -879,10 +879,10 @@ function qe_generate_pw2waninput(input::DFInput{Wannier90}, nscf_input::DFInput{
     flags[:wan_mode] = "standalone"
     flags[:write_mmn] = true
     flags[:write_amn] = true
-    if flag(input, :spin) != nothing
+    if flag(input, :spin) !== nothing
         flags[:spin_component] = flag(input, :spin)
     end
-    if flag(input, :wannier_plot) != nothing
+    if flag(input, :wannier_plot) !== nothing
         flags[:write_unk] = flag(input, :wannier_plot)
     end
     if any(flag(input, :berry_task) .== ("morb"))
