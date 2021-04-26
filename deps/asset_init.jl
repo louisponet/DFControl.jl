@@ -166,13 +166,7 @@ function qe_write_variable(wf, indent, lines, i)
     @label break_label
     line = lines[var_i]
     dim = vardim(line)
-    typ = if dim == 2
-            Matrix{typ}
-        elseif dim == 1
-            Vector{typ}
-        else
-            typ
-        end
+    typ = dim == 0 ? typ : Array{typ, dim}
     description = replace(replace(replace(replace(replace(description, "\"" => "'"), "\\" => "\\\\"), "\$" => "\\\$"), "\\\\t" => "\\t"), "\\\\n" => "\\n")
     if occursin("Variables", line)
         spl = [split(x,"(")[1] for x in strip.(filter(x -> !occursin("=", x), split(line)[2:end]), ',')]
