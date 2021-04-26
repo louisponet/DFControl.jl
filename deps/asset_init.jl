@@ -212,6 +212,9 @@ function write_QEDataBlockInfo(wf, indent, lines)
     description         = ""
     options_description = ""
     istop = findfirst(x -> occursin("DESCRIPTION", x), lines)
+    if istop === nothing
+        return
+    end
     for i=1:istop-1
         line = strip(replace(replace(lines[i], "_" => ""), "-" => ""))
         if isempty(line)

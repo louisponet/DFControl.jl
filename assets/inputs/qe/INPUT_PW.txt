@@ -3,7 +3,7 @@
 ------------------------------------------------------------------------
 INPUT FILE DESCRIPTION
 
-Program: pw.x / PWscf / Quantum Espresso (version: 6.1)
+Program: pw.x / PWscf / Quantum Espresso (version: 6.7MaX)
 ------------------------------------------------------------------------
 
 
@@ -15,9 +15,13 @@ by e); potentials are in energy units (i.e. they are multiplied by e).
 
 BEWARE: TABS, DOS <CR><LF> CHARACTERS ARE POTENTIAL SOURCES OF TROUBLE
 
+Namelists must appear in the order given below.
 Comment lines in namelists can be introduced by a "!", exactly as in
 fortran code. Comments lines in cards can be introduced by
 either a "!" or a "#" character in the first position of a line.
+Do not start any line in cards with a "/" character.
+Leave a space between card names and card options, e.g.
+ATOMIC_POSITIONS (bohr), not ATOMIC_POSITIONS(bohr)
 Do not start any line in cards with a "/" character.
 
 
@@ -44,6 +48,10 @@ Structure of the input data:
   ...
  / ]
 
+[ &FCP
+  ...
+ / ]
+
 ATOMIC_SPECIES
  X  Mass_X  PseudoPot_X
  Y  Mass_Y  PseudoPot_Y
@@ -62,6 +70,7 @@ if (automatic)
 if (not automatic)
    nks
    xk_x, xk_y, xk_z,  wk
+if (tpipa_b or crystal_b in a 'bands' calculation) see Doc/brillouin_zones.pdf
 
 [ CELL_PARAMETERS { alat | bohr | angstrom }
    v1(1) v1(2) v1(3)
@@ -82,6 +91,9 @@ if (not automatic)
    label_1 Fx(1) Fy(1) Fz(1)
    .....
    label_n Fx(n) Fy(n) Fz(n) ]
+
+[ ADDITIONAL_K_POINTS
+     see: K_POINTS ]
 
 
 
@@ -141,28 +153,32 @@ NAMELIST: &CONTROL
     
                    'restart' :
                         From previous interrupted run. Use this switch only if you want to
-                        continue an interrupted calculation, not to start a new one, or to
-                        perform non-scf calculations.  Works only if the calculation was
+                        continue, using the same number of processors and parallelization,
+                        an interrupted calculation. Do not use to start a new one, or to
+                        perform a non-scf calculations.  Works only if the calculation was
                         cleanly stopped using variable "max_seconds", or by user request
                         with an "exit file" (i.e.: create a file "prefix".EXIT, in directory
-                        "outdir"; see variables "prefix", "outdir").  Overrides "startingwfc"
-                        and "startingpot".
+                        "outdir"; see variables "prefix", "outdir"). The default for
+                        "startingwfc" and "startingpot" is set to 'file'.
    +--------------------------------------------------------------------
    
    +--------------------------------------------------------------------
    Variable:       wf_collect
    
    Type:           LOGICAL
-   Default:        .FALSE.
+   Default:        .TRUE.
    Description:    This flag controls the way wavefunctions are stored to disk :
                    
                    .TRUE.  collect wavefunctions from all processors, store them
-                           into the output data directory "outdir"/"prefix".save,
-                           ...
+                           into the output data directory "outdir"/"prefix".save
+                           The resulting format is portable to a different number
+                           of processors, or different kind of parallelization
                    
-                           .FALSE. do not collect wavefunctions, leave them in temporary
-                                   local files (one per processor). The resulting format
-                                   ...
+                   .FALSE. OBSOLETE - NO LONGER IMPLEMENTED
+                           do not collect wavefunctions, leave them in temporary
+                           local files (one per processor). The resulting format
+                           is readable only on the same number of processors and
+                           with the same kind of parallelization used to write it.
                    
                    Note that this flag has no effect on reading, only on writing.
    +--------------------------------------------------------------------
@@ -172,7 +188,9 @@ NAMELIST: &CONTROL
    
    Type:           INTEGER
    Description:    number of molecular-dynamics or structural optimization steps
-                   performed in this run
+                   performed in this run. If set to 0, the code performs a quick
+                   "dry run", stopping just after initialization. This is useful
+                   to check for input correctness and to have the summary printed.
    Default:        1  if "calculation" == 'scf', 'nscf', 'bands';
                    50 for the other cases
    +--------------------------------------------------------------------
@@ -231,7 +249,7 @@ NAMELIST: &CONTROL
                    each processor (*.wfc{N}, *.igk{N}, etc.). Useful for
                    machines without a parallel file system: set "wfcdir" to
                    a local file system, while "outdir" should be a parallel
-                   or networkfile system, visible to all processors. Beware:
+                   or network file system, visible to all processors. Beware:
                    in order to restart from interrupted runs, or to perform
                    further calculations using the produced data files, you
                    may need to copy files to "outdir". Works only for pw.x.
@@ -299,28 +317,39 @@ NAMELIST: &CONTROL
    Default:        see below
    Description:   
                    Specifies the amount of disk I/O activity:
+                   (only for binary files and xml data file in data directory;
+                   other files printed at each molecular dynamics / structural
+                   optimization step are not controlled by this option )
     
                    'high' :
-                        save all data to disk at each SCF step
+                        save charge to disk at each SCF step,
+                        keep wavefunctions on disk (in "distributed" format),
+                        save mixing data as well.
+                        Do not use this option unless you have a good reason!
+                        It is no longer needed to specify 'high' in order to be able
+                        to restart from an interrupted calculation (see "restart_mode")
     
                    'medium' :
-                        save wavefunctions at each SCF step unless
-                        there is a single k-point per process (in which
-                        case the behavior is the same as 'low')
+                        save charge to disk at each SCF step,
+                        keep wavefunctions on disk only if more than one k-point,
+                        per process is present, otherwise keep them in memory;
+                        save them to disk only at the end (in "portable" format)
     
                    'low' :
-                        store wfc in memory, save only at the end
+                        save charge to disk at each SCF step,
+                        keep wavefunctions in memory (for all k-points),
+                        save them to disk only at the end (in "portable" format).
+                        Reduces I/O but increases memory wrt the previous cases
+    
+                   'nowf' :
+                        save to disk only the xml data file,
+                        never save wavefunctions and charge density
     
                    'none' :
-                        do not save anything, not even at the end
-                        ('scf', 'nscf', 'bands' calculations; some data
-                        may be written anyway for other calculations)
+                        do not save anything to disk
     
                    Default is 'low' for the scf case, 'medium' otherwise.
-                   Note that the needed RAM increases as disk I/O decreases!
-                   It is no longer needed to specify 'high' in order to be able
-                   to restart from an interrupted calculation (see "restart_mode")
-                   but you cannot restart in "disk_io"=='none'
+                   Note that the needed RAM increases as disk I/O decreases
    +--------------------------------------------------------------------
    
    +--------------------------------------------------------------------
@@ -423,40 +452,42 @@ NAMELIST: &CONTROL
    +--------------------------------------------------------------------
    
    +--------------------------------------------------------------------
-   Variable:       lfcpopt
+   Variable:       lfcp
    
    Type:           LOGICAL
    See:            fcp_mu
    Default:        .FALSE.
    Description:    If .TRUE. perform a constant bias potential (constant-mu) calculation
-                   for a static system with ESM method. See the header of PW/src/fcp.f90
-                   for documentation.
+                   for a system with ESM method. See the header of PW/src/fcp_module.f90
+                   for documentation. To perform the calculation, you must set a namelist FCP.
                    
                    NB:
-                   - The total energy displayed in 'prefix.out' includes the potentiostat
+                   - The total energy displayed in output includes the potentiostat
                      contribution (-mu*N).
-                   - "calculation" must be 'relax'.
+                   - "calculation" must be 'relax' or 'md'.
                    - "assume_isolated" = 'esm' and "esm_bc" = 'bc2' or 'bc3' must be set
                      in "SYSTEM" namelist.
+                   - "ignore_wolfe" is always .TRUE., for BFGS.
    +--------------------------------------------------------------------
    
    +--------------------------------------------------------------------
-   Variable:       monopole
+   Variable:       gate
    
    Type:           LOGICAL
    Default:        .FALSE.
-   See:            zmon, realxz, block, block_1, block_2, block_height
-   Description:    In the case of charged cells ("tot_charge" .ne. 0) setting monopole = .TRUE.
-                   represents the counter charge (i.e. -tot_charge) not by a homogenous
-                   background charge but with a charged plate, which is placed at "zmon"
-                   (see below). Details of the monopole potential can be found in
+   See:            zgate, relaxz, block, block_1, block_2, block_height
+   Description:    In the case of charged cells ("tot_charge" .ne. 0) setting gate = .TRUE.
+                   represents the counter charge (i.e. -tot_charge) not by a homogeneous
+                   background charge but with a charged plate, which is placed at "zgate"
+                   (see below). Details of the gate potential can be found in
                    T. Brumme, M. Calandra, F. Mauri; PRB 89, 245406 (2014).
                    Note, that in systems which are not symmetric with respect to the plate,
                    one needs to enable the dipole correction! ("dipfield"=.true.).
-                   Currently, symmetry can be used with monopole=.true. but carefully check
+                   Currently, symmetry can be used with gate=.true. but carefully check
                    that no symmetry is included which maps z to -z even if in principle one
                    could still use them for symmetric systems (i.e. no dipole correction).
                    For "nosym"=.false. verbosity is set to 'high'.
+                   Note: this option was called "monopole" in v6.0 and 6.1 of pw.x
    +--------------------------------------------------------------------
    
 ===END OF NAMELIST======================================================
@@ -470,17 +501,27 @@ NAMELIST: &SYSTEM
    
    Type:           INTEGER
    Status:         REQUIRED
-   Description:    Bravais-lattice index. If ibrav /= 0, specify EITHER
-                     [ "celldm"(1)-"celldm"(6) ] OR [ "A", "B", "C", "cosAB", "cosAC", "cosBC" ]
+   Description:    Bravais-lattice index. Optional only if space_group is set.
+                     If ibrav /= 0, specify EITHER [ "celldm"(1)-"celldm"(6) ]
+                     OR [ "A", "B", "C", "cosAB", "cosAC", "cosBC" ]
                      but NOT both. The lattice parameter "alat" is set to
                      alat = celldm(1) (in a.u.) or alat = A (in Angstrom);
                      see below for the other parameters.
                      For ibrav=0 specify the lattice vectors in "CELL_PARAMETERS",
                      optionally the lattice parameter alat = celldm(1) (in a.u.)
-                     or = A (in Angstrom), or else it is taken from "CELL_PARAMETERS"
+                     or = A (in Angstrom). If not specified, the lattice parameter is
+                     taken from "CELL_PARAMETERS"
+                     IMPORTANT NOTICE 1:
+                     with ibrav=0 lattice vectors must be given with a sufficiently large
+                     number of digits and with the correct symmetry, or else symmetry
+                     detection may fail and strange problems may arise in symmetrization.
+                     IMPORTANT NOTICE 2:
+                     do not use celldm(1) or A as a.u. to Ang conversion factor,
+                     use the true lattice parameters or nothing,
+                     specify units in "CELL_PARAMETERS" and "ATOMIC_POSITIONS"
                    
                    ibrav      structure                   celldm(2)-celldm(6)
-                                                        or: b,c,cosab,cosac,cosbc
+                                                        or: b,c,cosbc,cosac,cosab
                      0          free
                          crystal axis provided in input: see card "CELL_PARAMETERS"
                    
@@ -492,18 +533,20 @@ NAMELIST: &SYSTEM
                    
                      3          cubic I (bcc)
                          v1 = (a/2)(1,1,1),  v2 = (a/2)(-1,1,1),  v3 = (a/2)(-1,-1,1)
+                    -3          cubic I (bcc), more symmetric axis:
+                         v1 = (a/2)(-1,1,1), v2 = (a/2)(1,-1,1),  v3 = (a/2)(1,1,-1)
                    
                      4          Hexagonal and Trigonal P        celldm(3)=c/a
                          v1 = a(1,0,0),  v2 = a(-1/2,sqrt(3)/2,0),  v3 = a(0,0,c/a)
                    
-                     5          Trigonal R, 3fold axis c        celldm(4)=cos(alpha)
+                     5          Trigonal R, 3fold axis c        celldm(4)=cos(gamma)
                          The crystallographic vectors form a three-fold star around
                          the z-axis, the primitive cell is a simple rhombohedron:
                          v1 = a(tx,-ty,tz),   v2 = a(0,2ty,tz),   v3 = a(-tx,-ty,tz)
-                         where c=cos(alpha) is the cosine of the angle alpha between
+                         where c=cos(gamma) is the cosine of the angle gamma between
                          any pair of crystallographic vectors, tx, ty, tz are:
                            tx=sqrt((1-c)/2), ty=sqrt((1-c)/6), tz=sqrt((1+2c)/3)
-                    -5          Trigonal R, 3fold axis <111>    celldm(4)=cos(alpha)
+                    -5          Trigonal R, 3fold axis <111>    celldm(4)=cos(gamma)
                          The crystallographic vectors form a three-fold star around
                          <111>. Defining a' = a/sqrt(3) :
                          v1 = a' (u,v,v),   v2 = a' (v,u,v),   v3 = a' (v,v,u)
@@ -529,6 +572,10 @@ NAMELIST: &SYSTEM
                          v1 = (a/2, b/2,0),  v2 = (-a/2,b/2,0),  v3 = (0,0,c)
                     -9          as 9, alternate description
                          v1 = (a/2,-b/2,0),  v2 = (a/2, b/2,0),  v3 = (0,0,c)
+                    91          Orthorhombic one-face base-centered A-type
+                                                                celldm(2)=b/a
+                                                                celldm(3)=c/a
+                         v1 = (a, 0, 0),  v2 = (0,b/2,-c/2),  v3 = (0,b/2,c/2)
                    
                     10          Orthorhombic face-centered      celldm(2)=b/a
                                                                 celldm(3)=c/a
@@ -550,12 +597,22 @@ NAMELIST: &SYSTEM
                          where beta is the angle between axis a and c
                    
                     13          Monoclinic base-centered        celldm(2)=b/a
-                                                                celldm(3)=c/a,
-                                                                celldm(4)=cos(ab)
-                         v1 = (  a/2,         0,                -c/2),
-                         v2 = (b*cos(gamma), b*sin(gamma), 0),
-                         v3 = (  a/2,         0,                  c/2),
-                         where gamma is the angle between axis a and b
+                                (unique axis c)                 celldm(3)=c/a,
+                                                                celldm(4)=cos(gamma)
+                         v1 = (  a/2,         0,          -c/2),
+                         v2 = (b*cos(gamma), b*sin(gamma), 0  ),
+                         v3 = (  a/2,         0,           c/2),
+                         where gamma=angle between axis a and b projected on xy plane
+                   
+                   -13          Monoclinic base-centered        celldm(2)=b/a
+                                (unique axis b)                 celldm(3)=c/a,
+                                                                celldm(5)=cos(beta)
+                         v1 = (  a/2,       b/2,             0),
+                         v2 = ( -a/2,       b/2,             0),
+                         v3 = (c*cos(beta),   0,   c*sin(beta)),
+                         where beta=angle between axis a and c projected on xz plane
+                    IMPORTANT NOTICE: until QE v.6.4.1, axis for ibrav=-13 had a
+                    different definition: v1(old) =-v2(now), v2(old) = v1(now)
                    
                     14          Triclinic                       celldm(2)= b/a,
                                                                 celldm(3)= c/a,
@@ -658,6 +715,15 @@ NAMELIST: &SYSTEM
    +--------------------------------------------------------------------
    
    +--------------------------------------------------------------------
+   Variable:       starting_charge(i), i=1,ntyp
+   
+   Type:           REAL
+   Default:        0.0
+   Description:    starting charge on atomic type 'i',
+                   to create starting potential with "startingpot" = 'atomic'.
+   +--------------------------------------------------------------------
+   
+   +--------------------------------------------------------------------
    Variable:       tot_magnetization
    
    Type:           REAL
@@ -673,28 +739,32 @@ NAMELIST: &SYSTEM
    Variable:       starting_magnetization(i), i=1,ntyp
    
    Type:           REAL
+   Default:        0
    Description:    Starting spin polarization on atomic type 'i' in a spin
-                   polarized calculation. Values range between -1 (all spins
-                   down for the valence electrons of atom type 'i') to 1
-                   (all spins up). Breaks the symmetry and provides a starting
-                   point for self-consistency. The default value is zero, BUT a
-                   value MUST be specified for AT LEAST one atomic type in spin
-                   polarized calculations, unless you constrain the magnetization
-                   (see "tot_magnetization" and "constrained_magnetization").
-                   Note that if you start from zero initial magnetization, you
-                   will invariably end up in a nonmagnetic (zero magnetization)
-                   state. If you want to start from an antiferromagnetic state,
-                   you may need to define two different atomic species
-                   corresponding to sublattices of the same atomic type.
-                   starting_magnetization is ignored if you are performing a
-                   non-scf calculation, if you are restarting from a previous
-                   run, or restarting from an interrupted run.
-                   If you fix the magnetization with "tot_magnetization",
-                   you should not specify starting_magnetization.
-                   In the spin-orbit case starting with zero
+                   polarized (LSDA or noncollinear/spin-orbit) calculation.
+                   Allowed values range between -1 (all spins down for the
+                   valence electrons of atom type 'i') to 1 (all spins up).
+                   If you expect a nonzero magnetization in your ground state,
+                   you MUST either specify a nonzero value for at least one
+                   atomic type, or constrain the magnetization using variable
+                   "tot_magnetization" for LSDA, "constrained_magnetization"
+                   for noncollinear/spin-orbit calculations. If you don't,
+                   you will get a nonmagnetic (zero magnetization) state.
+                   In order to perform LSDA calculations for an antiferromagnetic
+                   state, define two different atomic species corresponding to
+                   sublattices of the same atomic type.
+                   
+                   NOTE 1: "starting_magnetization" is ignored in most BUT NOT ALL
+                   cases in non-scf calculations: it is safe to keep the same
+                   values for the scf and subsequent non-scf calculation.
+                   
+                   NOTE 2: If you fix the magnetization with
+                   "tot_magnetization", do not specify "starting_magnetization".
+                   
+                   NOTE 3: In the noncollinear/spin-orbit case, starting with zero
                    starting_magnetization on all atoms imposes time reversal
-                   symmetry. The magnetization is never calculated and
-                   kept zero (the internal variable domag is .FALSE.).
+                   symmetry. The magnetization is never calculated and is
+                   set to zero (the internal variable domag is set to .FALSE.).
    +--------------------------------------------------------------------
    
    +--------------------------------------------------------------------
@@ -731,9 +801,10 @@ NAMELIST: &SYSTEM
    Default:        ecutrho
    Description:    Kinetic energy cutoff (Ry) for the exact exchange operator in
                    EXX type calculations. By default this is the same as "ecutrho"
-                   but in some EXX calculations significant speed-up can be found
+                   but in some EXX calculations, a significant speed-up can be obtained
                    by reducing ecutfock, at the expense of some loss in accuracy.
-                   Must be .gt. "ecutwfc". Not implemented for stress calculation.
+                   Must be .gt. "ecutwfc". Not implemented for stress calculation
+                   and for US-PP and PAW pseudopotentials.
                    Use with care, especially in metals where it may give raise
                    to instabilities.
    +--------------------------------------------------------------------
@@ -766,7 +837,7 @@ NAMELIST: &SYSTEM
    
    Type:           LOGICAL
    Default:        .FALSE.
-   Description:    if (.TRUE.) symmetry is not used, which means that:
+   Description:    if (.TRUE.) symmetry is not used. Consequences:
                    
                    - if a list of k points is provided in input, it is used
                      "as is": symmetry-inequivalent k-points are not generated,
@@ -778,7 +849,8 @@ NAMELIST: &SYSTEM
                      Time reversal symmetry is assumed so k and -k are considered
                      as equivalent unless "noinv"=.true. is specified.
                    
-                   A careful usage of this option can be advantageous:
+                   Do not use this option unless you know exactly what you want
+                   and what you get. May be useful in the following cases:
                    - in low-symmetry large cells, if you cannot afford a k-point
                      grid with the correct symmetry
                    - in MD simulations
@@ -836,13 +908,16 @@ NAMELIST: &SYSTEM
    
    Type:           LOGICAL
    Default:        .FALSE.
-   Description:    if (.TRUE.) do not discard symmetry operations with an
-                   associated fractionary translation that does not send the
-                   real-space FFT grid into itself. These operations are
-                   incompatible with real-space symmetrization but not with the
-                   new G-space symmetrization. BEWARE: do not use for phonons
-                   and for hybrid functionals! Both still use symmetrization
-                   in real space.
+   Description:    if (.FALSE.) force real-space FFT grids to be commensurate with
+                   fractionary translations of non-symmorphic symmetry operations,
+                   if present (e.g.: if a fractional translation (0,0,c/4) exists,
+                   the FFT dimension along the c axis must be multiple of 4).
+                   if (.TRUE.) do not impose any constraints to FFT grids, even in
+                   the presence of non-symmorphic symmetry operations.
+                   BEWARE: use_all_frac=.TRUE. may lead to wrong results for
+                   hybrid functionals and phonon calculations. Both cases use
+                   symmetrization in real space that works for non-symmorphic
+                   operations only if the real-space FFT grids are commensurate.
    +--------------------------------------------------------------------
    
    +--------------------------------------------------------------------
@@ -966,7 +1041,7 @@ NAMELIST: &SYSTEM
                         (see PRB 40, 3616 (1989)).
     
                    'marzari-vanderbilt', 'cold', 'm-v', 'mv' :
-                        Marzari-Vanderbilt cold smearing
+                        Marzari-Vanderbilt-DeVita-Payne cold smearing
                         (see PRL 82, 3296 (1999))
     
                    'fermi-dirac', 'f-d', 'fd' :
@@ -1038,6 +1113,17 @@ NAMELIST: &SYSTEM
                    See Modules/funct.f90 for allowed values.
                    Overrides the value read from pseudopotential files.
                    Use with care and if you know what you are doing!
+   +--------------------------------------------------------------------
+   
+   +--------------------------------------------------------------------
+   Variable:       ace
+   
+   Type:           LOGICAL
+   Default:        true
+   Description:    Use Adaptively Compressed Exchange operator as in
+                   Lin Lin, J. Chem. Theory Comput. 2016, 12, 2242--2249, doi:10.1021/acs.jctc.6b00092
+                   
+                   Set to false to use standard Exchange (much slower)
    +--------------------------------------------------------------------
    
    +--------------------------------------------------------------------
@@ -1116,6 +1202,18 @@ NAMELIST: &SYSTEM
    +--------------------------------------------------------------------
    
    +--------------------------------------------------------------------
+   Variable:       localization_thr
+   
+   Type:           REAL
+   Default:        0.0
+   Description:    Overlap threshold over which the exchange integral over a pair of localized orbitals
+                   is included in the evaluation of EXX operator. Any value greater than 0.0 triggers
+                   the SCDM localization and the evaluation on EXX using the localized orbitals.
+                   Very small value of the threshold should yield the same result as the default EXX
+                   evaluation
+   +--------------------------------------------------------------------
+   
+   +--------------------------------------------------------------------
    Variable:       lda_plus_u
    
    Type:           LOGICAL
@@ -1124,13 +1222,14 @@ NAMELIST: &SYSTEM
                    a few selected elements. Modify Modules/set_hubbard_l.f90 and
                    PW/src/tabd.f90 if you plan to use DFT+U with an element that
                    is not configured there.
-   Description:    Specify "lda_plus_u" = .TRUE. to enable DFT+U calculations
+   Description:    Specify "lda_plus_u" = .TRUE. to enable DFT+U, DFT+U+V, or DFT+U+J calculations.
                    See: Anisimov, Zaanen, and Andersen, PRB 44, 943 (1991);
                         Anisimov et al., PRB 48, 16929 (1993);
                         Liechtenstein, Anisimov, and Zaanen, PRB 52, R5467 (1994).
-                   You must specify, for each species with a U term, the value of
-                   U and (optionally) alpha, J of the Hubbard model (all in eV):
-                   see "lda_plus_u_kind", "Hubbard_U", "Hubbard_alpha", "Hubbard_J"
+                   You must specify, for each Hubbard atom, the value of
+                   U and (optionally) V, J, alpha of the Hubbard model (all in eV):
+                   see "lda_plus_u_kind", "Hubbard_U", "Hubbard_V",
+                   "Hubbard_J", "Hubbard_alpha"
    +--------------------------------------------------------------------
    
    +--------------------------------------------------------------------
@@ -1138,13 +1237,21 @@ NAMELIST: &SYSTEM
    
    Type:           INTEGER
    Default:        0
-   Description:    Specifies the type of DFT+U calculation:
-                   
-                      0   simplified version of Cococcioni and de Gironcoli,
-                          PRB 71, 035105 (2005), using "Hubbard_U"
-                   
-                      1   rotationally invariant scheme of Liechtenstein et al.,
-                          using "Hubbard_U" and "Hubbard_J"
+   Description:   
+                   Specifies the type of calculation:
+    
+                   lda_plus_u_kind = 0  :
+                        DFT+U simplified version of Cococcioni and de Gironcoli,
+                        PRB 71, 035105 (2005), using "Hubbard_U"
+    
+                   lda_plus_u_kind = 1  :
+                        DFT+U rotationally invariant scheme of Liechtenstein et al.,
+                        using "Hubbard_U" and "Hubbard_J"
+    
+                   lda_plus_u_kind = 2  :
+                        DFT+U+V simplified version of Campo Jr and Cococcioni,
+                        J. Phys.: Condens. Matter 22, 055602 (2010), doi:10.1088/0953-8984/22/5/055602,
+                        using "Hubbard_V"
    +--------------------------------------------------------------------
    
    +--------------------------------------------------------------------
@@ -1165,14 +1272,47 @@ NAMELIST: &SYSTEM
    +--------------------------------------------------------------------
    
    +--------------------------------------------------------------------
+   Variable:       Hubbard_V(na,nb,k), (na,nb,k)=(1,1,1) ... (natx,27*natx,4)
+   
+   Type:           REAL
+   Default:        0.D0 for all elements
+   Description:    Hubbard_V(na,nb,k): V parameters (eV) between atoms na and nb,
+                   used in DFT+U+V calculations (only for "lda_plus_u_kind"=2).
+                   The atomic indices na and nb correspond to the atomic positions
+                   in the "ATOMIC_POSITIONS" card (this is not the same as Hubbard_U
+                   which is specified for "ATOMIC_SPECIES").
+                   
+                   When na=nb, then "Hubbard_V"(na,na,k) is the on-site "Hubbard_U"
+                   for the atom na.
+                   
+                   natx=50 (if needed it can be changed in /Modules/parameters.f90)
+                   
+                   The index k controls the "interaction type" (k=1 is used for the
+                   simplest DFT+U+V calculation):
+                   k=1 - interaction between standard orbitals (both on na and nb);
+                   k=2 - interaction between standard (on na) and background (on nb) orbitals;
+                   k=3 - interaction between background orbitals (both on na and nb);
+                   k=4 - interaction between background (on na) and standard (on nb) orbitals.
+                   
+                   Standard orbitals correspond to the main Hubbard channel (e.g. d electrons
+                   in transition metals) and background orbitals correspond to the secondary
+                   Hubbard channel (e.g. p electrons in transition metals).
+   +--------------------------------------------------------------------
+   
+   +--------------------------------------------------------------------
    Variable:       Hubbard_alpha(i), i=1,ntyp
    
    Type:           REAL
    Default:        0.D0 for all species
    Description:    Hubbard_alpha(i) is the perturbation (on atom i, in eV)
-                   used to compute U with the linear-response method of
-                   Cococcioni and de Gironcoli, PRB 71, 35105 (2005)
-                   (only for "lda_plus_u_kind"=0)
+                   used to compute U (and V) with the linear-response method of
+                   Cococcioni and de Gironcoli, PRB 71, 035105 (2005)
+                   (only for "lda_plus_u_kind"=0 and 2).
+                   
+                   Note: Hubbard U and V can be computed using the HP code
+                   which is based on density-functional perturbation theory,
+                   and it gives exactly the same result as the method of
+                   Cococcioni and de Gironcoli.
    +--------------------------------------------------------------------
    
    +--------------------------------------------------------------------
@@ -1182,37 +1322,42 @@ NAMELIST: &SYSTEM
    Default:        0.D0 for all species
    Description:    Hubbard_beta(i) is the perturbation (on atom i, in eV)
                    used to compute J0 with the linear-response method of
-                   Cococcioni and de Gironcoli, PRB 71, 35105 (2005)
-                   (only for "lda_plus_u_kind"=0). See also
+                   Cococcioni and de Gironcoli, PRB 71, 035105 (2005)
+                   (only for "lda_plus_u_kind"=0 and 2). See also
                    PRB 84, 115108 (2011).
    +--------------------------------------------------------------------
    
    +--------------------------------------------------------------------
-   Variable:       Hubbard_J(i,ityp)
+   Variable:       Hubbard_J(i,ityp), (i,ityp)=(1,1) ... (3,ntyp)
    
    Type:           REAL
    Default:        0.D0 for all species
    Description:    Hubbard_J(i,ityp): J parameters (eV) for species ityp,
                    used in DFT+U calculations (only for "lda_plus_u_kind"=1)
+                   
                    For p orbitals:  J = Hubbard_J(1,ityp);
                    For d orbitals:  J = Hubbard_J(1,ityp), B = Hubbard_J(2,ityp);
                    For f orbitals:  J = Hubbard_J(1,ityp), E2 = Hubbard_J(2,ityp),
                                     E3= Hubbard_J(3,ityp).
+                   
                    If B or E2 or E3 are not specified or set to 0 they will be
                    calculated from J using atomic ratios.
    +--------------------------------------------------------------------
    
    +--------------------------------------------------------------------
-   Variable:       starting_ns_eigenvalue(m,ispin,I)
+   Variable:       starting_ns_eigenvalue(m,ispin,ityp), (m,ispin,ityp)=(1,1,1) ... (2*lmax+1,nspin or npol,ntyp)
    
    Type:           REAL
    Default:        -1.d0 that means NOT SET
    Description:    In the first iteration of an DFT+U run it overwrites
                    the m-th eigenvalue of the ns occupation matrix for the
-                   ispin component of atomic species I. Leave unchanged
-                   eigenvalues that are not set. This is useful to suggest
-                   the desired orbital occupations when the default choice
-                   takes another path.
+                   ispin component of atomic species ityp.
+                   For the noncollinear case, the ispin index runs up to npol=2
+                   The value lmax  is given by the maximum angular momentum
+                   number to which the Hubbard U is applied.
+                   Leave unchanged eigenvalues that are not set.
+                   This is useful to suggest the desired orbital occupations
+                   when the default choice takes another path.
    +--------------------------------------------------------------------
    
    +--------------------------------------------------------------------
@@ -1256,6 +1401,45 @@ NAMELIST: &SYSTEM
     
                    NB: forces and stress currently implemented only for the
                    'atomic' and 'pseudo' choice.
+   +--------------------------------------------------------------------
+   
+   +--------------------------------------------------------------------
+   Variable:       Hubbard_parameters
+   
+   Type:           CHARACTER
+   Default:        'input'
+   Description:   
+                   Available choices:
+    
+                   'input' :
+                        read the "Hubbard_U" (or "Hubbard_V") parameters from
+                        the PW input file
+    
+                   'file' :
+                        read the "Hubbard_V" parameters from the file "parameters.in"
+                        which can be generated after the linear-response calculation
+                        (using the HP code). This option has a higher priority over
+                        the "Hubbard_V" if they are specified in the input. This option
+                        can be used only when "lda_plus_u_kind" = 2.
+   +--------------------------------------------------------------------
+   
+   +--------------------------------------------------------------------
+   Variable:       ensemble_energies
+   
+   Type:           LOGICAL
+   Default:        .false.
+   Description:    If "ensemble_energies" = .true., an ensemble of xc energies
+                   is calculated non-selfconsistently for perturbed
+                   exchange-enhancement factors and LDA vs. PBE correlation
+                   ratios after each converged electronic ground state
+                   calculation.
+                   
+                   Ensemble energies can be analyzed with the 'bee' utility
+                   included with libbeef.
+                   
+                   Requires linking against libbeef.
+                   "input_dft" must be set to a BEEF-type functional
+                   (e.g. input_dft = 'BEEF-vdW')
    +--------------------------------------------------------------------
    
    +--------------------------------------------------------------------
@@ -1321,6 +1505,16 @@ NAMELIST: &SYSTEM
    +--------------------------------------------------------------------
    
    +--------------------------------------------------------------------
+   Variable:       lforcet
+   
+   Type:           LOGICAL
+   Description:    When starting a non collinear calculation using an existing density
+                   file from a collinear lsda calculation assumes previous density points in
+                   z direction and rotates it in the direction described by "angle1" and
+                   "angle2" variables for atomic type 1
+   +--------------------------------------------------------------------
+   
+   +--------------------------------------------------------------------
    Variable:       constrained_magnetization
    
    Type:           CHARACTER
@@ -1352,8 +1546,8 @@ NAMELIST: &SYSTEM
                         where i runs over the cartesian components (or just z
                         in the collinear case) and itype over the types (1-ntype).
                         mcons(:,:) array is defined from starting_magnetization,
-                        (and angle1, angle2 in the non-collinear case). lambda is
-                        a real number
+                        (also from angle1, angle2 in the noncollinear case).
+                        lambda is a real number
     
                    'total direction' :
                         the angle theta of the total magnetization
@@ -1401,9 +1595,11 @@ NAMELIST: &SYSTEM
    Variable:       report
    
    Type:           INTEGER
-   Default:        100
-   Description:    Number of iterations after which the program
-                   writes all the atomic magnetic moments.
+   Default:        -1
+   Description:    determines when atomic magnetic moments are printed on output:
+                   report = 0  never
+                   report =-1  at the beginning of the scf and at convergence
+                   report = N  as -1, plus every N scf iterations
    +--------------------------------------------------------------------
    
    +--------------------------------------------------------------------
@@ -1467,12 +1663,42 @@ NAMELIST: &SYSTEM
                         
                            - Requires cell with a_3 lattice vector along z,
                              normal to the xy plane, with the slab centered
-                             around z=0. Also requires symmetry checking to be
-                             disabled along z, either by setting "nosym" = .TRUE.
-                             or by very slight displacement (i.e., 5e-4 a.u.)
-                             of the slab along z.
+                             around z=0.
+                        
+                           - For bc2 with an electric field and bc3 boundary
+                             conditions, the inversion symmetry along z-direction
+                             is automatically eliminated.
+                        
+                           - In case of calculation='vc-relax', use
+                             cell_dofree='2Dxy' or other parameters so that
+                             c-vector along z-axis should not be moved.
                         
                         See "esm_bc", "esm_efield", "esm_w", "esm_nfit".
+    
+                   '2D' :
+                        Truncation of the Coulomb interaction in the z direction
+                        for structures periodic in the x-y plane. Total energy,
+                        forces and stresses are computed in a two-dimensional framework.
+                        Linear-response calculations () done on top of a self-consistent
+                        calculation with this flag will automatically be performed in
+                        the 2D framework as well. Please refer to:
+                        Sohier, T., Calandra, M., & Mauri, F. (2017), Density functional
+                        perturbation theory for gated two-dimensional heterostructures:
+                        Theoretical developments and application to flexural phonons in graphene.
+                        Physical Review B, 96(7), 75448. https://doi.org/10.1103/PhysRevB.96.075448
+                        
+                        NB:
+                           - The length of the unit-cell along the z direction should
+                             be larger than twice the thickness of the 2D material
+                             (including electrons). A reasonable estimate for a
+                             layer's thickness could be the interlayer distance in the
+                             corresponding layered bulk material. Otherwise,
+                             the atomic thickness + 10 bohr should be a safe estimate.
+                             There is also a lower limit of 20 bohr imposed by the cutoff
+                             radius used to read pseudopotentials (see read_pseudo.f90 in Modules).
+                        
+                           - As for ESM above, only in-plane stresses make sense and one
+                             should use cell_dofree='2Dxy' in a vc-relax calculation.
    +--------------------------------------------------------------------
    
    +--------------------------------------------------------------------
@@ -1535,13 +1761,52 @@ NAMELIST: &SYSTEM
    +--------------------------------------------------------------------
    
    +--------------------------------------------------------------------
-   Variable:       fcp_mu
+   Variable:       lgcscf
+   
+   Type:           LOGICAL
+   Default:        .FALSE.
+   Description:    If .TRUE. perform a constant bias potential (constant-mu) calculation
+                   with Grand-Canonical SCF. (JCP 146, 114104 (2017), R.Sundararaman, et al.)
+                   
+                   NB:
+                   - The total energy displayed in output includes the potentiostat
+                     contribution (-mu*N).
+                   - "assume_isolated" = 'esm' and "esm_bc" = 'bc2' or 'bc3' must be set
+                     in "SYSTEM" namelist.
+                   - ESM-RISM is also supported ("assume_isolated" = 'esm' and "esm_bc" = 'bc1'
+                     and "trism" = .TRUE.).
+                   - "mixing_mode" has to be 'TF' or 'local-TF', also its default is 'TF.'
+                   - The default of "mixing_beta" is 0.1 with ESM-RISM, 0.2 without ESM-RISM.
+                   - The default of "diago_thr_init" is 1.D-5.
+                   - "diago_full_acc" is always .TRUE. .
+                   - "diago_rmm_conv" is always .TRUE. .
+   +--------------------------------------------------------------------
+   
+   +--------------------------------------------------------------------
+   Variable:       gcscf_mu
    
    Type:           REAL
-   See:            lfcpopt
-   Default:        0.d0
-   Description:    If "lfcpopt" = .TRUE., gives the target Fermi energy [Ry]. One can start
-                   with appropriate total charge of the system by giving 'tot_charge'.
+   Status:         REQUIRED
+   Description:    The target Fermi energy (eV) of GC-SCF. One can start
+                   with appropriate total charge of the system by giving "tot_charge" .
+   +--------------------------------------------------------------------
+   
+   +--------------------------------------------------------------------
+   Variable:       gcscf_conv_thr
+   
+   Type:           REAL
+   Default:        1.D-2
+   Description:    Convergence threshold of Fermi energy (eV) for GC-SCF.
+   +--------------------------------------------------------------------
+   
+   +--------------------------------------------------------------------
+   Variable:       gcscf_beta
+   
+   Type:           REAL
+   Default:        0.05D0
+   Description:    Mixing factor for GC-SCF.
+                   Larger values are recommended,
+                   if systems with small DOS on Fermi surface as graphite.
    +--------------------------------------------------------------------
    
    +--------------------------------------------------------------------
@@ -1549,21 +1814,34 @@ NAMELIST: &SYSTEM
    
    Type:           CHARACTER
    Default:        'none'
-   See:            london_s6, london_rcut, london_c6, london_rvdw, ts_vdw_econv_thr, ts_vdw_isolated, xdm_a1, xdm_a2
+   See:            london_s6, london_rcut, london_c6, london_rvdw,
+                   dftd3_version, dftd3_threebody, ts_vdw_econv_thr, ts_vdw_isolated, xdm_a1, xdm_a2,
+                   mbd_vdw
    Description:   
                    Type of Van der Waals correction. Allowed values:
     
-                   'grimme-d2', 'Grimme-D2', 'DFT-D', 'dft-d'  :
-                        Semiempirical Grimme's DFT-D2.
-                        Optional variables: "london_s6", "london_rcut", "london_c6", "london_rvdw",
+                   'grimme-d2', 'Grimme-D2', 'DFT-D', 'dft-d' :
+                        Semiempirical Grimme's DFT-D2. Optional variables:
+                        "london_s6", "london_rcut", "london_c6", "london_rvdw"
                         S. Grimme, J. Comp. Chem. 27, 1787 (2006), doi:10.1002/jcc.20495
                         V. Barone et al., J. Comp. Chem. 30, 934 (2009), doi:10.1002/jcc.21112
     
+                   'grimme-d3', 'Grimme-D3', 'DFT-D3', 'dft-d3'  :
+                        Semiempirical Grimme's DFT-D3. Optional variables:
+                        "dftd3_version", "dftd3_threebody"
+                        S. Grimme et al, J. Chem. Phys 132, 154104 (2010), doi:10.1063/1.3382344
+    
                    'TS', 'ts', 'ts-vdw', 'ts-vdW', 'tkatchenko-scheffler' :
                         Tkatchenko-Scheffler dispersion corrections with first-principle derived
-                        C6 coefficients (implemented in CP only).
+                        C6 coefficients.
                         Optional variables: "ts_vdw_econv_thr", "ts_vdw_isolated"
                         See A. Tkatchenko and M. Scheffler, PRL 102, 073005 (2009).
+    
+                   'mbd_vdw', 'many-body dispersion' :
+                        Many-body dipersion (MBD) correction to long-range interactions.
+                        Optional variables: "ts_vdw_isolated"
+                        A. Ambrosetti, A. M. Reilly, R. A. DiStasio, A. Tkatchenko, J. Chem. Phys. 140
+                        18A508 (2014).
     
                    'XDM', 'xdm' :
                         Exchange-hole dipole-moment model. Optional variables: "xdm_a1", "xdm_a2"
@@ -1621,6 +1899,42 @@ NAMELIST: &SYSTEM
    +--------------------------------------------------------------------
    
    +--------------------------------------------------------------------
+   Variable:       dftd3_version
+   
+   Type:           integer
+   Default:        3
+   Description:   
+                   Version of Grimme implementation of Grimme-D3:
+    
+                   dftd3_version = 2 :
+                        Original Grimme-D2 parametrization
+    
+                   dftd3_version = 3 :
+                        Grimme-D3 (zero damping)
+    
+                   dftd3_version = 4 :
+                        Grimme-D3 (BJ damping)
+    
+                   dftd3_version = 5 :
+                        Grimme-D3M (zero damping)
+    
+                   dftd3_version = 6 :
+                        Grimme-D3M (BJ damping)
+    
+                   NOTE: not all functionals are parametrized.
+   +--------------------------------------------------------------------
+   
+   +--------------------------------------------------------------------
+   Variable:       dftd3_threebody
+   
+   Type:           LOGICAL
+   Default:        TRUE
+   Description:    Turn three-body terms in Grimme-D3 on. If .false. two-body contributions
+                   only are computed, using two-body parameters of Grimme-D3.
+                   If dftd3_version=2, three-body contribution is always disabled.
+   +--------------------------------------------------------------------
+   
+   +--------------------------------------------------------------------
    Variable:       ts_vdw_econv_thr
    
    Type:           REAL
@@ -1634,8 +1948,8 @@ NAMELIST: &SYSTEM
    
    Type:           LOGICAL
    Default:        .FALSE.
-   Description:    Optional: set it to .TRUE. when computing the Tkatchenko-Scheffler vdW energy
-                   for an isolated (non-periodic) system.
+   Description:    Optional: set it to .TRUE. when computing the Tkatchenko-Scheffler vdW energy or the
+                   Many-Body dispersion (MBD) energy for an isolated (non-periodic) system.
    +--------------------------------------------------------------------
    
    +--------------------------------------------------------------------
@@ -1651,10 +1965,9 @@ NAMELIST: &SYSTEM
    
    Type:           REAL
    Default:        0.6836
-   Description:    Damping function parameter a1 (adimensional). This value should change
-                   with the exchange-correlation functional. The default corresponds to
-                   PW86PBE.
-                   For other functionals, see:
+   Description:    Damping function parameter a1 (adimensional). It is NOT necessary to give
+                   a value if the functional is one of B86bPBE, PW86PBE, PBE, BLYP. For functionals
+                   in this list, the coefficients are given in:
                       http://schooner.chem.dal.ca/wiki/XDM
                       A. Otero de la Roza, E. R. Johnson, J. Chem. Phys. 138, 204109 (2013),
                       doi:10.1063/1.4705760
@@ -1665,10 +1978,9 @@ NAMELIST: &SYSTEM
    
    Type:           REAL
    Default:        1.5045
-   Description:    Damping function parameter a2 (angstrom). This value should change
-                   with the exchange-correlation functional. The default corresponds to
-                   PW86PBE.
-                   For other functionals, see:
+   Description:    Damping function parameter a2 (angstrom). It is NOT necessary to give
+                   a value if the functional is one of B86bPBE, PW86PBE, PBE, BLYP. For functionals
+                   in this list, the coefficients are given in:
                       http://schooner.chem.dal.ca/wiki/XDM
                       A. Otero de la Roza, E. R. Johnson, J. Chem. Phys. 138, 204109 (2013),
                       doi:10.1063/1.4705760
@@ -1684,7 +1996,8 @@ NAMELIST: &SYSTEM
                    This allows to give in input only the inequivalent atomic
                    positions. The positions of all the symmetry equivalent atoms
                    are calculated by the code. Used only when the atomic positions
-                   are of type crystal_sg.
+                   are of type crystal_sg. See also "uniqueb",
+                   "origin_choice", "rhombohedral"
    +--------------------------------------------------------------------
    
    +--------------------------------------------------------------------
@@ -1693,9 +2006,9 @@ NAMELIST: &SYSTEM
    Type:           LOGICAL
    Default:        .FALSE.
    Description:    Used only for monoclinic lattices. If .TRUE. the b
-                   unique ibrav (-12 or -13) are used, and symmetry
+                   unique "ibrav" (-12 or -13) are used, and symmetry
                    equivalent positions are chosen assuming that the
-                   two fold axis or the mirror normal is parallel to the
+                   twofold axis or the mirror normal is parallel to the
                    b axis. If .FALSE. it is parallel to the c axis.
    +--------------------------------------------------------------------
    
@@ -1705,8 +2018,8 @@ NAMELIST: &SYSTEM
    Type:           INTEGER
    Default:        1
    Description:    Used only for space groups that in the ITA allow
-                   the use of two different origins. origin_choice=1,
-                   means the first origin, while origin_choice=2 is the
+                   the use of two different origins. "origin_choice"=1,
+                   means the first origin, while "origin_choice"=2 is the
                    second origin.
    +--------------------------------------------------------------------
    
@@ -1724,27 +2037,27 @@ NAMELIST: &SYSTEM
    +--------------------------------------------------------------------
    
    ///---
-      BELOW VARIABLES ARE USED ONLY IF "MONOPOLE" = .TRUE.
+      VARIABLES USED ONLY IF "GATE" = .TRUE.
       
       +--------------------------------------------------------------------
-      Variable:       zmon
+      Variable:       zgate
       
       Type:           REAL
       Default:        0.5
-      Description:    used only if "monopole" = .TRUE.
+      Description:    used only if "gate" = .TRUE.
                       Specifies the position of the charged plate which represents
                       the counter charge in doped systems ("tot_charge" .ne. 0).
-                      In units of the unit cell length in z direction, "zmon" in ]0,1[
-                      Details of the monopole potential can be found in
+                      In units of the unit cell length in z direction, "zgate" in ]0,1[
+                      Details of the gate potential can be found in
                       T. Brumme, M. Calandra, F. Mauri; PRB 89, 245406 (2014).
       +--------------------------------------------------------------------
       
       +--------------------------------------------------------------------
-      Variable:       realxz
+      Variable:       relaxz
       
       Type:           LOGICAL
       Default:        .FALSE.
-      Description:    used only if "monopole" = .TRUE.
+      Description:    used only if "gate" = .TRUE.
                       Allows the relaxation of the system towards the charged plate.
                       Use carefully and utilize either a layer of fixed atoms or a
                       potential barrier ("block"=.TRUE.) to avoid the atoms moving to
@@ -1757,7 +2070,7 @@ NAMELIST: &SYSTEM
       
       Type:           LOGICAL
       Default:        .FALSE.
-      Description:    used only if "monopole" = .TRUE.
+      Description:    used only if "gate" = .TRUE.
                       Adds a potential barrier to the total potential seen by the
                       electrons to mimic a dielectric in field effect configuration
                       and/or to avoid electrons spilling into the vacuum region for
@@ -1772,7 +2085,7 @@ NAMELIST: &SYSTEM
       
       Type:           REAL
       Default:        0.45
-      Description:    used only if "monopole" = .TRUE. and "block" = .TRUE.
+      Description:    used only if "gate" = .TRUE. and "block" = .TRUE.
                       lower beginning of the potential barrier, in units of the
                       unit cell size along z, "block_1" in ]0,1[
       +--------------------------------------------------------------------
@@ -1782,7 +2095,7 @@ NAMELIST: &SYSTEM
       
       Type:           REAL
       Default:        0.55
-      Description:    used only if "monopole" = .TRUE. and "block" = .TRUE.
+      Description:    used only if "gate" = .TRUE. and "block" = .TRUE.
                       upper beginning of the potential barrier, in units of the
                       unit cell size along z, "block_2" in ]0,1[
       +--------------------------------------------------------------------
@@ -1792,7 +2105,7 @@ NAMELIST: &SYSTEM
       
       Type:           REAL
       Default:        0.1
-      Description:    used only if "monopole" = .TRUE. and "block" = .TRUE.
+      Description:    used only if "gate" = .TRUE. and "block" = .TRUE.
                       Height of the potential barrier in Rydberg.
       +--------------------------------------------------------------------
       
@@ -1923,27 +2236,14 @@ NAMELIST: &ELECTRONS
     
                    'cg' :
                         Conjugate-gradient-like band-by-band diagonalization.
-                        Typically slower than 'david' but it uses less memory
-                        and is more robust (it seldom fails).
+                        MUCH slower than 'david' but uses less memory and is
+                        (a little bit) more robust.
     
-                   'cg-serial', 'david-serial' :
-                        OBSOLETE, use -ndiag 1 instead.
-                        The subspace diagonalization in Davidson is performed
-                        by a fully distributed-memory parallel algorithm on
-                        4 or more processors, by default. The allocated memory
-                        scales down with the number of procs. Procs involved
-                        in diagonalization can be changed with command-line
-                        option -ndiag N. On multicore CPUs it is often
-                        convenient to let just one core per CPU to work
-                        on linear algebra.
-   +--------------------------------------------------------------------
-   
-   +--------------------------------------------------------------------
-   Variable:       ortho_para
-   
-   Type:           INTEGER
-   Default:        0
-   Status:         OBSOLETE: use command-line option "-ndiag XX" instead
+                   'ppcg' :
+                        PPCG iterative diagonalization
+    
+                   'paro', 'ParO' :
+                        ParO iterative diagonalization
    +--------------------------------------------------------------------
    
    +--------------------------------------------------------------------
@@ -1973,15 +2273,15 @@ NAMELIST: &ELECTRONS
    Variable:       diago_david_ndim
    
    Type:           INTEGER
-   Default:        4
+   Default:        2
    Description:    For Davidson diagonalization: dimension of workspace
                    (number of wavefunction packets, at least 2 needed).
                    A larger value may yield a smaller number of iterations in
                    the algorithm but uses more memory and more CPU time in
-                   subspace diagonalization.
-                   Try "diago_david_ndim"=2 if you are tight on memory or if
-                   the time spent in subspace diagonalization (cdiaghg/rdiaghg)
-                   is significant compared to the time spent in h_psi
+                   subspace diagonalization (cdiaghg/rdiaghg). You may try
+                   "diago_david_ndim"=4 if you are not tight on memory
+                   and if the time spent in subspace diagonalization is small
+                   compared to the time spent in h_psi
    +--------------------------------------------------------------------
    
    +--------------------------------------------------------------------
@@ -2089,11 +2389,22 @@ NAMELIST: &ELECTRONS
    
    Type:           LOGICAL
    Default:        .FALSE.
-   Description:    If .true., use the real-space algorithm for augmentation
-                   charges in ultrasoft pseudopotentials.
-                   Must faster execution of ultrasoft-related calculations,
-                   but numerically less accurate than the default algorithm.
-                   Use with care and after testing!
+   Description:    If .true., use a real-space algorithm for augmentation
+                   charges of ultrasoft pseudopotentials and PAWsets.
+                   Faster but numerically less accurate than the default
+                   G-space algorithm. Use with care and after testing!
+   +--------------------------------------------------------------------
+   
+   +--------------------------------------------------------------------
+   Variable:       real_space
+   
+   Type:           LOGICAL
+   Default:        .FALSE.
+   Description:    If .true., exploit real-space localization to compute
+                   matrix elements for nonlocal projectors. Faster and in
+                   principle better scaling than the default G-space algorithm,
+                   but numerically less accurate, may lead to some loss of
+                   translational invariance. Use with care and after testing!
    +--------------------------------------------------------------------
    
 ===END OF NAMELIST======================================================
@@ -2102,7 +2413,45 @@ NAMELIST: &ELECTRONS
 ========================================================================
 NAMELIST: &IONS
 
-   INPUT THIS NAMELIST ONLY IF "CALCULATION" == 'RELAX', 'MD', 'VC-RELAX', OR 'VC-MD'
+   REQUIRED IF "CALCULATION" == 'RELAX', 'MD', 'VC-RELAX', OR 'VC-MD'
+   OPTIONAL FOR "CALCULATION" == 'SCF' (ONLY "ION_POSITIONS" IS USED)
+   
+   +--------------------------------------------------------------------
+   Variable:       ion_positions
+   
+   Type:           CHARACTER
+   Default:        'default'
+   Description:   
+                   Available options are:
+    
+                   'default' :
+                        if restarting, use atomic positions read from the
+                        restart file; in all other cases, use atomic
+                        positions from standard input.
+    
+                   'from_input' :
+                        read atomic positions from standard input, even if restarting.
+   +--------------------------------------------------------------------
+   
+   +--------------------------------------------------------------------
+   Variable:       ion_velocities
+   
+   Type:           CHARACTER
+   Default:        'default'
+   Description:   
+                   Initial ionic velocities. Available options are:
+    
+                   'default' :
+                        start a new simulation from random thermalized
+                        distribution of velocities if "tempw" is set,
+                        with zero velocities otherwise; restart from
+                        atomic velocities read from the restart file
+    
+                   'from_input' :
+                        start or continue the simulation with atomic
+                        velocities read from standard input - see card
+                        "ATOMIC_VELOCITIES"
+   +--------------------------------------------------------------------
    
    +--------------------------------------------------------------------
    Variable:       ion_dynamics
@@ -2156,24 +2505,6 @@ NAMELIST: &IONS
                    'beeman' :
                         (default)  use Beeman algorithm to integrate
                         Newton's equation
-   +--------------------------------------------------------------------
-   
-   +--------------------------------------------------------------------
-   Variable:       ion_positions
-   
-   Type:           CHARACTER
-   Default:        'default'
-   Description:   
-                   Available options are:
-    
-                   'default' :
-                        if restarting, use atomic positions read from the
-                        restart file; in all other cases, use atomic
-                        positions from standard input.
-    
-                   'from_input' :
-                        restart the simulation with atomic positions read
-                        from standard input, even if restarting.
    +--------------------------------------------------------------------
    
    +--------------------------------------------------------------------
@@ -2265,12 +2596,15 @@ NAMELIST: &IONS
                            (second method) see parameters "tempw" and "nraise"
        
                       'rescale-T' :
-                           control ionic temperature via velocity rescaling
-                           (third method) see parameter "delta_t"
+                           scale temperature of the thermostat every "nraise" steps
+                           by "delta_t", starting from "tempw".
+                           The temperature is controlled via velocitiy rescaling.
        
                       'reduce-T' :
-                           reduce ionic temperature every "nraise" steps
-                           by the (negative) value "delta_t"
+                           reduce temperature of the thermostat every "nraise" steps
+                           by the (negative) value "delta_t", starting from "tempw".
+                           If  "delta_t" is positive, the target temperature is augmented.
+                           The temperature is controlled via velocitiy rescaling.
        
                       'berendsen' :
                            control ionic temperature using "soft" velocity
@@ -2279,6 +2613,11 @@ NAMELIST: &IONS
                       'andersen' :
                            control ionic temperature using Andersen thermostat
                            see parameters "tempw" and "nraise"
+       
+                      'svr' :
+                           control ionic temperature using stochastic-velocity rescaling
+                           (Donadio, Bussi, Parrinello, J. Chem. Phys. 126, 014101, 2007),
+                           with parameters "tempw" and "nraise".
        
                       'initial' :
                            initialize ion velocities to temperature "tempw"
@@ -2353,6 +2692,10 @@ NAMELIST: &IONS
                       if "ion_temperature" == 'andersen' :
                              the "collision frequency" parameter is given as nu=1/tau
                              defined above, so nu*dt = 1/nraise
+                      
+                      if "ion_temperature" == 'svr' :
+                             the "characteristic time" of the thermostat is set to
+                             tau = nraise*dt
       +--------------------------------------------------------------------
       
       +--------------------------------------------------------------------
@@ -2537,6 +2880,9 @@ NAMELIST: &CELL
                    'all' :
                         all axis and angles are moved
     
+                   'ibrav' :
+                        all axis and angles are moved, but the lattice remains consistent with the initial ibrav choice
+    
                    'x' :
                         only the x component of axis 1 (v1_x) is moved
     
@@ -2570,6 +2916,15 @@ NAMELIST: &CELL
                    '2Dshape' :
                         as above, keeping the area in xy plane fixed
     
+                   'epitaxial_ab' :
+                        fix axis 1 and 2 while allowing axis 3 to move
+    
+                   'epitaxial_ac' :
+                        fix axis 1 and 3 while allowing axis 2 to move
+    
+                   'epitaxial_bc' :
+                        fix axis 2 and 3 while allowing axis 1 to move
+    
                    BEWARE: if axis are not orthogonal, some of these options do not
                            work (symmetry is broken). If you are not happy with them,
                            edit subroutine init_dofree in file Modules/cell_base.f90
@@ -2579,8 +2934,213 @@ NAMELIST: &CELL
 
 
 ========================================================================
+NAMELIST: &FCP
+
+   INPUT THIS NAMELIST ONLY IF "LFCP" = .TRUE.
+   
+   +--------------------------------------------------------------------
+   Variable:       fcp_mu
+   
+   Type:           REAL
+   Status:         REQUIRED
+   Description:    The target Fermi energy (eV). One can start
+                   with appropriate total charge of the system by giving "tot_charge" .
+   +--------------------------------------------------------------------
+   
+   +--------------------------------------------------------------------
+   Variable:       fcp_dynamics
+   
+   Type:           CHARACTER
+   Description:   
+                   Specify the type of dynamics for the Fictitious Charge Particle (FCP).
+                   
+                   For different type of calculation different possibilities
+                   are allowed and different default values apply:
+                   
+                   CASE ( "calculation" == 'relax' )
+    
+                   'bfgs' :
+                        (default) BFGS quasi-newton algorithm, coupling with ions relaxation
+                        "ion_dynamics" must be 'bfgs' too
+    
+                   'newton' :
+                        Newton-Raphson algorithm with DIIS
+                        "ion_dynamics" must be 'damp' too
+    
+                   'damp' :
+                        damped (quick-min Verlet) dynamics for FCP relaxation
+                        "ion_dynamics" must be 'damp' too
+    
+                   'lm' :
+                        Line-Minimization algorithm for FCP relaxation
+                        "ion_dynamics" must be 'damp' too
+    
+                   CASE ( "calculation" == 'md' )
+    
+                   'velocity-verlet' :
+                        (default) Velocity-Verlet algorithm to integrate Newton's equation.
+                        "ion_dynamics" must be 'verlet' too
+    
+                   'verlet' :
+                        Verlet algorithm to integrate Newton's equation.
+                        "ion_dynamics" must be 'verlet' too
+   +--------------------------------------------------------------------
+   
+   +--------------------------------------------------------------------
+   Variable:       fcp_conv_thr
+   
+   Type:           REAL
+   Default:        1.D-2
+   Description:    Convergence threshold on force (eV) for FCP relaxation.
+   +--------------------------------------------------------------------
+   
+   +--------------------------------------------------------------------
+   Variable:       fcp_ndiis
+   
+   Type:           INTEGER
+   Default:        4
+   Description:    Size of DIIS for FCP relaxation,
+                   used only if "fcp_dynamics" = 'newton'.
+   +--------------------------------------------------------------------
+   
+   ///---
+      VARIABLES USED FOR FCP DYNAMICS.
+      
+      +--------------------------------------------------------------------
+      Variable:       fcp_mass
+      
+      Type:           REAL
+      Default:        5.D+6 / (xy area) for ESM only;
+      Description:    Mass of the FCP.
+      +--------------------------------------------------------------------
+      
+      +--------------------------------------------------------------------
+      Variable:       fcp_velocity
+      
+      Type:           REAL
+      Default:        determined by "fcp_temperature"
+      Description:    Initial velocity of the FCP.
+      +--------------------------------------------------------------------
+      
+      +--------------------------------------------------------------------
+      Variable:       fcp_temperature
+      
+      Type:           CHARACTER
+      Default:        "ion_temperature"
+      Description:   
+                      Available options are:
+       
+                      'rescaling' :
+                           control FCP's temperature via velocity rescaling
+                           (first method) see parameters "fpc_tempw" and "fcp_tolp".
+       
+                      'rescale-v' :
+                           control FCP's temperature via velocity rescaling
+                           (second method) see parameters "fcp_tempw" and "fcp_nraise"
+       
+                      'rescale-T' :
+                           control FCP's temperature via velocity rescaling
+                           (third method) see parameter "fcp_delta_t"
+       
+                      'reduce-T' :
+                           reduce FCP's temperature every "fcp_nraise" steps
+                           by the (negative) value "fcp_delta_t"
+       
+                      'berendsen' :
+                           control FCP's temperature using "soft" velocity
+                           rescaling - see parameters "fcp_tempw" and "fcp_nraise"
+       
+                      'andersen' :
+                           control FCP's temperature using Andersen thermostat
+                           see parameters "fcp_tempw" and "fcp_nraise"
+       
+                      'initial' :
+                           initialize FCP's velocities to temperature "fcp_tempw"
+                           and leave uncontrolled further on
+       
+                      'not_controlled' :
+                           (default) FCP's temperature is not controlled
+      +--------------------------------------------------------------------
+      
+      +--------------------------------------------------------------------
+      Variable:       fcp_tempw
+      
+      Type:           REAL
+      Default:        "tempw"
+      Description:    Starting temperature (Kelvin) in FCP dynamics runs
+                      target temperature for most thermostats.
+      +--------------------------------------------------------------------
+      
+      +--------------------------------------------------------------------
+      Variable:       fcp_tolp
+      
+      Type:           REAL
+      Default:        "tolp"
+      Description:    Tolerance for velocity rescaling. Velocities are rescaled if
+                      the run-averaged and target temperature differ more than tolp.
+      +--------------------------------------------------------------------
+      
+      +--------------------------------------------------------------------
+      Variable:       fcp_delta_t
+      
+      Type:           REAL
+      Default:        "delta_t"
+      Description:    if "fcp_temperature" == 'rescale-T' :
+                             at each step the instantaneous temperature is multiplied
+                             by fcp_delta_t; this is done rescaling all the velocities.
+                      
+                      if "fcp_temperature" == 'reduce-T' :
+                             every "fcp_nraise" steps the instantaneous temperature is
+                             reduced by -"fcp_delta_t" (i.e. "fcp_delta_t" < 0 is added to T)
+                      
+                      The instantaneous temperature is calculated at the end of
+                      FCP's move and BEFORE rescaling. This is the temperature
+                      reported in the main output.
+                      
+                      For "fcp_delta_t" < 0, the actual average rate of heating or cooling
+                      should be roughly C*fcp_delta_t/(fcp_nraise*dt) (C=1 for an
+                      ideal gas, C=0.5 for a harmonic solid, theorem of energy
+                      equipartition between all quadratic degrees of freedom).
+      +--------------------------------------------------------------------
+      
+      +--------------------------------------------------------------------
+      Variable:       fcp_nraise
+      
+      Type:           INTEGER
+      Default:        "nraise"
+      Description:    if "fcp_temperature" == 'reduce-T' :
+                             every "fcp_nraise" steps the instantaneous temperature is
+                             reduced by -"fcp_delta_t" (i.e. "fcp_delta_t" is added to the temperature)
+                      
+                      if "fcp_temperature" == 'rescale-v' :
+                             every "fcp_nraise" steps the average temperature, computed from
+                             the last "fcp_nraise" steps, is rescaled to "fcp_tempw"
+                      
+                      if "fcp_temperature" == 'berendsen' :
+                             the "rise time" parameter is given in units of the time step:
+                             tau = fcp_nraise*dt, so dt/tau = 1/fcp_nraise
+                      
+                      if "fcp_temperature" == 'andersen' :
+                             the "collision frequency" parameter is given as nu=1/tau
+                             defined above, so nu*dt = 1/fcp_nraise
+      +--------------------------------------------------------------------
+      
+   \\\---
+   
+   +--------------------------------------------------------------------
+   Variable:       freeze_all_atoms
+   
+   Type:           LOGICAL
+   Default:        .FALSE.
+   Description:    If .TRUE., freeze all atoms
+                   to perform relaxation or dynamics only with FCP.
+   +--------------------------------------------------------------------
+   
+===END OF NAMELIST======================================================
+
+
+========================================================================
 CARD: ATOMIC_SPECIES 
-  ________________________________________________________________________
 
    /////////////////////////////////////////
    // Syntax:                             //
@@ -2593,8 +3153,7 @@ CARD: ATOMIC_SPECIES
          X(ntyp)  Mass_X(ntyp)  PseudoPot_X(ntyp)  
    
    /////////////////////////////////////////
-  ________________________________________________________________________
-
+   
    DESCRIPTION OF ITEMS:
    
       +--------------------------------------------------------------------
@@ -2700,7 +3259,7 @@ CARD: ATOMIC_POSITIONS { alat | bohr | angstrom | crystal | crystal_sg }
                            in relative coordinates of the primitive lattice.
                            This option differs from the previous one because
                            in this case only the symmetry inequivalent atoms
-                           are given. The variable space_group must indicate
+                           are given. The variable "space_group" must indicate
                            the space group number used to find the symmetry
                            equivalent atoms. The other variables that control
                            this option are uniqueb, origin_choice, and
@@ -2859,7 +3418,8 @@ CARD: K_POINTS { tpiba | automatic | crystal | gamma | tpiba_b | crystal_b | tpi
        
                       tpiba_b :
                            Used for band-structure plots.
-                           k-points are in units of  2 pi/a.
+                           See Doc/brillouin_zones.pdf for usage of BZ labels;
+                           otherwise, k-points are in units of  2 pi/a.
                            nks points specify nks-1 lines in reciprocal space.
                            Every couple of points identifies the initial and
                            final point of a line. pw.x generates N intermediate
@@ -2867,6 +3427,7 @@ CARD: K_POINTS { tpiba | automatic | crystal | gamma | tpiba_b | crystal_b | tpi
        
                       crystal_b :
                            As tpiba_b, but k-points are in crystal coordinates.
+                           See Doc/brillouin_zones.pdf for usage of BZ labels.
        
                       tpiba_c :
                            Used for band-structure contour plots.
@@ -2933,9 +3494,28 @@ CARD: K_POINTS { tpiba | automatic | crystal | gamma | tpiba_b | crystal_b | tpi
 
 
 ========================================================================
+CARD: ADDITIONAL_K_POINTS 
+
+   OPTIONAL CARD. ADDS A LIST OF K-POINTS WITH ZERO WEIGHT, AFTER THOSE USED FOR THE SCF CALCULATION.
+                  WHEN DOING AN EXX CALCULATION AND NQ1X, NQ2X OR NQ3X ARE DIFFERENT FROM ONE, ALSO INCLUDE THE
+                  REQUIRED K+Q POINTS. THE MAIN USE OF THIS CARD IS DO BAND PLOTS WITH EXX.
+   
+   /////////////////////////////////////////
+   // Syntax:                             //
+   /////////////////////////////////////////
+   
+      ADDITIONAL_K_POINTS 
+         Same as K_POINTS, but does not accept 'automatic'.
+         
+   
+   /////////////////////////////////////////
+   
+===END OF CARD==========================================================
+
+
+========================================================================
 CARD: CELL_PARAMETERS { alat | bohr | angstrom }
 
-  ________________________________________________________________________
    OPTIONAL CARD, NEEDED ONLY IF "IBRAV" == 0 IS SPECIFIED, IGNORED OTHERWISE !
    
    /////////////////////////////////////////
@@ -2948,8 +3528,6 @@ CARD: CELL_PARAMETERS { alat | bohr | angstrom }
          v3(1)  v3(2)  v3(3)  
    
    /////////////////////////////////////////
-     ________________________________________________________________________
-   
    
    DESCRIPTION OF ITEMS:
    
@@ -2988,7 +3566,6 @@ CARD: CELL_PARAMETERS { alat | bohr | angstrom }
 ========================================================================
 CARD: CONSTRAINTS 
 
-  ________________________________________________________________________
    OPTIONAL CARD, USED FOR CONSTRAINED DYNAMICS OR CONSTRAINED OPTIMISATIONS
    (ONLY IF "ION_DYNAMICS"=='DAMP' OR 'VERLET', VARIABLE-CELL EXCEPTED)
    
@@ -3006,7 +3583,6 @@ CARD: CONSTRAINTS
          constr_type(nconstr)  constr(1)(nconstr)  constr(2)(nconstr)  [  constr(3)(nconstr)  constr(4)(nconstr)  ]  {  constr_target(nconstr)  }  
    
    /////////////////////////////////////////
-  ________________________________________________________________________
    
    DESCRIPTION OF ITEMS:
    
@@ -3110,7 +3686,6 @@ CARD: CONSTRAINTS
 ========================================================================
 CARD: OCCUPATIONS 
 
-  ________________________________________________________________________
    OPTIONAL CARD, USED ONLY IF "OCCUPATIONS" == 'FROM_INPUT', IGNORED OTHERWISE !
    
    /////////////////////////////////////////
@@ -3123,7 +3698,6 @@ CARD: OCCUPATIONS
          
    
    /////////////////////////////////////////
-  ________________________________________________________________________
    
    DESCRIPTION OF ITEMS:
    
@@ -3147,11 +3721,49 @@ CARD: OCCUPATIONS
 
 
 ========================================================================
-CARD: ATOMIC_FORCES
+CARD: ATOMIC_VELOCITIES { a.u }
+
+   OPTIONAL CARD, READS VELOCITIES FROM STANDARD INPUT
+   
+   /////////////////////////////////////////
+   // Syntax:                             //
+   /////////////////////////////////////////
+   
+      ATOMIC_VELOCITIES { a.u }
+         V(1)    vx(1)    vy(1)    vz(1)    
+         V(2)    vx(2)    vy(2)    vz(2)    
+         . . . 
+         V(nat)  vx(nat)  vy(nat)  vz(nat)  
+   
+   /////////////////////////////////////////
+   
+   DESCRIPTION OF ITEMS:
+   
+      +--------------------------------------------------------------------
+      Card's flags:   { a.u }
+      
+      +--------------------------------------------------------------------
 
 
+      +--------------------------------------------------------------------
+      Variable:       V
+      
+      Type:           CHARACTER
+      Description:    label of the atom as specified in ATOMIC_SPECIES
+      +--------------------------------------------------------------------
+      
+      +--------------------------------------------------------------------
+      Variables:      vx, vy, vz
+      
+      Type:           REAL
+      Description:    atomic velocities along x y and z direction
+      +--------------------------------------------------------------------
+      
+===END OF CARD==========================================================
 
-  ________________________________________________________________________
+
+========================================================================
+CARD: ATOMIC_FORCES 
 
    OPTIONAL CARD USED TO SPECIFY EXTERNAL FORCES ACTING ON ATOMS.
    
@@ -3169,8 +3781,6 @@ CARD: ATOMIC_FORCES
          X(nat)  fx(nat)  fy(nat)  fz(nat)  
    
    /////////////////////////////////////////
-  ________________________________________________________________________
-  
    
    DESCRIPTION OF ITEMS:
    
@@ -3191,4 +3801,4 @@ CARD: ATOMIC_FORCES
 ===END OF CARD==========================================================
 
 
-This file has been created by helpdoc utility on Fri Mar 03 06:56:38 UTC 2017
+This file has been created by helpdoc utility on Wed Dec 30 21:42:57 JST 2020
