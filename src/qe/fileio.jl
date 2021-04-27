@@ -34,6 +34,8 @@ Possible keys:
  - `:total_energy`
  - `:magnetization`
  - `:Hubbard_occupation`
+ - `:total_magnetization`
+ - `:n_KS_states`
 """
 function qe_read_output(filename::String, T=Float64)
     out = Dict{Symbol,Any}()
@@ -58,8 +60,11 @@ function qe_read_output(filename::String, T=Float64)
 
             #input structure parameters
             elseif occursin("lattice parameter", line)
-                out[:in_alat] = uconvert(Ang, parse(Float64, split(line)[5])*1a₀)
+                out[:in_alat] = uconvert(Ang, parse(T, split(line)[5])*1a₀)
                 out[:alat] = :angstrom
+                
+            elseif occursin("number of Kohn-Sham states", line)
+                out[:n_KS_states] = parse(Int, split(line)[5])
 
             elseif occursin("crystal axes", line)
                 cell_1 = parse.(Float64, split(readline(f))[4:6]) .* out[:in_alat]
@@ -87,7 +92,7 @@ function qe_read_output(filename::String, T=Float64)
                 pseudopath = readline(f) |> strip |> splitdir
                 out[:pseudos][Symbol(split(line)[5])] = Pseudo(pseudopath...)
                 #fermi energy
-            elseif occursin("Fermi", line)
+            elseif occursin("the Fermi is", line)
                 out[:fermi]        = parse(T, split(line)[5])
             elseif occursin("lowest unoccupied", line) && occursin("highest occupied", line)
                 sline = split(line)
@@ -207,6 +212,14 @@ function qe_read_output(filename::String, T=Float64)
                     push!(out[key], acc)
                 else
                     out[key] = [acc]
+                end
+            elseif occursin("total magnetization", line)
+                key = :total_magnetization
+                mag = parse(T, split(line)[end-2]) 
+                if haskey(out, key)
+                    push!(out[key], mag)
+                else
+                    out[key] = [mag]
                 end
             elseif occursin("convergence NOT achieved", line)
                 out[:converged] = false
@@ -603,12 +616,9 @@ function qe_read_input(filename; execs=[Exec("pw.x")], run=true, structure_name=
     flaglines, lines = separate(x -> occursin("=", x), lines)
     flaglines = strip_split.(flaglines, "=")
     easy_flaglines, difficult_flaglines = separate(x-> !occursin("(", x[1]), flaglines)
-    @show difficult_flaglines
-    @show easy_flaglines
     parsed_flags = SymAnyDict()
     #easy flags
     for (f, v) in easy_flaglines
-        @show f
         sym = Symbol(f)
         typ = flagtype(QE, exec, sym)
         if eltype(typ) <: Bool
