@@ -255,3 +255,11 @@ hasflag(exec::Exec, s::Symbol) = findfirst(x->x.symbol == s, exec.flags) != noth
 setexecdir!(exec::Exec, dir) = exec.dir = dir
 
 Base.:(==)(e1::Exec, e2::Exec) = all(x -> getfield(e1, x) == getfield(e2, x), fieldnames(Exec))
+
+mutable struct TimingData
+    name::String
+    cpu::Dates.AbstractTime
+    wall::Dates.AbstractTime
+    calls::Int
+    children::Vector{TimingData}
+end

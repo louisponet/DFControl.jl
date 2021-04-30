@@ -12,6 +12,23 @@ function cardoption(line)
   	end
 end
 
+function qe_parse_time(str::AbstractString)
+    s = findfirst(isequal('s'), str)
+    m = findfirst(isequal('m'), str)
+    m = m === nothing ? 0 : m
+    h = findfirst(isequal('h'), str)
+    h = h === nothing ? 0 : h
+    ms = findfirst(isequal('.'), str)
+    t = Second(parse(Int, str[m + 1:ms - 1])) + Millisecond(parse(Int, str[ms + 1:s - 1]))
+    if m != 0
+        t += Minute(parse(Int, str[h+1:m-1]))
+    end
+    if h != 0
+        t += Hour(parse(Int, str[1:h-1]))
+    end
+    return t
+end
+
 """
     qe_read_output(filename::String, T=Float64)
 
@@ -36,6 +53,7 @@ Possible keys:
  - `:Hubbard_occupation`
  - `:total_magnetization`
  - `:n_KS_states`
+ - `:timing`
 """
 function qe_read_output(filename::String, T=Float64)
     out = Dict{Symbol,Any}()
@@ -246,6 +264,47 @@ function qe_read_output(filename::String, T=Float64)
                     push!(out[:Hubbard_occupation], parse(Float64, sline[end]))
                 else
                     out[:Hubbard_occupation][id] = parse(Float64, sline[end])
+                end
+            # Timing info
+            elseif occursin("Writing output", line)
+                out[:timing] = TimingData[]
+                line = readline(f)
+                curparent = ""
+                while !occursin("PWSCF", line)
+                    line = strip(readline(f))
+                    isempty(line) && continue
+                    sline = split(line)
+                    if line[end] == ':' # descent into call case
+                        curparent = String(sline[end][1:end-1])
+                    elseif length(sline) == 9 # normal call
+                        td = TimingData(String(sline[1]),
+                                        qe_parse_time(sline[3]),
+                                        qe_parse_time(sline[5]),
+                                        parse(Int, sline[8]),
+                                        TimingData[])
+                        push!(out[:timing], td)
+                        if !isempty(curparent) # Child case
+                            if curparent[1] == '*'
+                                if td.name[1] == 'c' || td.name[1] == 'r' 
+                                    curparent = replace(curparent, '*' => td.name[1])
+                                    parent = getfirst(x -> x.name == curparent, out[:timing])
+                                    curparent = replace(curparent, td.name[1] => '*')
+                                else
+                                    parent = getfirst(x -> occursin(curparent[2:end], x.name), out[:timing])
+                                end
+                            else
+                                parent = getfirst(x -> x.name == curparent, out[:timing])
+                            end
+                            push!(parent.children, td)
+                        end
+                    elseif sline[1] == "PWSCF" # Final PWSCF report
+                        push!(out[:timing], TimingData("PWSCF", qe_parse_time(sline[3]), qe_parse_time(sline[5]), 1, TimingData[]))
+                    end
+                end
+                # cleanup
+                for td in out[:timing]
+                    id = findfirst(x -> x == ':', td.name)
+                    td.name = id !== nothing ? td.name[id+1:end] : td.name
                 end
             end
         end
