@@ -13,13 +13,17 @@ function cardoption(line)
 end
 
 function qe_parse_time(str::AbstractString)
+    @show str
     s = findfirst(isequal('s'), str)
+    ms = findfirst(isequal('.'), str)
     m = findfirst(isequal('m'), str)
     m = m === nothing ? 0 : m
     h = findfirst(isequal('h'), str)
     h = h === nothing ? 0 : h
-    ms = findfirst(isequal('.'), str)
-    t = Second(parse(Int, str[m + 1:ms - 1])) + Millisecond(parse(Int, str[ms + 1:s - 1]))
+    t = Millisecond(0)
+    if s !== nothing
+        t += Second(parse(Int, str[m + 1:ms - 1])) + Millisecond(parse(Int, str[ms + 1:s - 1]))
+    end
     if m != 0
         t += Minute(parse(Int, str[h+1:m-1]))
     end

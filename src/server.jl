@@ -143,10 +143,11 @@ function schedule_job(job::DFJob, submit_command; rm_prev=true)
         end
         try
             outstr = read(`$submit_command job.tt`, String)
+            cd(curdir)
         catch
+            cd(curdir)
             error("Tried submitting on the local machine but got an error executing `qsub`.")
         end
-        cd(curdir)
     end
     try
         return parse(Int, chomp(outstr))
