@@ -13,7 +13,6 @@ function cardoption(line)
 end
 
 function qe_parse_time(str::AbstractString)
-    @show str
     s = findfirst(isequal('s'), str)
     ms = findfirst(isequal('.'), str)
     m = findfirst(isequal('m'), str)
@@ -270,13 +269,11 @@ function qe_read_output(filename::String, T=Float64)
                     out[:Hubbard_occupation][id] = parse(Float64, sline[end])
                 end
             # Timing info
-            elseif occursin("Writing output", line)
+            elseif occursin("init_run", line)
                 out[:timing] = TimingData[]
-                line = readline(f)
                 curparent = ""
                 while !occursin("PWSCF", line)
-                    line = strip(readline(f))
-                    isempty(line) && continue
+                    isempty(line) && (line = readline(f); continue)
                     sline = split(line)
                     if line[end] == ':' # descent into call case
                         curparent = String(sline[end][1:end-1])
@@ -304,6 +301,7 @@ function qe_read_output(filename::String, T=Float64)
                     elseif sline[1] == "PWSCF" # Final PWSCF report
                         push!(out[:timing], TimingData("PWSCF", qe_parse_time(sline[3]), qe_parse_time(sline[5]), 1, TimingData[]))
                     end
+                    line = strip(readline(f))
                 end
                 # cleanup
                 for td in out[:timing]
@@ -617,7 +615,12 @@ function extract_atoms!(parsed_flags, atsyms, atom_block, pseudo_block, cell::Ma
         primv = 1Ang .* Mat3(Matrix(1.0I, 3, 3))
     end
     for (at_sym, positions) in atom_block.data
-        pseudo = haskey(pseudo_block.data, at_sym) ? pseudo_block.data[at_sym] : (@warn "No Pseudo found for atom '$at_sym'.\nUsing Pseudo()."; Pseudo())
+        if haskey(pseudo_block.data, at_sym)
+            pseudo = pseudo_block.data[at_sym]
+        else
+            elkey = getfirst(x -> x != at_sym && element(x) == element(at_sym), keys(atom_block.data))
+            pseudo = elkey !== nothing ? pseudo_block.data[elkey] : (@warn "No Pseudo found for atom '$at_sym'.\nUsing Pseudo()."; Pseudo())
+        end
         speciesid = findfirst(isequal(at_sym), atsyms)
         for pos in positions
             push!(atoms, Atom(name=at_sym, element=element(at_sym), position_cart=primv * pos, position_cryst=ustrip.(inv(cell) * pos), pseudo=pseudo, magnetization=qe_magnetization(speciesid, parsed_flags), dftu=qe_DFTU(speciesid, parsed_flags)))
