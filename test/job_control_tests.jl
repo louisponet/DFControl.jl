@@ -36,6 +36,7 @@ setkpoints!(nscf2, (3,3,3,0,0,1), print=false)
 @test data(nscf2, :k_points).option  == :automatic
 @test data(nscf2, :k_points).data  == [3,3,3,0,0,1]
 
+@show outputdata(job, "nscf")
 fermi = outputdata(job, "nscf")[:fermi]
 @test fermi == 17.4572
 
@@ -62,7 +63,6 @@ wanflags = [:write_hr => true, :wannier_plot => true]
 setprojections!(job, :Pt => [:s, :p, :d])
 wancalc = gencalc_wan(job["nscf"], structure(job), fermi-7.0, wanflags...; Epad=5.0)
 @test wancalc == gencalc_wan(job, fermi-7.0, wanflags...; Epad=5.0)
-@show DFControl.iscolin(job.structure)
 append!(job, wancalc)
 @test job["wan"][:write_hr] == job["wan"][:wannier_plot] == true
 

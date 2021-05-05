@@ -66,6 +66,7 @@ function qe_read_output(filename::String, T=Float64)
         k_eigvals    = Array{Array{T,1},1}()
         lowest_force = T(1000000)
         atsyms = Symbol[]
+        nat = 0
         while !eof(f)
             line = readline(f)
 
@@ -106,14 +107,16 @@ function qe_read_output(filename::String, T=Float64)
                     push!(atsyms, Symbol(strip_split(line)[1]))
                     line = readline(f)
                 end
+            elseif occursin("number of atoms/cell", line)
+                nat = parse(Int, split(line)[end]) 
 
                 #PseudoPot
             elseif occursin("PseudoPot", line)
                 !haskey(out, :pseudos) && (out[:pseudos] = Dict{Symbol, Pseudo}())
                 pseudopath = readline(f) |> strip |> splitdir
-                out[:pseudos][Symbol(split(line)[5])] = Pseudo(pseudopath...)
+                out[:pseudos][Symbol(split(line)[5])] = Pseudo(pseudopath[2], pseudopath[1])
                 #fermi energy
-            elseif occursin("the Fermi is", line)
+            elseif occursin("the Fermi energy is", line)
                 out[:fermi]        = parse(T, split(line)[5])
             elseif occursin("lowest unoccupied", line) && occursin("highest occupied", line)
                 sline = split(line)
@@ -170,48 +173,29 @@ function qe_read_output(filename::String, T=Float64)
                 return out
                 break
                 #vcrel outputs
-            elseif occursin("Begin final coordinates", line)
-                line = readline(f)
-                while !occursin("End final coordinates", line)
-                    if occursin("CELL_PARAMETERS", line)
-                        out[:alat]            = occursin("angstrom", line) ? :angstrom : parse(T, split(line)[end][1:end-1])
-                        out[:cell_parameters] = Mat3(reshape(T[parse.(T, split(readline(f))); parse.(T, split(readline(f))); parse.(T, split(readline(f)))], (3,3))')
-                    elseif occursin("ATOMIC_POSITIONS", line)
-                        out[:pos_option]      = cardoption(line)
-                        line  = readline(f)
-                        atoms = []
-                        while !occursin("End", line)
-                            s_line = split(line)
-                            key    = Symbol(s_line[1])
-                            push!(atoms, key=>Point3{T}(parse.(T, s_line[2:end])...))
-                            line = readline(f)
-                        end
-                        posdict = Dict{Symbol, Vector{Point3{T}}}()
-                        for (atsym, pos) in atoms
-                            if haskey(posdict, atsym)
-                                push!(posdict[atsym], pos)
-                            else
-                                posdict[atsym] = [pos]
-                            end
-                        end
-                        out[:atomic_positions] = posdict
-                        break
-                    end
+            elseif occursin("CELL_PARAMETERS", line)
+                out[:alat]            = occursin("angstrom", line) ? :angstrom : parse(T, split(line)[end][1:end-1])
+                out[:cell_parameters] = Mat3(reshape(T[parse.(T, split(readline(f))); parse.(T, split(readline(f))); parse.(T, split(readline(f)))], (3,3))')
+                        
+            elseif occursin("ATOMIC_POSITIONS", line)
+                out[:pos_option]      = cardoption(line)
+                line  = readline(f)
+                atoms = []
+                while length(atoms) < nat
+                    s_line = split(line)
+                    key    = Symbol(s_line[1])
+                    push!(atoms, key=>Point3{T}(parse.(T, s_line[2:end])...))
                     line = readline(f)
                 end
-                if haskey(out, :alat) && haskey(out, :cell_parameters)
-                    pseudo_data = InputData(:atomic_species, :none, out[:pseudos])
-                    tmp_flags = Dict{Symbol, Any}(:ibrav => 0)
-                    if haskey(out, :alat)
-                        tmp_flags[:A] = out[:alat] == :angstrom ? 1.0 : conversions[:bohr2ang] * out[:alat]
+                posdict = Dict{Symbol, Vector{Point3{T}}}()
+                for (atsym, pos) in atoms
+                    if haskey(posdict, atsym)
+                        push!(posdict[atsym], pos)
                     else
-                        tmp_flags[:A] = 1.0
+                        posdict[atsym] = [pos]
                     end
-                    cell_data = InputData(:cell_parameters, :alat, out[:cell_parameters])
-                    atoms_data = InputData(:atomic_positions, out[:pos_option], out[:atomic_positions])
-                    out[:final_structure] = extract_structure!("newstruct", tmp_flags, cell_data, atsyms, atoms_data, pseudo_data)
                 end
-
+                out[:atomic_positions] = posdict
             elseif occursin("Total force", line)
                 force = parse(T, split(line)[4])
                 if force <= lowest_force
@@ -310,6 +294,21 @@ function qe_read_output(filename::String, T=Float64)
                 end
             end
         end
+
+        # Process Structure
+        if haskey(out,:pos_option) && haskey(out, :alat) && haskey(out, :cell_parameters)
+            pseudo_data = InputData(:atomic_species, :none, out[:pseudos])
+            tmp_flags = Dict{Symbol, Any}(:ibrav => 0)
+            if haskey(out, :alat)
+                tmp_flags[:A] = out[:alat] == :angstrom ? 1.0 : conversions[:bohr2ang] * out[:alat]
+            else
+                tmp_flags[:A] = 1.0
+            end
+            cell_data = InputData(:cell_parameters, :alat, out[:cell_parameters])
+            atoms_data = InputData(:atomic_positions, out[:pos_option], out[:atomic_positions])
+            out[:final_structure] = extract_structure!("newstruct", tmp_flags, cell_data, atsyms, atoms_data, pseudo_data)
+        end
+
 
         #process bands
         if !isempty(k_eigvals) && haskey(out, :k_cart) && haskey(out, :in_recip_cell)
