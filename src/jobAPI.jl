@@ -399,9 +399,11 @@ atom(job::DFJob, atsym::Symbol, i=1) = filter(x -> x.name == atsym, atoms(job))[
 """
     atoms(job::DFJob)
 
-Returns a list the atoms in the structure.
+Returns the atoms inside the structure of the job.
 """
 atoms(job::DFJob) = atoms(job.structure)
+atoms(job::DFJob, args...) = atoms(job.structure, args...)
+atoms(f::Function, job::DFJob) = atoms(f, job.structure)
 
 """
     setatoms!(job::DFJob, atoms::Dict{Symbol,<:Array{<:Point3,1}}, pseudo_setname=nothing, pseudospecifier=nothing, option=:angstrom)
@@ -491,7 +493,6 @@ end
 
 export set_Hubbard_J!
 
-atoms(job::DFJob, atsym::Symbol) = atoms(job.structure, atsym)
 
 "Rescales the unit cell."
 scale_cell!(job::DFJob, s) =

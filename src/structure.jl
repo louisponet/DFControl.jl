@@ -23,29 +23,17 @@ Structure(cif_file::String; name = "NoName") =
 	cif2structure(cif_file, structure_name = name)
 
 structure(str::Structure) = str
-"""
-Returns all the atoms inside the structure with the specified symbol
-"""
-function atoms(str::AbstractStructure, atsym::Symbol)
-    out = eltype(str.atoms)[]
-    for at in str.atoms
-        name(at) == atsym && push!(out, at)
-    end
-    return out
-end
-"""
-Returns all the atoms inside the structure with the specified element
-"""
-function atoms(str::AbstractStructure, el::Element)
-    out = eltype(str.atoms)[]
-    for at in str.atoms
-        element(at) == el && push!(out, at)
-    end
-    return out
-end
-atoms(str::AbstractStructure) = structure(str).atoms
+
 name(str::AbstractStructure) = structure(str).name
 data(str::AbstractStructure) = structure(str).data
+
+atoms(str::AbstractStructure) = structure(str).atoms
+"Filter atoms depending on `f`."
+atoms(f::Function, str::AbstractStructure) = filter(f, atoms(str))
+"All atoms that have symbol `s`."
+atoms(str::AbstractStructure, s::Symbol) = str[s]
+"All atoms that have element `el`."
+atoms(str::AbstractStructure, el::Element) = str[el]
 
 Base.length(str::AbstractStructure) = length(atoms(str))
 cell(str::AbstractStructure) = structure(str).cell
@@ -62,7 +50,9 @@ a(str::AbstractStructure) = cell(str)[:,1]
 b(str::AbstractStructure) = cell(str)[:,2]
 c(str::AbstractStructure) = cell(str)[:,3]
 
-Base.getindex(str::AbstractStructure, el::Element) = atoms(str)[findall(x -> x.element === el, atoms(str))]
+Base.getindex(str::AbstractStructure, el::Element) = atoms(x -> element(x) == el, str)
+Base.getindex(str::AbstractStructure, el::Symbol) = atoms(x -> x.name == el, str)
+Base.getindex(str::AbstractStructure, i::Int) = atoms(str)[i]
 
 NearestNeighbors.KDTree(str::AbstractStructure, args...; kwargs...) =
     NearestNeighbors.KDTree(position_cryst.(atoms(str)), args...; kwargs...)
