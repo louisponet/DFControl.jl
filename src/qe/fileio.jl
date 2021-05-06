@@ -180,22 +180,14 @@ function qe_read_output(filename::String, T=Float64)
             elseif occursin("ATOMIC_POSITIONS", line)
                 out[:pos_option]      = cardoption(line)
                 line  = readline(f)
-                atoms = []
+                atoms = Tuple{Symbol, Point3{Float64}}[]
                 while length(atoms) < nat
                     s_line = split(line)
                     key    = Symbol(s_line[1])
-                    push!(atoms, key=>Point3{T}(parse.(T, s_line[2:end])...))
+                    push!(atoms, (key, Point3{T}(parse.(T, s_line[2:end])...)))
                     line = readline(f)
                 end
-                posdict = Dict{Symbol, Vector{Point3{T}}}()
-                for (atsym, pos) in atoms
-                    if haskey(posdict, atsym)
-                        push!(posdict[atsym], pos)
-                    else
-                        posdict[atsym] = [pos]
-                    end
-                end
-                out[:atomic_positions] = posdict
+                out[:atomic_positions] = atoms
             elseif occursin("Total force", line)
                 force = parse(T, split(line)[4])
                 if force <= lowest_force
@@ -613,17 +605,15 @@ function extract_atoms!(parsed_flags, atsyms, atom_block, pseudo_block, cell::Ma
     else
         primv = 1Ang .* Mat3(Matrix(1.0I, 3, 3))
     end
-    for (at_sym, positions) in atom_block.data
+    for (at_sym, pos) in atom_block.data
         if haskey(pseudo_block.data, at_sym)
             pseudo = pseudo_block.data[at_sym]
         else
-            elkey = getfirst(x -> x != at_sym && element(x) == element(at_sym), keys(atom_block.data))
+            elkey = getfirst(x -> x != at_sym && element(x) == element(at_sym), keys(pseudo_block.data))
             pseudo = elkey !== nothing ? pseudo_block.data[elkey] : (@warn "No Pseudo found for atom '$at_sym'.\nUsing Pseudo()."; Pseudo())
         end
         speciesid = findfirst(isequal(at_sym), atsyms)
-        for pos in positions
-            push!(atoms, Atom(name=at_sym, element=element(at_sym), position_cart=primv * pos, position_cryst=ustrip.(inv(cell) * pos), pseudo=pseudo, magnetization=qe_magnetization(speciesid, parsed_flags), dftu=qe_DFTU(speciesid, parsed_flags)))
-        end
+        push!(atoms, Atom(name=at_sym, element=element(at_sym), position_cart=primv * pos, position_cryst=ustrip.(inv(cell) * pos), pseudo=pseudo, magnetization=qe_magnetization(speciesid, parsed_flags), dftu=qe_DFTU(speciesid, parsed_flags)))
     end
 
     return atoms
@@ -727,19 +717,13 @@ function qe_read_input(filename; execs=[Exec("pw.x")], run=true, structure_name=
         push!(used_lineids, i)
         atom_block = InputData(:atomic_positions,
                                cardoption(lines[i]),
-                               Pair{Symbol, Vector{Point3{Float64}}}[])
-
+                               Tuple{Symbol, Point3{Float64}}[])
         for k=1:nat
             push!(used_lineids, i+k)
             sline = split(lines[i+k])
             atsym = Symbol(sline[1])
             point = Point3(parse.(Float64, sline[2:4]))
-            at_id = findfirst(x -> first(x) == atsym, atom_block.data)
-            if at_id === nothing
-                push!(atom_block.data, atsym => [point])
-            else
-                push!(last(atom_block.data[at_id]), point)
-            end
+            push!(atom_block.data, (atsym, point))
         end
 
         #the difficult flags, can only be present if atomic stuff is found

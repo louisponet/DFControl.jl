@@ -7,7 +7,7 @@ include("inputAPI.jl")
 export DFInput
 #Basic Interaction with DFInputs
 export flag, setflags!, rmflags!, data, setdata!, setdataoption!, exec, execs,
-       setexecflags!, rmexecflags!, setexecdir!, runcommand, outputdata
+       setexecflags!, rmexecflags!, setexecdir!, runcommand, outputdata, setname!
 
 #Extended Interaction with DFInputs
 export setkpoints!, readbands, readfermi, setwanenergies!, isconverged
@@ -21,7 +21,7 @@ export save, submit, abort, setflow!, setheaderword!, isrunning, progressreport,
        setserverdir!, setlocaldir!, structure, scale_cell!, volume
 
 #Basic Interaction with DFInputs inside DFJob
-export searchinput, searchinputs, setcutoffs!, setname!
+export searchinput, searchinputs, setcutoffs!
 
 #Interacting with the Structure inside DFJob
 export atom, atoms, setatoms!, setpseudos!, projections, setprojections!, cell, a, b, c,

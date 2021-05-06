@@ -21,7 +21,7 @@ function setflags!(input::DFInput{T}, flags...; print=true) where T
     found_keys = Symbol[]
     for (flag, value) in flags
         flag_type = flagtype(input, flag)
-        if flag_type != Nothing
+        if flag_type !== Nothing
             !(flag in found_keys) && push!(found_keys, flag)
             try
                 if isa(value, AbstractVector{<:AbstractVector}) && flag_type <: AbstractVector
@@ -36,6 +36,8 @@ function setflags!(input::DFInput{T}, flags...; print=true) where T
             old_data = haskey(input.flags, flag) ? input.flags[flag] : ""
             input.flags[flag] = value
             print && (@info "$(name(input)):\n  -> $flag:\n      $old_data set to: $value\n")
+        else
+            print && @warn "Flag $flag was ignored since it could not be found in the allowed flags for input $(name(input))."
         end
     end
     return found_keys, input
@@ -408,4 +410,18 @@ function isconverged(input::DFInput{QE})
     hasoutput_assert(input)
     iscalc_assert(input, "scf")
     return outputdata(input)[:converged]
+end
+
+"""
+    setname!(input::DFInput{QE}, name::AbstractString)
+
+Sets the name of `input` to `name` and updates `input.infile` and `input.outfile` to conform
+with the new name.
+"""
+function setname!(input::DFInput{QE}, name::AbstractString; print=true)
+    input.name = name
+    input.infile = name * splitext(infilename(input))[2]
+    input.outfile = name * splitext(outfilename(input))[2]
+    print && @info "\ninput.name = $name\ninput.infile = $(infilename(input))\ninput.outfile = $(outfilename(input))"
+    name
 end

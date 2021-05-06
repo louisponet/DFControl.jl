@@ -131,7 +131,7 @@ end
 
 
 #-------------- Basic Interaction with DFInputs inside the DFJob ---------------#
-setname!(job::DFJob, oldn, newn) = (input(job, oldn).name = newn)
+setname!(job::DFJob, oldn, newn; kwargs...) = setname!(input(job, oldn), newn; kwargs...)
 Base.insert!(job::DFJob, index::Int, input::DFInput) = insert!(job.inputs, index, input)
 Base.push!(job::DFJob, input::DFInput) = push!(job.inputs, input)
 Base.pop!(job::DFJob) = pop!(job.inputs)

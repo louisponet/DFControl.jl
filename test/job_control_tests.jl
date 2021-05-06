@@ -172,7 +172,7 @@ setexecdir!(job, "pw.x", joinpath(homedir(), "bin"))
 @test execs(job, "nscf")[2].dir == joinpath(homedir(), "bin")
 
 setname!(job, "nscf", "test")
-@test DFControl.inpath(job, "test") == joinpath(job.local_dir, "nscf.in")
+@test DFControl.inpath(job, "test") == joinpath(job.local_dir, "test.in")
 setname!(job, "test", "nscf")
 
 setserverdir!(job, "localhost")
