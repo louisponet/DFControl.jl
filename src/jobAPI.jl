@@ -28,7 +28,11 @@ function submit(job::DFJob; server=job.server, server_dir=job.server_dir, rm_pre
     try
         job.metadata[:slurmid] = qsub(job; rm_prev=rm_prev)
     catch
-        job.metadata[:slurmid] = sbatch(job; rm_prev=rm_prev)
+        try
+            job.metadata[:slurmid] = sbatch(job; rm_prev=rm_prev)
+        catch
+            run(job; rm_prev=rm_prev)
+        end
     end
 end
 

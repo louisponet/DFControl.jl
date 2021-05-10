@@ -143,23 +143,27 @@ function schedule_job(job::DFJob, submit_command; rm_prev=true)
         end
         try
             outstr = read(`$submit_command job.tt`, String)
+            @show outstr
             cd(curdir)
         catch
             cd(curdir)
-            error("Tried submitting on the local machine but got an error executing `qsub`.")
+            error("Tried submitting on the local machine but got an error executing `qsub`, `sbatch` and `run`.")
         end
     end
-    try
-        return parse(Int, chomp(outstr))
-    catch
-        return parse(Int, split(chomp(outstr))[end]) 
+    if !isempty(outstr)
+        try
+            return parse(Int, chomp(outstr))
+        catch
+            return parse(Int, split(chomp(outstr))[end]) 
+        end
+    else
+        return outstr
     end
-    return 
 end
 
 qsub(job::DFJob; kwargs...) = schedule_job(job, "qsub"; kwargs...) 
 sbatch(job::DFJob; kwargs...) = schedule_job(job, "sbatch"; kwargs...) 
-
+Base.run(job; kwargs...) = schedule_job(job, "bash"; kwargs...)
 
 "Tests whether a directory exists on a server and if not, creates it."
 function mkserverdir(server, dir)

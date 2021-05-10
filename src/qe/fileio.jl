@@ -92,7 +92,7 @@ function qe_read_output(filename::String, T=Float64)
                 cell_1 = parse.(Float64, split(readline(f))[4:6]) .* out[:in_alat]
                 cell_2 = parse.(Float64, split(readline(f))[4:6]) .* out[:in_alat]
                 cell_3 = parse.(Float64, split(readline(f))[4:6]) .* out[:in_alat]
-                out[:in_cell] = Mat3([cell_1 cell_2 cell_3])
+                out[:in_cell] = ustrip.(Mat3([cell_1 cell_2 cell_3]))
                 out[:cell_parameters] = ustrip.(Mat3([cell_1 cell_2 cell_3]))
 
             elseif occursin("reciprocal axes", line)
@@ -108,8 +108,18 @@ function qe_read_output(filename::String, T=Float64)
                     line = readline(f)
                 end
             elseif occursin("number of atoms/cell", line)
-                nat = parse(Int, split(line)[end]) 
+                nat = parse(Int, split(line)[end])
 
+            elseif occursin("Crystallographic axes", line)
+                readline(f)
+                readline(f)
+                out[:in_positions] = Tuple{Symbol, Point3{Float64}}[] # in crystal coord
+                for i = 1:nat
+                    sline = split(readline(f))
+                    push!(out[:in_positions], (Symbol(sline[2]), Point3(parse(Float64, sline[7]),
+                                                                        parse(Float64, sline[8]),
+                                                                        parse(Float64, sline[9]))))
+                end
                 #PseudoPot
             elseif occursin("PseudoPot", line)
                 !haskey(out, :pseudos) && (out[:pseudos] = Dict{Symbol, Pseudo}())
@@ -120,11 +130,16 @@ function qe_read_output(filename::String, T=Float64)
                 out[:fermi]        = parse(T, split(line)[5])
             elseif occursin("lowest unoccupied", line) && occursin("highest occupied", line)
                 sline = split(line)
-                out[:fermi]        = (parse(T, sline[7]) + parse(T, sline[8]))/2
+                high = parse(T, sline[7])
+                low  = parse(T, sline[8])
+                out[:fermi] = (high + low)/2
+                out[:highest_occupied] = high
+                out[:lowest_unoccupied] = low
                 
             elseif occursin("highest occupied", line)
                 sline = split(line)
                 out[:fermi]        = parse(T, sline[5])
+                out[:highest_occupied] = out[:fermi]
 
             elseif occursin("total energy", line) && line[1] == '!'
                 out[:total_energy]        = parse(T, split(line)[5])
@@ -287,7 +302,24 @@ function qe_read_output(filename::String, T=Float64)
             end
         end
 
-        # Process Structure
+        # Process initial Structure
+        if haskey(out, :alat) && haskey(out, :in_cell) && haskey(out, :in_positions)
+            atpos = pop!(out, :in_positions)
+            cell  = pop!(out, :in_cell)
+            cell_data = InputData(:cell_parameters, :alat, cell)
+            atoms_data = InputData(:atomic_positions, :crystal, atpos)
+            pseudo_data = InputData(:atomic_species, :none, out[:pseudos])
+            tmp_flags = Dict{Symbol, Any}(:ibrav => 0)
+            if haskey(out, :alat)
+                tmp_flags[:A] = out[:alat] == :angstrom ? 1.0 : conversions[:bohr2ang] * out[:alat]
+            else
+                tmp_flags[:A] = 1.0
+            end
+            out[:initial_structure] = extract_structure!("initial", tmp_flags, cell_data, atsyms, atoms_data, pseudo_data)
+        end
+            
+        
+        # Process final Structure
         if haskey(out,:pos_option) && haskey(out, :alat) && haskey(out, :cell_parameters)
             pseudo_data = InputData(:atomic_species, :none, out[:pseudos])
             tmp_flags = Dict{Symbol, Any}(:ibrav => 0)
@@ -298,7 +330,7 @@ function qe_read_output(filename::String, T=Float64)
             end
             cell_data = InputData(:cell_parameters, :alat, out[:cell_parameters])
             atoms_data = InputData(:atomic_positions, out[:pos_option], out[:atomic_positions])
-            out[:final_structure] = extract_structure!("newstruct", tmp_flags, cell_data, atsyms, atoms_data, pseudo_data)
+            out[:final_structure] = extract_structure!("final", tmp_flags, cell_data, atsyms, atoms_data, pseudo_data)
         end
 
 
@@ -690,9 +722,11 @@ function qe_read_input(filename; execs=[Exec("pw.x")], run=true, structure_name=
 
     used_lineids = Int[]
     findcard(s) = findfirst(l -> occursin(s, lowercase(l)), lines)
-    i = findcard("atomic_species")
-    if i !== nothing
-        push!(used_lineids, i)
+    i_species   = findcard("atomic_species")
+    i_cell      = findcard("cell_parameters")
+    i_positions = findcard("atomic_positions")
+    if i_species !== nothing && i_cell !== nothing && i_positions !== nothing
+        push!(used_lineids, i_species)
         nat  = parsed_flags[:nat]
         ntyp = parsed_flags[:ntyp]
 
@@ -700,27 +734,25 @@ function qe_read_input(filename; execs=[Exec("pw.x")], run=true, structure_name=
         pseudo_dir = string(pop!(parsed_flags, :pseudo_dir, "./"))
         atsyms = Symbol[]
         for k=1:ntyp
-            push!(used_lineids, i + k)
-            sline = strip_split(lines[i+k])
+            push!(used_lineids, i_species + k)
+            sline = strip_split(lines[i_species + k])
             atsym = Symbol(sline[1])
             pseudos.data[atsym] = Pseudo(sline[end], pseudo_dir)
             push!(atsyms, atsym)
         end
 
-        i = findcard("cell_parameters")
-        append!(used_lineids, [i, i+1, i+2, i+3])
+        append!(used_lineids, [i_cell, i_cell + 1, i_cell + 2, i_cell + 3])
         cell_block = InputData(:cell_parameters,
-                               cardoption(lines[i]),
-                               Mat3([parse(Float64, split(lines[i+k])[j]) for k=1:3, j=1:3]))
+                               cardoption(lines[i_cell]),
+                               Mat3([parse(Float64, split(lines[i_cell + k])[j]) for k=1:3, j=1:3]))
 
-        i = findcard("atomic_positions")
-        push!(used_lineids, i)
+        push!(used_lineids, i_positions)
         atom_block = InputData(:atomic_positions,
-                               cardoption(lines[i]),
+                               cardoption(lines[i_positions]),
                                Tuple{Symbol, Point3{Float64}}[])
         for k=1:nat
-            push!(used_lineids, i+k)
-            sline = split(lines[i+k])
+            push!(used_lineids, i_positions + k)
+            sline = split(lines[i_positions + k])
             atsym = Symbol(sline[1])
             point = Point3(parse.(Float64, sline[2:4]))
             push!(atom_block.data, (atsym, point))
@@ -752,6 +784,8 @@ function qe_read_input(filename; execs=[Exec("pw.x")], run=true, structure_name=
         delete!.((parsed_flags,), [:ibrav, :nat, :ntyp, :A, :celldm_1, :celldm])
         delete!.((parsed_flags,), [:Hubbard_U, :Hubbard_J0, :Hubbard_alpha, :Hubbard_beta, :Hubbard_J])
         delete!.((parsed_flags,), [:starting_magnetization, :angle1, :angle2]) #hubbard and magnetization flags
+    # elseif haskey(parsed_flags, :celldm) && parsed_flags[:celldm] != 
+        
     else
         structure = nothing
     end

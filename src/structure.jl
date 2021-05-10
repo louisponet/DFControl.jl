@@ -202,8 +202,7 @@ function create_supercell(structure::AbstractStructure, na::Int, nb::Int, nc::In
 end
 
 "Rescales the cell of the structure."
-function scale_cell!(structure::Structure, v)
-	scalemat = [v 0 0; 0 v 0; 0 0 v]
+function scale_cell!(structure::Structure, scalemat::Matrix)
 	structure.cell *= scalemat
 	for at in atoms(structure)
 		at.position_cart = structure.cell * at.position_cryst

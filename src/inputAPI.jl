@@ -261,9 +261,7 @@ end
 
 function input_from_kpoints(template::DFInput, newname, kpoints, newflags...)
     newcalc = DFInput(template, newname, newflags...)
-    newcalc.infile = newname * splitext(infilename(newcalc))[2]
-    newcalc.outfile = newname * splitext(outfilename(newcalc))[2]
-    @show newcalc.infile
+    setname!(newcalc, newname)
     setkpoints!(newcalc, kpoints, print=false)
     return newcalc
 end
@@ -327,6 +325,7 @@ function gencalc_projwfc(template::DFInput, Emin, Emax, DeltaE, extraflags...; n
     end
 
     out = DFInput(template, name, excs=excs)
+    setname!(out, "projwfc")
     empty!(out.flags)
     setflags!(out, :Emin => Emin, :Emax => Emax, :DeltaE => DeltaE,
               :ngauss => ngauss, :degauss => degauss, print=false)
