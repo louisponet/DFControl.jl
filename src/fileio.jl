@@ -388,6 +388,7 @@ function read_job_inputs(job_file::String)
 	        elseif occursin("#SBATCH", line)
                 if occursin("-J", line)
                     name = split(line)[end]
+                    name = name == "-J" ? "noname" : name
                 else
                     push!(header, line)
                 end

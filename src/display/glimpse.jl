@@ -3,6 +3,12 @@ const Gl = Glimpse
 
 function Gl.Diorama(str::AbstractStructure)
     dio = Diorama(name=Symbol(str.name))
+    add_structure!(dio, str)
+    dio[Gl.PointLight].data[1] = Gl.PointLight(diffuse=1.5f0, ambient=1.5f0)
+    Gl.center_cameras(dio)
+    return dio
+end
+function add_structure!(dio::Diorama, str::AbstractStructure)
     Entity(dio, Gl.assemble_wire_axis_box(position=zero(Point3f0), x=ustrip(a(str)), y=ustrip(b(str)), z=ustrip(c(str)), color=Gl.BLACK)...)
     for at in atoms(str)
         origin = Point3f0(ustrip(position_cart(at))...)
@@ -13,6 +19,5 @@ function Gl.Diorama(str::AbstractStructure)
             Entity(dio, Gl.assemble_arrow(origin, origin + Point3f0(magnetization(at)...), color=color, radius_ratio=1.5f0, thickness = 0.05f0)...)
         end
     end
-    dio[Gl.PointLight].data[1] = Gl.PointLight(diffuse=1.5f0, ambient=1.5f0)
-    expose(dio)
+    return dio
 end

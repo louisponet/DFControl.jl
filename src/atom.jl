@@ -258,3 +258,16 @@ function scale_bondlength!(at1::AbstractAtom, at2::AbstractAtom, scale::Real, ce
 	set_position!(at1, new_p1, cell)
 	set_position!(at2, new_p2, cell)
 end
+
+"""
+    polyhedron(at::AbstractAtom, atoms::Vector{<:AbstractAtom}, order::Int)
+    polyhedron(at::AbstractAtom, str::AbstractStructure, order::Int)
+
+Returns a polyhedron around the atom, i.e. the `order` closest atoms.
+The returned atoms will be ordered according to their distance to the first one.
+In the case of a structure rather than a set of atoms, the search will
+be performed over all atoms in the structure.
+"""
+function polyhedron(at::AbstractAtom, atoms::Vector{<:AbstractAtom}, order::Int)
+    return sort(atoms, by = x -> distance(x, at))[1:order]
+end

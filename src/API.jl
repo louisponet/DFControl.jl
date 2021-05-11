@@ -25,13 +25,14 @@ export searchinput, searchinputs, setcutoffs!
 
 #Interacting with the Structure inside DFJob
 export atom, atoms, setatoms!, setpseudos!, projections, setprojections!, cell, a, b, c,
-	   set_magnetization!, symmetry_operators, international, niggli_reduce, update_geometry!
+	   set_magnetization!, symmetry_operators, international, niggli_reduce, update_geometry!,
+	   high_symmetry_kpath, high_symmetry_kpoints
 
 export create_supercell
 
 # Atom interface functions
 export name, position_cart, position_cryst, element, pseudo, projections, magnetization, dftu
-export distance, set_position!, scale_bondlength!
+export distance, set_position!, scale_bondlength!, polyhedron
 
 #Bands related functionality
 export bandgap

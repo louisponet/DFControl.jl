@@ -65,7 +65,7 @@ function Emax(Emin, nbnd, bands)
         end
     end
 
-    nbndfound <= nbnd && error("Number of needed bands for the projections ($nbnd) exceeds the amount of bands starting from \nEmin=$Emin ($nbndfound).")
+    nbndfound < nbnd && error("Number of needed bands for the projections ($nbnd) exceeds the amount of bands starting from \nEmin=$Emin ($nbndfound).\nRerun nscf with nbnd=$(length(bands) + nbnd - nbndfound).")
     return max
 end
 

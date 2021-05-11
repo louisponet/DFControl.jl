@@ -92,7 +92,7 @@ To plot multiple bands on one plot.
     end
 end
 
-@recipe function f(job::DFJob, ymin, ymax, occupy_ratio=0.2)
+@recipe function f(job::DFJob, ymin, ymax, occupy_ratio=0.2; overlap_spin=false)
     ylims --> [ymin, ymax]
     if !isQEjob(job)
         error("output plotting only implemented for QE jobs.")
@@ -109,7 +109,6 @@ end
     tick_vals = Int[]
     tick_syms = String[]
     kpoints = bands isa NamedTuple ? bands.up[1].k_points_cryst : bands[1].k_points_cryst
-    @show ks.kpoints
     for (i, k) in enumerate(kpoints)
         if ks!==nothing
             kpath = ks.kpoints
@@ -156,7 +155,7 @@ end
     # PDOS part
     projwfc = getfirst(x -> isprojwfccalc(x) && hasoutfile(x), inputs(job))
     if projwfc !== nothing
-        if bands isa NamedTuple
+        if bands isa NamedTuple && !overlap_spin
             doswindow = 3
             layout --> (1,3)
         else
@@ -242,13 +241,13 @@ end
                 lab = ""
             end
             for (ib, (b, c)) in enumerate(zip(bnds[window_ids], colors))
-                plot_band(b, c, ib == 1 ? lab : "", iplt)
+                plot_band(b, c, ib == 1 ? lab : "", overlap_spin ? 1 : iplt)
             end
         end
 
     # If no pdos is present
     else
-        if bands isa NamedTuple
+        if bands isa NamedTuple && !overlap_spin
             layout := (1,2)
         else
             layout := (1,1)
@@ -261,7 +260,7 @@ end
                 color = iplt == 1 ? :blue : :red
                 #loop over bands inside window
                 for (ib, b) in enumerate(bnds[window_ids])
-                    plot_band(b, color, ib == 1 ? lab : "", iplt)
+                    plot_band(b, color, ib == 1 ? lab : "", overlap_spin ? 1 : iplt)
                 end
             end
         else

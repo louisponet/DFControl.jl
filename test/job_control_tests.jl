@@ -217,7 +217,7 @@ prev_a = cell(job)[1, :]
 prev_b = cell(job)[2, :]
 prev_c = cell(job)[3, :]
 prev_pos = position_cart.(atoms(job))
-scale_cell!(job, 2)
+scale_cell!(job, [2 0 0;0 2 0;0 0 2])
 @test prev_a .* 2 == cell(job)[1, :]
 @test prev_b .* 2 == cell(job)[2, :]
 @test prev_c .* 2 == cell(job)[3, :]

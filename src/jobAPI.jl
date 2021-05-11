@@ -11,6 +11,10 @@ function save(job::DFJob, local_dir=job.local_dir; kwargs...)
         mkpath(local_dir)
         @info "$local_dir did not exist, it was created."
     end
+    if isempty(job.name)
+        @warn "Job had no name, changed it to: noname"
+        job.name = "noname"
+    end
     sanitize_magnetization!(job)
     sanitize_projections!(job)
     sanitizeflags!(job)
@@ -665,7 +669,8 @@ function pdos(job::DFJob, atsym::Symbol, filter_word="")
     end 
 end
 
-pdos(job::DFJob, atom::AbstractAtom, args...) = pdos(job, name(atom), args...)
+pdos(job::DFJob, atom::AbstractAtom, args...) =
+    pdos(job, name(atom), args...)
 
 function pdos(job::DFJob, atoms::Vector{AbstractAtom} = atoms(job), args...)
     t_energies, t_pdos = pdos(job, atoms[1], args...)
@@ -676,5 +681,9 @@ function pdos(job::DFJob, atoms::Vector{AbstractAtom} = atoms(job), args...)
     return (energies=t_energies, pdos=t_pdos)
 end
 
-update_geometry!(job::DFJob, new_str::AbstractStructure) = update_geometry!(job.structure, new_str)
+update_geometry!(job::DFJob, new_str::AbstractStructure) =
+    update_geometry!(job.structure, new_str)
+
+high_symmetry_kpath(j::DFJob, args...;kwargs...) =
+    high_symmetry_kpath(j.structure, args...; kwargs...)
 
