@@ -139,7 +139,7 @@ function qe_read_output(filename::String, T=Float64)
                 sline = split(line)
                 high = parse(T, sline[7])
                 low  = parse(T, sline[8])
-                out[:fermi] = (high + low)/2
+                out[:fermi] = high
                 out[:highest_occupied] = high
                 out[:lowest_unoccupied] = low
                 
