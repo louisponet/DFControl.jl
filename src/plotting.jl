@@ -27,17 +27,17 @@ Base.:*(f::Number, r::RGB) = RGB(f*r.r, f*r.b, f*r.g)
 Base.:+(r1::RGB, r2::RGB) = RGB(r1.r + r2.r, r1.b + r2.b, r1.g+r2.g)
 
 
-function blend_color(contribs::Vector)
+function blend_color(contribs::Vector, at_colors)
     if any(isnan, contribs)
         return RGB(0.0,0.0,0.0)
     end
     if length(contribs) == 1
-        return PLOT_COLORS[1]
+        return at_colors[1]
     end
-    result = weighted_color_mean(normalize([contribs[1], contribs[2]])[1], PLOT_COLORS[1], PLOT_COLORS[2])
+    result = weighted_color_mean(normalize([contribs[1], contribs[2]])[1], at_colors[1], at_colors[2])
     totcontrib = contribs[1] + contribs[2]
     for i = 3:length(contribs)
-        result = weighted_color_mean(normalize([totcontrib, contribs[i]])[1], result, PLOT_COLORS[i])
+        result = weighted_color_mean(normalize([totcontrib, contribs[i]])[1], result, at_colors[i])
         totcontrib += contribs[i]
     end
     return result
@@ -120,7 +120,7 @@ end
             end
         elseif norm(k) == 0
             push!(tick_vals, i)
-            push!(tick_syms, " Gamma ")
+            push!(tick_syms, " Γ ")
         end
     end
     if bands isa NamedTuple
@@ -175,9 +175,11 @@ end
         end
         # Now we take the most occupied ones, and somehow find out where there's a sudden dropoff
         max_occ = maximum(state_occupations)
-        sorted_occ = sortperm(state_occupations, rev=true)
-        goodids = findall(i -> state_occupations[sorted_occ][i] > occupy_ratio * max_occ, 1:length(state_occupations))
-        ats_orbs = unique(map(x -> (atoms(job)[x.atom_id].name, orbital(x.l).name), states[sorted_occ][goodids]))
+        # sorted_occ = sortperm(state_occupations, rev=true)
+        # goodids = findall(i -> state_occupations[sorted_occ][i] > occupy_ratio * max_occ, 1:length(state_occupations))
+        # ats_orbs = unique(map(x -> (atoms(job)[x.atom_id].name, orbital(x.l).name), states[sorted_occ][goodids]))
+        goodids = findall(i -> state_occupations[i] > occupy_ratio * max_occ, 1:length(state_occupations))
+        ats_orbs = unique(map(x -> (atoms(job)[x.atom_id].name, orbital(x.l).name), states[goodids]))
         @info "Found $(length(ats_orbs)) atomic orbitals that satisfy the minimum occupation:\n$ats_orbs" 
         atom_colors = PLOT_COLORS[1:length(ats_orbs)]
 
@@ -204,7 +206,7 @@ end
                     subplot := doswindow
                     seriescolor := c
                     title := "DOS"
-                    pd[:,2], energies .- frmi
+                    -1 .* pd[:,2], energies .- frmi
                 end
             else
                 @series begin
@@ -216,7 +218,6 @@ end
                     pd, energies .- frmi
                 end
             end
-
             #Calculate band colors
             for (iud, (bnds, contribs)) in enumerate(zip(bands, band_contribs))
                 for (ib, b) in enumerate(bnds[window_ids])
@@ -230,9 +231,9 @@ end
         end
         for contribs in band_contribs
             
-             contribs .= [normalize.(contribs[ib]) for ib =1:length(window_ids)]
-         end
-        band_colors = [[[blend_color(band_contribs[i][ib][ik]) for ik = 1:length(kpoints)] for ib = 1:length(window_ids)] for i=1:length(band_contribs)]
+            contribs .= [normalize.(contribs[ib]) for ib =1:length(window_ids)]
+        end
+        band_colors = [[[blend_color(band_contribs[i][ib][ik], i == 1 ? 0.8 .* atom_colors : atom_colors) for ik = 1:length(kpoints)] for ib = 1:length(window_ids)] for i=1:length(band_contribs)]
         @info "Plotting bands..."
         for (iplt, (bnds, colors)) in enumerate(zip(bands, band_colors))
             if length(bands) == 2

@@ -257,8 +257,7 @@ end
 Calculates the volume for the unit cell.
 """
 volume(cell::Mat3) = det(cell)
-   
-volume(str::Structure) = cell(str)
+volume(str::Structure) = volume(cell(str))
 
 """
     update_geometry!(str1::AbstractStructure, str2::AbstractStructure)

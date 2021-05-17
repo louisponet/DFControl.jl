@@ -629,8 +629,9 @@ function pdos(job::DFJob, atsym::Symbol, filter_word="")
     projwfc = getfirst(isprojwfccalc, inputs(job)) 
     ats = atoms(job, atsym)
     @assert length(ats) > 0 "No atoms found with name $atsym."
-    magnetic = any(ismagnetic, atoms(job))
-    soc = issoccalc(getfirst(isscfcalc, inputs(job)))
+    scf = getfirst(isscfcalc, inputs(job))
+    magnetic = any(ismagnetic, atoms(job)) || (hasflag(scf, :nspin) && scf[:nspin] > 0.0) ||(hasflag(scf, :total_magnetization) && scf[:total_magnetization] != 0.0) 
+    soc = issoccalc(scf)
 
     if package(projwfc) == QE
         kresolved = hasflag(projwfc, :kresolveddos) && projwfc[:kresolveddos]

@@ -69,7 +69,6 @@ function qe_read_output(filename::String, T=Float64)
         nat = 0
         while !eof(f)
             line = readline(f)
-
             #polarization
             if occursin("C/m^2", line)
                 s_line = split(line)
@@ -82,18 +81,16 @@ function qe_read_output(filename::String, T=Float64)
 
             #input structure parameters
             elseif occursin("lattice parameter", line)
-                out[:in_alat] = uconvert(Ang, parse(T, split(line)[5])*1a₀)
-                out[:alat] = :angstrom
+                out[:in_alat] = ustrip(uconvert(Ang, parse(T, split(line)[5])*1a₀))
+                out[:alat] = :crystal
                 
             elseif occursin("number of Kohn-Sham states", line)
                 out[:n_KS_states] = parse(Int, split(line)[5])
 
             elseif occursin("crystal axes", line)
-                cell_1 = parse.(Float64, split(readline(f))[4:6]) .* out[:in_alat]
-                cell_2 = parse.(Float64, split(readline(f))[4:6]) .* out[:in_alat]
-                cell_3 = parse.(Float64, split(readline(f))[4:6]) .* out[:in_alat]
-                out[:in_cell] = ustrip.(Mat3([cell_1 cell_2 cell_3]))
-                out[:cell_parameters] = ustrip.(Mat3([cell_1 cell_2 cell_3]))
+                m = Mat3(reshape(T[parse.(T, split(readline(f))[4:6]); parse.(T, split(readline(f))[4:6]); parse.(T, split(readline(f))[4:6])], (3,3))')
+                out[:cell_parameters] = copy(m)
+                out[:in_cell] = m
 
             elseif occursin("reciprocal axes", line)
                 cell_1 = parse.(Float64, split(readline(f))[4:6]) .* 2π/out[:in_alat]
@@ -110,13 +107,23 @@ function qe_read_output(filename::String, T=Float64)
             elseif occursin("number of atoms/cell", line)
                 nat = parse(Int, split(line)[end])
 
-            elseif occursin("Crystallographic axes", line)
+            elseif occursin("Crystallographic axes", line) 
                 readline(f)
                 readline(f)
-                out[:in_positions] = Tuple{Symbol, Point3{Float64}}[] # in crystal coord
+                out[:in_cryst_positions] = Tuple{Symbol, Point3{Float64}}[] # in crystal coord
                 for i = 1:nat
                     sline = split(readline(f))
-                    push!(out[:in_positions], (Symbol(sline[2]), Point3(parse(Float64, sline[7]),
+                    push!(out[:in_cryst_positions], (Symbol(sline[2]), Point3(parse(Float64, sline[7]),
+                                                                        parse(Float64, sline[8]),
+                                                                        parse(Float64, sline[9]))))
+                end
+            elseif occursin("Cartesian axes", line)
+                readline(f)
+                readline(f)
+                out[:in_cart_positions] = Tuple{Symbol, Point3{Float64}}[] # in crystal coord
+                for i = 1:nat
+                    sline = split(readline(f))
+                    push!(out[:in_cart_positions], (Symbol(sline[2]), Point3(parse(Float64, sline[7]),
                                                                         parse(Float64, sline[8]),
                                                                         parse(Float64, sline[9]))))
                 end
@@ -209,7 +216,7 @@ function qe_read_output(filename::String, T=Float64)
                     lowest_force      = force
                     out[:total_force] = force
                 end
-            elseif occursin("Magnetic moment per site", line) 
+            elseif occursin("Magnetic moment per site", line)
                 key = :colin_mag_moments
                 out[key] = T[]
                 line = readline(f)
@@ -219,7 +226,7 @@ function qe_read_output(filename::String, T=Float64)
                 end
             elseif occursin("estimated scf accuracy", line)
                 key = :accuracy
-                acc = parse(T, split(line)[end-1])
+                acc = parse(T, split(line)[5])
                 if haskey(out, key)
                     push!(out[key], acc)
                 else
@@ -303,18 +310,16 @@ function qe_read_output(filename::String, T=Float64)
         end
 
         # Process initial Structure
-        if haskey(out, :alat) && haskey(out, :in_cell) && haskey(out, :in_positions)
-            atpos = pop!(out, :in_positions)
-            cell  = pop!(out, :in_cell)
-            cell_data = InputData(:cell_parameters, :alat, cell)
-            atoms_data = InputData(:atomic_positions, :crystal, atpos)
+        if haskey(out, :in_alat) && haskey(out, :in_cell) && (haskey(out, :in_cart_positions) || haskey(out, :in_cryst_positions))
+            cell_data = InputData(:cell_parameters, :alat, pop!(out, :in_cell))
+            if haskey(out, :in_cryst_positions)
+                atoms_data = InputData(:atomic_positions, :crystal, pop!(out, :in_cryst_positions))
+            else
+                atoms_data = InputData(:atomic_positions, :alat, pop!(out, :in_cart_positions))
+            end
             pseudo_data = InputData(:atomic_species, :none, out[:pseudos])
             tmp_flags = Dict{Symbol, Any}(:ibrav => 0)
-            if haskey(out, :alat)
-                tmp_flags[:A] = out[:alat] == :angstrom ? 1.0 : conversions[:bohr2ang] * out[:alat]
-            else
-                tmp_flags[:A] = 1.0
-            end
+            tmp_flags[:A] = out[:in_alat]
             out[:initial_structure] = extract_structure!("initial", tmp_flags, cell_data, atsyms, atoms_data, pseudo_data)
         end
             
@@ -324,7 +329,7 @@ function qe_read_output(filename::String, T=Float64)
             pseudo_data = InputData(:atomic_species, :none, out[:pseudos])
             tmp_flags = Dict{Symbol, Any}(:ibrav => 0)
             if haskey(out, :alat)
-                tmp_flags[:A] = out[:alat] == :angstrom ? 1.0 : conversions[:bohr2ang] * out[:alat]
+                tmp_flags[:A] = out[:alat] == :angstrom ? 1.0 : (out[:alat] == :crystal ? out[:in_alat] : conversions[:bohr2ang] * out[:alat])
             else
                 tmp_flags[:A] = 1.0
             end
@@ -689,8 +694,8 @@ function qe_read_input(filename; execs=[Exec("pw.x")], run=true, structure_name=
         x -> cut_after(x, '!')       .|>
         x -> cut_after(x, '#')
     lines = join(t_lines, "\n")       |>
-    x -> replace(x, "," => "\n") |>
-        x -> replace(x, "," => " ")   |>
+        # x -> replace(x, "," => "\n")  |>
+        # x -> replace(x, "," => " ")   |>
         x -> replace(x, "'" => " ")   |>
         x -> split(x, "\n")          .|>
         strip                         |>
@@ -712,6 +717,9 @@ function qe_read_input(filename; execs=[Exec("pw.x")], run=true, structure_name=
             v = replace(lowercase(v), "." => "")
         elseif eltype(typ) <: Number
             v = replace(v, "d" => "e")
+        elseif typ === Nothing
+            @warn "Flag $sym not found in allowed flags and will be ignored."
+            continue
         end
         if typ <: AbstractArray
 	        typ = eltype(typ)

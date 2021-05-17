@@ -106,7 +106,7 @@ begin
     for (calc, calc2) in zip(job.inputs, job2.inputs)
 
         for (f, v) in calc.flags
-            if f in (:Hubbard_J, :pseudo_dir)
+            if f in (:Hubbard_J, :pseudo_dir, :wannier_plot)
                 continue
             else
                 @test v == calc2.flags[f]
@@ -128,7 +128,7 @@ rmflags!(job3, :lspinorb, print=false)
 begin
     for (calc, calc2) in zip(job.inputs, job3.inputs)
         for (f, v) in calc.flags
-            if f in (:Hubbard_J, :pseudo_dir)
+            if f in (:Hubbard_J, :pseudo_dir, :wannier_plot)
                 continue
             else
                 @test v == calc2.flags[f]
@@ -222,7 +222,7 @@ scale_cell!(job, [2 0 0;0 2 0;0 0 2])
 @test prev_b .* 2 == cell(job)[2, :]
 @test prev_c .* 2 == cell(job)[3, :]
 for (p, at) in zip(prev_pos, atoms(job))
-	@test round.(DFControl.ustrip.(p * 2), digits=5) == round.(DFControl.ustrip.(position_cart(at)), digits=5)
+	@test round.(DFControl.ustrip.(p * 2), digits=3) == round.(DFControl.ustrip.(position_cart(at)), digits=3)
 end
 
 set_magnetization!(job, :Pt => [1.0, 0.0, 0.0])

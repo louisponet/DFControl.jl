@@ -201,6 +201,7 @@ function writetojob(f, job, _input::DFInput{Wannier90}; kwargs...)
     	if package(nscf_calc) == QE
     	    pw2waninput = qe_generate_pw2waninput(_input, nscf_calc, runexec)
     	    preprocess  = pop!(flags(_input), :preprocess)
+    	    wannier_plot = pop!(flags(_input), :wannier_plot)
 
     	    if !preprocess || !should_run
     	        write(f, "#")
@@ -211,6 +212,7 @@ function writetojob(f, job, _input::DFInput{Wannier90}; kwargs...)
     	    save(_input, job.structure; kwargs...)
     	    writetojob(f, job, pw2waninput; kwargs...)
     	    flags(_input)[:preprocess] = preprocess
+    	    flags(_input)[:wannier_plot] = wannier_plot
         elseif package(nscf_calc) == Elk
     	    pw2waninput = job["elk2wannier"]
         end

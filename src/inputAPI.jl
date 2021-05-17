@@ -276,6 +276,15 @@ gencalc_scf(template::DFInput, kpoints::NTuple{6, Int}, newflags...; name="scf")
     input_from_kpoints(template, name, kpoints, :calculation => "scf", newflags...)
 
 """
+    gencalc_vcrelax(template::DFInput, kpoints::NTuple{6, Int}=data(template, :k_points).data, newflags...; name="scf")
+
+Uses the information from the template and supplied kpoints to generate a vcrelax input.
+Extra flags can be supplied which will be set for the generated input.
+"""
+gencalc_vcrelax(template::DFInput, kpoints::NTuple{6, Int} = (data(template, :k_points).data...,), newflags...; name="vcrelax") =
+    input_from_kpoints(template, name, kpoints, :calculation => "vc-relax", newflags...)
+
+"""
     gencalc_bands(template::DFInput, kpoints::Vector{NTuple{4}}, newflags...; name="bands")
     gencalc_bands(job::DFJob, kpoints::Vector{NTuple{4}}, newflags...; name="bands", template_name="scf")
 
