@@ -129,7 +129,7 @@ end
     function plot_band(band, color, label, subplot)
         @series begin
             xticks --> (tick_vals, tick_syms)
-            title := subplot == 1 ? "Spin up" : "Spin down"
+            title := subplot == 1 ? (length(bands)==2 ? "Spin up" : "Eigenvalues") : "Spin down"
             yguide := subplot == 1 ? "Energy (eV)" : "" 
             label := label 
             subplot := subplot
@@ -152,7 +152,7 @@ end
         states, projbands = qe_read_projwfc(outpath(projwfc))
         # First we find the amount that all the states appear in the window
         state_occupations = zeros(length(states))
-        for ib in length(bands)
+        for ib in 1:(bands isa NamedTuple ? 2 : 1)
             for wid in window_ids[ib]
                 b = projbands[wid]
                 for ψ in b.extra[:ψ]
@@ -203,7 +203,7 @@ end
                     label --> "$(atsym)_$(orb)"
                     yguide --> ""
                     subplot := doswindow
-                    seriescolor := atom_colors[1]
+                    seriescolor := atom_colors[1][ia]
                     title := "DOS"
                     pd, energies .- frmi
                 end

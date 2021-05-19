@@ -141,13 +141,30 @@ function show(io::IO, el::Element)
 	end
 end
 
+function show(io::IO, str::AbstractStructure)
+    dfprintln(io, crayon"cyan", "Structure")
+    dfprintln(io, crayon"red","    cell parameters:")
+    dfprint(io, crayon"reset", "\t a = $((str.cell[:,1]...,))\n\t b = $((str.cell[:,2]...,))\n\t c = $((str.cell[:,3]...,))\n")
+    dfprintln(io, crayon"red","    nat:", crayon"reset", " $(length(str.atoms))")
+    dfprintln(io, crayon"red","    ntyp:", crayon"reset", " $(length(unique(str.atoms)))")
+    for a in atoms(str)
+        show(io, a)
+    end
+end
+
 function show(io::IO, at::AbstractAtom{T, LT}) where {T,LT<:Length{T}}
-	dfprintln(io, crayon"cyan", "$(typeof(at))")
-	dfprintln(io, crayon"red", "\tname: ", crayon"reset", "$(name(at))")
+    dfprintln(io)
+	dfprintln(io, crayon"cyan", "Atom")
+	dfprintln(io, crayon"red", "    name: ", crayon"reset", "$(name(at))")
 	for f in fieldnames(typeof(at))[3:end-1]
-		dfprintln(io, crayon"red", "\t$f: ", crayon"reset", "$(getfield(at, f))")
+    	fld = getfield(at, f)
+    	if f in (:position_cart, :position_cryst)
+    		dfprintln(io, crayon"red", "    $f: ", crayon"reset", "$((fld...,))")
+    	else
+    		dfprintln(io, crayon"red", "    $f: ", crayon"reset", "$fld")
+		end
 	end
-	dfprint(io, crayon"red", "\tdftu: ", crayon"reset")
+	dfprint(io, crayon"red", "    dftu: ", crayon"reset")
 	for f in fieldnames(DFTU)
 		val = getfield(dftu(at), f)
 		if !isdefault(val)

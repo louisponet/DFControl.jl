@@ -1,4 +1,4 @@
-const SymAnyDict = Dict{Symbol, Any}
+const SymAnyDict = Dict{Symbol}
 
 const Point{N, F} = SVector{N, F}
 const Point3{F} = SVector{3, F}

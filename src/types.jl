@@ -199,6 +199,10 @@ Exec(exec::String, dir::String, flags...) = Exec(exec, dir, SymAnyDict(flags))
 function Exec(exec::String, dir::String, flags::SymAnyDict)
     _flags = ExecFlag[]
     for (f, v) in flags
+        if occursin("mpi", exec)
+            mflag = mpi_flag(f)
+            @assert mflag !== nothing "$f is not a recognized mpirun flag."
+        end            
         push!(_flags, ExecFlag(f => v))
     end
     return Exec(exec, dir, _flags)

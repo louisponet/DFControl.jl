@@ -43,9 +43,6 @@ Possible keys:
  - `:k_cryst`
  - `:k_cart`
  - `:alat`
- - `:cell_parameters`
- - `:pos_option`
- - `:atomic_positions`
  - `:total_force`
  - `:colin_mag_moments`
  - `:bands`
@@ -57,8 +54,10 @@ Possible keys:
  - `:total_magnetization`
  - `:n_KS_states`
  - `:timing`
+ - `:initial_structure`
+ - `:final_structure`
 """
-function qe_read_output(filename::String, T=Float64)
+function qe_read_output(filename::String, T=Float64; cleanup = true)
     out = Dict{Symbol,Any}()
     colincalc = false
     open(filename, "r") do f
@@ -364,6 +363,12 @@ function qe_read_output(filename::String, T=Float64)
                 end
             end
         end
+        if cleanup
+            for f in (:in_cart_positions, :in_alat, :in_cryst_positions, :alat, :pos_option, :pseudos, :cell_parameters, :in_recip_cell)
+                pop!(out, f, nothing)
+            end
+        end
+        
         return out
     end
 end

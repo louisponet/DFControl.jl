@@ -35,7 +35,7 @@ function DFJob(job_name, structure::AbstractStructure, calculations::Vector{<:DF
         i.flags = merge(shared_flags, i.flags)
     end
     out = DFJob(name = job_name, structure = structure, inputs = calculations; job_kwargs...)
-    setatoms!(out, structure.atoms, pseudoset = pseudoset, pseudospecifier = pseudospecifier)
+    setpseudos!(out, pseudoset, pseudospecifier, print=false)
     return out
 end
 

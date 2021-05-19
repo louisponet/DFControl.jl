@@ -19,8 +19,17 @@ Structure(str::AbstractStructure{T}, atoms::Vector{AT}) where {T <: AbstractFloa
 Structure(cell::Matrix{LT}, atoms::Vector{Atom{T,LT}}) where {T <: AbstractFloat,LT <: Length{T}} =
 	Structure{T,Atom{T,LT},LT}("NoName", cell, atoms, Dict{Symbol,Any}())
 
-Structure(cif_file::String; name = "NoName") =
-	cif2structure(cif_file, structure_name = name)
+"""
+    Structure(cif_file::String; name = "NoName")
+
+Creates a structure from the supplied cif, and names it with the specified name.
+"""
+function Structure(cif_file::String; name = "NoName")
+	str = cif2structure(cif_file, structure_name = name)
+	@info "Structure extracted from $cif_file\n\tcell parameters: \n\t a = $((str.cell[:,1]...,))\n\t b = $((str.cell[:,2]...,))\n\t c = $((str.cell[:,3]...,))\n\tnat = $(length(str.atoms))\n\telements = $(unique(getfield.(str.atoms, :name)))"
+	return str
+end
+	
 
 structure(str::Structure) = str
 

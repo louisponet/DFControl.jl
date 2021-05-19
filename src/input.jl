@@ -22,7 +22,7 @@ end
 DFInput{P}(name, dir, flags, data, execs, run) where P<:Package = DFInput{P}(name, abspath(dir), flags, data, execs, run, SymAnyDict(), P == Wannier90 ? name * ".win" : name * ".in", P == Wannier90 ? name * ".wout" : name * ".out")
 
 """
-    DFInput(template::DFInput, name, newflags...; excs=deepcopy(execs(template)), run=true, data=nothing, dir=copy(template.dir))
+    DFInput(template::DFInput, name::AbstractString, flags::Pair{Symbol}...; excs=deepcopy(execs(template)), run=true, data=nothing, dir=copy(template.dir))
 
 Creates a new `DFInput` from a template `DFInput`, setting the newflags in the new one.
 """
@@ -44,6 +44,17 @@ function DFInput(template::DFInput, name, newflags...; excs=deepcopy(execs(templ
     return input
 end
 
+"""
+    DFInput{P}(name::AbstractString, execs::Vector{Exec}, flags::Pair{Symbol}...; kwargs...) where {P<:Package}
+
+Create a input from the name and flags, other fields will set to default values.
+"""
+function DFInput{P}(name::AbstractString, execs::Vector{Exec}, flags::Pair{Symbol}...; kwargs...) where {P<:Package}
+    out = DFInput{P}(name=name, execs=execs; kwargs...)
+    setflags!(out, flags..., print=false)
+    return out
+end
+   
 name(input::DFInput)  = input.name
 dir(input::DFInput)   = input.dir
 flags(input::DFInput) = input.flags

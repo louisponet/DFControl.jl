@@ -423,7 +423,7 @@ All flags which specify the number of atoms inside the calculation also gets set
 """
 function setatoms!(job::DFJob, atoms::Vector{<:AbstractAtom}; pseudoset=nothing, pseudospecifier="")
     job.structure.atoms = atoms
-    pseudoset!=nothing && setpseudos!(job, pseudoset, pseudospecifier)
+    pseudoset !== nothing && setpseudos!(job, pseudoset, pseudospecifier)
     return job
 end
 
