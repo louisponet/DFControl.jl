@@ -783,22 +783,20 @@ function qe_read_input(filename; execs=[Exec("pw.x")], run=true, structure_name=
             if !haskey(parsed_flags, sym)
                 if typ <: AbstractMatrix
                     parsed_flags[sym] = length(parsedval) == 1 ? zeros(eltype(typ), ntyp, 10) : fill(zeros(eltype(typ), length(parsedval)), ntyp, 10) #arbitrary limit
-                else
+                elseif typ <: AbstractVector
                     parsed_flags[sym] = length(parsedval) == 1 ? zeros(eltype(typ), ntyp) : fill(zeros(eltype(typ), length(parsedval)), ntyp)
+                else
+                    dims = fill(nat, ndims(typ)-1)
+                    parsed_flags[sym] = zeros(eltype(typ), dims..., 3) 
                 end
             end
-            if length(ids) == 1
-                parsed_flags[sym][ids[1]] = length(parsedval) == 1 ? parsedval[1] : parsedval
-            else
-                parsed_flags[sym][ids[1], ids[2]] = length(parsedval) == 1 ? parsedval[1] : parsedval
-            end
+            parsed_flags[sym][ids...] =  length(parsedval) == 1 ? parsedval[1] : parsedval
         end
         structure = extract_structure!(structure_name, parsed_flags, cell_block, atsyms, atom_block, pseudos)
         delete!.((parsed_flags,), [:ibrav, :nat, :ntyp, :A, :celldm_1, :celldm])
         delete!.((parsed_flags,), [:Hubbard_U, :Hubbard_J0, :Hubbard_alpha, :Hubbard_beta, :Hubbard_J])
         delete!.((parsed_flags,), [:starting_magnetization, :angle1, :angle2]) #hubbard and magnetization flags
-    # elseif haskey(parsed_flags, :celldm) && parsed_flags[:celldm] != 
-        
+       
     else
         structure = nothing
     end
