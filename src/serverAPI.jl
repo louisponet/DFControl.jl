@@ -69,7 +69,7 @@ function slurm_isrunning(job::DFJob)
     id = slurm_jobid(job)
     if id != -1
         line = getfirst(x -> occursin("JobState", x), slurm_process_command(`scontrol show job $id`))
-        return split(split(line)[1], "=")[2] == "RUNNING"
+        return split(split(line)[1], "=")[2] ∈ ("RUNNING", "PENDING", "CONFIGURING")
     else
         @warn "No jobid found. Was your job submitted through slurm?"
         return false
