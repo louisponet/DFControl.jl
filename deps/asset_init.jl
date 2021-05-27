@@ -74,7 +74,7 @@ open(joinpath(@__DIR__, "mpirunflags.jl"), "w") do wf
                     symbols = [Symbol(name)]
                 end
                 for symbol in symbols
-                    writefbodyline(wf, 1,"""ExecFlag(Symbol("$symbol"), "$name", $type, "$description", nothing),""")
+                    writefbodyline(wf, 1,"""ExecFlag(Symbol("$symbol"), "$name", $type, "$description", nothing, 1),""")
                 end
             end
         end

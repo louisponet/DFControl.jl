@@ -56,18 +56,20 @@ mutable struct ExecFlag
     typ        ::Type
     description::String
     value
+    minus_count::Int
 end
 Base.:(==)(e1::ExecFlag, e2::ExecFlag) =
     all(x -> getfield(e1, x) == getfield(e2, x), (:symbol, :value))
 
-ExecFlag(e::ExecFlag, value) = ExecFlag(e.symbol, e.name, e.typ, e.description, value)
-ExecFlag(p::Pair{Symbol, T}) where T = ExecFlag(first(p), String(first(p)), T, "", last(p))
+ExecFlag(e::ExecFlag, value) = ExecFlag(e.symbol, e.name, e.typ, e.description, value, 1)
+ExecFlag(p::Pair{Symbol, T}) where T = ExecFlag(first(p), String(first(p)), T, "", last(p), 1)
+ExecFlag(p::Pair{Symbol, T}, count::Int) where T = ExecFlag(first(p), String(first(p)), T, "", last(p), count)
 
 const QE_EXECFLAGS = ExecFlag[
-    ExecFlag(:nk, "kpoint-pools", Int, "groups k-point parallelization into nk processor pools", 0),
-    ExecFlag(:ntg, "task-groups", Int, "FFT task groups", 0),
-    ExecFlag(:ndiag, "diag", Int, "Number of processes for linear algebra", 0),
-    ExecFlag(:ni, "images", Int, "Number of processes used for the images", 0)
+    ExecFlag(:nk, "kpoint-pools", Int, "groups k-point parallelization into nk processor pools", 0, 1),
+    ExecFlag(:ntg, "task-groups", Int, "FFT task groups", 0, 1),
+    ExecFlag(:ndiag, "diag", Int, "Number of processes for linear algebra", 0, 1),
+    ExecFlag(:ni, "images", Int, "Number of processes used for the images", 0, 1)
 ]
 
 qeexecflag(flag::AbstractString) = getfirst(x -> x.name==flag, QE_EXECFLAGS)
@@ -85,7 +87,7 @@ function parse_qeexecflags(line::Vector{<:AbstractString})
 end
 
 const WAN_EXECFLAGS = ExecFlag[
-    ExecFlag(:pp, "preprocess", Nothing, "Whether or not to preprocess the wannier input", nothing),
+    ExecFlag(:pp, "preprocess", Nothing, "Whether or not to preprocess the wannier input", nothing, 1),
 ]
 
 wan_execflag(flag::AbstractString) = getfirst(x -> x.name==flag, WAN_EXECFLAGS)
@@ -181,7 +183,7 @@ function parse_mpi_flags(line::Vector{<:SubString})
     eflags
 end
 
-const RUN_EXECS = ["mpirun", "mpi", "mpiexec", "srun"]
+const RUN_EXECS = ["mpirun", "mpiexec", "srun"]
 allexecs() = vcat(RUN_EXECS, QE_EXECS, WAN_EXECS, ELK_EXECS)
 parseable_execs() = vcat(QE_EXECS, WAN_EXECS, ELK_EXECS)
 has_parseable_exec(l::String) = occursin(">", l) && any(occursin.(parseable_execs(), (l,)))

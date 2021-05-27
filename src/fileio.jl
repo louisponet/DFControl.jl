@@ -163,7 +163,8 @@ function writeexec(f, exec::Exec)
     direxec = joinpath(exec.dir, exec.exec)
     write(f, "$direxec")
     for flag in exec.flags
-        write(f, " -$(flag.symbol)")
+        
+        write(f, " $(join(fill('-', flag.minus_count)))$(flag.symbol)")
         if !isa(flag.value, AbstractString)
             for v in flag.value
                 write(f," $v")
@@ -249,7 +250,7 @@ Writes all the input files and job file that are linked to a DFJob.
 Kwargs will be passed down to various writetojob functions.
 """
 function writejobfiles(job::DFJob; kwargs...)
-    rm.(joinpath.(Ref(job.local_dir), searchdir(job.local_dir, ".in")))
+    # rm.(joinpath.(Ref(job.local_dir), searchdir(job.local_dir, ".in")))
     open(joinpath(job.local_dir, "job.tt"), "w") do f
         write(f, "#!/bin/bash\n")
         write_job_name(f, job)
@@ -291,7 +292,8 @@ function read_job_line(line)
     #TODO This is not really nice, we don't handle execs that are unparseable...
     #     Not sure how we can actually do this
     for s in spl
-        if any(occursin.(allexecs(), (s,)))
+        d, e = splitdir(s)
+        if e ∈ allexecs()
             push!(exec_and_flags, s => SubString[])
         elseif !isempty(exec_and_flags)
         # else
@@ -316,10 +318,32 @@ function read_job_line(line)
 	        output = "elk.out"
             push!(execs, Exec(efile, dir))
         else
-            push!(execs, Exec(efile, dir))
+            push!(execs, Exec(efile, dir, parse_generic_flags(flags)))
         end
     end
     return execs, input, output, run
+end
+
+function parse_generic_flags(flags::Vector{<:SubString})
+    out = ExecFlag[]
+    f = :none
+    c = 1
+    for s in flags
+        if s[1] == '-'
+            c = count(isequal('-'), s)
+            f = Symbol(strip(s, '-'))
+        else
+            v = tryparse(Int, s)
+            if v === nothing
+                v = tryparse(Float64, s)
+                if v === nothing
+                    v = s
+                end
+            end
+            push!(out, ExecFlag(f => v, c))
+        end
+    end
+    return out
 end
 
 # TODO: make this work again
