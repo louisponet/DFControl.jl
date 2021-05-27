@@ -35,7 +35,7 @@ job = DFJob(name, joinpath(testjobpath, "Pt.cif"), calculations,
       header      = header,
       local_dir = local_dir
      )
-setkpoints!(job["nscf"], (10,10,10))
+set_kpoints!(job["nscf"], (10,10,10))
 save(job)
 show(job)
 @test data(job["scf"], :k_points).data == [6, 6, 6, 1, 1, 1]
@@ -44,10 +44,10 @@ show(job)
 @test job["scf"][:prefix] == job["nscf"][:prefix] == "$name"
 @test job["bands"][:verbosity] == "high"
 
-setflags!(job, :prefix => "blabla", print=false)
+set_flags!(job, :prefix => "blabla", print=false)
 @test job["scf"][:prefix] == job["nscf"][:prefix] == "blabla"
-setflags!(job, :Hubbard_U => [4], print=false)
-setflags!(job, :Hubbard_J => [4 4 5], print=false)
+set_flags!(job, :Hubbard_U => [4], print=false)
+set_flags!(job, :Hubbard_J => [4 4 5], print=false)
 @test job["scf"][:Hubbard_U] == job["nscf"][:Hubbard_U] == [4.0]
 @test job["scf"][:Hubbard_J] == job["nscf"][:Hubbard_J] == [4.0  4.0  5.0]
 

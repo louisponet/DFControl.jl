@@ -873,7 +873,7 @@ Writes a Quantum Espresso input file.
 """
 function save(input::DFInput{QE}, structure, filename::String=inpath(input); relative_positions=true)
     if haskey(flags(input), :calculation)
-        setflags!(input, :calculation => replace(input[:calculation], "_" => "-"), print=false)
+        set_flags!(input, :calculation => replace(input[:calculation], "_" => "-"), print=false)
     end
     # setting hubbard and magnetization flags
     set_hubbard_flags!(input, structure)
@@ -881,7 +881,7 @@ function save(input::DFInput{QE}, structure, filename::String=inpath(input); rel
     
     # setting hubbard flags 
     pseudo_dir = pseudo(atoms(structure)[1]).dir # Pseudos should be all sanitized by now
-   	setflags!(input, :pseudo_dir => pseudo_dir; print=false)
+   	set_flags!(input, :pseudo_dir => pseudo_dir; print=false)
    	
     open(filename, "w") do f
         if exec(input, "ph.x") !== nothing

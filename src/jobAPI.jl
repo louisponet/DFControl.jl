@@ -6,7 +6,7 @@ Saves a DFJob, it's job file and all it's input files.
 """
 function save(job::DFJob, local_dir=job.local_dir; kwargs...)
     local_dir = local_dir != "" ? local_dir : error("Please specify a valid local_dir!")
-    setlocaldir!(job, local_dir)
+    set_localdir!(job, local_dir)
     if !ispath(local_dir)
         mkpath(local_dir)
         @info "$local_dir did not exist, it was created."
@@ -67,11 +67,11 @@ function abort(job::DFJob)
 end
 
 """
-    setflow!(job::DFJob, should_runs...)
+    set_flow!(job::DFJob, should_runs...)
 
 Sets whether or not calculations should be run. Calculations are specified using their indices.
 """
-function setflow!(job::DFJob, should_runs...)
+function set_flow!(job::DFJob, should_runs...)
     for (name, run) in should_runs
         for input in inputs(job, name)
             input.run = run
@@ -81,12 +81,12 @@ function setflow!(job::DFJob, should_runs...)
 end
 
 """
-    setheaderword!(job::DFJob, old_new::Pair{String, String})
+    set_headerword!(job::DFJob, old_new::Pair{String, String})
 
 
 Replaces the specified word in the header with the new word.
 """
-function setheaderword!(job::DFJob, old_new::Pair{String, String}; print=true)
+function set_headerword!(job::DFJob, old_new::Pair{String, String}; print=true)
     for (i, line) in enumerate(job.header)
         if occursin(first(old_new), line)
             job.header[i] = replace(line, old_new)
@@ -118,7 +118,7 @@ end
 """
 Sets the server dir of the job.
 """
-function setserverdir!(job, dir)
+function set_serverdir!(job, dir)
     job.server_dir = dir
     return job
 end
@@ -126,20 +126,20 @@ end
 """
 Sets the local dir of the job.
 """
-function setlocaldir!(job, dir)
+function set_localdir!(job, dir)
     if !isabspath(dir)
         dir = abspath(dir)
     end
     job.local_dir = dir
     for i in inputs(job)
-        setdir!(i, dir)
+        set_dir!(i, dir)
     end
     return job
 end
 
 
 #-------------- Basic Interaction with DFInputs inside the DFJob ---------------#
-setname!(job::DFJob, oldn, newn; kwargs...) = setname!(input(job, oldn), newn; kwargs...)
+set_name!(job::DFJob, oldn, newn; kwargs...) = set_name!(input(job, oldn), newn; kwargs...)
 Base.insert!(job::DFJob, index::Int, input::DFInput) = insert!(job.inputs, index, input)
 Base.push!(job::DFJob, input::DFInput) = push!(job.inputs, input)
 Base.pop!(job::DFJob) = pop!(job.inputs)
@@ -194,7 +194,7 @@ searchinputs(job::DFJob, ::Type{P}) where {P <: Package} = filter(x->package(x) 
 
 
 """
-    setflags!(job::DFJob, inputs::Vector{<:DFInput}, flags...; print=true)
+    set_flags!(job::DFJob, inputs::Vector{<:DFInput}, flags...; print=true)
 
 Sets the flags in the names to the flags specified.
 This only happens if the specified flags are valid for the names.
@@ -202,11 +202,11 @@ If necessary the correct control block will be added to the calculation (e.g. fo
 
 The values that are supplied will be checked whether they are valid.
 """
-function setflags!(job::DFJob, inputs::Vector{<:DFInput}, flags...; print=true)
+function set_flags!(job::DFJob, inputs::Vector{<:DFInput}, flags...; print=true)
     found_keys = Symbol[]
 
     for calc in inputs
-        t_, = setflags!(calc, flags..., print=print)
+        t_, = set_flags!(calc, flags..., print=print)
         push!(found_keys, t_...)
     end
     nfound = setdiff([k for (k, v) in flags], found_keys)
@@ -216,10 +216,10 @@ function setflags!(job::DFJob, inputs::Vector{<:DFInput}, flags...; print=true)
     end
     return job
 end
-setflags!(job::DFJob, flags...;kwargs...) =
-    setflags!(job, inputs(job), flags...;kwargs...)
-setflags!(job::DFJob, name::String, flags...; fuzzy=true, kwargs...) =
-    setflags!(job, inputs(job, name, fuzzy), flags...; kwargs...)
+set_flags!(job::DFJob, flags...;kwargs...) =
+    set_flags!(job, inputs(job), flags...;kwargs...)
+set_flags!(job::DFJob, name::String, flags...; fuzzy=true, kwargs...) =
+    set_flags!(job, inputs(job, name, fuzzy), flags...; kwargs...)
 
 """ data(job::DFJob, name::String, dataname::Symbol)
 
@@ -229,64 +229,64 @@ data(job::DFJob, name::String, dataname::Symbol) =
     data(input(job, name), dataname)
 
 """
-    setdata!(job::DFJob, inputs::Vector{<:DFInput}, dataname::Symbol, data; option=nothing)
+    set_data!(job::DFJob, inputs::Vector{<:DFInput}, dataname::Symbol, data; option=nothing)
 
 Looks through the calculation filenames and sets the data of the datablock with `data_block_name` to `new_block_data`.
 if option is specified it will set the block option to it.
 """
-function setdata!(job::DFJob, inputs::Vector{<:DFInput}, dataname::Symbol, data; kwargs...)
-    setdata!.(inputs, dataname, data; kwargs...)
+function set_data!(job::DFJob, inputs::Vector{<:DFInput}, dataname::Symbol, data; kwargs...)
+    set_data!.(inputs, dataname, data; kwargs...)
     return job
 end
-setdata!(job::DFJob, name::String, dataname::Symbol, data; fuzzy=true, kwargs...) =
-    setdata!(job, inputs(job, name, fuzzy), dataname, data; kwargs...)
+set_data!(job::DFJob, name::String, dataname::Symbol, data; fuzzy=true, kwargs...) =
+    set_data!(job, inputs(job, name, fuzzy), dataname, data; kwargs...)
 
 """
-    setdataoption!(job::DFJob, names::Vector{String}, dataname::Symbol, option::Symbol)
+    set_dataoption!(job::DFJob, names::Vector{String}, dataname::Symbol, option::Symbol)
 
 sets the option of specified data in the specified inputs.
 """
-function setdataoption!(job::DFJob, names::Vector{String}, dataname::Symbol, option::Symbol; kwargs...)
-    setdataoption!.(inputs(job, names), dataname, option; kwargs...)
+function set_dataoption!(job::DFJob, names::Vector{String}, dataname::Symbol, option::Symbol; kwargs...)
+    set_dataoption!.(inputs(job, names), dataname, option; kwargs...)
     return job
 end
-setdataoption!(job::DFJob, n::String, name::Symbol, option::Symbol; kw...) =
-    setdataoption!(job, [n], name, option; kw...)
+set_dataoption!(job::DFJob, n::String, name::Symbol, option::Symbol; kw...) =
+    set_dataoption!(job, [n], name, option; kw...)
 
 """
-    setdataoption!(job::DFJob, name::Symbol, option::Symbol)
+    set_dataoption!(job::DFJob, name::Symbol, option::Symbol)
 
 sets the option of specified data block in all calculations that have the block.
 """
-setdataoption!(job::DFJob, n::Symbol, option::Symbol; kw...) =
-    setdataoption!(job, name.(inputs(job)), n, option; kw...)
+set_dataoption!(job::DFJob, n::Symbol, option::Symbol; kw...) =
+    set_dataoption!(job, name.(inputs(job)), n, option; kw...)
 
 """
-    rmflags!(job::DFJob, inputs::Vector{<:DFInput}, flags...)
+    rm_flags!(job::DFJob, inputs::Vector{<:DFInput}, flags...)
 
 Looks through the input names and removes the specified flags.
 """
-function rmflags!(job::DFJob, inputs::Vector{<:DFInput}, flags...; kwargs...)
-    rmflags!.(inputs, flags...; kwargs...)
+function rm_flags!(job::DFJob, inputs::Vector{<:DFInput}, flags...; kwargs...)
+    rm_flags!.(inputs, flags...; kwargs...)
     return job
 end
-rmflags!(job::DFJob, name::String, flags...; fuzzy=true, kwargs...) =
-    rmflags!(job, inputs(job, name, fuzzy), flags...; kwargs...)
-rmflags!(job::DFJob, flags...; kwargs...) =
-    rmflags!(job, inputs(job), flags...; kwargs...)
+rm_flags!(job::DFJob, name::String, flags...; fuzzy=true, kwargs...) =
+    rm_flags!(job, inputs(job, name, fuzzy), flags...; kwargs...)
+rm_flags!(job::DFJob, flags...; kwargs...) =
+    rm_flags!(job, inputs(job), flags...; kwargs...)
 
 "Returns the executables attached to a given input."
 execs(job::DFJob, name) =
     execs(input(job, name))
 
 """
-    setexecflags!(job::DFJob, exec, flags...)
+    set_execflags!(job::DFJob, exec, flags...)
 
 Goes through the calculations of the job and sets the exec flags to the specified ones.
 """
-function setexecflags!(job::DFJob, exec, flags...)
+function set_execflags!(job::DFJob, exec, flags...)
 	for i in job.inputs
-	    setexecflags!(i, exec, flags...)
+	    set_execflags!(i, exec, flags...)
     end
 end
 
@@ -299,8 +299,8 @@ rmexecflags!(job::DFJob, exec, flags...) =
     rmexecflags!.(job.inputs, (exec, flags)...)
 
 "Sets the directory of the specified executable."
-setexecdir!(job::DFJob, exec, dir) =
-    setexecdir!.(job.inputs, exec, dir)
+set_execdir!(job::DFJob, exec, dir) =
+    set_execdir!.(job.inputs, exec, dir)
 
 
 "Finds the output files for each of the inputs of a job, and groups all found data into a dictionary."
@@ -331,40 +331,40 @@ end
 
 #------------ Specialized Interaction with DFInputs inside DFJob --------------#
 """
-    setkpoints!(job::DFJob, name::String, k_points)
+    set_kpoints!(job::DFJob, name::String, k_points)
 
 sets the data in the k point `DataBlock` inside the specified inputs.
 """
-function setkpoints!(job::DFJob, n::String, k_points; print=true)
+function set_kpoints!(job::DFJob, n::String, k_points; print=true)
     for calc in inputs(job, n)
-        setkpoints!(calc, k_points, print=print)
+        set_kpoints!(calc, k_points, print=print)
     end
     return job
 end
 
 
 "Reads throught the pseudo files and tries to figure out the correct cutoffs"
-setcutoffs!(job::DFJob) = 
-    setcutoffs!.(inputs(job), find_cutoffs(job)...)
+set_cutoffs!(job::DFJob) = 
+    set_cutoffs!.(inputs(job), find_cutoffs(job)...)
 
 
 """
-    setwanenergies!(job::DFJob, nscf::DFInput{QE}, Emin::Real; Epad=5.0)
+    set_wanenergies!(job::DFJob, nscf::DFInput{QE}, Emin::Real; Epad=5.0)
 
 Will set the energy window limits correctly according to the projections specified in the
 structure of the job and the specified Emin. The output of `nscf` will be used to determine the
 DOS, and what the size of the frozen window needs to be to fit enough bands inside it,
 depending on the projections.
 """
-function setwanenergies!(job::DFJob, nscf::DFInput{QE}, Emin::Real; Epad=5.0)
+function set_wanenergies!(job::DFJob, nscf::DFInput{QE}, Emin::Real; Epad=5.0)
     wancalcs = searchinputs(job, Wannier90)
     @assert length(wancalcs) != 0 "Job ($(job.name)) has no Wannier90 calculations, nothing to do."
-    map(x->setwanenergies!(x, structure(job), nscf, Emin; Epad=Epad), wancalcs)
+    map(x->set_wanenergies!(x, structure(job), nscf, Emin; Epad=Epad), wancalcs)
     return job
 end
 
 """
-    setwanenergies!(job::DFJob, nscf::DFInput{QE}, projwfc::DFInput{QE}, threshold::Real; Epad=5.0)
+    set_wanenergies!(job::DFJob, nscf::DFInput{QE}, projwfc::DFInput{QE}, threshold::Real; Epad=5.0)
 
 Will set the energy window limits correctly according to the projections specified in the
 structure of the job. The output of `projwfc` and the `threshold` will be used to determine
@@ -372,15 +372,15 @@ the minimum limit of the frozen energy window such that the interesting DOS of i
 the threshold. `nscf` will be used to determine the DOS, and what the upper limit of the frozen window
 needs to be to fit enough bands inside it, depending on the projections.
 """
-function setwanenergies!(job::DFJob, nscf::DFInput{QE}, projwfc::DFInput{QE}, threshold::Real; Epad=5.0)
+function set_wanenergies!(job::DFJob, nscf::DFInput{QE}, projwfc::DFInput{QE}, threshold::Real; Epad=5.0)
     hasoutput_assert(projwfc)
     hasexec_assert(projwfc, "projwfc.x")
     Emin = Emin_from_projwfc(job.structure, projwfc, threshold)
-    setwanenergies!(job, nscf, Emin; Epad=Epad)
+    set_wanenergies!(job, nscf, Emin; Epad=Epad)
 end
 
 """
-    setwanenergies!(job::DFJob, min_window_determinator::Real; kwargs...)
+    set_wanenergies!(job::DFJob, min_window_determinator::Real; kwargs...)
 
 Sets the energy windows of wannier calculations based on the `job`.
 When a projwfc calculation is present in the `job`, `min_window_determinator` will be used to
@@ -388,15 +388,15 @@ determine the threshold value for including a band in the window based on the pr
 it will be used as the `Emin` value from which to start counting the number of bands needed for all
 projections.
 """
-function setwanenergies!(job::DFJob, min_window_determinator::Real; kwargs...)
+function set_wanenergies!(job::DFJob, min_window_determinator::Real; kwargs...)
     nscf_input = getfirst(isnscfcalc, inputs(job))
     projwfc_input = getfirst(isprojwfccalc, inputs(job))
     if projwfc_input === nothing || !hasoutput(projwfc_input)
         @info "No projwfc input found with valid output, using $min_window_determinator as Emin"
-        return setwanenergies!(job, nscf_input, min_window_determinator; kwargs...)
+        return set_wanenergies!(job, nscf_input, min_window_determinator; kwargs...)
     else
         @info "Valid projwfc output found, using $min_window_determinator as the dos threshold."
-        return setwanenergies!(job, nscf_input, projwfc_input, min_window_determinator; kwargs...)
+        return set_wanenergies!(job, nscf_input, projwfc_input, min_window_determinator; kwargs...)
     end
 end
 
@@ -414,41 +414,41 @@ atoms(job::DFJob, args...) = atoms(job.structure, args...)
 atoms(f::Function, job::DFJob) = atoms(f, job.structure)
 
 """
-    setatoms!(job::DFJob, atoms::Dict{Symbol,<:Array{<:Point3,1}}, pseudo_setname=nothing, pseudospecifier=nothing, option=:angstrom)
+    set_atoms!(job::DFJob, atoms::Dict{Symbol,<:Array{<:Point3,1}}, pseudo_setname=nothing, pseudospecifier=nothing, option=:angstrom)
 
 Sets the data data with atomic positions to the new one. This is done for all calculations in the job that have that data.
 If default pseudopotentials are defined, a set can be specified, together with a fuzzy that distinguishes between the possible multiple pseudo strings in the pseudo set.
 These pseudospotentials are then set in all the calculations that need it.
 All flags which specify the number of atoms inside the calculation also gets set to the correct value.
 """
-function setatoms!(job::DFJob, atoms::Vector{<:AbstractAtom}; pseudoset=nothing, pseudospecifier="")
+function set_atoms!(job::DFJob, atoms::Vector{<:AbstractAtom}; pseudoset=nothing, pseudospecifier="")
     job.structure.atoms = atoms
-    pseudoset !== nothing && setpseudos!(job, pseudoset, pseudospecifier)
+    pseudoset !== nothing && set_pseudos!(job, pseudoset, pseudospecifier)
     return job
 end
 
 #automatically sets the cell parameters for the entire job, implement others
 """
-    setcell!(job::DFJob, cell_::Mat3)
+    set_cell!(job::DFJob, cell_::Mat3)
 
 sets the cell parameters of the structure in the job.
 """
-function setcell!(job::DFJob, cell_::Mat3)
+function set_cell!(job::DFJob, cell_::Mat3)
     job.structure.cell = cell_
     return job
 end
 
 "sets the pseudopotentials to the specified one in the default pseudoset."
-setpseudos!(job::DFJob, set::Symbol, specifier::String=""; kwargs...) = 
-    setpseudos!(job.structure, set, specifier; kwargs...)
+set_pseudos!(job::DFJob, set::Symbol, specifier::String=""; kwargs...) = 
+    set_pseudos!(job.structure, set, specifier; kwargs...)
 
 "sets the pseudopotentials for the atom with name `atsym` to the specified one in the default pseudoset."
-setpseudos!(job::DFJob, atsym::Symbol, set::Symbol, specifier::String=""; kwargs...) =
-	setpseudos!(job.structure, atsym, set, specifier; kwargs...)
+set_pseudos!(job::DFJob, atsym::Symbol, set::Symbol, specifier::String=""; kwargs...) =
+	set_pseudos!(job.structure, atsym, set, specifier; kwargs...)
 
 "sets the pseudopotentials to the specified one in the default pseudoset."
-setpseudos!(job::DFJob, at_pseudos::Pair{Symbol, Pseudo}...; kwargs...) = 
-    setpseudos!(job.structure, at_pseudos...; kwargs...)
+set_pseudos!(job::DFJob, at_pseudos::Pair{Symbol, Pseudo}...; kwargs...) = 
+    set_pseudos!(job.structure, at_pseudos...; kwargs...)
 
 "Returns the projections inside the job for the specified `i`th atom in the job with id `atsym`."
 projections(job::DFJob, atsym::Symbol, i=1) = projections(atom(job, atsym, i))
@@ -459,9 +459,9 @@ projections(job::DFJob) = projections(structure(job))
 """
 sets the projections of the specified atoms inside the job structure.
 """
-function setprojections!(job::DFJob, projections...; kwargs...)
+function set_projections!(job::DFJob, projections...; kwargs...)
     socid = findfirst(issoccalc, inputs(job))
-    setprojections!(job.structure, projections...; soc=socid !== nothing, kwargs...)
+    set_projections!(job.structure, projections...; soc=socid !== nothing, kwargs...)
 end
 
 for hub_param in (:U, :J0, :α, :β)
