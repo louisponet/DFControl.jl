@@ -140,18 +140,18 @@ end
 
 Base.range(v::Vector{AbstractAtom}) = vcat(range.(v)...)
 
-setname!(at::AbstractAtom, name::Symbol) =
+set_name!(at::AbstractAtom, name::Symbol) =
 	atom(at).name = name
 
 length_unit(at::Atom{T, LT}) where {T, LT} = LT
 
-function setpseudo!(at::AbstractAtom, pseudo::Pseudo; print=true)
+function set_pseudo!(at::AbstractAtom, pseudo::Pseudo; print=true)
 	print && @info "Pseudo of atom $(name(at)) set to $pseudo."
 	!ispath(path(pseudo)) && @warn "Pseudopath $(path(pseudo)) not found."
 	atom(at).pseudo = pseudo
 end
 
-function setprojections!(at::AbstractAtom, projections::Vector{Projection}; print=true)
+function set_projections!(at::AbstractAtom, projections::Vector{Projection}; print=true)
     print && @info "Setting projections for atom $(name(at)) to $projections"
     atom(at).projections = projections
 end

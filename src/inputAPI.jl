@@ -10,14 +10,14 @@ function Base.getindex(input::DFInput, n::Symbol)
     end
 end
 "Sets the flag"
-Base.setindex!(input::DFInput, dat, key) = setflags!(input, key => dat)
+Base.setindex!(input::DFInput, dat, key) = set_flags!(input, key => dat)
 
 """
-    setflags!(input::DFInput, flags...; print=true)
+    set_flags!(input::DFInput, flags...; print=true)
 
 Sets the specified flags in the input.
 """
-function setflags!(input::DFInput{T}, flags...; print=true) where T
+function set_flags!(input::DFInput{T}, flags...; print=true) where T
     found_keys = Symbol[]
     for (flag, value) in flags
         flag_type = flagtype(input, flag)
@@ -44,11 +44,11 @@ function setflags!(input::DFInput{T}, flags...; print=true) where T
 end
 
 """
-    rmflags!(input::DFInput, flags...)
+    rm_flags!(input::DFInput, flags...)
 
 Remove the specified flags.
 """
-function rmflags!(input::DFInput, flags...; print=true)
+function rm_flags!(input::DFInput, flags...; print=true)
     for flag in flags
         if haskey(input.flags, flag)
             pop!(input.flags, flag, false)
@@ -61,11 +61,11 @@ end
 data(input::DFInput, n) = getfirst(x-> name(x) == n, data(input))
 
 """
-    setdata!(input::DFInput, block_name::Symbol, new_block_data; option=nothing, print=true)
+    set_data!(input::DFInput, block_name::Symbol, new_block_data; option=nothing, print=true)
 
 sets the data of the specified 'InputData' to the new data. Optionally also sets the 'InputData' option.
 """
-function setdata!(input::DFInput, block_name::Symbol, new_block_data; option=nothing, print=true)
+function set_data!(input::DFInput, block_name::Symbol, new_block_data; option=nothing, print=true)
     setd = false
     for data_block in input.data
         if data_block.name == block_name
@@ -82,18 +82,18 @@ function setdata!(input::DFInput, block_name::Symbol, new_block_data; option=not
         end
     end
     if !setd
-        setdata!(input, InputData(block_name, option, new_block_data))
+        set_data!(input, InputData(block_name, option, new_block_data))
         setd = true
     end
     return setd, input
 end
 
 """
-    setdataoption!(input::DFInput, name::Symbol, option::Symbol; print=true)
+    set_dataoption!(input::DFInput, name::Symbol, option::Symbol; print=true)
 
 Sets the option of specified data.
 """
-function setdataoption!(input::DFInput, name::Symbol, option::Symbol; print=true)
+function set_dataoption!(input::DFInput, name::Symbol, option::Symbol; print=true)
     for data in input.data
         if data.name == name
             old_option  = data.option
@@ -113,17 +113,17 @@ exec(input::DFInput, exec::String) =
 execflags(input::DFInput, exec::String) =
 	[x.exec => x.flags for x in execs(input, exec)]
 
-function setexecflags!(input::DFInput, exec::String, flags...)
+function set_execflags!(input::DFInput, exec::String, flags...)
 	for e in execs(input, exec)
-		setflags!(e, flags...)
+		set_flags!(e, flags...)
 	end
 end
 
-setexecdir!(input::DFInput, exec, dir) =
-	setexecdir!.(execs(input, exec), dir)
+set_execdir!(input::DFInput, exec, dir) =
+	set_execdir!.(execs(input, exec), dir)
 
 rmexecflags!(input::DFInput, exec::String, flags...) =
-	rmflags!.(execs(input, exec), flags...)
+	rm_flags!.(execs(input, exec), flags...)
 
 runcommand(input::DFInput) = input.execs[1]
 
@@ -144,34 +144,34 @@ end
 #---------- Extended Interaction ------------#
 
 """
-    setkpoints!(input::DFInput, k_grid)
+    set_kpoints!(input::DFInput, k_grid)
 
 Sets the kpoints of the input. Will automatically generate the kgrid values if necessary.
 """
-function setkpoints!(input::DFInput{Wannier90}, k_grid::NTuple{3, Int}; print=true)
-    setflags!(input, :mp_grid => [k_grid...], print=print)
-    setdata!(input, :kpoints, kgrid(k_grid..., :wan), print=print)
+function set_kpoints!(input::DFInput{Wannier90}, k_grid::NTuple{3, Int}; print=true)
+    set_flags!(input, :mp_grid => [k_grid...], print=print)
+    set_data!(input, :kpoints, kgrid(k_grid..., :wan), print=print)
     return input
 end
 
-function setkpoints!(input::DFInput{QE}, k_grid::NTuple{3, Int}; print=true) #nscf
+function set_kpoints!(input::DFInput{QE}, k_grid::NTuple{3, Int}; print=true) #nscf
 
     calc = flag(input, :calculation)
     print && calc != "nscf" && (@warn "Expected calculation to be 'nscf'.\nGot $calc.")
-    setdata!(input, :k_points, kgrid(k_grid..., :nscf), option = :crystal, print=print)
-    prod(k_grid) > 100 && setflags!(input, :verbosity => "high", print=print)
+    set_data!(input, :k_points, kgrid(k_grid..., :nscf), option = :crystal, print=print)
+    prod(k_grid) > 100 && set_flags!(input, :verbosity => "high", print=print)
     return input
 end
 
-function setkpoints!(input::DFInput{QE}, k_grid::NTuple{6, Int}; print=true) #scf
+function set_kpoints!(input::DFInput{QE}, k_grid::NTuple{6, Int}; print=true) #scf
     calc = flag(input, :calculation)
     print && calc != "scf" && !occursin("relax", calc) && (@warn "Expected calculation to be scf, vc-relax, relax.\nGot $calc.")
-    setdata!(input, :k_points, [k_grid...], option = :automatic, print=print)
-    prod(k_grid[1:3]) > 100 && setflags!(input, :verbosity => "high", print=print)
+    set_data!(input, :k_points, [k_grid...], option = :automatic, print=print)
+    prod(k_grid[1:3]) > 100 && set_flags!(input, :verbosity => "high", print=print)
     return input
 end
 
-function setkpoints!(input::DFInput{QE}, k_grid::Vector{NTuple{4, T}}; print=true, k_option=:crystal_b) where T<:AbstractFloat
+function set_kpoints!(input::DFInput{QE}, k_grid::Vector{NTuple{4, T}}; print=true, k_option=:crystal_b) where T<:AbstractFloat
     calc = flag(input, :calculation)
     print && calc != "bands" && (@warn "Expected calculation to be bands, got $calc.")
     @assert in(k_option, [:tpiba_b, :crystal_b, :tpiba_c, :crystal_c]) error("Only $([:tpiba_b, :crystal_b, :tpiba_c, :crystal_c]...) are allowed as a k_option, got $k_option.")
@@ -183,13 +183,13 @@ function setkpoints!(input::DFInput{QE}, k_grid::Vector{NTuple{4, T}}; print=tru
         num_k += k[4]
     end
     if num_k > 100.
-        setflags!(input, :verbosity => "high", print=print)
+        set_flags!(input, :verbosity => "high", print=print)
         if print
             @info "Verbosity is set to high because num_kpoints > 100,\n
                        otherwise bands won't get printed."
         end
     end
-    setdata!(input, :k_points, k_grid, option=k_option, print=print)
+    set_data!(input, :k_points, k_grid, option=k_option, print=print)
     return input
 end
 
@@ -226,13 +226,13 @@ function readfermi(input::DFInput)
 end
 
 """
-    setwanenergies!(waninput::DFInput{Wannier90}, structure::AbstractStructure, nscf::DFInput , Emin::Real; Epad=5.0)
+    set_wanenergies!(waninput::DFInput{Wannier90}, structure::AbstractStructure, nscf::DFInput , Emin::Real; Epad=5.0)
 
 Automatically calculates and sets the wannier energies. This uses the projections,
 `Emin` and the output of the nscf calculation to infer the other limits.
 `Epad` allows one to specify the padding around the inner and outer energy windows
 """
-function setwanenergies!(input::DFInput{Wannier90}, structure::AbstractStructure, nscf::DFInput, Emin::Real; Epad=5.0)
+function set_wanenergies!(input::DFInput{Wannier90}, structure::AbstractStructure, nscf::DFInput, Emin::Real; Epad=5.0)
     hasoutput_assert(nscf)
     iscalc_assert(nscf, "nscf")
     hasprojections_assert(structure)
@@ -253,7 +253,7 @@ function setwanenergies!(input::DFInput{Wannier90}, structure::AbstractStructure
         winmin, frozmin, frozmax, winmax = wanenergyranges(Emin, nwann, bands, Epad)
     end
 
-    setflags!(input, :dis_win_min => winmin, :dis_froz_min => frozmin, :dis_froz_max => frozmax, :dis_win_max => winmax, :num_wann => nwann, :num_bands=>num_bands;print=false)
+    set_flags!(input, :dis_win_min => winmin, :dis_froz_min => frozmin, :dis_froz_max => frozmax, :dis_win_max => winmax, :num_wann => nwann, :num_bands=>num_bands;print=false)
     return input
 end
 
@@ -261,8 +261,8 @@ end
 
 function input_from_kpoints(template::DFInput, newname, kpoints, newflags...)
     newcalc = DFInput(template, newname, newflags...)
-    setname!(newcalc, newname)
-    setkpoints!(newcalc, kpoints, print=false)
+    set_name!(newcalc, newname)
+    set_kpoints!(newcalc, kpoints, print=false)
     return newcalc
 end
 
@@ -334,11 +334,11 @@ function gencalc_projwfc(template::DFInput, Emin, Emax, DeltaE, extraflags...; n
     end
 
     out = DFInput(template, name, excs=excs)
-    setname!(out, "projwfc")
+    set_name!(out, "projwfc")
     empty!(out.flags)
-    setflags!(out, :Emin => Emin, :Emax => Emax, :DeltaE => DeltaE,
+    set_flags!(out, :Emin => Emin, :Emax => Emax, :DeltaE => DeltaE,
               :ngauss => ngauss, :degauss => degauss, print=false)
-    setflags!(out, extraflags...)
+    set_flags!(out, extraflags...)
     return out
 end
 
@@ -387,11 +387,11 @@ function gencalc_wan(nscf::DFInput{QE}, structure::AbstractStructure, Emin, wanf
     end
 
     if length(waninputs) > 1
-        setflags!(waninputs[1], :spin => "up")
-        setflags!(waninputs[2], :spin => "down")
+        set_flags!(waninputs[1], :spin => "up")
+        set_flags!(waninputs[2], :spin => "down")
     end
 
-    map(x -> setwanenergies!(x, structure, nscf, Emin; Epad=Epad), waninputs)
+    map(x -> set_wanenergies!(x, structure, nscf, Emin; Epad=Epad), waninputs)
     return waninputs
 end
 
@@ -421,12 +421,12 @@ function isconverged(input::DFInput{QE})
 end
 
 """
-    setname!(input::DFInput{QE}, name::AbstractString)
+    set_name!(input::DFInput{QE}, name::AbstractString)
 
 Sets the name of `input` to `name` and updates `input.infile` and `input.outfile` to conform
 with the new name.
 """
-function setname!(input::DFInput{QE}, name::AbstractString; print=true)
+function set_name!(input::DFInput{QE}, name::AbstractString; print=true)
     input.name = name
     input.infile = name * splitext(infilename(input))[2]
     input.outfile = name * splitext(outfilename(input))[2]

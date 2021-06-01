@@ -34,11 +34,11 @@ function DFInput(template::DFInput, name, newflags...; excs=deepcopy(execs(templ
     input.execs    = excs
     input.run      = run
     input.dir      = dir
-    setflags!(input, newflags..., print=false)
+    set_flags!(input, newflags..., print=false)
 
     if data != nothing
         for (name, (option, data)) in data
-            setdata!(input, name, data, option=option, print=false)
+            set_data!(input, name, data, option=option, print=false)
         end
     end
     return input
@@ -51,14 +51,14 @@ Create a input from the name and flags, other fields will set to default values.
 """
 function DFInput{P}(name::AbstractString, execs::Vector{Exec}, flags::Pair{Symbol}...; kwargs...) where {P<:Package}
     out = DFInput{P}(name=name, execs=execs; kwargs...)
-    setflags!(out, flags..., print=false)
+    set_flags!(out, flags..., print=false)
     return out
 end
    
 name(input::DFInput)  = input.name
 dir(input::DFInput)   = input.dir
 flags(input::DFInput) = input.flags
-setdir!(input::DFInput, dir) = (input.dir = dir)
+set_dir!(input::DFInput, dir) = (input.dir = dir)
 name_ext(input::DFInput, ext)   = name(input) * ext
 infilename(input::DFInput)      = input.infile
 infilename(input::DFInput{Elk}) = "elk.in"
@@ -82,7 +82,7 @@ data(input::DFInput)  = input.data
 
 execs(input::DFInput) = input.execs
 hasexec(input::DFInput, ex::AbstractString) = exec(input, ex) != nothing
-setflow!(input::DFInput, run) = input.run = run
+set_flow!(input::DFInput, run) = input.run = run
 
 "Runs through all the set flags and checks if they are allowed and set to the correct value"
 function cleanflags!(input::DFInput)
@@ -90,7 +90,7 @@ function cleanflags!(input::DFInput)
         flagtype_ = flagtype(input, flag)
         if flagtype_ == Nothing
             @warn "Flag $flag was not found in allowed flags for exec $(execs(input)[2]). Removing flag."
-            rmflags!(input, flag)
+            rm_flags!(input, flag)
             continue
         end
         if !(isa(value, flagtype_) || eltype(value) <: flagtype_)
@@ -127,8 +127,8 @@ function sanitizeflags!(input::DFInput{QE})
     cleanflags!(input)
     if isvcrelaxcalc(input)
 	    #this is to make sure &ions and &cell are there in the input 
-	    !hasflag(input, :ion_dynamics)  && setflags!(input, :ion_dynamics  => "bfgs", print=false)
-	    !hasflag(input, :cell_dynamics) && setflags!(input, :cell_dynamics => "bfgs", print=false)
+	    !hasflag(input, :ion_dynamics)  && set_flags!(input, :ion_dynamics  => "bfgs", print=false)
+	    !hasflag(input, :cell_dynamics) && set_flags!(input, :cell_dynamics => "bfgs", print=false)
     end
     #TODO add all the required flags
     if exec(input, "pw.x") !== nothing
@@ -152,11 +152,11 @@ function setoradd!(datas::Vector{InputData}, data::InputData)
 end
 
 """
-    setdata!(input::DFInput, data::InputData)
+    set_data!(input::DFInput, data::InputData)
 
 Adds the given data to the input. Should put it in the correct arrays.
 """
-function setdata!(input::DFInput, data::InputData)
+function set_data!(input::DFInput, data::InputData)
     setoradd!(input.data, data)
     return input
 end
@@ -195,8 +195,8 @@ readoutput(input::DFInput{Wannier90}) = wan_read_output(outpath(input))
 
 pseudodir(input::DFInput{QE}) = flag(input, :pseudo_dir)
 
-setcutoffs!(input::DFInput, args...) = @warn "Setting cutoffs is not implemented for package $(package(input))"
-setcutoffs!(input::DFInput{QE}, ecutwfc, ecutrho) = setflags!(input, :ecutwfc => ecutwfc, :ecutrho=>ecutrho)
+set_cutoffs!(input::DFInput, args...) = @warn "Setting cutoffs is not implemented for package $(package(input))"
+set_cutoffs!(input::DFInput{QE}, ecutwfc, ecutrho) = set_flags!(input, :ecutwfc => ecutwfc, :ecutrho=>ecutrho)
 
 function Emin_from_projwfc(structure::AbstractStructure, projwfc::DFInput{QE}, threshold::Number)
     hasoutput_assert(projwfc)
@@ -274,7 +274,7 @@ function set_hubbard_flags!(input::DFInput{QE}, str::AbstractStructure{T}) where
 			end
 			Jarr[:, i] .= J
 		end
-    	setflags!(input,
+    	set_flags!(input,
     	          :lda_plus_u    => true,
     	          :Hubbard_U     => map(x -> dftu(x).U, u_ats),
     	          :Hubbard_alpha => map(x -> dftu(x).α , u_ats),
@@ -282,7 +282,7 @@ function set_hubbard_flags!(input::DFInput{QE}, str::AbstractStructure{T}) where
     	          :Hubbard_J     => Jarr,
     	          :Hubbard_J0    => map(x -> dftu(x).J0, u_ats);
 	              print=false)
-        isnc && setflags!(input, :lda_plus_u_kind => 1; print=false)
+        isnc && set_flags!(input, :lda_plus_u_kind => 1; print=false)
 	end
 end
 
@@ -308,8 +308,8 @@ function set_starting_magnetization_flags!(input::DFInput{QE}, str::AbstractStru
 				push!(starts, start)
 			end
 		end
-		setflags!(input, :noncolin => true; print=false)
-		rmflags!(input, :nspin; print=false)
+		set_flags!(input, :noncolin => true; print=false)
+		rm_flags!(input, :nspin; print=false)
 	elseif ismagcalc 
 		for m in mags
 			push!.((θs, ϕs), 0.0)
@@ -319,9 +319,9 @@ function set_starting_magnetization_flags!(input::DFInput{QE}, str::AbstractStru
 				push!(starts, sign(sum(m))*norm(m))
 			end
 		end
-		setflags!(input, :nspin => 2; print=false)
+		set_flags!(input, :nspin => 2; print=false)
 	end
-	setflags!(input, :starting_magnetization => starts, :angle1 => θs, :angle2 => ϕs; print=false)
+	set_flags!(input, :starting_magnetization => starts, :angle1 => θs, :angle2 => ϕs; print=false)
 end
 
 Base.:(==)(i1::DFInput, i2::DFInput) =

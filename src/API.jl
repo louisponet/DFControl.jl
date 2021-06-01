@@ -6,11 +6,11 @@ export Ang, e₀, kₑ, a₀, Eₕ, Ry
 include("inputAPI.jl")
 export DFInput
 #Basic Interaction with DFInputs
-export flag, setflags!, rmflags!, data, setdata!, setdataoption!, exec, execs,
-       setexecflags!, rmexecflags!, setexecdir!, runcommand, outputdata, setname!
+export flag, set_flags!, rm_flags!, data, set_data!, set_dataoption!, exec, execs,
+       set_execflags!, rmexecflags!, set_execdir!, runcommand, outputdata, set_name!
 
 #Extended Interaction with DFInputs
-export setkpoints!, readbands, readfermi, setwanenergies!, isconverged
+export set_kpoints!, readbands, readfermi, set_wanenergies!, isconverged
 
 #generating new DFInputs
 export gencalc_scf, gencalc_vcrelax, gencalc_nscf, gencalc_bands,
@@ -18,14 +18,14 @@ export gencalc_scf, gencalc_vcrelax, gencalc_nscf, gencalc_bands,
 
 include("jobAPI.jl")
 #Basic Job Control Functionality
-export save, submit, abort, setflow!, setheaderword!, isrunning, progressreport,
-       setserverdir!, setlocaldir!, structure, scale_cell!, volume
+export save, submit, abort, set_flow!, set_headerword!, isrunning, progressreport,
+       set_serverdir!, set_localdir!, structure, scale_cell!, volume
 
 #Basic Interaction with DFInputs inside DFJob
-export searchinput, searchinputs, setcutoffs!
+export searchinput, searchinputs, set_cutoffs!
 
 #Interacting with the Structure inside DFJob
-export atom, atoms, setatoms!, setpseudos!, projections, setprojections!, cell, a, b, c,
+export atom, atoms, set_atoms!, set_pseudos!, projections, set_projections!, cell, a, b, c,
 	   set_magnetization!, symmetry_operators, international, niggli_reduce, update_geometry!,
 	   high_symmetry_kpath, high_symmetry_kpoints
 

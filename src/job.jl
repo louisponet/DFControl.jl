@@ -35,7 +35,7 @@ function DFJob(job_name, structure::AbstractStructure, calculations::Vector{<:DF
         i.flags = merge(shared_flags, i.flags)
     end
     out = DFJob(name = job_name, structure = structure, inputs = calculations; job_kwargs...)
-    setpseudos!(out, pseudoset, pseudospecifier, print=false)
+    set_pseudos!(out, pseudoset, pseudospecifier, print=false)
     return out
 end
 
@@ -49,19 +49,19 @@ function DFJob(job::DFJob, flagstoset...; cell_=copy(cell(job)), atoms_=copy(ato
                                           pseudospecifier = "")
     newjob = deepcopy(job)
 
-    setcell!(newjob, cell_)
+    set_cell!(newjob, cell_)
     if pseudoset === nothing
         pseudoset, specifier = getpseudoset(job.structure.atoms[1])
         specifier = pseudospecifier === nothing ? specifier : pseudospecifier
-        setatoms!(newjob, atoms_, pseudoset = pseudoset, pseudospecifier=specifier)
+        set_atoms!(newjob, atoms_, pseudoset = pseudoset, pseudospecifier=specifier)
     else
-        setatoms!(newjob, atoms_, pseudoset = pseudoset, pseudospecifier= pseudospecifier)
+        set_atoms!(newjob, atoms_, pseudoset = pseudoset, pseudospecifier= pseudospecifier)
     end
-    setserverdir!(newjob, server_dir)
-    setlocaldir!(newjob, local_dir)
+    set_serverdir!(newjob, server_dir)
+    set_localdir!(newjob, local_dir)
     newjob.name = name
 
-    setflags!(newjob, flagstoset..., print=false)
+    set_flags!(newjob, flagstoset..., print=false)
     return newjob
 end
 
@@ -101,11 +101,11 @@ outpath(job::DFJob, n) = outpath(input(job,n))
 
 "Runs some checks on the set flags for the inputs in the job, and sets metadata (:prefix, :outdir etc) related flags to the correct ones. It also checks whether flags in the various inputs are allowed and set to the correct types."
 function sanitizeflags!(job::DFJob)
-    setflags!(job, :prefix => "$(job.name)", print=false)
+    set_flags!(job, :prefix => "$(job.name)", print=false)
     if iswannierjob(job)
 	    nscfcalc = getnscfcalc(job)
 	    if package(nscfcalc) == QE && hasflag(nscfcalc, :nbnd)
-	        setflags!(job, :num_bands => nscfcalc[:nbnd], print=false)
+	        set_flags!(job, :num_bands => nscfcalc[:nbnd], print=false)
         elseif package(nscfcalc) == Elk
 	        setflags!(job, :num_bands => length(nscfcalc[:wann_bands]))
 	        nscfcalc[:wann_projections] = projections_string.(unique(filter(x->!isempty(projections(x)), atoms(job))))
@@ -118,12 +118,12 @@ function sanitizeflags!(job::DFJob)
     end
     for i in filter(x -> package(x) == QE, inputs(job))
         outdir = isempty(job.server_dir) ? joinpath(job, "outputs") : joinpath(job.server_dir, splitdir(job.local_dir)[end], "outputs")
-        setflags!(i, :outdir => "$outdir", print=false)
+        set_flags!(i, :outdir => "$outdir", print=false)
 	    ecutwfc, ecutrho = find_cutoffs(job) # Ideally this should also be at the end stage
 	    if exec(i, "pw.x") !== nothing
     	    if !hasflag(i, :ecutwfc)
         	    @info "No energy cutoff was specified in input with name: $(name(i))\nCalculating one from the pseudo files.\nCalculated ecutwfc=$ecutwfc, ecutrho=$ecutrho."
-        	    setflags!(i, :ecutwfc => ecutwfc, :ecuthro => ecutrho, print=false)
+        	    set_flags!(i, :ecutwfc => ecutwfc, :ecuthro => ecutrho, print=false)
     	    end
 	    end
     end
@@ -183,7 +183,7 @@ function sanitize_projections!(job::DFJob)
     end
     uats = unique(atoms(job))
     projs = unique([name(at) => [p.orb.name for p in projections(at)] for at in uats])
-    setprojections!(job, projs...;print=false)
+    set_projections!(job, projs...;print=false)
 end
 
 "Checks the last created output file for a certain job."

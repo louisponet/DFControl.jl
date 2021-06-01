@@ -24,15 +24,15 @@ nscf2 = DFInput(nscf, "nscf2", data=[:testdata => (:testoption, "test"), :k_poin
 @test_throws ErrorException nscf2[:bladkfj]
 
 
-setkpoints!(nscf2, (3,3,3), print=false)
+set_kpoints!(nscf2, (3,3,3), print=false)
 @test data(nscf2, :k_points).data  == DFControl.kgrid(3, 3, 3, :nscf)
 
 
-setkpoints!(nscf2, [(3.,3.,3.,1.), (3.,3.,3.,1.)], print=false)
+set_kpoints!(nscf2, [(3.,3.,3.,1.), (3.,3.,3.,1.)], print=false)
 @test data(nscf2, :k_points).option  == :crystal_b
 @test data(nscf2, :k_points).data  == [(3.,3.,3.,1.), (3.,3.,3.,1.)]
 
-setkpoints!(nscf2, (3,3,3,0,0,1), print=false)
+set_kpoints!(nscf2, (3,3,3,0,0,1), print=false)
 @test data(nscf2, :k_points).option  == :automatic
 @test data(nscf2, :k_points).data  == [3,3,3,0,0,1]
 
@@ -60,7 +60,7 @@ push!(job, gencalc_scf(job["scf"], (5,5,5,1,1,1), name="1scf2"))
 
 wanflags = [:write_hr => true, :wannier_plot => true]
 
-setprojections!(job, :Pt => [:s, :p, :d])
+set_projections!(job, :Pt => [:s, :p, :d])
 wancalc = gencalc_wan(job["nscf"], structure(job), fermi-7.0, wanflags...; Epad=5.0)
 @test wancalc == gencalc_wan(job, fermi-7.0, wanflags...; Epad=5.0)
 append!(job, wancalc)
@@ -74,12 +74,12 @@ job.inputs = job.inputs[1:4]
 job[:nbnd] = 300
 @test job["scf"][:nbnd] == 300
 @test job["nscf"][:nbnd] == 300
-rmflags!(job, :nbnd)
+rm_flags!(job, :nbnd)
 @test !haskey(job["scf"].flags, :nbnd)
 
 job["scf"][:nbnd] = 300
 @test job["scf"][:nbnd] == 300
-rmflags!(job, :nbnd)
+rm_flags!(job, :nbnd)
 
 job["nscf"][:Hubbard_U] = [1.0]
 @test job["nscf"][:Hubbard_U] == [1.0]
@@ -89,15 +89,15 @@ job["nscf"][:starting_magnetization] = [[1.0, 2.0, 1.0]]
 
 job["nscf"][:Hubbard_J] = [0 1 2]
 @test job["nscf"][:Hubbard_J] == [0 1 2]
-rmflags!(job, :Hubbard_J, :starting_magnetization, :Hubbard_U)
+rm_flags!(job, :Hubbard_J, :starting_magnetization, :Hubbard_U)
 set_magnetization!(job, :Pt => [0.,0.,1.0])
 
 push!.((job,), gencalc_wan(nscf, structure(job), fermi-7.0, wanflags..., Epad=5.0))
 #TODO: add test with the new wancalc from projwfc
 
-setflow!(job, ""=>false)
+set_flow!(job, ""=>false)
 @test job.inputs[1].run == false
-setflow!(job, "nscf" => true, "bands" => true)
+set_flow!(job, "nscf" => true, "bands" => true)
 @test job.inputs[3].run
 
 save(job)
@@ -123,7 +123,7 @@ end
 job3 = DFJob(job2, :lspinorb => true)
 @test all(atoms(job3).==atoms(job2))
 @test length(job3[:lspinorb]) == length(searchinputs(job3, QE))
-rmflags!(job3, :lspinorb, print=false)
+rm_flags!(job3, :lspinorb, print=false)
 
 begin
     for (calc, calc2) in zip(job.inputs, job3.inputs)
@@ -142,48 +142,48 @@ begin
     end
 end
 
-setcutoffs!(job)
+set_cutoffs!(job)
 @test job["scf"][:ecutwfc] == 32.0
 
-setpseudos!(job, :Pt => Pseudo("Pt.UPF", joinpath(testdir, "testassets/pseudos")))
+set_pseudos!(job, :Pt => Pseudo("Pt.UPF", joinpath(testdir, "testassets/pseudos")))
 @test job.structure.atoms[1].pseudo == Pseudo("Pt.UPF", joinpath(testdir, "testassets/pseudos"))
-setpseudos!(job, :Pt, :test)
+set_pseudos!(job, :Pt, :test)
 @test job.structure.atoms[1].pseudo == Pseudo("Pt.UPF", joinpath(testdir, "testassets/pseudos"))
 
-setpseudos!(job, :test)
+set_pseudos!(job, :test)
 @test job.structure.atoms[1].pseudo == Pseudo("Pt.UPF", joinpath(testdir, "testassets/pseudos"))
 
 
 testorbs = [:s, :p]
-setprojections!(job, :Pt => testorbs)
+set_projections!(job, :Pt => testorbs)
 @test convert.(Symbol, [p.orb for p in projections(job, :Pt)]) == testorbs
-setwanenergies!(job, nscf, fermi-7.0, Epad=3.0)
+set_wanenergies!(job, nscf, fermi-7.0, Epad=3.0)
 
 @test job["wanup"][:dis_froz_max] == 13.2921
 @test job["wanup"][:dis_win_max] == 16.292099999999998
 
-setexecflags!(job, "pw.x", :nk => 230, :ndiag => 3)
+set_execflags!(job, "pw.x", :nk => 230, :ndiag => 3)
 @test DFControl.getfirst(x->x.symbol==:nk, execs(job, "nscf")[2].flags).value == 230
 @test DFControl.getfirst(x->x.symbol==:ndiag, execs(job, "nscf")[2].flags).value == 3
 rmexecflags!(job, "pw.x", :nk)
 @test isempty(filter(x->x.symbol == :nk, execs(job, "nscf")[2].flags))
 
-setexecdir!(job, "pw.x", joinpath(homedir(), "bin"))
+set_execdir!(job, "pw.x", joinpath(homedir(), "bin"))
 @test execs(job, "nscf")[2].dir == joinpath(homedir(), "bin")
 
-setname!(job, "nscf", "test")
+set_name!(job, "nscf", "test")
 @test DFControl.inpath(job, "test") == joinpath(job.local_dir, "test.in")
-setname!(job, "test", "nscf")
+set_name!(job, "test", "nscf")
 
-setserverdir!(job, "localhost")
+set_serverdir!(job, "localhost")
 @test job.server_dir == "localhost"
 
-setheaderword!(job, "defpart" => "frontend", print=false)
+set_headerword!(job, "defpart" => "frontend", print=false)
 @test any(occursin.("frontend",job.header))
 
-setdataoption!(job, "nscf",:k_points, :blabla, print=false)
+set_dataoption!(job, "nscf",:k_points, :blabla, print=false)
 @test data(job, "nscf", :k_points).option == :blabla
-setdataoption!(job, :k_points, :test, print=false)
+set_dataoption!(job, :k_points, :test, print=false)
 @test data(job, "nscf", :k_points).option == :test
 
 report = progressreport(job; onlynew=false, print=false)
@@ -195,7 +195,7 @@ job.structure = newatompos
 push!(job.structure.atoms, oldat)
 
 cp(joinpath(testdir, "testassets", "pseudos"), joinpath(testdir, "testassets", "pseudos_copy"), force=true)
-setpseudos!(job, :Si => Pseudo("Si.UPF", joinpath(testdir, "testassets", "pseudos_copy")))
+set_pseudos!(job, :Si => Pseudo("Si.UPF", joinpath(testdir, "testassets", "pseudos_copy")))
 save(job)
 @test ispath(joinpath(job.local_dir, "Si.UPF"))
 @test atom(job, :Si).pseudo == Pseudo("Si.UPF", job.local_dir)
@@ -259,7 +259,7 @@ n = pop!(job, "nscf")
 @test length(job.inputs) == curlen - 1
 
 nscf = job["scf"]
-rmflags!(job, :nspin, :lda_plus_u, :noncolin)
+rm_flags!(job, :nspin, :lda_plus_u, :noncolin)
 set_magnetization!(job, :Pt => [0.2, 1.0, 0.2])
 DFControl.sanitizeflags!(job)
 set_Hubbard_U!(job, :Pt => 2.3)
@@ -270,7 +270,7 @@ DFControl.set_starting_magnetization_flags!.(filter(x -> DFControl.package(x) ==
 @test job["scf"][:noncolin]
 @test job["scf"][:lda_plus_u_kind] == 1
 
-rmflags!(job, :nspin, :lda_plus_u, :noncolin)
+rm_flags!(job, :nspin, :lda_plus_u, :noncolin)
 set_magnetization!(job, :Pt => [0.0, 0.0, 0.5])
 DFControl.sanitizeflags!(job)
 DFControl.sanitize_magnetization!(job)
@@ -309,7 +309,9 @@ job3 = DFJob(job4.local_dir)
 
 rm.(DFControl.inpath.(job.inputs))
 
-rm(joinpath(job.local_dir, "job.tt"))
+rm(joinpath(job, "job.tt"))
+rm(joinpath(job, "pw2wan_wandn.in"))
+rm(joinpath(job, "pw2wan_wanup.in"))
 rm.(joinpath.((job.local_dir,), filter(x -> occursin("UPF", x), readdir(job.local_dir))))
 
 

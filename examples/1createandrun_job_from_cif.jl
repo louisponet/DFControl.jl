@@ -4,82 +4,114 @@ using DFControl
 
 #First go to your favourite Crystal structure database and download the .cif you want to use.
 #e.g. Si (F d -3 m :1) : http://www.crystallography.net/cod/9011998.cif
+cif_file = Downloads.download("http://www.crystallography.net/cod/9011998.cif", "Si.cif")
 
-#We want to run an 'scf' and 'bands' calculation using QuantumEspresso.
+# Construct your structure from it, and set the pseudos to one of the sets we defined in the previous example
+str = Structure(cif_file, name="Si")
+set_pseudos!(str, :pbesol)
 
+# Since we are going to run QuantumEspresso, we define the executables to be used
+pw_execs = [Exec("mpirun", "", :np => 4), Exec("pw.x", "/opt/qe/bin/", :nk => 4)]
 
-#Variables that will be passed to the `DFJob` constructor.
+# Then we generate the first input for our job, we name it scf, pass the executables to be used
+# and set some specific flags.
+# Afterwards the kpoints can also be set
+scf_input = DFInput{QE}("scf", pw_execs, :calculation => "scf")
+set_kpoints!(scf_input, (6,6,6,1,1,1))
+# Or
 
-name = "Si" #this name will also be given to the Structure inside the DFJob
-local_dir = "/home/ponet/Documents/Si"
-server_dir = "/home/ponet/Si"
-bin_dir = "/usr/local/bin" #this is defaulted to the users bin dir = "~/bin/", it is the directory where pw.x etc will be called from
+scf_input = DFInput{QE}("scf", pw_execs, :calculation => "scf",
+                        data=[InputData(:k_points, :automatic, (6,6,6,1,1,1))])
 
-execs = [Exec("mpirun", bin_dir, Dict{Symbol, Any}(:np => 24)), Exec("pw.x", bin_dir, Dict{Symbol, Any}(:nk => 2))]
- #These execs are what will ultimately run the input, namely they will get pasted one after the other in the line of the job file.
- #If you don't want to use mpirun, just insert an Exec().
+# Using these we can no define our job, if we would have more inputs they would be added
+# to the list [scf_input].
+# The flag => value pairs will set the specified flags to that value for all inputs in the job
+# that allow that flag to be set, so it's ideal for things like cutoffs and smearing etc.
+# The header can contain any lines that will be pasted in the job script in front of
+# the calculation lines.
+job = DFJob("Si", str, [scf_input],
+            :ecutwfc => 20, #these flags will be set_ on all inputs that are passed to the job
+            :verbosity => "high",
+            :conv_thr => 1e-6,
+            header=["export OMP_NUM_THREADS=1"])
 
-pseudoset = :pbesol #nonrelativistic calculation ( assumes you set up the pseudos, as demonstrated in the README)
-pseudospecifier = "paw" #this selects the correct pseudo if multiple belong to the pseudoset. If you don't specify this, the first one in the set will be used.
-
-#The header holds all the other information inside a job scriptfile that is not recognized as input and output.
-header = ["#SBATCH -N 1", "#SBATCH --ntasks-per-node=24",
-          "#SBATCH --time=24:00:00", "#SBATCH -p defpart",
-          "module load open-mpi/gcc/1.10.4-hfi", "module load mkl/2016.1.056"
-         ]
-
-#The various calculations we want to run and the flags and data to pass to them are defined in two ways:
-#   - calculation specific flags and data are associated with the calculation they belong to
-#   - common flags can be defined as Pair{Symbol, Any} varargs at the end of the constructor call.
-
-scf_data = Dict(:k_points => [6, 6, 6, 1, 1, 1], :flags => [:verbosity => "low"])
-bands_data = Dict(:k_points => [[0.5, 0.5, 0.5, 100.],
-                                [0.0, 0.0, 0.0, 100.],
-                                [0.0, 0.5, 0.0, 1.]],
-                  :flags => [:verbosity => "high", :nbnd => 8])
-
-nscf_data = merge(bands_data, Dict(:k_points => (10, 10, 10)))
- #the order here is the order in which the calculations will run! The first string in the tuple is the executable name that will be ran, which should be in the bin dir.
-
-#Now we load the cif file and create a `DFJob` from it.
-calculations= [:scf => (execs, scf_data), :bands => (execs, bands_data), :nscf => (execs, nscf_data)] 
-
-job = DFJob(name, local_dir, "/home/ponet/Downloads/9011998.cif", calculations,
-      :prefix       => "$name",
-      :restart_mode => "from_scratch",
-      :ecutwfc      => 18.0,
-      :mixing_mode  => "plain",
-      :mixing_beta  => 0.7,
-      :conv_thr     => 1.0e-8,
-      #kwargs
-      server_dir  = server_dir,
-      bin_dir     = bin_dir,
-      header      = header,
-      pseudoset  = :pbesol,
-      pseudospecifier = pseudospecifier
-     )
-# An additional kwarg is `server=getdefault_server()`, which is set to the server you have defined while following the setup in README.
-# This can ofcourse be setd to a different server.
-
-#Now the job can be submitted to the server to run.
+# Now the job can be submitted to be ran.
 submit(job)
-#this first saves the job and it's input files to the `job.local_dir` then pushes the `job.tt` file and the inputs to the `job.server_dir` on `job.server`, and runs the `qsub job.tt` command.
-#You can check the job.local_dir to see the input files and `job.tt` script.
+# this first saves the job and it's input files to the `job.local_dir` then pushes the `job.tt` file and the inputs to the `job.server_dir` on `job.server`, and tries to first submit it through slurm, otherwise just runs `bash job.tt`
+# You can check the job.local_dir to see the input files and `job.tt` script.
 
-#you can observe the slurm qstat by doing
-qstat()
-#or watch it by
-#these default to run the commands on the default server
+# If the job was submitted via slurm, one can check if it's running through
+slurm_isrunning(job)
 
-#hopefully everything went according to plan and we can watch our pulloutputs
+# Hopefully everything went according to plan and we can retrieve the outputs
 out = outputdata(job)
+# Or, to retrieve the output of a specific calculation,
+out = outputdata(job["scf"])
+
+# Indeed specific inputs of the job can be accessed through their name  
+# If for some reason we discover that smearing was needed, the flags related to that
+# can be changed either job-wide (the flag will be set for every input that allows for that flag):
+job[:occupations] = "smearing"
+job[:degauss] = 0.001
+# Or on a specific calculation
+job["scf"][:occupations] = "smearing"
+job["scf"][:degauss] = "smearing"
+
+# Next step would be to run a bands calculation:
+bands_in = gencalc_bands(job["scf"], high_symmetry_kpath(job.structure))
+# Here we generate a bands calculation using the scf as the template, and the k-points
+# generated from the structure symmetries.
+# k-points can also be passed as e.g. :
+bands_in = gencalc_bands(job["scf"], [(0.5, 0.5, 0.5, 10.0), (0.0, 0.0, 0.0, 1.0)])
+# mimicking the usual structure in the bands pw.x input.
+
+# Then we add the bands calculation to the job,
+push!(job, bands_in)
+# and since we already ran the scf we can do
+set_flow!(job, "scf" => false, "bands" => true)
+
+# The String => Bool pairs supplied to setflow will sequentially fuzzy match any name
+# in which the string occurs. i.e.
+set_flow!(job, "" => false, "bands" => true)
+# would first set all calculations to not run, followed by setting the bands calculation to run
+set_flow!(job, "" => false, "scf" => true)
+# would run calculations with both scf and nscf names.
+
+# Anyway now we submit the bands calculation
+set_flow!(job, "" => false, "bands" => true)
+submit(job)
 
 #now the bandstructure can be plotted
-bands = out["bands"][:bands]
+bands = outputdata(job["bands"])[:bands]
 #or
 bands = readbands(job["bands"])
+#or
+bands = readbands(job)
+# The last will search for a bands calculation in the job, otherwise it will use the output of an nscf calculation
+# to generate the bands
 
-fermi = readfermi(job["scf"])[:fermi]
+# similarly 
+fermi = outputdata(job["scf"])[:fermi]
+fermi = readfermi(job["scf"])
+fermi = readfermi(job)
+
 using Plots
 
+# Now the bands are plotted
 plot(bands, fermi=fermi)
+
+# To access the dos, we can first generate an nscf to generate a uniform k-grid calculation
+# followed by a projwfc
+
+push!(job, gencalc_nscf(job["scf"], (6,6,6)))
+push!(job, gencalc_projwfc(job["nscf"], fermi-10, fermi+10, 0.1))
+
+setflow!(job, "" => false, "prowjfc" => true, "nscf"=>true)
+submit(job)
+
+# Now we can do the following:
+plot(job, -5, 5)
+# which will plot the band structure colored by the dos between fermi-5 and fermi+5
+
+
+# This concludes this example.

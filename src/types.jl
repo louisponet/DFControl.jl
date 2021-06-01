@@ -227,7 +227,7 @@ function inputparser(exec::Exec)
     end
 end
 
-function setflags!(exec::Exec, flags...)
+function set_flags!(exec::Exec, flags...)
     for (f, val) in flags
         flag = isa(f, String) ? getfirst(x -> x.name == f, exec.flags) : getfirst(x -> x.symbol == f, exec.flags)
         if flag != nothing
@@ -247,7 +247,7 @@ function setflags!(exec::Exec, flags...)
     exec.flags
 end
 
-function rmflags!(exec::Exec, flags...)
+function rm_flags!(exec::Exec, flags...)
     for f in flags
         if isa(f, String)
             filter!(x -> x.name != f, exec.flags)
@@ -258,7 +258,7 @@ function rmflags!(exec::Exec, flags...)
     exec.flags
 end
 hasflag(exec::Exec, s::Symbol) = findfirst(x->x.symbol == s, exec.flags) != nothing
-setexecdir!(exec::Exec, dir) = exec.dir = dir
+set_execdir!(exec::Exec, dir) = exec.dir = dir
 
 Base.:(==)(e1::Exec, e2::Exec) = all(x -> getfield(e1, x) == getfield(e2, x), fieldnames(Exec))
 

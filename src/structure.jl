@@ -78,12 +78,12 @@ isnoncolin(str::Structure) =
     any(x -> norm(magnetization(x)) > 0 &&!isapprox(abs(normalize(magnetization(x)) ⋅ [0, 0, 1]), 1.0), atoms(str))
 
 """
-    setprojections!(str::Structure, projs::Pair...; soc=false)
+    set_projections!(str::Structure, projs::Pair...; soc=false)
 
 Sets the projections of the specified atoms. `projs` has to be of form `:atsym => [:proj]`,
 where proj = :s, :p, :d, :f, etc. If `soc` is set to `true` both up and down projections will be taken into account.
 """
-function setprojections!(str::Structure, projs::Pair...; soc = false, kwargs...)
+function set_projections!(str::Structure, projs::Pair...; soc = false, kwargs...)
     projdict = Dict(projs)
     for at in unique(str.atoms)
         if !haskey(projdict, name(at))
@@ -148,7 +148,7 @@ function cif2structure(cif_file::String; structure_name = "NoName")
     return structure
 end
 
-function setpseudos!(structure::AbstractStructure, atoms::Vector{<:AbstractAtom}, set::Symbol, specifier::String = ""; kwargs...)
+function set_pseudos!(structure::AbstractStructure, atoms::Vector{<:AbstractAtom}, set::Symbol, specifier::String = ""; kwargs...)
 	dir = getdefault_pseudodir(set)
 	if dir == nothing
 		@warn "No pseudos found for set $set."
@@ -159,21 +159,21 @@ function setpseudos!(structure::AbstractStructure, atoms::Vector{<:AbstractAtom}
         if pseudo == nothing
             @warn "Pseudo for $(name(at)) at index $i not found in set $set."
         else
-            setpseudo!(at, pseudo; kwargs...)
+            set_pseudo!(at, pseudo; kwargs...)
         end
     end
 end
 
-setpseudos!(structure::AbstractStructure, atname::Symbol, set::Symbol, specifier::String = ""; kwargs...) =
-	setpseudos!(structure, atoms(structure, atname), set, specifier; kwargs...)
+set_pseudos!(structure::AbstractStructure, atname::Symbol, set::Symbol, specifier::String = ""; kwargs...) =
+	set_pseudos!(structure, atoms(structure, atname), set, specifier; kwargs...)
 
-setpseudos!(structure::AbstractStructure, set::Symbol, specifier::String = ""; kwargs...) =
-	setpseudos!(structure, atoms(structure), set, specifier; kwargs...)
+set_pseudos!(structure::AbstractStructure, set::Symbol, specifier::String = ""; kwargs...) =
+	set_pseudos!(structure, atoms(structure), set, specifier; kwargs...)
 
-function setpseudos!(structure::AbstractStructure, at_pseudos::Pair{Symbol,Pseudo}...; kwargs...)
+function set_pseudos!(structure::AbstractStructure, at_pseudos::Pair{Symbol,Pseudo}...; kwargs...)
     for (atsym, pseudo) in at_pseudos
         for at in atoms(structure, atsym)
-            setpseudo!(at, pseudo; kwargs...)
+            set_pseudo!(at, pseudo; kwargs...)
         end
     end
 end
@@ -434,7 +434,7 @@ end
     high_symmetry_kpath(j::DFJob, npoints_per_segment::Int; package=QE, kwargs...)
 
 Generates a QE bands calculation compliant high symmetry kpath, to be used with
-e.g. `setkpoints!(bands_input, kpoints)`. 
+e.g. `set_kpoints!(bands_input, kpoints)`. 
 """
 function high_symmetry_kpath(s::AbstractStructure, npoints_per_segment::Int; package=QE, kwargs...)
     kpoints, kpath = high_symmetry_kpoints(s)
