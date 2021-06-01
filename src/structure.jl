@@ -179,21 +179,22 @@ function setpseudos!(structure::AbstractStructure, at_pseudos::Pair{Symbol,Pseud
 end
 
 """
-    create_supercell(structure::AbstractStructure, na::Int, nb::Int, nc::Int;make_afm=false)
+    create_supercell(structure::AbstractStructure, na::Int, nb::Int, nc::Int; make_afm=false)
+    create_supercell(structure::AbstractStructure, na::UnitRange, nb::UnitRange, nc::UnitRange; make_afm=false)
 
-Takes a structure and creates a supercell from it with the given amount of extra cells (`na, nb, nc`) along the a, b, c direction.
-If `make_afm` is set to `true` all the labels and magnetizations of the magnetic atoms will be reversed.
+Takes a structure and creates a supercell from it with: the given amount of additional cells if (`na::Int, nb::Int, nc::Int`) along the a, b, c direction, or amount of cells specified by the ranges i.e. `-1:1, -1:1, -1:1` would create a 3x3x3 supercell.
+If `make_afm` is set to `true` all the labels and magnetizations of the magnetic atoms will be reversed in a checkerboard fashion.
 """
-function create_supercell(structure::AbstractStructure, na::Int, nb::Int, nc::Int; make_afm = false)
+function create_supercell(structure::AbstractStructure, na::UnitRange, nb::UnitRange, nc::UnitRange; make_afm = false)
     orig_ats   = atoms(structure)
     orig_cell  = cell(structure)
-    scale_mat  = diagm(0 => 1 .+ [na, nb, nc])
+    scale_mat  = diagm(0 => length.([na, nb, nc]))
 
     orig_uats = unique(orig_ats)
 
     new_cell   = orig_cell * scale_mat
     new_atoms  = eltype(orig_ats)[]
-    for ia in 0:na, ib in 0:nb, ic in 0:nc
+    for ia in na, ib in nb, ic in nc
         transl_vec = orig_cell * [ia, ib, ic]
         factor = isodd(ia + ib + ic) ? -1 : 1
         for at in orig_ats
@@ -210,6 +211,9 @@ function create_supercell(structure::AbstractStructure, na::Int, nb::Int, nc::In
     return Structure(name(structure), Mat3(new_cell), new_atoms, data(structure))
 end
 
+create_supercell(structure::AbstractStructure, na::Int, nb::Int, nc::Int; make_afm = false) =
+    create_supercell(structure, 0:na, 0:nb, 0:nc)
+   
 "Rescales the cell of the structure."
 function scale_cell!(structure::Structure, scalemat::Matrix)
 	structure.cell *= scalemat
@@ -287,7 +291,7 @@ function update_geometry!(str1::AbstractStructure, str2::AbstractStructure)
 end
 
 polyhedron(at::AbstractAtom, str::AbstractStructure, order::Int) =
-    polyhedron(at, atoms(str), order)
+    polyhedron(at, atoms(create_supercell(str, -1:1, -1:1, -1:1)), order)
 
 const DEFAULT_TOLERANCE = 1e-5
 
