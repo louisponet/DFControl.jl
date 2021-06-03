@@ -4,12 +4,12 @@ import Base: parse
 #this is all pretty hacky with regards to the new structure and atom api. can for sure be a lot better!
 "Quantum espresso card option parser"
 function cardoption(line)
-	sline = split(line)
-	if length(sline) < 2 && lowercase(sline[1])=="k_points"
-		return :tpiba
-	else
-	  	return Symbol(match(r"((?:[a-z][a-z0-9_]*))", sline[2]).match)
-  	end
+    sline = split(line)
+    if length(sline) < 2 && lowercase(sline[1])=="k_points"
+        return :tpiba
+    else
+          return Symbol(match(r"((?:[a-z][a-z0-9_]*))", sline[2]).match)
+      end
 end
 
 function qe_parse_time(str::AbstractString)
@@ -32,32 +32,23 @@ function qe_parse_time(str::AbstractString)
     return t
 end
 
-"""
-    qe_read_output(filename::String, T=Float64)
+function qe_read_output(input::DFInput{QE}, args...; kwargs...)
+    out = Dict{Symbol, Any}()
+    if isprojwfccalc(input)
+        return qe_read_projwfc_output(input, args...; kwargs...)
+    elseif ishpcalc(input)
+        return qe_read_hp_output(input, args...; kwargs...)
+    else
+        return qe_read_pw_output(outpath(input))
+    end
+end
 
-Reads a generic quantum espresso input, returns a dictionary with all found data in the file.
-Possible keys:
- - `:fermi`
- - `:polarization`
- - `:pol_mod`
- - `:k_cryst`
- - `:k_cart`
- - `:alat`
- - `:total_force`
- - `:colin_mag_moments`
- - `:bands`
- - `:accuracy`
- - `:converged`
- - `:total_energy`
- - `:magnetization`
- - `:Hubbard_occupation`
- - `:total_magnetization`
- - `:n_KS_states`
- - `:timing`
- - `:initial_structure`
- - `:final_structure`
 """
-function qe_read_output(filename::String, T=Float64; cleanup = true)
+    qe_read_pw_output(filename::String, T=Float64)
+
+Reads a pw quantum espresso input, returns a dictionary with all found data in the file.
+"""
+function qe_read_pw_output(filename::String, T=Float64; cleanup = true)
     out = Dict{Symbol,Any}()
     colincalc = false
     open(filename, "r") do f
@@ -373,60 +364,6 @@ function qe_read_output(filename::String, T=Float64; cleanup = true)
     end
 end
 
-function qe_read_output(input::DFInput{QE}, args...; kwargs...)
-    out = Dict{Symbol, Any}()
-    if isprojwfccalc(input)
-        pdos_files = searchdir(dir(input), ".pdos_")
-        if flag(input, :kresolveddos) == true
-            out[:heatmaps]   = Vector{Matrix{Float64}}()
-            out[:ytickvals] = Vector{Vector{Float64}}()
-            out[:yticks]    = Vector{Vector{Float64}}()
-            for f in pdos_files
-                th, vals, ticks = qe_read_kpdos(joinpath(dir(input), f), args...; kwargs...)
-                push!(out[:heatmaps], th)
-                push!(out[:ytickvals], vals)
-                push!(out[:yticks], ticks)
-            end
-        else
-            out[:pdos] = NamedTuple{(:energies, :values), Tuple{Vector{Float64}, Matrix{Float64}}}[]
-            for f in pdos_files
-                energs, vals = qe_read_pdos(joinpath(dir(input), f), args...; kwargs...)
-                push!(out[:pdos], (energies=energs, values=vals))
-            end
-        end
-        out[:states], out[:bands] = qe_read_projwfc(outpath(input))
-        return out
-    else
-        return qe_read_output(outpath(input))
-    end
-end
-"""
-    qe_read_bands(filename::String, T=Float64)
-
-Reads the output file of a 'bands' calculation in Quantum Espresso.
-Returns an array of DFBands each with the same k_points and their respective energies.
-"""
-qe_read_bands_file(filename::String, T=Float64) = qe_read_output(filename, T)[:bands]
-
-"""
-    qe_read_ks_from_output(filename::String, T=Float64)
-
-Read k-points from a Quantum Espresso bands output file in cartesian (2pi/alat in Angstrom^-1!) and crystalline coordinates.
-Returns (k_points_cart,k_points_cryst).
-"""
-function qe_read_ks_from_output(filename::String, T=Float64)
-    t = qe_read_output(filename, T)
-    return t[:k_cart], t[:k_cryst]
-end
-
-"""
-    qe_read_fermi_from_output(filename::String,T=Float64)
-
-Reads the Fermi level from a Quantum Espresso scf calculation output file
-(if there is one).
-"""
-qe_read_fermi_from_output(filename::String, T=Float64) = qe_read_output(filename, T)[:fermi]
-
 """
     qe_read_kpdos(filename::String,column=1;fermi=0)
 
@@ -466,6 +403,30 @@ function qe_read_pdos(filename::String)
     values   = read_tmp[:, 2:end]
 
     return energies, values
+end
+
+function qe_read_projwfc_output(input::DFInput{QE}, args...; kwargs...)
+    out = Dict{Symbol}()
+    pdos_files = searchdir(dir(input), ".pdos_")
+    if flag(input, :kresolveddos) == true
+        out[:heatmaps]   = Vector{Matrix{Float64}}()
+        out[:ytickvals] = Vector{Vector{Float64}}()
+        out[:yticks]    = Vector{Vector{Float64}}()
+        for f in pdos_files
+            th, vals, ticks = qe_read_kpdos(joinpath(dir(input), f), args...; kwargs...)
+            push!(out[:heatmaps], th)
+            push!(out[:ytickvals], vals)
+            push!(out[:yticks], ticks)
+        end
+    else
+        out[:pdos] = NamedTuple{(:energies, :values), Tuple{Vector{Float64}, Matrix{Float64}}}[]
+        for f in pdos_files
+            energs, vals = qe_read_pdos(joinpath(dir(input), f), args...; kwargs...)
+            push!(out[:pdos], (energies=energs, values=vals))
+        end
+    end
+    out[:states], out[:bands] = qe_read_projwfc(outpath(input))
+    return out
 end
 
 """
@@ -544,25 +505,49 @@ function qe_read_projwfc(filename::String)
     return states, bands
 end
 
-"""
-    qe_read_polarization(filename::String, T=Float64)
-
-Returns the polarization and modulus.
-"""
-function qe_read_polarization(filename::String, T=Float64)
-    t = qe_read_output(filename, T)
-    return t[:polarization], t[:pol_mod]
-end
-
-qe_read_vcrel(filename::String, T=Float64) =
-	qe_read_output(filename, T) do x
-		return x[:cell_parameters], x[:alat], x[:atomic_positions], x[:pos_option]
+function qe_read_hp_output(input::DFInput{QE})
+    out = Dict()
+    open(outfilename(input), "r") do f
+        while !eof(f)
+            line = readline(f)
+            if occursin("will be perturbed", line)
+                sline = split(line)
+                nat = parse(Int, sline[3])
+                out[:pert_at] = []
+                readline(f)
+                for i=1:nat
+                    sline = split(readline(f))
+                    push!(out[:pert_at], (name=Symbol(sline[2]), position = Point3(parse.(Float64, sline[end-3:end-1])...)))
+                end
+            end
+        end
     end
+    hubbard_file = joinpath(dir(input), "$(input[:prefix]).Hubbard_parameters.dat") 
+    if ispath(hubbard_file)
+        open(hubbard_file, "r") do f
+            while !eof(f)
+                line = strip(readline(f))
+                if line == "Hubbard U parameters:"
+                    out[:Hubbard_U] = []
+                    readline(f)
+                    readline(f)
+                    for i = 1:length(out[:pert_at])
+                        sline = split(readline(f))
+                        push!(out[:Hubbard_U], (orig_name=Symbol(sline[3]),
+                                                new_name=Symbol(sline[6]),
+                                                U=parse(Float64, sline[7])))
+                    end
+                end
+            end
+        end
+    end
+    return out    
+end
 
 function alat(flags, pop=false)
     if haskey(flags, :A)
         alat = pop ? pop!(flags, :A) : flags[:A]
-		alat *= 1Ang
+        alat *= 1Ang
     elseif haskey(flags, :celldm_1)
         alat = pop ? pop!(flags, :celldm_1) : flags[:celldm_1]
         alat *= 1a₀
@@ -593,44 +578,44 @@ function extract_cell!(flags, cell_block)
 end
 
 function qe_DFTU(speciesid::Int, parsed_flags::SymAnyDict)
-	U  = 0.0
-	J0 = 0.0
-	J  = [0.0]
-	α  = 0.0
-	β  = 0.0
-	if haskey(parsed_flags, :Hubbard_U) && length(parsed_flags[:Hubbard_U]) >= speciesid
-		U = parsed_flags[:Hubbard_U][speciesid]
-	end
-	if haskey(parsed_flags, :Hubbard_J0) && length(parsed_flags[:Hubbard_J0]) >= speciesid
-		J0 = parsed_flags[:Hubbard_J0][speciesid]
-	end
-	if haskey(parsed_flags, :Hubbard_J) && length(parsed_flags[:Hubbard_J]) >= speciesid
-		J = Float64.(parsed_flags[:Hubbard_J][:, speciesid])
-	end
-	if haskey(parsed_flags, :Hubbard_alpha) && length(parsed_flags[:Hubbard_alpha]) >= speciesid
-		α = parsed_flags[:Hubbard_alpha][speciesid]
-	end
-	if haskey(parsed_flags, :Hubbard_beta) && length(parsed_flags[:Hubbard_beta]) >= speciesid
-		β = parsed_flags[:Hubbard_beta][speciesid]
-	end
-	return DFTU{Float64}(U=U, J0=J0, α=α, β=β, J = sum(J) == 0 ? [0.0] : J)
+    U  = 0.0
+    J0 = 0.0
+    J  = [0.0]
+    α  = 0.0
+    β  = 0.0
+    if haskey(parsed_flags, :Hubbard_U) && length(parsed_flags[:Hubbard_U]) >= speciesid
+        U = parsed_flags[:Hubbard_U][speciesid]
+    end
+    if haskey(parsed_flags, :Hubbard_J0) && length(parsed_flags[:Hubbard_J0]) >= speciesid
+        J0 = parsed_flags[:Hubbard_J0][speciesid]
+    end
+    if haskey(parsed_flags, :Hubbard_J) && length(parsed_flags[:Hubbard_J]) >= speciesid
+        J = Float64.(parsed_flags[:Hubbard_J][:, speciesid])
+    end
+    if haskey(parsed_flags, :Hubbard_alpha) && length(parsed_flags[:Hubbard_alpha]) >= speciesid
+        α = parsed_flags[:Hubbard_alpha][speciesid]
+    end
+    if haskey(parsed_flags, :Hubbard_beta) && length(parsed_flags[:Hubbard_beta]) >= speciesid
+        β = parsed_flags[:Hubbard_beta][speciesid]
+    end
+    return DFTU{Float64}(U=U, J0=J0, α=α, β=β, J = sum(J) == 0 ? [0.0] : J)
 end
 
 degree2π(ang) = ang / 180 * π
 
 function qe_magnetization(atid::Int, parsed_flags::SymAnyDict)
-	θ = haskey(parsed_flags, :angle1) && length(parsed_flags[:angle1]) >= atid ? parsed_flags[:angle1][atid] : 0.0
-	θ = degree2π(θ)
-	ϕ = haskey(parsed_flags, :angle2) && length(parsed_flags[:angle2]) >= atid ? parsed_flags[:angle2][atid] : 0.0
-	ϕ = degree2π(ϕ)
+    θ = haskey(parsed_flags, :angle1) && length(parsed_flags[:angle1]) >= atid ? parsed_flags[:angle1][atid] : 0.0
+    θ = degree2π(θ)
+    ϕ = haskey(parsed_flags, :angle2) && length(parsed_flags[:angle2]) >= atid ? parsed_flags[:angle2][atid] : 0.0
+    ϕ = degree2π(ϕ)
 
-	start = haskey(parsed_flags, :starting_magnetization) && length(parsed_flags[:starting_magnetization]) >= atid ?
-		parsed_flags[:starting_magnetization][atid] : 0.0
-	if start isa AbstractVector
-		return Vec3{Float64}(start...)
-	else
-		return start * Vec3{Float64}(sin(θ) * cos(ϕ), sin(θ) * sin(ϕ), cos(θ))
-	end
+    start = haskey(parsed_flags, :starting_magnetization) && length(parsed_flags[:starting_magnetization]) >= atid ?
+        parsed_flags[:starting_magnetization][atid] : 0.0
+    if start isa AbstractVector
+        return Vec3{Float64}(start...)
+    else
+        return start * Vec3{Float64}(sin(θ) * cos(ϕ), sin(θ) * sin(ϕ), cos(θ))
+    end
 end
 
 function extract_atoms!(parsed_flags, atsyms, atom_block, pseudo_block, cell::Mat3{LT}) where {LT <: Length}
@@ -727,7 +712,7 @@ function qe_read_input(filename; execs=[Exec("pw.x")], run=true, structure_name=
             continue
         end
         if typ <: AbstractArray
-	        typ = eltype(typ)
+            typ = eltype(typ)
         end
         tval = typ != String ? parse.((typ,), split(v)) : v
         parsed_flags[sym] = length(tval) == 1 ? tval[1] : tval
@@ -881,8 +866,8 @@ function save(input::DFInput{QE}, structure, filename::String=inpath(input); rel
     
     # setting hubbard flags 
     pseudo_dir = pseudo(atoms(structure)[1]).dir # Pseudos should be all sanitized by now
-   	set_flags!(input, :pseudo_dir => pseudo_dir; print=false)
-   	
+       set_flags!(input, :pseudo_dir => pseudo_dir; print=false)
+       
     open(filename, "w") do f
         if exec(input, "ph.x") !== nothing
             write(f, "--\n")
@@ -947,7 +932,7 @@ function save(input::DFInput{QE}, structure, filename::String=inpath(input); rel
     end
     #TODO handle writing hubbard and magnetization better
     delete!.((input.flags,), (:Hubbard_U, :Hubbard_J0, :Hubbard_J, :Hubbard_alpha, :Hubbard_beta,
-    						  :starting_magnetization, :angle1, :angle2, :pseudo_dir))
+                              :starting_magnetization, :angle1, :angle2, :pseudo_dir))
 end
 
 function write_structure(f, input::DFInput{QE}, structure; relative_positions=true)
@@ -971,9 +956,9 @@ function write_structure(f, input::DFInput{QE}, structure; relative_positions=tr
     write(f, "\n")
 
     if relative_positions
-	    write(f, "ATOMIC_POSITIONS (crystal) \n")
+        write(f, "ATOMIC_POSITIONS (crystal) \n")
     else
-	    write(f, "ATOMIC_POSITIONS (angstrom) \n")
+        write(f, "ATOMIC_POSITIONS (angstrom) \n")
     end
     write.((f, ), atom_lines)
     write(f, "\n")

@@ -183,6 +183,8 @@ issoccalc(input::DFInput{QE}) = flag(input, :lspinorb) == true
 issoccalc(input::DFInput{Wannier90}) = flag(input, :spinors) == true
 issoccalc(input::DFInput) = false
 
+ishpcalc(input::DFInput{QE}) = hasexec(input, "hp.x")
+
 #TODO review this!
 outdata(input::DFInput) = input.outdata
 hasoutput(input::DFInput) = !isempty(outdata(input)) || hasoutfile(input)

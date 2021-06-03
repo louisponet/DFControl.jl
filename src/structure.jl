@@ -211,8 +211,8 @@ function create_supercell(structure::AbstractStructure, na::UnitRange, nb::UnitR
     return Structure(name(structure), Mat3(new_cell), new_atoms, data(structure))
 end
 
-create_supercell(structure::AbstractStructure, na::Int, nb::Int, nc::Int; make_afm = false) =
-    create_supercell(structure, 0:na, 0:nb, 0:nc)
+create_supercell(structure::AbstractStructure, na::Int, nb::Int, nc::Int; make_afm=false) =
+    create_supercell(structure, 0:na, 0:nb, 0:nc; make_afm=make_afm)
    
 "Rescales the cell of the structure."
 function scale_cell!(structure::Structure, scalemat::Matrix)
