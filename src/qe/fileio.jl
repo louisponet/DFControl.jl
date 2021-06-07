@@ -443,15 +443,38 @@ function qe_read_projwfc(filename::String)
     lines  = readlines(filename) .|> strip
 
     i_prob_sizes = findfirst(x -> !isempty(x) && x[1:4] == "Prob", lines)
-    natomwfc = parse(Int, split(lines[i_prob_sizes + 1])[3])
-    nx = parse(Int, split(lines[i_prob_sizes + 2])[3])
-    nbnd = parse(Int, split(lines[i_prob_sizes + 3])[3])
-    nkstot =  parse(Int, split(lines[i_prob_sizes + 4])[3])
-    npwx =  parse(Int, split(lines[i_prob_sizes + 5])[3])
-    nkb =  parse(Int, split(lines[i_prob_sizes + 6])[3])
+    istart = findfirst(x -> x == "Atomic states used for projection", lines) + 2
+
+    natomwfc = 0
+    nx       = 0
+    nbnd     = 0
+    nkstot   = 0
+    npwx     = 0
+    nkb      = 0
+    for i = i_prob_sizes+1:istart-3
+        l = lines[i]
+        if isempty(l)
+            break
+        end
+        sline = split(l)
+        v = parse(Int, sline[3])
+        if sline[1] == "natomwfc"
+            natomwfc = v
+        elseif sline[1] == "nx"
+            nx = v
+        elseif sline[1] == "nbnd"
+            nbnd = v
+        elseif sline[1] == "nkstot"
+            nkstot = v
+        elseif sline[1] == "npwx"
+            npwx = v
+        elseif sline[1] == "nkb"
+            nkb = v
+        end
+    end
+    
     state_tuple = NamedTuple{(:atom_id, :wfc_id, :l, :j, :m), Tuple{Int, Int, Float64, Float64, Float64}}
     states = state_tuple[]
-    istart = findfirst(x -> x == "Atomic states used for projection", lines) + 2
     for i = 1:natomwfc
         l = replace_multiple(lines[i + istart], "(" => " ", ")" => " ", "," => "", "=" => " ", ":" => "", "#" => " ") |> split
         if length(l) == 11 #spinpolarized
