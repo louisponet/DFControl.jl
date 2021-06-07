@@ -32,6 +32,19 @@ function maybe_register_job(abspath::String)
     write_job_registry()
 end
 
+function last_job_version(dir::String)
+    verdir = joinpath(dir, "versions")
+    if ispath(verdir)
+        versions = readdir(verdir)
+        return parse(Int, versions[end])
+    else
+        return 1
+    end
+end
+
+version_path(dir::String, version::Int) = joinpath(dir, "versions", "$version")
+job_versions(dir::String) = readdir(joinpath(dir, "versions"))
+
 #TODO should we also create a config file for each job with stuff like server etc? and other config things,
 #      which if not supplied could contain the default stuff?
 """
@@ -46,16 +59,19 @@ Represents a full DFT job with multiple input files and calculations.
     server_dir   ::String = ""
     header       ::Vector{String} = getdefault_jobheader()
     metadata     ::Dict = Dict()
-    # version      ::Int = 1
-    function DFJob(name, structure, calculations, local_dir, server, server_dir, header, metadata)
+    version      ::Int = last_job_version(local_dir) 
+    function DFJob(name, structure, calculations, local_dir, server, server_dir, header, metadata, version)
         if !isabspath(local_dir)
             local_dir = abspath(local_dir)
         end
         if isempty(structure.name)
             structure.name = split(name, "_")[1]
         end
-        maybe_register_job(local_dir)
-        return new(name, structure, calculations, local_dir, server, server_dir, header, metadata)
+        out = new(name, structure, calculations, local_dir, server, server_dir, header, metadata, version)
+        # TODO add check_version, and if it doesn't match the one that's currently in the main directory,
+        # load the previous one from the versions
+        !occursin("versions", local_dir) && maybe_register_job(local_dir)
+        return out
     end
 end
 
@@ -107,7 +123,7 @@ Loads and returns a local DFJob.
 If `job_dir` is not a valid path the JOB_REGISTRY will be scanned for a job with matching directory.
 The kwargs will be passed to the `DFJob` constructor.
 """
-function DFJob(job_dir::String; job_fuzzy="job", kwargs...)
+function DFJob(job_dir::String; job_fuzzy="job", version = nothing, kwargs...)
     if ispath(job_dir)
         real_path = job_dir
     else
@@ -124,8 +140,36 @@ function DFJob(job_dir::String; job_fuzzy="job", kwargs...)
             end
         end
     end
-    return DFJob(;merge(merge((local_dir=real_path,), read_job_inputs(joinpath(real_path, searchdir(real_path, job_fuzzy)[1]))), kwargs)...)
+    real_version = version === nothing ? last_job_version(real_path) : version
+    return DFJob(;merge(merge((local_dir=real_path,version=real_version), read_job_inputs(joinpath(real_path, searchdir(real_path, job_fuzzy)[1]))), kwargs)...)
+
 end        
+
+function switch_version(job::DFJob, version)
+    cur_version = job.version
+    if version != cur_version
+        verpath = version_path(job.local_dir, version)
+        if !ispath(verpath)
+            err_str = "Requested job version ($version) is invalid, please choose from:\n"
+            for jv in job_versions(job.local_dir)
+                err_str *= "\t$jv\n"
+            end
+            @error err_str
+        else
+            maybe_increment_version(job)
+            out = DFJob(verpath)
+            curdir = job.local_dir
+            mv(out, job.local_dir)
+            rm(verpath, recursive=true)
+            for f in fieldnames(DFJob)
+                setfield!(job, f, getfield(out,f))
+            end
+            set_localdir!(job, curdir)
+            job.version = version
+        end
+    end
+    return job
+end
 
 name(job) = job.name
 #-------------------BEGINNING GENERAL SECTION-------------#
@@ -271,4 +315,33 @@ function Base.pop!(job::DFJob, name::String)
 end
 
 searchdir(job::DFJob, str::AbstractString) = joinpath.((job,), searchdir(job.local_dir, str))
+
+function maybe_increment_version(job::DFJob)
+    version_path = joinpath(job, "versions")
+    if !ispath(version_path)
+        mkpath(version_path)
+        return
+    else
+        if ispath(joinpath(job, "job.tt"))
+            vpath = joinpath(version_path, "$(job.version)")
+            mkpath(vpath)
+            mv(job, vpath)
+            job.version = last_job_version(job.local_dir) + 1
+        end
+    end
+end
+
+function Base.mv(job::DFJob, dest::String)
+    tjob = DFJob(job.local_dir)
+    mv(joinpath(tjob, "job.tt"), joinpath(dest, "job.tt"))
+    for i in inputs(tjob)
+        mv(i, dest)
+    end
+    outputs_path = joinpath(job, "outputs")
+    if ispath(outputs_path)
+        mv(outputs_path, joinpath(dest, "outputs"))
+    end
+end
+
+
 

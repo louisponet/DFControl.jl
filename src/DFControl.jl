@@ -87,7 +87,7 @@ module DFControl
         @require Glimpse = "f6e19d58-12a4-5927-8606-ac30a9ce9b69" include("display/glimpse.jl")
 		merge!(Unitful.basefactors, localunits)
 		Unitful.register(@__MODULE__)
-		global JOB_REGISTRY = readlines(config_path("job_registry.txt"))
+		append!(JOB_REGISTRY, readlines(config_path("job_registry.txt")))
     end
 
     const pythonpath = Sys.iswindows() ? joinpath(depsdir, "python2", "python") : joinpath(dirname(@__DIR__), "deps", "python2", "bin", "python")

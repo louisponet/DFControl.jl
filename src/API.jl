@@ -19,7 +19,7 @@ export gencalc_scf, gencalc_vcrelax, gencalc_nscf, gencalc_bands,
 include("jobAPI.jl")
 #Basic Job Control Functionality
 export save, submit, abort, set_flow!, set_headerword!, isrunning, progressreport,
-       set_serverdir!, set_localdir!, structure, scale_cell!, volume
+       set_serverdir!, set_localdir!, structure, scale_cell!, volume, switch_version
 
 #Basic Interaction with DFInputs inside DFJob
 export searchinput, searchinputs, set_cutoffs!
