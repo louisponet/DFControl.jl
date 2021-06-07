@@ -1,4 +1,37 @@
-#here all the different input structures for the different calculations go
+function write_job_registry()
+    open(config_path("job_registry.txt"), "w") do f
+        for j in JOB_REGISTRY
+            write(f, "$j\n")
+        end
+    end
+end
+
+function cleanup_job_registry()
+    stale_ids = findall(!ispath, JOB_REGISTRY)
+    if stale_ids !== nothing
+        jobs_to_remove = JOB_REGISTRY[stale_ids] 
+        message = "Removing $(length(jobs_to_remove)) stale jobs (job folder removed) from the registry:\n"
+        for j in jobs_to_remove
+            message *= "\t$j\n"
+        end
+        @warn message
+        deleteat!(JOB_REGISTRY, stale_ids)
+    end
+    write_job_registry()
+end
+
+function maybe_register_job(abspath::String)
+    if !ispath(abspath)
+        push!(JOB_REGISTRY, abspath)
+    else
+        jid = findfirst(isequal(abspath), JOB_REGISTRY)
+        if jid === nothing
+            push!(JOB_REGISTRY, abspath)
+        end
+    end
+    write_job_registry()
+end
+
 #TODO should we also create a config file for each job with stuff like server etc? and other config things,
 #      which if not supplied could contain the default stuff?
 """
@@ -13,6 +46,7 @@ Represents a full DFT job with multiple input files and calculations.
     server_dir   ::String = ""
     header       ::Vector{String} = getdefault_jobheader()
     metadata     ::Dict = Dict()
+    # version      ::Int = 1
     function DFJob(name, structure, calculations, local_dir, server, server_dir, header, metadata)
         if !isabspath(local_dir)
             local_dir = abspath(local_dir)
@@ -20,6 +54,7 @@ Represents a full DFT job with multiple input files and calculations.
         if isempty(structure.name)
             structure.name = split(name, "_")[1]
         end
+        maybe_register_job(local_dir)
         return new(name, structure, calculations, local_dir, server, server_dir, header, metadata)
     end
 end
@@ -66,12 +101,31 @@ function DFJob(job::DFJob, flagstoset...; cell_=copy(cell(job)), atoms_=copy(ato
 end
 
 """
-    DFJob(job_dir::String, job_fuzzy = "job"; kwargs...)
+    DFJob(job_dir::String; job_fuzzy = "job", kwargs...)
 
-Loads and returns a local DFJob. kwargs will be passed to the constructor.
+Loads and returns a local DFJob.
+If `job_dir` is not a valid path the JOB_REGISTRY will be scanned for a job with matching directory.
+The kwargs will be passed to the `DFJob` constructor.
 """
-DFJob(job_dir::String, job_fuzzy="job"; kwargs...) =
-    DFJob(;merge(merge((local_dir=job_dir,), read_job_inputs(joinpath(job_dir, searchdir(job_dir, job_fuzzy)[1]))), kwargs)...)
+function DFJob(job_dir::String; job_fuzzy="job", kwargs...)
+    if ispath(job_dir)
+        real_path = job_dir
+    else
+        matching_jobs = filter(x -> occursin(job_dir, x), JOB_REGISTRY)
+        if length(matching_jobs) == 1
+            real_path = matching_jobs[1]
+        else
+            menu = RadioMenu(matching_jobs)
+            choice = request("Multiple matching jobs were found, choose one:", menu)
+            if choice != -1
+                real_path = matching_jobs[choice]
+            else
+                return
+            end
+        end
+    end
+    return DFJob(;merge(merge((local_dir=real_path,), read_job_inputs(joinpath(real_path, searchdir(real_path, job_fuzzy)[1]))), kwargs)...)
+end        
 
 name(job) = job.name
 #-------------------BEGINNING GENERAL SECTION-------------#

@@ -1,6 +1,7 @@
 "File with all the user defaults inside it"
 # const default_file = abspath(homedir(),".julia","config","DFControl", "user_defaults.jl")
-const default_file = occursin("cache", first(Base.DEPOT_PATH)) ? abspath(Base.DEPOT_PATH[2], "config","DFControl", "user_defaults.jl") : abspath(Base.DEPOT_PATH[1], "config","DFControl", "user_defaults.jl")
+const default_file = config_path("user_defaults.jl")
+
 const default_pseudodirs = Dict{Symbol, String}()
 const default_pseudos = Dict{Symbol, Dict{Symbol, Vector{Pseudo}}}()
 const default_jobheader = [""]
@@ -41,7 +42,6 @@ function removedefault_pseudodir(pseudo_symbol::Symbol)
     if haskey(default_pseudodirs, pseudo_symbol)
         delete!(default_pseudodirs, pseudo_symbol)
         rm_expr_lhs(default_file, :(default_pseudodirs[$(QuoteNode(pseudo_symbol))]))
-        # removedefault_pseudos(pseudo_symbol)
     end
 end
 

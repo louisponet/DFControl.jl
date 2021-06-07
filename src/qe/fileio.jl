@@ -787,6 +787,10 @@ function qe_read_input(filename; execs=[Exec("pw.x")], run=true, structure_name=
             ids = parse.(Int, _s[2:end])
             typ = flagtype(QE, exec, sym)
             v = replace(v, "d" => "e")
+            if typ === Nothing
+                @warn "Flag $f in file $filename not found in allowed flags for $(exec.exec)"
+                continue
+            end
             parsedval = parse.((eltype(typ),), split(v))
             if !haskey(parsed_flags, sym)
                 if typ <: AbstractMatrix

@@ -8,6 +8,10 @@ if !ispath(abspath(first(DEPOT_PATH), "config","DFControl", "user_defaults.jl"))
     end
 end
 
+if !ispath(abspath(first(DEPOT_PATH), "config","DFControl", "job_registry.txt"))
+    touch(abspath(first(DEPOT_PATH), "config","DFControl", "job_registry.txt"))
+end
+
 relpath = x -> joinpath(@__DIR__, x)
 
 pythonpath = relpath("python2")

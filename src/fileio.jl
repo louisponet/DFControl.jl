@@ -429,7 +429,7 @@ function read_job_inputs(job_file::String)
 	    error("Something went wrong and no valid structures could be read from input files.")
     end
     outstruct = mergestructures(structures)
-    return (name=name, header=header, inputs=inputs, structure=outstruct, server_dir=serverdir)
+    return (name=name, inputs=inputs, structure=outstruct, header=header, server_dir=serverdir)
 end
 
 #---------------------------END GENERAL SECTION-------------------#
