@@ -449,13 +449,13 @@ function qe_read_projwfc(filename::String)
     nkstot =  parse(Int, split(lines[i_prob_sizes + 4])[3])
     npwx =  parse(Int, split(lines[i_prob_sizes + 5])[3])
     nkb =  parse(Int, split(lines[i_prob_sizes + 6])[3])
-    state_tuple = NamedTuple{(:atom_id, :wfc_id, :j, :l, :m), Tuple{Int, Int, Float64, Float64, Float64}}
+    state_tuple = NamedTuple{(:atom_id, :wfc_id, :l, :j, :m), Tuple{Int, Int, Float64, Float64, Float64}}
     states = state_tuple[]
     istart = findfirst(x -> x == "Atomic states used for projection", lines) + 2
     for i = 1:natomwfc
         l = replace_multiple(lines[i + istart], "(" => " ", ")" => " ", "," => "", "=" => " ", ":" => "", "#" => " ") |> split
         if length(l) == 11 #spinpolarized
-            push!(states, state_tuple((parse.(Int,(l[4], l[7]))..., 0.0, parse.(Float64,( l[9], l[11]))...)))
+            push!(states, state_tuple((parse.(Int,(l[4], l[7]))..., parse(Float64, l[9]), 0.0, parse(Float64, l[11]))))
         else #not spin polarized
             push!(states, state_tuple((parse.(Int,(l[4], l[7]))..., parse.(Float64, (l[9], l[11], l[13]))...)))
         end
@@ -507,7 +507,7 @@ end
 
 function qe_read_hp_output(input::DFInput{QE})
     out = Dict()
-    open(outfilename(input), "r") do f
+    open(outpath(input), "r") do f
         while !eof(f)
             line = readline(f)
             if occursin("will be perturbed", line)

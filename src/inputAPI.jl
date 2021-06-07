@@ -370,6 +370,9 @@ function gencalc_wan(nscf::DFInput{QE}, structure::AbstractStructure, Emin, wanf
                 This generally gives errors because of omitted kpoints, needed for pw2wannier90.x"
     end
     wanflags = wanflags != nothing ? SymAnyDict(wanflags) : SymAnyDict()
+    if issoccalc(nscf)
+        wanflags[:spinors] = true
+    end
 
     nwann = nprojections(structure)
     @info "num_wann=$nwann (inferred from provided projections)."
