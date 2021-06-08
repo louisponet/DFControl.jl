@@ -350,10 +350,6 @@ for f in (:cp, :mv)
     end
 
     @eval function Base.$f(i::DFInput{Wannier90}, dest::String; kwargs...)
-        # $f(inpath(i), joinpath(dest, infilename(i)); kwargs...)
-        # if hasoutfile(i)
-        #     $f(outpath(i), joinpath(dest, outfilename(i)); kwargs...)
-        # end
         for glob in ("$(name(i))", "UNK") # seedname should also cover generated pw2wannier90 files
             for f in searchdir(i, glob)
                 $f(f, joinpath(dest, splitdir(f)[end]); kwargs...)
