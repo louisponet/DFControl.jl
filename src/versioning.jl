@@ -1,7 +1,9 @@
+const VERSION_DIR_NAME = ".versions"
+
 function job_versions(dir::String)
-    verdir = joinpath(dir, "versions")
+    verdir = joinpath(dir, VERSION_DIR_NAME)
     if ispath(verdir)
-        return parse.(Int, readdir(joinpath(dir, "versions")))
+        return parse.(Int, readdir(joinpath(dir, VERSION_DIR_NAME)))
     else
         return Int[]
     end
@@ -15,13 +17,13 @@ function last_job_version(dir::String)
 end
 last_version(job::DFJob) = last_job_version(job.local_dir)
 
-version_path(dir::String, version::Int) = joinpath(dir, "versions", "$version")
+version_path(dir::String, version::Int) = joinpath(dir, VERSION_DIR_NAME, "$version")
 version_path(job::DFJob) = version_path(job.local_dir, job.version)
 
 exists_version(dir::String, version::Int) = version ∈ job_versions(dir)
 
 function maybe_increment_version(job::DFJob)
-    versions_path = joinpath(job, "versions")
+    versions_path = joinpath(job, VERSION_DIR_NAME)
     if !ispath(versions_path)
         mkpath(versions_path)
         return
