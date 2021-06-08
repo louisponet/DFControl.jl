@@ -37,6 +37,7 @@ set_kpoints!(nscf2, (3,3,3,0,0,1), print=false)
 @test data(nscf2, :k_points).data  == [3,3,3,0,0,1]
 
 @show outputdata(job, "nscf")
+@show job
 fermi = outputdata(job, "nscf")[:fermi]
 @test fermi == 17.4572
 
@@ -157,6 +158,9 @@ set_pseudos!(job, :test)
 testorbs = [:s, :p]
 set_projections!(job, :Pt => testorbs)
 @test convert.(Symbol, [p.orb for p in projections(job, :Pt)]) == testorbs
+for f in DFControl.searchdir(joinpath(testjobpath,"versions","1"), "out")
+    cp(joinpath(testjobpath,"versions","1",f), joinpath(testjobpath, f))
+end
 set_wanenergies!(job, nscf, fermi-7.0, Epad=3.0)
 
 @test job["wanup"][:dis_froz_max] == 13.2921
@@ -181,10 +185,6 @@ set_serverdir!(job, "localhost")
 set_headerword!(job, "defpart" => "frontend", print=false)
 @test any(occursin.("frontend",job.header))
 
-set_dataoption!(job, "nscf",:k_points, :blabla, print=false)
-@test data(job, "nscf", :k_points).option == :blabla
-set_dataoption!(job, :k_points, :test, print=false)
-@test data(job, "nscf", :k_points).option == :test
 
 report = progressreport(job; onlynew=false, print=false)
 @test report[:fermi] == 17.4572
@@ -197,6 +197,9 @@ push!(job.structure.atoms, oldat)
 cp(joinpath(testdir, "testassets", "pseudos"), joinpath(testdir, "testassets", "pseudos_copy"), force=true)
 set_pseudos!(job, :Si => Pseudo("Si.UPF", joinpath(testdir, "testassets", "pseudos_copy")))
 save(job)
+for f in DFControl.searchdir(joinpath(testjobpath,"versions","1"), "out")
+    cp(joinpath(testjobpath,"versions","1",f), joinpath(testjobpath, f))
+end
 @test ispath(joinpath(job.local_dir, "Si.UPF"))
 @test atom(job, :Si).pseudo == Pseudo("Si.UPF", job.local_dir)
 rm(joinpath(testdir, "testassets", "pseudos_copy"), recursive=true)
@@ -302,14 +305,19 @@ DFControl.set_starting_magnetization_flags!.(filter(x -> DFControl.package(x) ==
 DFControl.sanitize_projections!(job)
 @test projections(atoms(job, :Pt)[1]) != projections(atoms(job, :Pt1)[1])
 
-job4.server_dir = "/tmp"
-save(job4)
-job3 = DFJob(job4.local_dir)
+# job4.server_dir = "/tmp"
+# save(job4)
+# job3 = DFJob(job4.local_dir)
 
-@test job3.server_dir == "/tmp"
+# @test job3.server_dir == "/tmp"
+set_dataoption!(job, "scf",:k_points, :blabla, print=false)
+@test data(job, "scf", :k_points).option == :blabla
+set_dataoption!(job, :k_points, :test, print=false)
+@test data(job, "scf", :k_points).option == :test
 
 rm.(DFControl.inpath.(job.inputs))
 
+rm(joinpath(job, "versions"), recursive=true)
 rm(joinpath(job, "job.tt"))
 rm(joinpath(job, "pw2wan_wandn.in"))
 rm(joinpath(job, "pw2wan_wanup.in"))

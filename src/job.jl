@@ -7,7 +7,7 @@ function write_job_registry()
 end
 
 function cleanup_job_registry()
-    stale_ids = findall(!ispath, JOB_REGISTRY)
+    stale_ids = findall(x -> !ispath(x) || !ispath(joinpath(x, "job.tt")), JOB_REGISTRY)
     if stale_ids !== nothing
         jobs_to_remove = JOB_REGISTRY[stale_ids] 
         message = "Removing $(length(jobs_to_remove)) stale jobs (job folder removed) from the registry:\n"
@@ -36,7 +36,7 @@ function last_job_version(dir::String)
     verdir = joinpath(dir, "versions")
     if ispath(verdir)
         versions = readdir(verdir)
-        return parse(Int, versions[end])
+        return isempty(versions) ? 1 : parse(Int, versions[end])
     else
         return 1
     end
