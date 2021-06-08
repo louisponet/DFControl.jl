@@ -331,31 +331,33 @@ Base.:(==)(i1::DFInput, i2::DFInput) =
 
 searchdir(i::DFInput, glob) = joinpath.((i,), searchdir(dir(i), glob))
 
-function Base.mv(i::DFInput{QE}, dest::String)
-    mv(inpath(i), joinpath(dest, infilename(i)))
-    if hasoutfile(i)
-        mv(outpath(i), joinpath(dest, outfilename(i)))
-    end
-    if isprojwfccalc(i)
-        for f in searchdir(i, "pdos")
-            mv(f, joinpath(dest, splitdir(f)[end]))
+for f in (:cp, :mv)
+    @eval function Base.$f(i::DFInput{QE}, dest::String; kwargs...)
+        $f(inpath(i), joinpath(dest, infilename(i)); kwargs...)
+        if hasoutfile(i)
+            $f(outpath(i), joinpath(dest, outfilename(i)); kwargs...)
         end
-    elseif ishpcalc(i)
-        for f in searchdir(i, "Hubbard_parameters")
-            mv(f, joinpath(dest, splitdir(f)[end]))
+        if isprojwfccalc(i)
+            for f in searchdir(i, "pdos")
+                $f(f, joinpath(dest, splitdir(f)[end]); kwargs...)
+            end
+        elseif ishpcalc(i)
+            for f in searchdir(i, "Hubbard_parameters")
+                $f(f, joinpath(dest, splitdir(f)[end]); kwargs...)
+            end
         end
+        #TODO add ph.x outfiles
     end
-    #TODO add ph.x outfiles
-end
 
-function Base.mv(i::DFInput{Wannier90}, dest::String)
-    mv(inpath(i), joinpath(dest, infilename(i)))
-    if hasoutfile(i)
-        mv(outpath(i), joinpath(dest, outfilename(i)))
-    end
-    for glob in ("$(name(i))", "UNK") # seedname should also cover generated pw2wannier90 files
-        for f in searchdir(i, glob)
-            mv(f, joinpath(dest, splitdir(f)[end]))
+    @eval function Base.$f(i::DFInput{Wannier90}, dest::String; kwargs...)
+        # $f(inpath(i), joinpath(dest, infilename(i)); kwargs...)
+        # if hasoutfile(i)
+        #     $f(outpath(i), joinpath(dest, outfilename(i)); kwargs...)
+        # end
+        for glob in ("$(name(i))", "UNK") # seedname should also cover generated pw2wannier90 files
+            for f in searchdir(i, glob)
+                $f(f, joinpath(dest, splitdir(f)[end]); kwargs...)
+            end
         end
     end
 end

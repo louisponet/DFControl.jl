@@ -158,9 +158,6 @@ set_pseudos!(job, :test)
 testorbs = [:s, :p]
 set_projections!(job, :Pt => testorbs)
 @test convert.(Symbol, [p.orb for p in projections(job, :Pt)]) == testorbs
-for f in DFControl.searchdir(joinpath(testjobpath,"versions","1"), "out")
-    cp(joinpath(testjobpath,"versions","1",f), joinpath(testjobpath, f))
-end
 set_wanenergies!(job, nscf, fermi-7.0, Epad=3.0)
 
 @test job["wanup"][:dis_froz_max] == 13.2921
@@ -197,9 +194,6 @@ push!(job.structure.atoms, oldat)
 cp(joinpath(testdir, "testassets", "pseudos"), joinpath(testdir, "testassets", "pseudos_copy"), force=true)
 set_pseudos!(job, :Si => Pseudo("Si.UPF", joinpath(testdir, "testassets", "pseudos_copy")))
 save(job)
-for f in DFControl.searchdir(joinpath(testjobpath,"versions","1"), "out")
-    cp(joinpath(testjobpath,"versions","1",f), joinpath(testjobpath, f))
-end
 @test ispath(joinpath(job.local_dir, "Si.UPF"))
 @test atom(job, :Si).pseudo == Pseudo("Si.UPF", job.local_dir)
 rm(joinpath(testdir, "testassets", "pseudos_copy"), recursive=true)
