@@ -79,21 +79,11 @@ If `job_dir` is not a valid path the JOB_REGISTRY will be scanned for a job with
 The kwargs will be passed to the `DFJob` constructor.
 """
 function DFJob(job_dir::String; job_fuzzy="job", version = nothing, kwargs...)
-    if ispath(job_dir)
-        real_path = job_dir
+    if ispath(abspath(job_dir))
+        real_path = abspath(job_dir)
     else
-        matching_jobs = filter(x -> occursin(job_dir, x), JOB_REGISTRY)
-        if length(matching_jobs) == 1
-            real_path = matching_jobs[1]
-        else
-            menu = RadioMenu(matching_jobs)
-            choice = request("Multiple matching jobs were found, choose one:", menu)
-            if choice != -1
-                real_path = matching_jobs[choice]
-            else
-                return
-            end
-        end
+        real_path = request_job(job_dir)
+        real_path === nothing && return
     end
     real_version = version === nothing ? last_job_version(real_path) : version
     return DFJob(;merge(merge((local_dir=real_path,version=real_version), read_job_inputs(joinpath(real_path, searchdir(real_path, job_fuzzy)[1]))), kwargs)...)

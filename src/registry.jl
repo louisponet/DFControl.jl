@@ -11,7 +11,7 @@ function write_job_registry()
     end
 end
 
-function cleanup_job_registry()
+function cleanup_job_registry(;print=true)
     stale_ids = findall(x -> !ispath(x) || !ispath(joinpath(x, "job.tt")), JOB_REGISTRY)
     if stale_ids !== nothing
         jobs_to_remove = JOB_REGISTRY[stale_ids] 
@@ -19,7 +19,7 @@ function cleanup_job_registry()
         for j in jobs_to_remove
             message *= "\t$j\n"
         end
-        @warn message
+        print && @warn message
         deleteat!(JOB_REGISTRY, stale_ids)
     end
     write_job_registry()
@@ -37,3 +37,19 @@ function maybe_register_job(abspath::String)
     write_job_registry()
 end
 maybe_register_job(job::DFJob) = maybe_register_job(job.local_dir)
+
+function request_job(job_dir::String)
+    cleanup_job_registry(print=false)
+    matching_jobs = filter(x -> occursin(job_dir, x), JOB_REGISTRY)
+    if length(matching_jobs) == 1
+        return matching_jobs[1]
+    else
+        menu = RadioMenu(matching_jobs)
+        choice = request("Multiple matching jobs were found, choose one:", menu)
+        if choice != -1
+            return matching_jobs[choice]
+        else
+            return nothing
+        end
+    end
+end
