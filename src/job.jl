@@ -15,6 +15,9 @@ Represents a full DFT job with multiple input files and calculations.
     metadata     ::Dict = Dict()
     version      ::Int = last_job_version(local_dir) 
     function DFJob(name, structure, calculations, local_dir, server, server_dir, header, metadata, version)
+        if local_dir[end] == '/'
+            local_dir = local_dir[1:end-1]
+        end
         if !isabspath(local_dir)
             local_dir = abspath(local_dir)
         end
@@ -79,7 +82,7 @@ If `job_dir` is not a valid path the JOB_REGISTRY will be scanned for a job with
 The kwargs will be passed to the `DFJob` constructor.
 """
 function DFJob(job_dir::String; job_fuzzy="job", version = nothing, kwargs...)
-    if ispath(abspath(job_dir))
+    if !isempty(job_dir) && ispath(abspath(job_dir))
         real_path = abspath(job_dir)
     else
         real_path = request_job(job_dir)
