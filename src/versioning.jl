@@ -13,7 +13,7 @@ version(job::DFJob) = job.version
 
 function last_job_version(dir::String)
     versions = job_versions(dir)
-    return isempty(versions) ? 1 : versions[end]
+    return isempty(versions) ? 0 : versions[end]
 end
 last_version(job::DFJob) = last_job_version(job.local_dir)
 
@@ -26,15 +26,13 @@ function maybe_increment_version(job::DFJob)
     versions_path = joinpath(job, VERSION_DIR_NAME)
     if !ispath(versions_path)
         mkpath(versions_path)
-        return
-    else
-        if ispath(joinpath(job, "job.tt"))
-            tjob = DFJob(job.local_dir, version = last_version(job)+1)
-            vpath = version_path(tjob)
-            mkpath(vpath)
-            cp(job, vpath)
-            job.version = last_version(job) + 1
-        end
+    end
+    if ispath(joinpath(job, "job.tt"))
+        tjob = DFJob(job.local_dir, version = last_version(job) + 1)
+        vpath = version_path(tjob)
+        mkpath(vpath)
+        cp(job, vpath)
+        job.version = last_version(job) + 1
     end
 end
 
@@ -52,7 +50,7 @@ function switch_version(job::DFJob, version)
             maybe_increment_version(job)
             out = DFJob(verpath)
             curdir = job.local_dir
-            mv(out, job.local_dir)
+            mv(out, job.local_dir, force=true)
             rm(verpath, recursive=true)
             for f in fieldnames(DFJob)
                 setfield!(job, f, getfield(out,f))

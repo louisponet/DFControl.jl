@@ -310,8 +310,34 @@ set_dataoption!(job, :k_points, :test, print=false)
 @test data(job, "scf", :k_points).option == :test
 
 rm.(DFControl.inpath.(job.inputs))
+job.inputs = [job.inputs[2]]
+set_kpoints!(job["scf"],(6,6,6,1,1,1))
+rm(joinpath(job, DFControl.VERSION_DIR_NAME), recursive=true)
+
+@testset "versioning" begin
+    job[:nbnd] = 30
+    job.version = 1
+    save(job)
+    @test job.version == 2
+    @test ispath(joinpath(job, DFControl.VERSION_DIR_NAME))
+    @test ispath(joinpath(job, DFControl.VERSION_DIR_NAME, "1"))
+    job[:nbnd] = 40
+    save(job)
+    @test job.version == 3
+    @test job["scf"][:nbnd] == 40
+    switch_version(job, 2)
+    @test job.version == 2
+    @test !(2 ∈ versions(job))
+    @test DFControl.last_version(job) == 3
+    @test job["scf"][:nbnd] == 30
+    switch_version(job, 3)
+    @test !ispath(joinpath(job, DFControl.VERSION_DIR_NAME, "3"))
+    @test ispath(joinpath(job, DFControl.VERSION_DIR_NAME, "1"))
+end
 
 rm(joinpath(job, DFControl.VERSION_DIR_NAME), recursive=true)
+rm.(DFControl.inpath.(job.inputs))
+
 rm(joinpath(job, "job.tt"))
 rm(joinpath(job, "pw2wan_wandn.in"))
 rm(joinpath(job, "pw2wan_wanup.in"))
