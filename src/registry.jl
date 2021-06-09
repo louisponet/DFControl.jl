@@ -36,3 +36,4 @@ function maybe_register_job(abspath::String)
     end
     write_job_registry()
 end
+maybe_register_job(job::DFJob) = maybe_register_job(job.local_dir)
