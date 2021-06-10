@@ -51,6 +51,7 @@ Reads a pw quantum espresso input, returns a dictionary with all found data in t
 function qe_read_pw_output(filename::String, T=Float64; cleanup = true)
     out = Dict{Symbol,Any}()
     colincalc = false
+    out[:converged] = false
     open(filename, "r") do f
         prefac_k     = nothing
         k_eigvals    = Array{Array{T,1},1}()

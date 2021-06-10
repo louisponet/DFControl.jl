@@ -82,7 +82,7 @@ If `job_dir` is not a valid path the JOB_REGISTRY will be scanned for a job with
 The kwargs will be passed to the `DFJob` constructor.
 """
 function DFJob(job_dir::String; job_fuzzy="job", version = nothing, kwargs...)
-    if !isempty(job_dir) && ispath(abspath(job_dir))
+    if !isempty(job_dir) && ispath(abspath(job_dir)) && !isempty(searchdir(abspath(job_dir), job_fuzzy))
         real_path = abspath(job_dir)
     else
         real_path = request_job(job_dir)
@@ -136,13 +136,17 @@ function sanitizeflags!(job::DFJob)
 	        end
         end
     end
+    scfcalc = getfirst(isscfcalc, job.inputs)
+    if scfcalc !== nothing
+        if !hasflag(scfcalc, :ecutwfc)
+    	    ecutwfc, ecutrho = find_cutoffs(job) # Ideally this should also be at the end stage
+    	    @assert ecutwfc != 0.0 "No energy cutoff was specified in any input, and the calculated cutoff from the pseudopotentials was 0.0.\nPlease manually set one."
+    	    @info "No energy cutoff was specified in the scf input.\nCalculated ecutwfc=$ecutwfc, ecutrho=$ecutrho."
     for i in filter(x -> package(x) == QE, inputs(job))
         outdir = isempty(job.server_dir) ? joinpath(job, "outputs") : joinpath(job.server_dir, splitdir(job.local_dir)[end], "outputs")
         set_flags!(i, :outdir => "$outdir", print=false)
-	    ecutwfc, ecutrho = find_cutoffs(job) # Ideally this should also be at the end stage
 	    if exec(i, "pw.x") !== nothing
     	    if !hasflag(i, :ecutwfc)
-        	    @info "No energy cutoff was specified in input with name: $(name(i))\nCalculating one from the pseudo files.\nCalculated ecutwfc=$ecutwfc, ecutrho=$ecutrho."
         	    set_flags!(i, :ecutwfc => ecutwfc, :ecuthro => ecutrho, print=false)
     	    end
 	    end
@@ -150,6 +154,9 @@ function sanitizeflags!(job::DFJob)
     sanitize_pseudos!(job)
     sanitizeflags!.(inputs(job))
 end
+
+function sanitize_cutoffs!(job)
+    
 
 function sanitize_pseudos!(job::DFJob)
 	all_pseudos = pseudo.(atoms(job))

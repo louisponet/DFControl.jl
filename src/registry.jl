@@ -38,9 +38,11 @@ function maybe_register_job(abspath::String)
 end
 maybe_register_job(job::DFJob) = maybe_register_job(job.local_dir)
 
+registered_jobs(fuzzy::AbstractString) = filter(x -> occursin(fuzzy, x), JOB_REGISTRY)
+
 function request_job(job_dir::String)
     cleanup_job_registry(print=false)
-    matching_jobs = filter(x -> occursin(job_dir, x), JOB_REGISTRY)
+    matching_jobs = registered_jobs(job_dir) 
     if length(matching_jobs) == 1
         return matching_jobs[1]
     else
