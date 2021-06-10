@@ -123,55 +123,57 @@ outpath(job::DFJob, n) = outpath(input(job,n))
 function sanitizeflags!(job::DFJob)
     set_flags!(job, :prefix => "$(job.name)", print=false)
     if iswannierjob(job)
-	    nscfcalc = getnscfcalc(job)
-	    if package(nscfcalc) == QE && hasflag(nscfcalc, :nbnd)
-	        set_flags!(job, :num_bands => nscfcalc[:nbnd], print=false)
+        nscfcalc = getnscfcalc(job)
+        if package(nscfcalc) == QE && hasflag(nscfcalc, :nbnd)
+            set_flags!(job, :num_bands => nscfcalc[:nbnd], print=false)
         elseif package(nscfcalc) == Elk
-	        setflags!(job, :num_bands => length(nscfcalc[:wann_bands]))
-	        nscfcalc[:wann_projections] = projections_string.(unique(filter(x->!isempty(projections(x)), atoms(job))))
-	        nscfcalc[:elk2wan_tasks]    = ["602", "604"]
-	        nscfcalc[:wann_seedname]    = Symbol(name(job))
-	        if job[:wannier_plot] == true
-		        push!(nscfcalc[:elk2wan_tasks], "605")
-	        end
+            setflags!(job, :num_bands => length(nscfcalc[:wann_bands]))
+            nscfcalc[:wann_projections] = projections_string.(unique(filter(x->!isempty(projections(x)), atoms(job))))
+            nscfcalc[:elk2wan_tasks]    = ["602", "604"]
+            nscfcalc[:wann_seedname]    = Symbol(name(job))
+            if job[:wannier_plot] == true
+                push!(nscfcalc[:elk2wan_tasks], "605")
+            end
         end
     end
-    scfcalc = getfirst(isscfcalc, job.inputs)
-    if scfcalc !== nothing
-        if !hasflag(scfcalc, :ecutwfc)
-    	    ecutwfc, ecutrho = find_cutoffs(job) # Ideally this should also be at the end stage
-    	    @assert ecutwfc != 0.0 "No energy cutoff was specified in any input, and the calculated cutoff from the pseudopotentials was 0.0.\nPlease manually set one."
-    	    @info "No energy cutoff was specified in the scf input.\nCalculated ecutwfc=$ecutwfc, ecutrho=$ecutrho."
     for i in filter(x -> package(x) == QE, inputs(job))
         outdir = isempty(job.server_dir) ? joinpath(job, "outputs") : joinpath(job.server_dir, splitdir(job.local_dir)[end], "outputs")
         set_flags!(i, :outdir => "$outdir", print=false)
-	    if exec(i, "pw.x") !== nothing
-    	    if !hasflag(i, :ecutwfc)
-        	    set_flags!(i, :ecutwfc => ecutwfc, :ecuthro => ecutrho, print=false)
-    	    end
-	    end
+        if exec(i, "pw.x") !== nothing
+            if !hasflag(i, :ecutwfc)
+                set_flags!(i, :ecutwfc => ecutwfc, :ecuthro => ecutrho, print=false)
+            end
+        end
     end
     sanitize_pseudos!(job)
     sanitizeflags!.(inputs(job))
 end
 
 function sanitize_cutoffs!(job)
-    
+    scfcalc = getfirst(isscfcalc, job.inputs)
+    if scfcalc !== nothing
+        if !hasflag(scfcalc, :ecutwfc)
+            ecutwfc, ecutrho = find_cutoffs(job) # Ideally this should also be at the end stage
+            @assert ecutwfc != 0.0 "No energy cutoff was specified in any input, and the calculated cutoff from the pseudopotentials was 0.0.\nPlease manually set one."
+            @info "No energy cutoff was specified in the scf input.\nCalculated ecutwfc=$ecutwfc, ecutrho=$ecutrho."
+        end
+    end
+end
 
 function sanitize_pseudos!(job::DFJob)
-	all_pseudos = pseudo.(atoms(job))
-	uni_dirs    = unique(map(x->x.dir, all_pseudos))
-	uni_pseudos = unique(all_pseudos)
-	pseudo_dir  = length(uni_dirs) == 1 ? uni_dirs[1] : job.local_dir 
-	if length(uni_dirs) > 1
-		@info "Found pseudos in multiple directories, copying them to job directory"
-		for pseudo in uni_pseudos
-			cp(path(pseudo), joinpath(job.local_dir, pseudo.name), force=true)
-		end
-	end
-	for p in all_pseudos
-		p.dir = pseudo_dir
-	end
+    all_pseudos = pseudo.(atoms(job))
+    uni_dirs    = unique(map(x->x.dir, all_pseudos))
+    uni_pseudos = unique(all_pseudos)
+    pseudo_dir  = length(uni_dirs) == 1 ? uni_dirs[1] : job.local_dir 
+    if length(uni_dirs) > 1
+        @info "Found pseudos in multiple directories, copying them to job directory"
+        for pseudo in uni_pseudos
+            cp(path(pseudo), joinpath(job.local_dir, pseudo.name), force=true)
+        end
+    end
+    for p in all_pseudos
+        p.dir = pseudo_dir
+    end
 end
 
 function sanitize_magnetization!(job::DFJob)
