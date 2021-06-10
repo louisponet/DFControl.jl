@@ -272,6 +272,7 @@ function writejobfiles(job::DFJob; kwargs...)
         end
         write_job_postamble(f, job)
     end
+    jldsave(joinpath(job, ".metadata.jld2"); metadata=job.metadata)
 end
 
 function read_job_line(line)

@@ -25,6 +25,12 @@ Represents a full DFT job with multiple input files and calculations.
             structure.name = split(name, "_")[1]
         end
         last_version = last_job_version(local_dir)
+        if isempty(metadata)
+            mpath = joinpath(local_dir, ".metadata.jld2")
+            if ispath(mpath)
+                metadata = load(mpath, "metadata")
+            end
+        end
         out = new(name, structure, calculations, local_dir, server, server_dir, header, metadata, version)
         # TODO add check_version, and if it doesn't match the one that's currently in the main directory,
         # load the previous one from the versions
@@ -268,4 +274,12 @@ for f in (:cp, :mv)
     end
 end
 
+is_slurm_job(job::DFJob) = haskey(job.metadata, :slurmid)
 
+function isrunning(job::DFJob; print=true)
+    if is_slurm_job(job)
+        return slurm_isrunning(job)
+    end
+    print && @warn "Job scheduler unknown."
+    return false
+end

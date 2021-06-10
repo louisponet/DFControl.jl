@@ -37,6 +37,7 @@ function maybe_increment_version(job::DFJob)
 end
 
 function switch_version(job::DFJob, version)
+    @assert !isrunning(job; print=false) "Can't switch job versions on a running job."
     cur_version = job.version
     if version != cur_version
         verpath = version_path(job.local_dir, version)
