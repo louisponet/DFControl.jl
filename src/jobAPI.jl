@@ -15,6 +15,8 @@ function save(job::DFJob, local_dir=job.local_dir; kwargs...)
         @warn "Job had no name, changed it to: noname"
         job.name = "noname"
     end
+    maybe_register_job(job)
+    maybe_increment_version(job)
     sanitize_magnetization!(job)
     sanitize_projections!(job)
     sanitizeflags!(job)

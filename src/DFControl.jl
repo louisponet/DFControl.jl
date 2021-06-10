@@ -51,6 +51,8 @@ module DFControl
     export yesterday, lastweek, lastmonth
 
     include("job.jl")
+    include("versioning.jl")
+    include("registry.jl")
 
     export DFJob, Exec, DFInput, InputData
     include("server.jl")
@@ -78,16 +80,13 @@ module DFControl
     const dfprint = print
     include("display/overloads.jl")
     using Requires
-
-
-    const JOB_REGISTRY = String[]
     
     function __init__()
         @require Juno = "e5e0dc1b-0480-54bc-9374-aad01c23163d" include("display/printing_juno.jl")
         @require Glimpse = "f6e19d58-12a4-5927-8606-ac30a9ce9b69" include("display/glimpse.jl")
 		merge!(Unitful.basefactors, localunits)
 		Unitful.register(@__MODULE__)
-		global JOB_REGISTRY = readlines(config_path("job_registry.txt"))
+		init_job_registry()
     end
 
     const pythonpath = Sys.iswindows() ? joinpath(depsdir, "python2", "python") : joinpath(dirname(@__DIR__), "deps", "python2", "bin", "python")

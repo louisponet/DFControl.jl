@@ -37,6 +37,7 @@ set_kpoints!(nscf2, (3,3,3,0,0,1), print=false)
 @test data(nscf2, :k_points).data  == [3,3,3,0,0,1]
 
 @show outputdata(job, "nscf")
+@show job
 fermi = outputdata(job, "nscf")[:fermi]
 @test fermi == 17.4572
 
@@ -181,10 +182,6 @@ set_serverdir!(job, "localhost")
 set_headerword!(job, "defpart" => "frontend", print=false)
 @test any(occursin.("frontend",job.header))
 
-set_dataoption!(job, "nscf",:k_points, :blabla, print=false)
-@test data(job, "nscf", :k_points).option == :blabla
-set_dataoption!(job, :k_points, :test, print=false)
-@test data(job, "nscf", :k_points).option == :test
 
 report = progressreport(job; onlynew=false, print=false)
 @test report[:fermi] == 17.4572
@@ -302,12 +299,43 @@ DFControl.set_starting_magnetization_flags!.(filter(x -> DFControl.package(x) ==
 DFControl.sanitize_projections!(job)
 @test projections(atoms(job, :Pt)[1]) != projections(atoms(job, :Pt1)[1])
 
-job4.server_dir = "/tmp"
-save(job4)
-job3 = DFJob(job4.local_dir)
+# job4.server_dir = "/tmp"
+# save(job4)
+# job3 = DFJob(job4.local_dir)
 
-@test job3.server_dir == "/tmp"
+# @test job3.server_dir == "/tmp"
+set_dataoption!(job, "scf",:k_points, :blabla, print=false)
+@test data(job, "scf", :k_points).option == :blabla
+set_dataoption!(job, :k_points, :test, print=false)
+@test data(job, "scf", :k_points).option == :test
 
+rm.(DFControl.inpath.(job.inputs))
+job.inputs = [job.inputs[2]]
+set_kpoints!(job["scf"],(6,6,6,1,1,1))
+rm(joinpath(job, DFControl.VERSION_DIR_NAME), recursive=true)
+
+@testset "versioning" begin
+    job[:nbnd] = 30
+    job.version = 1
+    save(job)
+    @test job.version == 2
+    @test ispath(joinpath(job, DFControl.VERSION_DIR_NAME))
+    @test ispath(joinpath(job, DFControl.VERSION_DIR_NAME, "1"))
+    job[:nbnd] = 40
+    save(job)
+    @test job.version == 3
+    @test job["scf"][:nbnd] == 40
+    switch_version(job, 2)
+    @test job.version == 2
+    @test !(2 ∈ versions(job))
+    @test DFControl.last_version(job) == 3
+    @test job["scf"][:nbnd] == 30
+    switch_version(job, 3)
+    @test !ispath(joinpath(job, DFControl.VERSION_DIR_NAME, "3"))
+    @test ispath(joinpath(job, DFControl.VERSION_DIR_NAME, "1"))
+end
+
+rm(joinpath(job, DFControl.VERSION_DIR_NAME), recursive=true)
 rm.(DFControl.inpath.(job.inputs))
 
 rm(joinpath(job, "job.tt"))

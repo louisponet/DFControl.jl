@@ -54,17 +54,18 @@ function DFInput{P}(name::AbstractString, execs::Vector{Exec}, flags::Pair{Symbo
     set_flags!(out, flags..., print=false)
     return out
 end
-   
+
 name(input::DFInput)  = input.name
 dir(input::DFInput)   = input.dir
+Base.joinpath(i::DFInput, path) = joinpath(dir(i), path)
 flags(input::DFInput) = input.flags
 set_dir!(input::DFInput, dir) = (input.dir = dir)
 name_ext(input::DFInput, ext)   = name(input) * ext
 infilename(input::DFInput)      = input.infile
 infilename(input::DFInput{Elk}) = "elk.in"
 outfilename(input::DFInput)     = input.outfile
-inpath(input::DFInput)          = joinpath(dir(input),  infilename(input))
-outpath(input::DFInput)         = joinpath(dir(input),  outfilename(input))
+inpath(input::DFInput)          = joinpath(input,  infilename(input))
+outpath(input::DFInput)         = joinpath(input,  outfilename(input))
 
 hasflag(i::DFInput, s::Symbol) = haskey(flags(i), s)
 
@@ -73,7 +74,6 @@ function flag(input::DFInput, flag::Symbol)
         return input.flags[flag]
     end
 end
-
 
 Base.eltype(::DFInput{P}) where P = P
 package(::DFInput{P}) where P = P
@@ -327,4 +327,33 @@ function set_starting_magnetization_flags!(input::DFInput{QE}, str::AbstractStru
 end
 
 Base.:(==)(i1::DFInput, i2::DFInput) =
-    all(x -> x == :outdata ? true : getfield(i1, x) == getfield(i2, x), fieldnames(DFInput)) 
+    all(x -> x == :outdata ? true : getfield(i1, x) == getfield(i2, x), fieldnames(DFInput))
+
+searchdir(i::DFInput, glob) = joinpath.((i,), searchdir(dir(i), glob))
+
+for f in (:cp, :mv)
+    @eval function Base.$f(i::DFInput{QE}, dest::String; kwargs...)
+        $f(inpath(i), joinpath(dest, infilename(i)); kwargs...)
+        if hasoutfile(i)
+            $f(outpath(i), joinpath(dest, outfilename(i)); kwargs...)
+        end
+        if isprojwfccalc(i)
+            for f in searchdir(i, "pdos")
+                $f(f, joinpath(dest, splitdir(f)[end]); kwargs...)
+            end
+        elseif ishpcalc(i)
+            for f in searchdir(i, "Hubbard_parameters")
+                $f(f, joinpath(dest, splitdir(f)[end]); kwargs...)
+            end
+        end
+        #TODO add ph.x outfiles
+    end
+
+    @eval function Base.$f(i::DFInput{Wannier90}, dest::String; kwargs...)
+        for glob in ("$(name(i))", "UNK") # seedname should also cover generated pw2wannier90 files
+            for f in searchdir(i, glob)
+                $f(f, joinpath(dest, splitdir(f)[end]); kwargs...)
+            end
+        end
+    end
+end

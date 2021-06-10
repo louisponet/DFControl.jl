@@ -1,36 +1,3 @@
-function write_job_registry()
-    open(config_path("job_registry.txt"), "w") do f
-        for j in JOB_REGISTRY
-            write(f, "$j\n")
-        end
-    end
-end
-
-function cleanup_job_registry()
-    stale_ids = findall(!ispath, JOB_REGISTRY)
-    if stale_ids !== nothing
-        jobs_to_remove = JOB_REGISTRY[stale_ids] 
-        message = "Removing $(length(jobs_to_remove)) stale jobs (job folder removed) from the registry:\n"
-        for j in jobs_to_remove
-            message *= "\t$j\n"
-        end
-        @warn message
-        deleteat!(JOB_REGISTRY, stale_ids)
-    end
-    write_job_registry()
-end
-
-function maybe_register_job(abspath::String)
-    if !ispath(abspath)
-        push!(JOB_REGISTRY, abspath)
-    else
-        jid = findfirst(isequal(abspath), JOB_REGISTRY)
-        if jid === nothing
-            push!(JOB_REGISTRY, abspath)
-        end
-    end
-    write_job_registry()
-end
 
 #TODO should we also create a config file for each job with stuff like server etc? and other config things,
 #      which if not supplied could contain the default stuff?
@@ -46,16 +13,23 @@ Represents a full DFT job with multiple input files and calculations.
     server_dir   ::String = ""
     header       ::Vector{String} = getdefault_jobheader()
     metadata     ::Dict = Dict()
-    # version      ::Int = 1
-    function DFJob(name, structure, calculations, local_dir, server, server_dir, header, metadata)
+    version      ::Int = last_job_version(local_dir) 
+    function DFJob(name, structure, calculations, local_dir, server, server_dir, header, metadata, version)
+        if local_dir[end] == '/'
+            local_dir = local_dir[1:end-1]
+        end
         if !isabspath(local_dir)
             local_dir = abspath(local_dir)
         end
         if isempty(structure.name)
             structure.name = split(name, "_")[1]
         end
-        maybe_register_job(local_dir)
-        return new(name, structure, calculations, local_dir, server, server_dir, header, metadata)
+        last_version = last_job_version(local_dir)
+        out = new(name, structure, calculations, local_dir, server, server_dir, header, metadata, version)
+        # TODO add check_version, and if it doesn't match the one that's currently in the main directory,
+        # load the previous one from the versions
+        !occursin("versions", local_dir) && maybe_register_job(local_dir)
+        return out
     end
 end
 
@@ -107,24 +81,16 @@ Loads and returns a local DFJob.
 If `job_dir` is not a valid path the JOB_REGISTRY will be scanned for a job with matching directory.
 The kwargs will be passed to the `DFJob` constructor.
 """
-function DFJob(job_dir::String; job_fuzzy="job", kwargs...)
-    if ispath(job_dir)
-        real_path = job_dir
+function DFJob(job_dir::String; job_fuzzy="job", version = nothing, kwargs...)
+    if !isempty(job_dir) && ispath(abspath(job_dir)) && !isempty(searchdir(abspath(job_dir), job_fuzzy))
+        real_path = abspath(job_dir)
     else
-        matching_jobs = filter(x -> occursin(job_dir, x), JOB_REGISTRY)
-        if length(matching_jobs) == 1
-            real_path = matching_jobs[1]
-        else
-            menu = RadioMenu(matching_jobs)
-            choice = request("Multiple matching jobs were found, choose one:", menu)
-            if choice != -1
-                real_path = matching_jobs[choice]
-            else
-                return
-            end
-        end
+        real_path = request_job(job_dir)
+        real_path === nothing && return
     end
-    return DFJob(;merge(merge((local_dir=real_path,), read_job_inputs(joinpath(real_path, searchdir(real_path, job_fuzzy)[1]))), kwargs)...)
+    real_version = version === nothing ? last_job_version(real_path) : version
+    return DFJob(;merge(merge((local_dir=real_path,version=real_version), read_job_inputs(joinpath(real_path, searchdir(real_path, job_fuzzy)[1]))), kwargs)...)
+
 end        
 
 name(job) = job.name
@@ -170,13 +136,17 @@ function sanitizeflags!(job::DFJob)
 	        end
         end
     end
+    scfcalc = getfirst(isscfcalc, job.inputs)
+    if scfcalc !== nothing
+        if !hasflag(scfcalc, :ecutwfc)
+    	    ecutwfc, ecutrho = find_cutoffs(job) # Ideally this should also be at the end stage
+    	    @assert ecutwfc != 0.0 "No energy cutoff was specified in any input, and the calculated cutoff from the pseudopotentials was 0.0.\nPlease manually set one."
+    	    @info "No energy cutoff was specified in the scf input.\nCalculated ecutwfc=$ecutwfc, ecutrho=$ecutrho."
     for i in filter(x -> package(x) == QE, inputs(job))
         outdir = isempty(job.server_dir) ? joinpath(job, "outputs") : joinpath(job.server_dir, splitdir(job.local_dir)[end], "outputs")
         set_flags!(i, :outdir => "$outdir", print=false)
-	    ecutwfc, ecutrho = find_cutoffs(job) # Ideally this should also be at the end stage
 	    if exec(i, "pw.x") !== nothing
     	    if !hasflag(i, :ecutwfc)
-        	    @info "No energy cutoff was specified in input with name: $(name(i))\nCalculating one from the pseudo files.\nCalculated ecutwfc=$ecutwfc, ecutrho=$ecutrho."
         	    set_flags!(i, :ecutwfc => ecutwfc, :ecuthro => ecutrho, print=false)
     	    end
 	    end
@@ -184,6 +154,9 @@ function sanitizeflags!(job::DFJob)
     sanitize_pseudos!(job)
     sanitizeflags!.(inputs(job))
 end
+
+function sanitize_cutoffs!(job)
+    
 
 function sanitize_pseudos!(job::DFJob)
 	all_pseudos = pseudo.(atoms(job))
@@ -255,7 +228,7 @@ end
 "Finds the input corresponding to the name and returns the full output path."
 outpath(job::DFJob, n::String) = outpath(input(job,n))
 
-Base.joinpath(job::DFJob, n::AbstractString) = joinpath(job.local_dir, n)
+Base.joinpath(job::DFJob, args...) = joinpath(job.local_dir, args...)
 
 runslocal_assert(job::DFJob) =
     @assert runslocal(job) "This only works if the job runs on `localhost`."
@@ -271,4 +244,17 @@ function Base.pop!(job::DFJob, name::String)
 end
 
 searchdir(job::DFJob, str::AbstractString) = joinpath.((job,), searchdir(job.local_dir, str))
+
+for f in (:cp, :mv)
+    @eval function Base.$f(job::DFJob, dest::String; kwargs...)
+        tjob = DFJob(job.local_dir)
+        for file in readdir(job.local_dir)
+            if file == VERSION_DIR_NAME
+                continue
+            end
+            $f(joinpath(tjob, file), joinpath(dest, file); kwargs...)
+        end
+    end
+end
+
 

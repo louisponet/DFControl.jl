@@ -51,6 +51,7 @@ Reads a pw quantum espresso input, returns a dictionary with all found data in t
 function qe_read_pw_output(filename::String, T=Float64; cleanup = true)
     out = Dict{Symbol,Any}()
     colincalc = false
+    out[:converged] = false
     open(filename, "r") do f
         prefac_k     = nothing
         k_eigvals    = Array{Array{T,1},1}()
@@ -125,6 +126,11 @@ function qe_read_pw_output(filename::String, T=Float64; cleanup = true)
                 #fermi energy
             elseif occursin("the Fermi energy is", line)
                 out[:fermi]        = parse(T, split(line)[5])
+            elseif occursin("up/dw Fermi energies are", line)
+                sline = split(line)
+                out[:fermi_up] = parse(T, sline[7])
+                out[:fermi_down] = parse(T, sline[8])
+                out[:fermi]      = min(out[:fermi_down], out[:fermi_up])
             elseif occursin("lowest unoccupied", line) && occursin("highest occupied", line)
                 sline = split(line)
                 high = parse(T, sline[7])
