@@ -139,23 +139,32 @@ function sanitizeflags!(job::DFJob)
     for i in filter(x -> package(x) == QE, inputs(job))
         outdir = isempty(job.server_dir) ? joinpath(job, "outputs") : joinpath(job.server_dir, splitdir(job.local_dir)[end], "outputs")
         set_flags!(i, :outdir => "$outdir", print=false)
-        if exec(i, "pw.x") !== nothing
-            if !hasflag(i, :ecutwfc)
-                set_flags!(i, :ecutwfc => ecutwfc, :ecuthro => ecutrho, print=false)
-            end
-        end
     end
+    sanitize_cutoffs!(job)
     sanitize_pseudos!(job)
     sanitizeflags!.(inputs(job))
 end
 
 function sanitize_cutoffs!(job)
-    scfcalc = getfirst(isscfcalc, job.inputs)
-    if scfcalc !== nothing
-        if !hasflag(scfcalc, :ecutwfc)
-            ecutwfc, ecutrho = find_cutoffs(job) # Ideally this should also be at the end stage
-            @assert ecutwfc != 0.0 "No energy cutoff was specified in any input, and the calculated cutoff from the pseudopotentials was 0.0.\nPlease manually set one."
-            @info "No energy cutoff was specified in the scf input.\nCalculated ecutwfc=$ecutwfc, ecutrho=$ecutrho."
+    # the assumption is that the most important cutoff calculation is the scf/vcrelax that is ran first 
+    ψ_cut_calc = getfirst(x -> hasflag(x, ψ_cutoff_flag(x)), inputs(job))
+    if ψ_cut_calc !== nothing
+        ψcut = ψ_cut_calc[ψ_cutoff_flag(ψ_cut_calc)]
+    else
+        ψcut, = find_cutoffs(job) # Ideally this should also be at the end stage
+        @assert ψcut != 0.0 "No energy cutoff was specified in any input, and the calculated cutoff from the pseudopotentials was 0.0.\nPlease manually set one."
+        @info "No energy cutoff was specified in the scf input.\nCalculated ψcut=$ψcut."
+    end
+    for i in inputs(job)
+        ψflag = ψ_cutoff_flag(i)
+        ψflag !== nothing && !hasflag(i, ψflag) && set_flags!(i, ψflag => ψcut, print=false)
+    end
+    ρ_cut_calc = getfirst(x -> hasflag(x, ρ_cutoff_flag(x)), inputs(job))
+    if ρ_cut_calc !== nothing
+        ρcut = ρ_cut_calc[ρ_cutoff_flag(ρ_cut_calc)]
+        for i in inputs(job)
+            ρflag = ρ_cutoff_flag(i)
+            ρflag !== nothing && set_flags!(i, ρflag => ρcut, print=false)
         end
     end
 end

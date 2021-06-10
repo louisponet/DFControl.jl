@@ -146,3 +146,7 @@ qe_block_variable(input::DFInput, flagname) = qe_block_variable(qe_exec(input).e
 
 flagtype(input::DFInput{QE}, flag) = eltype(qe_flaginfo(qe_exec(input), flag))
 flagtype(::Type{QE}, exec, flag) = eltype(qe_flaginfo(exec, flag))
+
+ψ_cutoff_flag(::Type{QE}) = :ecutwfc
+ρ_cutoff_flag(::Type{QE}) = :ecutrho
+

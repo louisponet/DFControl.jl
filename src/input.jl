@@ -68,6 +68,7 @@ inpath(input::DFInput)          = joinpath(input,  infilename(input))
 outpath(input::DFInput)         = joinpath(input,  outfilename(input))
 
 hasflag(i::DFInput, s::Symbol) = haskey(flags(i), s)
+hasflag(i::DFInput, s) = false
 
 function flag(input::DFInput, flag::Symbol)
     if hasflag(input, flag)
@@ -357,3 +358,6 @@ for f in (:cp, :mv)
         end
     end
 end
+
+ψ_cutoff_flag(::DFInput{P}) where {P} = ψ_cutoff_flag(P)
+ρ_cutoff_flag(::DFInput{P}) where {P} = ρ_cutoff_flag(P)
