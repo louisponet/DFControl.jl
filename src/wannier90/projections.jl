@@ -1,40 +1,40 @@
 struct Orbital
-    name::Symbol
+    name::String
     size::Int
     l   ::Int
     mr  ::Int
 end
 const ORBITALS = [
-    Orbital(:s, 1, 0, 1),
-    Orbital(:p, 3, 1, 0),
-    Orbital(:px, 1, 1, 2),
-    Orbital(:py, 1, 1, 3),
-    Orbital(:pz, 1, 1, 1),
-    Orbital(:d, 5, 2, 0),
-    Orbital(:dz2, 1, 2, 1), 
-    Orbital(:dxz, 1, 2, 2), 
-    Orbital(:dyz, 1, 2, 3), 
-    Orbital(Symbol("dx2-y2"), 1, 2, 4),
-    Orbital(:dxy, 1, 2, 5), 
-    Orbital(:f, 7, 3, 0),
-    Orbital(:fz3, 1, 3, 1),
-    Orbital(:fxz2, 1, 3, 2),
-    Orbital(:fyz2, 1, 3, 3),
-    Orbital(Symbol("fz(x2-y2)"), 1, 3, 4),
-    Orbital(:fxyz, 1, 3, 5),
-    Orbital(Symbol("fx(x2-3y2)"), 1, 3, 6),
-    Orbital(Symbol("fy(3x2-y2)"), 1, 3, 7),
-    Orbital(:sp, 2, -1, 0),
-    Orbital(:sp2, 3, -2, 0),
-    Orbital(:sp3, 4, -3, 0),
-    Orbital(:sp3d2, 6, -5, 0),
+    Orbital("s", 1, 0, 1),
+    Orbital("p", 3, 1, 0),
+    Orbital("px", 1, 1, 2),
+    Orbital("py", 1, 1, 3),
+    Orbital("pz", 1, 1, 1),
+    Orbital("d", 5, 2, 0),
+    Orbital("dz2", 1, 2, 1), 
+    Orbital("dxz", 1, 2, 2), 
+    Orbital("dyz", 1, 2, 3), 
+    Orbital("dx2-y2", 1, 2, 4),
+    Orbital("dxy", 1, 2, 5), 
+    Orbital("f", 7, 3, 0),
+    Orbital("fz3", 1, 3, 1),
+    Orbital("fxz2", 1, 3, 2),
+    Orbital("fyz2", 1, 3, 3),
+    Orbital("fz(x2-y2)", 1, 3, 4),
+    Orbital("fxyz", 1, 3, 5),
+    Orbital("fx(x2-3y2)", 1, 3, 6),
+    Orbital("fy(3x2-y2)", 1, 3, 7),
+    Orbital("sp", 2, -1, 0),
+    Orbital("sp2", 3, -2, 0),
+    Orbital("sp3", 4, -3, 0),
+    Orbital("sp3d2", 6, -5, 0),
 ]
-orbital(s::Symbol) = getfirst(x -> x.name == s, ORBITALS)
+orbital(s::String) = getfirst(x -> x.name == s, ORBITALS)
 orbital(l::Number) = getfirst(x -> x.l == l, ORBITALS)
 
-Base.convert(::Type{Symbol}, x::Orbital) = x.name
+Base.convert(::Type{String}, x::Orbital) = x.name
 orbsize(orb::Orbital) = orb.size
-orbsize(orb::Symbol)  = orbsize(orbital(orb))
+orbsize(orb::String)  = orbsize(orbital(orb))
 
 @with_kw_noshow struct Projection
     orb   ::Orbital = ORBITALS[1]
@@ -82,8 +82,8 @@ function addprojections!(atoms, projections_, soc; print=true)
     end
 end
 
-Base.zero(::Type{Projection}) = Projection(Orbital(:zero, 0, 0, 0), 0, 0)
-Base.zero(::Projection) = Projection(Orbital(:zero, 0, 0, 0), 0, 0)
+Base.zero(::Type{Projection}) = Projection(Orbital("zero", 0, 0, 0), 0, 0)
+Base.zero(::Projection) = Projection(Orbital("zero", 0, 0, 0), 0, 0)
 
 
 Base.range(proj::Projection)  = proj.start:proj.last

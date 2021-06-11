@@ -86,7 +86,7 @@ function wan_read_input(::Type{T}, f::IO) where T
             block_name = Symbol(split(lowercase(line))[end])
 
             if block_name == :projections
-                proj_dict = Tuple{Symbol,Array{Symbol,1}}[]
+                proj_dict = Tuple{Symbol,Array{String,1}}[]
                 line      = readline(f)
                 while !occursin("end", lowercase(line))
                     if occursin("!", line) || line == ""
@@ -100,7 +100,7 @@ function wan_read_input(::Type{T}, f::IO) where T
                     else
                         split_line      = strip_split(line, ':')
                         atom            = Symbol(split_line[1])
-                        projections     = [Symbol(proj) for proj in strip_split(split_line[2], ';')]
+                        projections     = [proj for proj in strip_split(split_line[2], ';')]
                         push!(proj_dict,(atom,projections))
                         line = readline(f)
                     end

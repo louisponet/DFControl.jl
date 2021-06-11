@@ -61,7 +61,7 @@ push!(job, gencalc_scf(job["scf"], (5,5,5,1,1,1), name="1scf2"))
 
 wanflags = [:write_hr => true, :wannier_plot => true]
 
-set_projections!(job, :Pt => [:s, :p, :d])
+set_projections!(job, :Pt => ["s", "p", "d"])
 wancalc = gencalc_wan(job["nscf"], structure(job), fermi-7.0, wanflags...; Epad=5.0)
 @test wancalc == gencalc_wan(job, fermi-7.0, wanflags...; Epad=5.0)
 append!(job, wancalc)
@@ -155,9 +155,9 @@ set_pseudos!(job, :test)
 @test job.structure.atoms[1].pseudo == Pseudo("Pt.UPF", joinpath(testdir, "testassets/pseudos"))
 
 
-testorbs = [:s, :p]
+testorbs = ["s", "p"]
 set_projections!(job, :Pt => testorbs)
-@test convert.(Symbol, [p.orb for p in projections(job, :Pt)]) == testorbs
+@test convert.(String, [p.orb for p in projections(job, :Pt)]) == testorbs
 set_wanenergies!(job, nscf, fermi-7.0, Epad=3.0)
 
 @test job["wanup"][:dis_froz_max] == 13.2921
@@ -339,7 +339,7 @@ rm(joinpath(job, DFControl.VERSION_DIR_NAME), recursive=true)
 rm.(DFControl.inpath.(job.inputs))
 
 rm(joinpath(job, "job.tt"))
-rm(joinpath(job, ".metadata.jld2")
+rm(joinpath(job, ".metadata.jld2"))
 rm(joinpath(job, "pw2wan_wandn.in"))
 rm(joinpath(job, "pw2wan_wanup.in"))
 rm.(joinpath.((job.local_dir,), filter(x -> occursin("UPF", x), readdir(job.local_dir))))
