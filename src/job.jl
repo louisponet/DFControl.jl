@@ -28,7 +28,7 @@ Represents a full DFT job with multiple input files and calculations.
         if isempty(metadata)
             mpath = joinpath(local_dir, ".metadata.jld2")
             if ispath(mpath)
-                metadata = load(mpath, "metadata")
+                metadata = load(mpath)
             end
         end
         out = new(name, structure, calculations, local_dir, server, server_dir, header, metadata, version)
