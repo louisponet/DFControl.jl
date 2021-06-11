@@ -339,6 +339,7 @@ rm(joinpath(job, DFControl.VERSION_DIR_NAME), recursive=true)
 rm.(DFControl.inpath.(job.inputs))
 
 rm(joinpath(job, "job.tt"))
+rm(joinpath(job, ".metadata.jld2")
 rm(joinpath(job, "pw2wan_wandn.in"))
 rm(joinpath(job, "pw2wan_wanup.in"))
 rm.(joinpath.((job.local_dir,), filter(x -> occursin("UPF", x), readdir(job.local_dir))))
