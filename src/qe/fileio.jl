@@ -893,14 +893,6 @@ function save(input::DFInput{QE}, structure, filename::String=inpath(input); rel
     if haskey(flags(input), :calculation)
         set_flags!(input, :calculation => replace(input[:calculation], "_" => "-"), print=false)
     end
-    # setting hubbard and magnetization flags
-    set_hubbard_flags!(input, structure)
-    set_starting_magnetization_flags!(input, structure)
-    
-    # setting hubbard flags 
-    pseudo_dir = pseudo(atoms(structure)[1]).dir # Pseudos should be all sanitized by now
-       set_flags!(input, :pseudo_dir => pseudo_dir; print=false)
-       
     open(filename, "w") do f
         if exec(input, "ph.x") !== nothing
             write(f, "--\n")

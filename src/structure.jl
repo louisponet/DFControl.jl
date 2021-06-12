@@ -238,30 +238,28 @@ function sanitize_magnetization!(str::Structure)
         magnetizations = Vec3[]
         dftus          = DFTU[]
         names          = Symbol[]
-        for a in magnetic_ats
-            if e == element(a)
-                nameid = findfirst(x->x == name(a), names)
-                if nameid === nothing
-                    push!(names, name(a))
+        for a in filter(x -> element(x) == e, magnetic_ats)
+            nameid = findfirst(x->x == name(a), names)
+            if nameid === nothing
+                push!(names, name(a))
+                push!(magnetizations, magnetization(a))
+                push!(dftus, dftu(a))
+            else
+                mag = magnetizations[nameid]
+                dftu_ = dftus[nameid]
+                if (magnetization(a) != mag || dftu(a) != dftu_)
+                    id = 1
+                    tname = Symbol(string(e.symbol) * "$id")
+                    while tname ∈ names
+                        id += 1
+                        tname = Symbol(string(e.symbol) * "$id")
+                    end
+                    push!(names, tname)
                     push!(magnetizations, magnetization(a))
                     push!(dftus, dftu(a))
-                else
-                    mag = magnetizations[nameid]
-                    dftu_ = dftus[nameid]
-                    if (magnetization(a) != mag || dftu(a) != dftu_)
-                        id = 1
-                        tname = Symbol(string(e.symbol) * "$id")
-                        while tname ∈ names
-                            id += 1
-                            tname = Symbol(string(e.symbol) * "$id")
-                        end
-                        push!(names, tname)
-                        push!(magnetizations, magnetization(a))
-                        push!(dftus, dftu(a))
-                        oldname = name(a)
-                        a.name = tname
-                        @info "Renamed atom from $oldname to $(name(a)) in order to distinguish different magnetization species."
-                    end
+                    oldname = name(a)
+                    a.name = tname
+                    @info "Renamed atom from $oldname to $(name(a)) in order to distinguish different magnetization species."
                 end
             end
         end

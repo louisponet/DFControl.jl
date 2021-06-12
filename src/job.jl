@@ -13,8 +13,9 @@ Represents a full DFT job with multiple input files and calculations.
     server_dir   ::String = ""
     header       ::Vector{String} = getdefault_jobheader()
     metadata     ::Dict = Dict()
-    version      ::Int = last_job_version(local_dir) 
-    function DFJob(name, structure, calculations, local_dir, server, server_dir, header, metadata, version)
+    version      ::Int = last_job_version(local_dir)
+    copy_temp_folders::Bool = true
+    function DFJob(name, structure, calculations, local_dir, server, server_dir, header, metadata, version, copy_temp_folders)
         if local_dir[end] == '/'
             local_dir = local_dir[1:end-1]
         end
@@ -31,7 +32,7 @@ Represents a full DFT job with multiple input files and calculations.
                 metadata = load(mpath)
             end
         end
-        out = new(name, structure, calculations, local_dir, server, server_dir, header, metadata, version)
+        out = new(name, structure, calculations, local_dir, server, server_dir, header, metadata, version, copy_temp_folders)
         # TODO add check_version, and if it doesn't match the one that's currently in the main directory,
         # load the previous one from the versions
         !occursin("versions", local_dir) && maybe_register_job(local_dir)
@@ -126,7 +127,7 @@ inpath(job::DFJob, n) = inpath(input(job,n))
 outpath(job::DFJob, n) = outpath(input(job,n))
 
 "Runs some checks on the set flags for the inputs in the job, and sets metadata (:prefix, :outdir etc) related flags to the correct ones. It also checks whether flags in the various inputs are allowed and set to the correct types."
-function sanitizeflags!(job::DFJob)
+function sanitize_flags!(job::DFJob)
     set_flags!(job, :prefix => "$(job.name)", print=false)
     if iswannierjob(job)
         nscfcalc = getnscfcalc(job)
@@ -146,9 +147,7 @@ function sanitizeflags!(job::DFJob)
         outdir = isempty(job.server_dir) ? joinpath(job, "outputs") : joinpath(job.server_dir, splitdir(job.local_dir)[end], "outputs")
         set_flags!(i, :outdir => "$outdir", print=false)
     end
-    sanitize_cutoffs!(job)
-    sanitize_pseudos!(job)
-    sanitizeflags!.(inputs(job))
+    sanitize_flags!.(inputs(job), (job.structure,))
 end
 
 function sanitize_cutoffs!(job)
@@ -179,6 +178,7 @@ function sanitize_pseudos!(job::DFJob)
     all_pseudos = pseudo.(atoms(job))
     uni_dirs    = unique(map(x->x.dir, all_pseudos))
     uni_pseudos = unique(all_pseudos)
+    @assert all(ispath.(path.(uni_pseudos))) "Some Pseudos could not be found, please set them to existing ones."
     pseudo_dir  = length(uni_dirs) == 1 ? uni_dirs[1] : job.local_dir 
     if length(uni_dirs) > 1
         @info "Found pseudos in multiple directories, copying them to job directory"
@@ -192,7 +192,7 @@ function sanitize_pseudos!(job::DFJob)
 end
 
 function sanitize_magnetization!(job::DFJob)
-    if !any(x->package(x) == QE, inputs(job))
+    if !any(x -> package(x) == QE, inputs(job))
         return
     end
     sanitize_magnetization!(job.structure)
@@ -266,7 +266,7 @@ for f in (:cp, :mv)
     @eval function Base.$f(job::DFJob, dest::String; kwargs...)
         tjob = DFJob(job.local_dir)
         for file in readdir(job.local_dir)
-            if file == VERSION_DIR_NAME
+            if file == VERSION_DIR_NAME || (file == "outputs" && !job.copy_temp_folders)
                 continue
             end
             $f(joinpath(tjob, file), joinpath(dest, file); kwargs...)

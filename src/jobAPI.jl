@@ -17,9 +17,11 @@ function save(job::DFJob, local_dir=job.local_dir; kwargs...)
     end
     maybe_register_job(job)
     maybe_increment_version(job)
+    sanitize_cutoffs!(job)
+    sanitize_pseudos!(job)
     sanitize_magnetization!(job)
     sanitize_projections!(job)
-    sanitizeflags!(job)
+    sanitize_flags!(job)
     return writejobfiles(job; kwargs...)
 end
 

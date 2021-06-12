@@ -62,7 +62,6 @@ flags(input::DFInput) = input.flags
 set_dir!(input::DFInput, dir) = (input.dir = dir)
 name_ext(input::DFInput, ext)   = name(input) * ext
 infilename(input::DFInput)      = input.infile
-infilename(input::DFInput{Elk}) = "elk.in"
 outfilename(input::DFInput)     = input.outfile
 inpath(input::DFInput)          = joinpath(input,  infilename(input))
 outpath(input::DFInput)         = joinpath(input,  outfilename(input))
@@ -86,7 +85,7 @@ hasexec(input::DFInput, ex::AbstractString) = exec(input, ex) != nothing
 set_flow!(input::DFInput, run) = input.run = run
 
 "Runs through all the set flags and checks if they are allowed and set to the correct value"
-function cleanflags!(input::DFInput)
+function convert_flags!(input::DFInput)
     for (flag, value) in flags(input)
         flagtype_ = flagtype(input, flag)
         if flagtype_ == Nothing
@@ -114,29 +113,15 @@ end
 
 #TODO implement abinit and wannier90
 """
-    sanitizeflags!(input::DFInput)
+    sanitize_flags!(input::DFInput, str::AbstractStructure)
 
 Cleans up flags, i.e. remove flags that are not allowed and convert all
 flags to the correct types.
 Tries to correct common errors for different input types.
 """
-function sanitizeflags!(input::DFInput)
-    cleanflags!(input)
+function sanitize_flags!(input::DFInput, str::AbstractStructure)
+    convert_flags!(input)
 end
-
-function sanitizeflags!(input::DFInput{QE})
-    cleanflags!(input)
-    if isvcrelaxcalc(input)
-	    #this is to make sure &ions and &cell are there in the input 
-	    !hasflag(input, :ion_dynamics)  && set_flags!(input, :ion_dynamics  => "bfgs", print=false)
-	    !hasflag(input, :cell_dynamics) && set_flags!(input, :cell_dynamics => "bfgs", print=false)
-    end
-    #TODO add all the required flags
-    if exec(input, "pw.x") !== nothing
-        @assert hasflag(input, :calculation) "Please set the flag for calculation with name: $(name(input))"
-    end
-end
-
 
 function setoradd!(datas::Vector{InputData}, data::InputData)
     found = false
@@ -162,29 +147,14 @@ function set_data!(input::DFInput, data::InputData)
     return input
 end
 
-isbandscalc(input::DFInput{QE})    = flag(input, :calculation) == "bands"
-isbandscalc(input::DFInput{Elk})   = input.name == "20"
 isbandscalc(input::DFInput)        = false
-
-isnscfcalc(input::DFInput{QE})     = flag(input, :calculation) == "nscf"
-isnscfcalc(input::DFInput{Elk})    = input.name == "elk2wannier" #nscf == elk2wan??
 isnscfcalc(input::DFInput)         = false
-
-isscfcalc(input::DFInput{QE})      = flag(input, :calculation) == "scf"
-isscfcalc(input::DFInput{Elk})     = input.name ∈ ["0", "1"]
 isscfcalc(input::DFInput)          = false
-
-isvcrelaxcalc(input::DFInput{QE})  = flag(input, :calculation) == "vc-relax"
 isvcrelaxcalc(input::DFInput)      = false
-
-isprojwfccalc(input::DFInput{QE})  = hasexec(input, "projwfc.x")
 isprojwfccalc(input::DFInput)      = false
 
-issoccalc(input::DFInput{QE}) = flag(input, :lspinorb) == true
-issoccalc(input::DFInput{Wannier90}) = flag(input, :spinors) == true
 issoccalc(input::DFInput) = false
 
-ishpcalc(input::DFInput{QE}) = hasexec(input, "hp.x")
 
 #TODO review this!
 outdata(input::DFInput) = input.outdata
@@ -193,62 +163,7 @@ hasoutput(input::DFInput) = !isempty(outdata(input)) || hasoutfile(input)
 hasoutfile(input::DFInput) = ispath(outpath(input))
 hasnewout(input::DFInput, time) = mtime(outpath(input)) > time
 
-readoutput(input::DFInput{QE}) = qe_read_output(input)
-readoutput(input::DFInput{Wannier90}) = wan_read_output(outpath(input))
-
-pseudodir(input::DFInput{QE}) = flag(input, :pseudo_dir)
-
 set_cutoffs!(input::DFInput, args...) = @warn "Setting cutoffs is not implemented for package $(package(input))"
-set_cutoffs!(input::DFInput{QE}, ecutwfc, ecutrho) = set_flags!(input, :ecutwfc => ecutwfc, :ecutrho=>ecutrho)
-
-function Emin_from_projwfc(structure::AbstractStructure, projwfc::DFInput{QE}, threshold::Number)
-    hasoutput_assert(projwfc)
-    hasexec_assert(projwfc, "projwfc.x")
-    if !haskey(outdata(projwfc), :states)
-        states, bands = qe_read_projwfc(outpath(projwfc))
-        outdata(projwfc)[:states] = states
-        outdata(projwfc)[:bands]  = bands
-    else
-        states, bands = outdata(projwfc)[:states], outdata(projwfc)[:bands]
-    end
-
-    mask = zeros(length(states))
-    for (atid, at) in enumerate(atoms(structure))
-        projs = projections(at)
-
-        if isempty(projs)
-            continue
-        end
-
-        stateids = Int[]
-        for proj in projs
-            orb = orbital(proj)
-            push!.((stateids,), findall(x -> x.atom_id == atid && x.l == orb.l, states))
-        end
-        mask[stateids] .= 1.0
-
-    end
-    Emin = -10000.0
-    for b in bands
-        ψ = mean(b.extra[:ψ])
-        tot_relevant_occupation = dot(mask, ψ)
-
-        if tot_relevant_occupation > threshold
-            Emin = minimum(b.eigvals)
-            break
-        end
-
-    end
-    if Emin == -10000.0
-        error("Couldn't find any band with occupation of relevant projections above $threshold, were any set in the structure?")
-    end
-    return Emin
-end
-
-#asserts
-function iscalc_assert(i::DFInput{QE}, calc)
-    @assert flag(i, :calculation) == calc "Please provide a valid '$calc' calculation."
-end
 
 function hasoutput_assert(i::DFInput)
     @assert hasoutfile(i) "Please specify an input that has an outputfile."
@@ -258,106 +173,18 @@ function hasexec_assert(i::DFInput, exec::String)
     @assert hasexec(i, exec) "Please specify an input with $exec as it's executable."
 end
 
-
-#TODO Temporary handling of HubbardU situation
-function set_hubbard_flags!(input::DFInput{QE}, str::AbstractStructure{T}) where {T}
-	u_ats = unique(atoms(str))
-    isdftucalc = any(x -> dftu(x).U != 0 || dftu(x).J0 != 0.0 || sum(dftu(x).J) != 0 || sum(dftu(x).α) != 0, u_ats)
-    isnc = isnoncolin(str)
-	if isdftucalc
-		Jmap = map(x -> copy(dftu(x).J), u_ats)
-		Jdim = maximum(length.(Jmap))
-		Jarr = zeros(Jdim, length(u_ats))
-		for (i, J) in enumerate(Jmap)
-			diff = Jdim - length(J)
-			if diff > 0
-				for d in 1:diff
-					push!(J, zero(eltype(J)))
-				end
-			end
-			Jarr[:, i] .= J
-		end
-    	set_flags!(input,
-    	          :lda_plus_u    => true,
-    	          :Hubbard_U     => map(x -> dftu(x).U, u_ats),
-    	          :Hubbard_alpha => map(x -> dftu(x).α , u_ats),
-    	          :Hubbard_beta  => map(x -> dftu(x).β , u_ats),
-    	          :Hubbard_J     => Jarr,
-    	          :Hubbard_J0    => map(x -> dftu(x).J0, u_ats);
-	              print=false)
-        isnc && set_flags!(input, :lda_plus_u_kind => 1; print=false)
-	end
-end
-
-function set_starting_magnetization_flags!(input::DFInput{QE}, str::AbstractStructure{T}) where {T}
-	u_ats = unique(atoms(str))
-	mags  = magnetization.(u_ats)
-	starts= T[]
-	θs    = T[]
-	ϕs    = T[]
-    ismagcalc = ismagnetic(str)
-    isnc =  isnoncolin(str)
-	if (ismagcalc && isnc) || (flag(input, :noncolin) !== nothing && flag(input, :noncolin))
-		for m in mags
-			tm = normalize(m)
-			if norm(m) == 0
-				push!.((starts, θs, ϕs), 0.0)
-			else
-				θ = acos(tm[3]) * 180/π
-				ϕ = atan(tm[2], tm[1])   * 180/π
-				start = norm(m)
-				push!(θs, θ)
-				push!(ϕs, ϕ)
-				push!(starts, start)
-			end
-		end
-		set_flags!(input, :noncolin => true; print=false)
-		rm_flags!(input, :nspin; print=false)
-	elseif ismagcalc 
-		for m in mags
-			push!.((θs, ϕs), 0.0)
-			if norm(m) == 0
-				push!(starts, 0)
-			else
-				push!(starts, sign(sum(m))*norm(m))
-			end
-		end
-		set_flags!(input, :nspin => 2; print=false)
-	end
-	set_flags!(input, :starting_magnetization => starts, :angle1 => θs, :angle2 => ϕs; print=false)
-end
-
 Base.:(==)(i1::DFInput, i2::DFInput) =
     all(x -> x == :outdata ? true : getfield(i1, x) == getfield(i2, x), fieldnames(DFInput))
 
 searchdir(i::DFInput, glob) = joinpath.((i,), searchdir(dir(i), glob))
 
-for f in (:cp, :mv)
-    @eval function Base.$f(i::DFInput{QE}, dest::String; kwargs...)
-        $f(inpath(i), joinpath(dest, infilename(i)); kwargs...)
-        if hasoutfile(i)
-            $f(outpath(i), joinpath(dest, outfilename(i)); kwargs...)
-        end
-        if isprojwfccalc(i)
-            for f in searchdir(i, "pdos")
-                $f(f, joinpath(dest, splitdir(f)[end]); kwargs...)
-            end
-        elseif ishpcalc(i)
-            for f in searchdir(i, "Hubbard_parameters")
-                $f(f, joinpath(dest, splitdir(f)[end]); kwargs...)
-            end
-        end
-        #TODO add ph.x outfiles
-    end
-
-    @eval function Base.$f(i::DFInput{Wannier90}, dest::String; kwargs...)
-        for glob in ("$(name(i))", "UNK") # seedname should also cover generated pw2wannier90 files
-            for f in searchdir(i, glob)
-                $f(f, joinpath(dest, splitdir(f)[end]); kwargs...)
-            end
-        end
-    end
-end
-
 ψ_cutoff_flag(::DFInput{P}) where {P} = ψ_cutoff_flag(P)
 ρ_cutoff_flag(::DFInput{P}) where {P} = ρ_cutoff_flag(P)
+
+
+include("qe/input.jl")
+include("elk/input.jl")
+include("wannier90/input.jl")
+
+
+

@@ -258,7 +258,7 @@ n = pop!(job, "nscf")
 nscf = job["scf"]
 rm_flags!(job, :nspin, :lda_plus_u, :noncolin)
 set_magnetization!(job, :Pt => [0.2, 1.0, 0.2])
-DFControl.sanitizeflags!(job)
+DFControl.sanitize_flags!(job)
 set_Hubbard_U!(job, :Pt => 2.3)
 DFControl.sanitize_magnetization!(job)
 DFControl.set_hubbard_flags!.(filter(x -> DFControl.package(x) == QE, DFControl.inputs(job)), (job.structure,))
@@ -269,7 +269,7 @@ DFControl.set_starting_magnetization_flags!.(filter(x -> DFControl.package(x) ==
 
 rm_flags!(job, :nspin, :lda_plus_u, :noncolin)
 set_magnetization!(job, :Pt => [0.0, 0.0, 0.5])
-DFControl.sanitizeflags!(job)
+DFControl.sanitize_flags!(job)
 DFControl.sanitize_magnetization!(job)
 DFControl.set_hubbard_flags!.(filter(x -> DFControl.package(x) == QE, DFControl.inputs(job)), (job.structure,))
 DFControl.set_starting_magnetization_flags!.(filter(x -> DFControl.package(x) == QE, DFControl.inputs(job)), (job.structure,))
