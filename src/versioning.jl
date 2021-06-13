@@ -19,6 +19,7 @@ last_version(job::DFJob) = last_job_version(job.local_dir)
 
 version_path(dir::String, version::Int) = joinpath(dir, VERSION_DIR_NAME, "$version")
 version_path(job::DFJob) = version_path(job.local_dir, job.version)
+version_path(job::DFJob, version::Int) = version_path(job.local_dir, version)
 
 exists_version(dir::String, version::Int) = version ∈ job_versions(dir)
 
@@ -61,4 +62,27 @@ function switch_version(job::DFJob, version)
         end
     end
     return job
+end
+
+version_assert(job, version) = @assert exists_version(job, version) "Version $version does not exist for job."
+
+"Removes the job version if it exists." 
+function rm_version!(job::DFJob, version)
+    version_assert(job, version)
+    rm(version_path(job, version), recursive=true)
+end
+
+"Removes the job versions if they exist." 
+function rm_versions!(job, versions...)
+    for v in versions
+        rm_version(job, v)
+    end
+end
+
+"Removes temporary directories of the specified job versions."
+function rm_tmp_dirs!(job, vers=versions(job)...)
+    for v in vers
+        version_assert(job, v)
+        rm(joinpath(version_path(job, v), "outputs"), recursive=true)
+    end
 end

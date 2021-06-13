@@ -283,3 +283,14 @@ function isrunning(job::DFJob; print=true)
     print && @warn "Job scheduler unknown."
     return false
 end
+
+"Total filesize on disk for a job and all its versions."
+function Base.filesize(job::DFJob)
+    totsize = 0.0
+    for (root, dirs, files) in walkdir(job.local_dir)
+        for file in files
+            totsize += filesize(root, file)
+        end
+    end
+    return totsize
+end

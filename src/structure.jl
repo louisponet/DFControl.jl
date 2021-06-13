@@ -248,18 +248,25 @@ function sanitize_magnetization!(str::Structure)
                 mag = magnetizations[nameid]
                 dftu_ = dftus[nameid]
                 if (magnetization(a) != mag || dftu(a) != dftu_)
-                    id = 1
-                    tname = Symbol(string(e.symbol) * "$id")
-                    while tname ∈ names
-                        id += 1
+                    id = findfirst(x -> dftus[x] == dftu(a) && magnetizations[x] == magnetization(a), 1:length(dftus))
+                    if id === nothing
+                        id = 1
                         tname = Symbol(string(e.symbol) * "$id")
-                    end
-                    push!(names, tname)
-                    push!(magnetizations, magnetization(a))
-                    push!(dftus, dftu(a))
-                    oldname = name(a)
-                    a.name = tname
-                    @info "Renamed atom from $oldname to $(name(a)) in order to distinguish different magnetization species."
+                        while tname ∈ names
+                            id += 1
+                            tname = Symbol(string(e.symbol) * "$id")
+                        end
+                        push!(names, tname)
+                        push!(magnetizations, magnetization(a))
+                        push!(dftus, dftu(a))
+                        oldname = name(a)
+                        a.name = tname
+                        @info "Renamed atom from $oldname to $(name(a)) in order to distinguish different magnetization species."
+                    else
+                        oldname = name(a)
+                        a.name = names[id]
+                        @info "Renamed atom from $oldname to $(name(a)) in order to distinguish different magnetization species."
+                   end 
                 end
             end
         end
