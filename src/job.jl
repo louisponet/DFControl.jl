@@ -284,13 +284,41 @@ function isrunning(job::DFJob; print=true)
     return false
 end
 
-"Total filesize on disk for a job and all its versions."
-function Base.filesize(job::DFJob)
+function dirsize(path::String)
     totsize = 0.0
-    for (root, dirs, files) in walkdir(job.local_dir)
+    for (root, dirs, files) in walkdir(path)
         for file in files
             totsize += filesize(root, file)
         end
     end
     return totsize
+end
+
+"Total filesize on disk for a job and all its versions."
+Base.filesize(job::DFJob) = dirsize(job.local_dir)
+
+"Cleanup job files interactively."
+function cleanup(job::DFJob)
+    labels = String[]
+    paths = String[]
+    for v in versions(job)
+        vpath = version_path(job, v)
+        s = round(dirsize(vpath)/1e6, digits=3)
+        push!(labels, "Version $v:  $s Mb")
+        push!(paths, vpath)
+        opath = joinpath(vpath, "outputs")
+        if ispath(opath)
+            s_out = round(dirsize(opath)/1e6, digits=3)
+            push!(labels, "Version $v/outputs:  $s_out Mb")
+            push!(paths, opath)
+        end
+    end
+    menu = MultiSelectMenu(labels)
+    choices = request("Select job files to delete:", menu)
+    for i in choices
+        if ispath(paths[i]) # Could be that outputs was already deleted
+            @info "Deleting $(paths[i])"
+            rm(paths[i], recursive=true)
+        end
+    end
 end

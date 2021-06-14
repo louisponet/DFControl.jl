@@ -20,7 +20,8 @@ include("jobAPI.jl")
 #Basic Job Control Functionality
 export save, submit, abort, set_flow!, set_headerword!, isrunning, progressreport,
        set_serverdir!, set_localdir!, structure, scale_cell!, volume,
-       switch_version, version, versions, registered_jobs, rm_version!, rm_versions!, rm_tmp_dirs!
+       switch_version, version, versions, registered_jobs, rm_version!, rm_versions!, rm_tmp_dirs!,
+       cleanup
 
 #Basic Interaction with DFInputs inside DFJob
 export searchinput, searchinputs, set_cutoffs!
