@@ -1,0 +1,8 @@
+build/
+site/
+src/examples/*.md
+src/examples/*.ipynb
+src/guide/advanced_tutorial.jl
+src/guide/advanced_tutorial.ipynb
+src/guide/basic_tutorial.jl
+src/guide/basic_tutorial.md

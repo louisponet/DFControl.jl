@@ -32,14 +32,14 @@ function blend_color(contribs::Vector, at_colors)
 end
 
 #@TODO create nice ticks when ks=:relative
-"""
-Recipe to plot a DFBand. If ks is set to relative it calculates the relative offset of the k_points to the middle of the k-point path and puts that on the x-axis.
+# """
+# Recipe to plot a DFBand. If ks is set to relative it calculates the relative offset of the k_points to the middle of the k-point path and puts that on the x-axis.
 
-Input:    band::DFBand
-Optional: ks=nothing
-Kwargs:   fermi=0, -> applies fermi level to band eigenvalues before plotting.
-linewidth=2
-"""
+# Input:    band::DFBand
+# Optional: ks=nothing
+# Kwargs:   fermi=0, -> applies fermi level to band eigenvalues before plotting.
+# linewidth=2
+# """
 @recipe function f(band::DFBand, ks=nothing; fermi=0, linewidth=2)
     if ks == :relative_cart
         ks = []
@@ -69,9 +69,6 @@ linewidth=2
     ks, out
 end
 
-"""
-To plot multiple bands on one plot.
-"""
 @recipe function f(bands::Vector{<:DFBand}, ks=nothing)
     for (i, band) in enumerate(bands)
         @series begin

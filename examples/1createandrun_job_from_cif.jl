@@ -23,7 +23,7 @@ set_kpoints!(scf_input, (6,6,6,1,1,1))
 scf_input = DFInput{QE}("scf", pw_execs, :calculation => "scf",
                         data=[InputData(:k_points, :automatic, (6,6,6,1,1,1))])
 
-# Using these we can no define our job, if we would have more inputs they would be added
+# Using these we can now define our job, if we would have more inputs they would be added
 # to the list [scf_input].
 # The flag => value pairs will set the specified flags to that value for all inputs in the job
 # that allow that flag to be set, so it's ideal for things like cutoffs and smearing etc.

@@ -143,7 +143,6 @@ function schedule_job(job::DFJob, submit_command; rm_prev=true)
         end
         try
             outstr = read(`$submit_command job.tt`, String)
-            @show outstr
             cd(curdir)
         catch
             cd(curdir)
@@ -157,7 +156,7 @@ function schedule_job(job::DFJob, submit_command; rm_prev=true)
             return parse(Int, split(chomp(outstr))[end]) 
         end
     else
-        return outstr
+        return 
     end
 end
 
