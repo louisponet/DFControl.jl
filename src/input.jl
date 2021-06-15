@@ -147,13 +147,13 @@ function set_data!(input::DFInput, data::InputData)
     return input
 end
 
-isbandscalc(input::DFInput)        = false
-isnscfcalc(input::DFInput)         = false
-isscfcalc(input::DFInput)          = false
-isvcrelaxcalc(input::DFInput)      = false
-isprojwfccalc(input::DFInput)      = false
-
-issoccalc(input::DFInput) = false
+isbands(input::DFInput)        = false
+isnscf(input::DFInput)         = false
+isscf(input::DFInput)          = false
+isvcrelax(input::DFInput)      = false
+isprojwfc(input::DFInput)      = false
+ismagnetic(input::DFInput)    = false
+issoc(input::DFInput) = false
 
 
 #TODO review this!
@@ -181,6 +181,11 @@ searchdir(i::DFInput, glob) = joinpath.((i,), searchdir(dir(i), glob))
 ψ_cutoff_flag(::DFInput{P}) where {P} = ψ_cutoff_flag(P)
 ρ_cutoff_flag(::DFInput{P}) where {P} = ρ_cutoff_flag(P)
 
+pdos(input::DFInput, args...) =
+    @error "pdos reading not implemented for package $(package(input))."
+
+Emin_from_projwfc(input::DFInput, args...) =
+    @error "Emin_from_projwfc is not implemented for package $(package(input))."
 
 include("qe/input.jl")
 include("elk/input.jl")

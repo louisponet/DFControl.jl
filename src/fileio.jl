@@ -194,7 +194,7 @@ function writetojob(f, job, _input::DFInput{Wannier90}; kwargs...)
     id = findfirst(isequal(_input), job.inputs)
     seedname = name(_input)
 
-	nscf_calc = getfirst(x -> isnscfcalc(x), job.inputs)
+	nscf_calc = getfirst(x -> isnscf(x), job.inputs)
 	if nscf_calc !== nothing
         runexec   = nscf_calc.execs
         # For elk the setup necessary for the wan_calc needs to be done before writing the wan input
@@ -429,7 +429,7 @@ function read_job_inputs(job_file::String)
 	    error("Something went wrong and no valid structures could be read from input files.")
     end
     outstruct = mergestructures(structures)
-    return (name=name, inputs=inputs, structure=outstruct, header=header, server_dir=serverdir)
+    return (name=name, header=header, inputs=inputs, structure=outstruct, server_dir=serverdir)
 end
 
 #---------------------------END GENERAL SECTION-------------------#

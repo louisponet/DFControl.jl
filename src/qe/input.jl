@@ -1,7 +1,7 @@
 set_noncolin_flags!(i::DFInput{QE}) = set_flags!(i, :npsin => 4, :noncolin => true; print=false)
 
 function sanitize_flags!(input::DFInput{QE}, structure::AbstractStructure)
-    if isvcrelaxcalc(input)
+    if isvcrelax(input)
 	    #this is to make sure &ions and &cell are there in the input 
 	    !hasflag(input, :ion_dynamics)  && set_flags!(input, :ion_dynamics  => "bfgs", print=false)
 	    !hasflag(input, :cell_dynamics) && set_flags!(input, :cell_dynamics => "bfgs", print=false)
@@ -21,13 +21,17 @@ function sanitize_flags!(input::DFInput{QE}, structure::AbstractStructure)
     convert_flags!(input)
 end
 
-isbandscalc(input::DFInput{QE})    = flag(input, :calculation) == "bands"
-isnscfcalc(input::DFInput{QE})     = flag(input, :calculation) == "nscf"
-isscfcalc(input::DFInput{QE})      = flag(input, :calculation) == "scf"
-isvcrelaxcalc(input::DFInput{QE})  = flag(input, :calculation) == "vc-relax"
-isprojwfccalc(input::DFInput{QE})  = hasexec(input, "projwfc.x")
-ishpcalc(input::DFInput{QE}) = hasexec(input, "hp.x")
-issoccalc(input::DFInput{QE}) = flag(input, :lspinorb) == true
+isbands(input::DFInput{QE})    = flag(input, :calculation) == "bands"
+isnscf(input::DFInput{QE})     = flag(input, :calculation) == "nscf"
+isscf(input::DFInput{QE})      = flag(input, :calculation) == "scf"
+isvcrelax(input::DFInput{QE})  = flag(input, :calculation) == "vc-relax"
+isprojwfc(input::DFInput{QE})  = hasexec(input, "projwfc.x")
+ishp(input::DFInput{QE}) = hasexec(input, "hp.x")
+issoc(input::DFInput{QE}) = flag(input, :lspinorb) == true
+
+ismagnetic(input::DFInput{QE}) =
+    (hasflag(input, :nspin) && input[:nspin] > 0.0) ||
+    (hasflag(input, :total_magnetization) && input[:total_magnetization] != 0.0) 
 
 readoutput(input::DFInput{QE}) = qe_read_output(input)
 
@@ -159,11 +163,11 @@ for f in (:cp, :mv)
         if hasoutfile(i)
             $f(outpath(i), joinpath(dest, outfilename(i)); kwargs...)
         end
-        if isprojwfccalc(i)
+        if isprojwfc(i)
             for f in searchdir(i, "pdos")
                 $f(f, joinpath(dest, splitdir(f)[end]); kwargs...)
             end
-        elseif ishpcalc(i)
+        elseif ishp(i)
             for f in searchdir(i, "Hubbard_parameters")
                 $f(f, joinpath(dest, splitdir(f)[end]); kwargs...)
             end
@@ -171,3 +175,232 @@ for f in (:cp, :mv)
         #TODO add ph.x outfiles
     end
 end
+
+function pdos(input::DFInput{QE}, atsym::Symbol, magnetic::Bool, soc::Bool, filter_word="")
+    @assert isprojwfc(input) "Please specify a valid projwfc input."
+    kresolved = hasflag(input, :kresolveddos) && input[:kresolveddos]
+    files = filter(x->occursin("($atsym)",x) && occursin("#", x) && occursin(filter_word, x), searchdir(dir(input), "pdos"))
+    @assert !isempty(files) "No pdos files found in input directory $(dir(input))"
+    
+    energies, = kresolved ? qe_read_kpdos(files[1]) : qe_read_pdos(files[1])
+    atdos = magnetic && !soc ? zeros(size(energies, 1), 2) : zeros(size(energies, 1))
+    if kresolved 
+        for f in files
+            if magnetic && !occursin(".5", f)
+                tu = qe_read_kpdos(f, 2)[2]
+                td = qe_read_kpdos(f, 3)[2]
+                atdos[:, 1] .+= reduce(+, tu, dims = 2)./size(tu,2)
+                atdos[:, 2] .+= reduce(+, td, dims = 2)./size(tu,2)
+            # elseif occursin(".5", f)
+            else 
+                t = qe_read_kpdos(f, 1)[2]
+                atdos .+= (reshape(reduce(+, t, dims = 2), size(atdos, 1))./size(t,2))
+            end
+        end
+    else
+        for f in files
+            if magnetic && !occursin(".5", f)
+                atdos.+= qe_read_pdos(f)[2][:,1:2]
+            # elseif occursin(".5", f)
+            else
+                atdos .+= qe_read_pdos(f)[2][:, 1]
+            end
+        end
+    end
+    return (energies=energies, pdos=atdos) 
+end
+
+function set_kpoints!(input::DFInput{QE}, k_grid::NTuple{3, Int}; print=true) #nscf
+    calc = flag(input, :calculation)
+    print && calc != "nscf" && (@warn "Expected calculation to be 'nscf'.\nGot $calc.")
+    set_data!(input, :k_points, kgrid(k_grid..., :nscf), option = :crystal, print=print)
+    prod(k_grid) > 100 && set_flags!(input, :verbosity => "high", print=print)
+    return input
+end
+
+function set_kpoints!(input::DFInput{QE}, k_grid::NTuple{6, Int}; print=true) #scf
+    calc = flag(input, :calculation)
+    print && calc != "scf" && !occursin("relax", calc) && (@warn "Expected calculation to be scf, vc-relax, relax.\nGot $calc.")
+    set_data!(input, :k_points, [k_grid...], option = :automatic, print=print)
+    prod(k_grid[1:3]) > 100 && set_flags!(input, :verbosity => "high", print=print)
+    return input
+end
+
+function set_kpoints!(input::DFInput{QE}, k_grid::Vector{<:NTuple{4}}; print=true, k_option=:crystal_b)
+    calc = flag(input, :calculation)
+    print && calc != "bands" && (@warn "Expected calculation to be bands, got $calc.")
+    @assert in(k_option, [:tpiba_b, :crystal_b, :tpiba_c, :crystal_c]) error("Only $([:tpiba_b, :crystal_b, :tpiba_c, :crystal_c]...) are allowed as a k_option, got $k_option.")
+    if k_option in [:tpiba_c, :crystal_c]
+        @assert length(k_grid) == 3 error("If $([:tpiba_c, :crystal_c]...) is selected the length of the k_points needs to be 3, got length: $(length(k_grid)).")
+    end
+    num_k = 0.0
+    for k in k_grid
+        num_k += k[4]
+    end
+    if num_k > 100.
+        set_flags!(input, :verbosity => "high", print=print)
+        if print
+            @info "Verbosity is set to high because num_kpoints > 100,\n
+                       otherwise bands won't get printed."
+        end
+    end
+    set_data!(input, :k_points, k_grid, option=k_option, print=print)
+    return input
+end
+
+"""
+    gencalc_scf(template::DFInput{QE}, kpoints::NTuple{6, Int}, newflags...; name="scf")
+
+Uses the information from the template and supplied kpoints to generate an scf input.
+Extra flags can be supplied which will be set for the generated input.
+"""
+gencalc_scf(template::DFInput{QE}, kpoints::NTuple{6, Int}, newflags...; name="scf") =
+    input_from_kpoints(template, name, kpoints, :calculation => "scf", newflags...)
+
+"""
+    gencalc_vcrelax(template::DFInput{QE}, kpoints::NTuple{6, Int}=data(template, :k_points).data, newflags...; name="scf")
+
+Uses the information from the template and supplied kpoints to generate a vcrelax input.
+Extra flags can be supplied which will be set for the generated input.
+"""
+gencalc_vcrelax(template::DFInput{QE}, kpoints::NTuple{6, Int} = (data(template, :k_points).data...,), newflags...; name="vcrelax") =
+    input_from_kpoints(template, name, kpoints, :calculation => "vc-relax", newflags...)
+
+"""
+    gencalc_bands(template::DFInput{QE}, kpoints::Vector{NTuple{4}}, newflags...; name="bands")
+    gencalc_bands(job::DFJob, kpoints::Vector{NTuple{4}}, newflags...; name="bands", template_name="scf")
+
+Uses the information from the template and supplied kpoints to generate a bands input.
+Extra flags can be supplied which will be set for the generated input.
+"""
+gencalc_bands(template::DFInput{QE}, kpoints::Vector{<:NTuple{4}}, newflags...; name="bands") =
+    input_from_kpoints(template, name, kpoints, :calculation => "bands", newflags...)
+
+"""
+    gencalc_nscf(template::DFInput{QE}, kpoints::NTuple{3, Int}, newflags...; name="nscf")
+    gencalc_nscf(job::DFJob, kpoints::NTuple{3, Int}, newflags...; name="nscf", template_name="scf")
+
+Uses the information from the template and supplied kpoints to generate an nscf input.
+Extra flags can be supplied which will be set for the generated input.
+"""
+gencalc_nscf(template::DFInput{QE}, kpoints::NTuple{3, Int}, newflags...; name="nscf") =
+    input_from_kpoints(template, name, kpoints, :calculation => "nscf", newflags...)
+
+"""
+    gencalc_projwfc(template::DFInput{QE}, Emin, Emax, DeltaE, newflags...; name="projwfc")
+    gencalc_projwfc(job::DFJob, Emin, Emax, DeltaE, newflags...; name="projwfc", template_name="nscf")
+
+Uses the information from the template and supplied kpoints to generate a projwfc.x input.
+Extra flags can be supplied which will be set for the generated input.
+"""
+function gencalc_projwfc(template::DFInput{QE}, Emin, Emax, DeltaE, extraflags...; name="projwfc")
+    occflag = flag(template, :occupations)
+    ngauss  = 0
+    if occflag == "smearing"
+        smearingflag = flag(template, :smearing)
+        if smearingflag ∈ ("methfessel-paxton", "m-p", "mp")
+            ngauss = 1
+        elseif smearingflag ∈ ("marzari-vanderbilt", "cold", "m-v", "mv")
+            ngauss = -1
+        elseif smearingflag ∈ ("fermi-dirac", "f-d", "fd")
+            ngauss = -99
+        end
+    end
+    tdegaussflag = flag(template, :degauss)
+    degauss = tdegaussflag != nothing ? tdegaussflag : 0.0
+    if length(execs(template)) == 2
+        excs = [execs(template)[1], Exec("projwfc.x", execs(template)[end].dir)]
+    else
+        excs = [Exec("projwfc.x", execs(template)[end].dir)]
+    end
+
+    out = DFInput(template, name, excs=excs)
+    set_name!(out, "projwfc")
+    empty!(out.flags)
+    set_flags!(out, :Emin => Emin, :Emax => Emax, :DeltaE => DeltaE,
+              :ngauss => ngauss, :degauss => degauss, print=false)
+    set_flags!(out, extraflags...)
+    return out
+end
+
+"""
+    gencalc_wan(nscf::DFInput{QE}, structure::AbstractStructure, Emin, wanflags...;
+                Epad     = 5.0,
+                wanexec  = Exec("wannier90.x", ""))
+
+Generates a Wannier90 input to follow on the supplied `nscf` calculation. It uses the projections defined in the `structure`, and starts counting the required amount of bands from `Emin`.
+The `nscf` needs to have a valid output since it will be used in conjunction with `Emin` to find the required amount of bands and energy window for the Wannier90 calculation.
+"""
+function gencalc_wan(nscf::DFInput{QE}, structure::AbstractStructure, Emin, wanflags...;
+                     Epad     = 5.0,
+                     wanexec  = Exec("wannier90.x", ""))
+
+    hasoutput_assert(nscf)
+    iscalc_assert(nscf, "nscf")
+    hasprojections_assert(structure)
+    if iscolin(structure)
+        wannames = ["wanup", "wandn"]
+        @info "Spin polarized calculation found (inferred from nscf input)."
+    else
+        wannames = ["wan"]
+    end
+
+    if flag(nscf, :nosym) != true
+        @info "'nosym' flag was not set in the nscf calculation.
+                If this was not intended please set it and rerun the nscf calculation.
+                This generally gives errors because of omitted kpoints, needed for pw2wannier90.x"
+    end
+    wanflags = wanflags != nothing ? SymAnyDict(wanflags) : SymAnyDict()
+    if issoc(nscf)
+        wanflags[:spinors] = true
+    end
+
+    nwann = nprojections(structure)
+    @info "num_wann=$nwann (inferred from provided projections)."
+    wanflags[:num_wann]  = nwann
+    kpoints = data(nscf, :k_points).data
+    wanflags[:mp_grid] = kakbkc(kpoints)
+    @info "mp_grid=$(join(wanflags[:mp_grid]," ")) (inferred from nscf input)."
+    wanflags[:preprocess] = true
+	isnoncolin(structure) && (wanflags[:spinors] = true)
+    kdata = InputData(:kpoints, :none, [k[1:3] for k in kpoints])
+
+    waninputs = DFInput{Wannier90}[]
+    for  wanfil in wannames
+        push!(waninputs, DFInput{Wannier90}(wanfil, dir(nscf), copy(wanflags), [kdata], [Exec(), wanexec], true))
+    end
+
+    if length(waninputs) > 1
+        set_flags!(waninputs[1], :spin => "up")
+        set_flags!(waninputs[2], :spin => "down")
+    end
+
+    map(x -> set_wanenergies!(x, structure, nscf, Emin; Epad=Epad), waninputs)
+    return waninputs
+end
+
+"""
+    gencalc_wan(nscf::DFInput{QE}, structure::AbstractStructure, projwfc::DFInput{QE}, threshold::Real, wanflags...; kwargs...)
+
+Generates a wannier calculation, that follows on the `nscf` calculation. Instead of passing Emin manually, the output of a projwfc.x run
+can be used together with a `threshold` to determine the minimum energy such that the contribution of the
+projections to the DOS is above the `threshold`.
+"""
+function gencalc_wan(nscf::DFInput{QE}, structure::AbstractStructure, projwfc::DFInput{QE}, threshold::Real, args...; kwargs...)
+    hasexec_assert(projwfc, "projwfc.x")
+    hasoutput_assert(projwfc)
+    Emin = Emin_from_projwfc(structure, projwfc, threshold)
+    gencalc_wan(nscf, structure, Emin, args...; kwargs...)
+end
+
+"""
+    isconverged(input::DFInput{QE})
+
+Returns whether an `scf` calculation was converged.
+"""
+function isconverged(input::DFInput{QE})
+    hasoutput_assert(input)
+    iscalc_assert(input, "scf")
+    return outputdata(input)[:converged]
+end
+

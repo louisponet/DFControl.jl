@@ -34,9 +34,9 @@ end
 
 function qe_read_output(input::DFInput{QE}, args...; kwargs...)
     out = Dict{Symbol, Any}()
-    if isprojwfccalc(input)
+    if isprojwfc(input)
         return qe_read_projwfc_output(input, args...; kwargs...)
-    elseif ishpcalc(input)
+    elseif ishp(input)
         return qe_read_hp_output(input, args...; kwargs...)
     else
         return qe_read_pw_output(outpath(input))

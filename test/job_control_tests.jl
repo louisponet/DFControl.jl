@@ -37,7 +37,6 @@ set_kpoints!(nscf2, (3,3,3,0,0,1), print=false)
 @test data(nscf2, :k_points).data  == [3,3,3,0,0,1]
 
 @show outputdata(job, "nscf")
-@show job
 fermi = outputdata(job, "nscf")[:fermi]
 @test fermi == 17.4572
 

@@ -108,8 +108,8 @@ starttime(job::DFJob)        = mtime(scriptpath(job))
 runslocal(job::DFJob)        = job.server        =="localhost"
 structure(job::DFJob)        = job.structure
 isQEjob(job::DFJob)          = any(x->package(x) == QE, inputs(job))
-iswannierjob(job::DFJob)     = any(x->package(x) == Wannier90, inputs(job)) && any(x->isnscfcalc(x), inputs(job))
-getnscfcalc(job::DFJob)      = getfirst(x -> isnscfcalc(x), inputs(job))
+iswannierjob(job::DFJob)     = any(x->package(x) == Wannier90, inputs(job)) && any(x->isnscf(x), inputs(job))
+getnscfcalc(job::DFJob)      = getfirst(x -> isnscf(x), inputs(job))
 cell(job::DFJob)             = cell(structure(job))
 
 input(job::DFJob, n::String) = getfirst(x -> occursin(n, name(x)), inputs(job))

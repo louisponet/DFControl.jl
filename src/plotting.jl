@@ -140,7 +140,7 @@ end
     end
 
     # PDOS part
-    projwfc = getfirst(x -> isprojwfccalc(x) && hasoutfile(x), inputs(job))
+    projwfc = getfirst(x -> isprojwfc(x) && hasoutfile(x), inputs(job))
     if projwfc !== nothing
         if bands isa NamedTuple && !overlap_spin
             doswindow = 3
