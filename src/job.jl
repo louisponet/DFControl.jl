@@ -14,7 +14,7 @@ Represents a full DFT job with multiple input files and calculations.
     header       ::Vector{String} = getdefault_jobheader()
     metadata     ::Dict = Dict()
     version      ::Int = last_job_version(local_dir)
-    copy_temp_folders::Bool = true
+    copy_temp_folders::Bool = false
     function DFJob(name, structure, calculations, local_dir, server, server_dir, header, metadata, version, copy_temp_folders)
         if local_dir[end] == '/'
             local_dir = local_dir[1:end-1]
@@ -29,7 +29,7 @@ Represents a full DFT job with multiple input files and calculations.
         if isempty(metadata)
             mpath = joinpath(local_dir, ".metadata.jld2")
             if ispath(mpath)
-                metadata = load(mpath)
+                metadata = load(mpath)["metadata"]
             end
         end
         out = new(name, structure, calculations, local_dir, server, server_dir, header, metadata, version, copy_temp_folders)
@@ -322,3 +322,5 @@ function cleanup(job::DFJob)
         end
     end
 end
+
+save_metadata(job) = jldsave(joinpath(job, ".metadata.jld2"); metadata=job.metadata)

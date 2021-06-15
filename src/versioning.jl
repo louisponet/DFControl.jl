@@ -27,6 +27,7 @@ function maybe_increment_version(job::DFJob)
     versions_path = joinpath(job, VERSION_DIR_NAME)
     if !ispath(versions_path)
         mkpath(versions_path)
+        job.version = 1
     end
     if ispath(joinpath(job, "job.tt"))
         tjob = DFJob(job.local_dir, version = last_version(job) + 1)

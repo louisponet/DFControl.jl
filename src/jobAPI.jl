@@ -22,6 +22,7 @@ function save(job::DFJob, local_dir=job.local_dir; kwargs...)
     sanitize_magnetization!(job)
     sanitize_projections!(job)
     sanitize_flags!(job)
+    save_metadata(job)
     return writejobfiles(job; kwargs...)
 end
 
@@ -35,9 +36,11 @@ function submit(job::DFJob; server=job.server, server_dir=job.server_dir, rm_pre
     job.server = server
     try
         job.metadata[:slurmid] = qsub(job; rm_prev=rm_prev)
+        save_metadata(job)
     catch
         try
             job.metadata[:slurmid] = sbatch(job; rm_prev=rm_prev)
+            save_metadata(job)
         catch
             run(job; rm_prev=rm_prev)
         end
