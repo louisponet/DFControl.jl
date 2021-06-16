@@ -52,9 +52,6 @@ function DFJob(job_name, structure::AbstractStructure, calculations::Vector{<:DF
     return out
 end
 
-DFJob(job_name, ciffile::String, calculations::Vector{<:DFInput}, args...; kwargs...) =
-    DFJob(job_name, Structure(ciffile, name = job_name), calculations, args... ; kwargs...)
-
 function DFJob(job::DFJob, flagstoset...; cell_=copy(cell(job)), atoms_=copy(atoms(job)), name=job.name,
                                           server_dir = job.server_dir,
                                           local_dir  = job.local_dir)

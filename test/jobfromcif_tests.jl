@@ -22,16 +22,15 @@ calculations = [DFInput{QE}(name="vc_relax", execs = excs,flags = Dict(:calculat
                                                                                                                                     [0.0, 0.0, 0.0, 100.],
                                                                                                                                     [0.0, 0.5, 0.0, 1.]])]),
                 DFInput{QE}(name="nscf", execs = excs, flags = Dict(:calculation => "nscf", :verbosity => "low"))]
-
-job = DFJob(name, joinpath(testjobpath, "Pt.cif"), calculations,
+str = Structure(joinpath(testjobpath, "Pt.cif"), name="Pt")
+set_pseudos!(str, :test)
+job = DFJob(name, str, calculations,
       :prefix       => "$name",
       :restart_mode => "from_scratch",
       :mixing_mode  => "plain",
       :mixing_beta  => 0.7,
       :conv_thr     => 1.0e-8,
       #kwargs
-      pseudoset  = :test,
-      server_dir  = server_dir,
       header      = header,
       local_dir = local_dir
      )
