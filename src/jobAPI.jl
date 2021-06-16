@@ -7,10 +7,6 @@ Saves a DFJob, it's job file and all it's input files.
 function save(job::DFJob, local_dir=job.local_dir; kwargs...)
     local_dir = local_dir != "" ? local_dir : error("Please specify a valid local_dir!")
     set_localdir!(job, local_dir)
-    if !ispath(local_dir)
-        mkpath(local_dir)
-        @info "$local_dir did not exist, it was created."
-    end
     if isempty(job.name)
         @warn "Job had no name, changed it to: noname"
         job.name = "noname"
@@ -132,11 +128,23 @@ function set_serverdir!(job, dir)
 end
 
 """
-Sets the local dir of the job.
+    set_localdir!(job::DFJob, dir::String; copy=false)
+    
+Sets the directory where the job will be saved or ran. If necessary the directory will be created.
+If `copy` is set to `true`, all previous inputs and output files of the current job version
+(i.e. those in the main job directory) will be copied to the new directory, including the
+`outputs` directory with temporary files created during jobs runs.
 """
-function set_localdir!(job, dir)
+function set_localdir!(job::DFJob, dir::String; copy=false)
     if !isabspath(dir)
         dir = abspath(dir)
+    end
+    if !ispath(dir)
+        mkpath(dir)
+        @info "$dir did not exist, it was created."
+    end
+    if copy
+        cp(job, dir; temp=true)
     end
     job.local_dir = dir
     for i in inputs(job)
@@ -422,19 +430,9 @@ atoms(job::DFJob) = atoms(job.structure)
 atoms(job::DFJob, args...) = atoms(job.structure, args...)
 atoms(f::Function, job::DFJob) = atoms(f, job.structure)
 
-"""
-    set_atoms!(job::DFJob, atoms::Dict{Symbol,<:Array{<:Point3,1}}, pseudo_setname=nothing, pseudospecifier=nothing, option=:angstrom)
-
-Sets the data data with atomic positions to the new one. This is done for all calculations in the job that have that data.
-If default pseudopotentials are defined, a set can be specified, together with a fuzzy that distinguishes between the possible multiple pseudo strings in the pseudo set.
-These pseudospotentials are then set in all the calculations that need it.
-All flags which specify the number of atoms inside the calculation also gets set to the correct value.
-"""
-function set_atoms!(job::DFJob, atoms::Vector{<:AbstractAtom}; pseudoset=nothing, pseudospecifier="")
+"""job.structure.atoms = atoms"""
+set_atoms!(job::DFJob, atoms::Vector{<:AbstractAtom}) =
     job.structure.atoms = atoms
-    pseudoset !== nothing && set_pseudos!(job, pseudoset, pseudospecifier)
-    return job
-end
 
 #automatically sets the cell parameters for the entire job, implement others
 """

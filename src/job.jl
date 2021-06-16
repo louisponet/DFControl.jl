@@ -42,8 +42,6 @@ end
 
 #TODO implement abinit
 function DFJob(job_name, structure::AbstractStructure, calculations::Vector{<:DFInput}, common_flags::Pair{Symbol, <:Any}...;
-                    pseudoset=:default,
-                    pseudospecifier="",
                     job_kwargs...)
 
     shared_flags = typeof(common_flags) <: Dict ? common_flags : Dict(common_flags...)
@@ -51,7 +49,6 @@ function DFJob(job_name, structure::AbstractStructure, calculations::Vector{<:DF
         i.flags = merge(shared_flags, i.flags)
     end
     out = DFJob(name = job_name, structure = structure, inputs = calculations; job_kwargs...)
-    set_pseudos!(out, pseudoset, pseudospecifier, print=false)
     return out
 end
 
@@ -60,19 +57,11 @@ DFJob(job_name, ciffile::String, calculations::Vector{<:DFInput}, args...; kwarg
 
 function DFJob(job::DFJob, flagstoset...; cell_=copy(cell(job)), atoms_=copy(atoms(job)), name=job.name,
                                           server_dir = job.server_dir,
-                                          local_dir  = job.local_dir,
-                                          pseudoset  = nothing,
-                                          pseudospecifier = "")
+                                          local_dir  = job.local_dir)
     newjob = deepcopy(job)
 
     set_cell!(newjob, cell_)
-    if pseudoset === nothing
-        pseudoset, specifier = getpseudoset(job.structure.atoms[1])
-        specifier = pseudospecifier === nothing ? specifier : pseudospecifier
-        set_atoms!(newjob, atoms_, pseudoset = pseudoset, pseudospecifier=specifier)
-    else
-        set_atoms!(newjob, atoms_, pseudoset = pseudoset, pseudospecifier= pseudospecifier)
-    end
+    set_atoms!(newjob, atoms_)
     set_serverdir!(newjob, server_dir)
     set_localdir!(newjob, local_dir)
     newjob.name = name
@@ -263,11 +252,15 @@ end
 searchdir(job::DFJob, str::AbstractString) = joinpath.((job,), searchdir(job.local_dir, str))
 
 for f in (:cp, :mv)
-    @eval function Base.$f(job::DFJob, dest::String; kwargs...)
+    @eval function Base.$f(job::DFJob, dest::String; all=false, temp=false, kwargs...)
         tjob = DFJob(job.local_dir)
         for file in readdir(job.local_dir)
-            if file == VERSION_DIR_NAME || (file == "outputs" && !job.copy_temp_folders)
-                continue
+            if !all
+                if file == VERSION_DIR_NAME
+                    continue
+                elseif file == "outputs" && !(temp || job.copy_temp_folders)
+                    continue
+                end
             end
             $f(joinpath(tjob, file), joinpath(dest, file); kwargs...)
         end
