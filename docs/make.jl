@@ -100,6 +100,8 @@ makedocs(
         ],
         "Usage" => Any[
             "guide/jobs.md",
+            "guide/inputs.md",
+            "guide/structure.md",
             "guide/pseudo.md",
         ],
         # "Examples" => EXAMPLES,

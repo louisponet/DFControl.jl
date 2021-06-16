@@ -139,11 +139,11 @@ function set_localdir!(job::DFJob, dir::String; copy=false)
     if !isabspath(dir)
         dir = abspath(dir)
     end
-    if !ispath(dir)
-        mkpath(dir)
-        @info "$dir did not exist, it was created."
-    end
     if copy
+        if !ispath(dir)
+            mkpath(dir)
+            @info "$dir did not exist, it was created."
+        end
         cp(job, dir; temp=true)
     end
     job.local_dir = dir
