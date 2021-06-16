@@ -74,7 +74,7 @@ Loads and returns a local DFJob.
 If `job_dir` is not a valid path the JOB_REGISTRY will be scanned for a job with matching directory.
 The kwargs will be passed to the `DFJob` constructor.
 """
-function DFJob(job_dir::String; job_fuzzy="job", version = nothing, kwargs...)
+function DFJob(job_dir::String; job_fuzzy="job.tt", version = nothing, kwargs...)
     if !isempty(job_dir) && ispath(abspath(job_dir)) && !isempty(searchdir(abspath(job_dir), job_fuzzy))
         real_path = abspath(job_dir)
     else

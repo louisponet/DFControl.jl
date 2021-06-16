@@ -7,16 +7,16 @@
 using DFControl
 
 tjob = DFJob(joinpath(pathof(DFControl), "..","..","docs", "src", "assets", "job"))#hide
-tjob2 = DFJob(joinpath(pathof(DFControl), "..","..", "docs", "src", "assets", "job", "Job2"))#hide
+tjob2 = DFJob(joinpath(pathof(DFControl), "..","..", "docs", "src", "assets", "Job2"))#hide
 try#hide
-job = DFJob(pwd())
+global job = DFJob("job")
 catch#hide
 global job = deepcopy(tjob)#hide
-set_localdir!(job, pwd()); #hide
+set_localdir!(job, "job"); #hide
 job#hide
 end#hide
 
-# Since the job was saved in the current working directory this will work, see the section on [Jobs](@ref) for
+# Since the job created in the [Basic Tutorial](@ref) was saved in the "job" directory this will work, see the section on [Jobs](@ref) for
 # further details and options on how to load previously saved jobs.
 
 # The next thing we may want to do is to change the directory where the job is running.

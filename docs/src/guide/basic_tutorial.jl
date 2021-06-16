@@ -43,7 +43,8 @@ scf_input = DFInput{QE}("scf", pw_execs, :calculation => "scf",
 # We can now define our job: 
 job = DFJob("Si", structure, [scf_input],
             :ecutwfc => 20, 
-            :conv_thr => 1e-6)
+            :conv_thr => 1e-6,
+            local_dir = "job")
 
 # Additional inputs would be be added to the list `[scf_input]`.
 # The flag => value pairs will set the specified flags to that value for all inputs in the job
