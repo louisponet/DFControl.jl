@@ -181,7 +181,7 @@ function pdos(input::DFInput{QE}, atsym::Symbol, magnetic::Bool, soc::Bool, filt
     kresolved = hasflag(input, :kresolveddos) && input[:kresolveddos]
     files = filter(x->occursin("($atsym)",x) && occursin("#", x) && occursin(filter_word, x), searchdir(dir(input), "pdos"))
     @assert !isempty(files) "No pdos files found in input directory $(dir(input))"
-    
+    files = joinpath.((input,), files) 
     energies, = kresolved ? qe_read_kpdos(files[1]) : qe_read_pdos(files[1])
     atdos = magnetic && !soc ? zeros(size(energies, 1), 2) : zeros(size(energies, 1))
     if kresolved 

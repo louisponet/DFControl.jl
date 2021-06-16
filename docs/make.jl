@@ -99,6 +99,7 @@ makedocs(
             "Advanced Tutorial" => "guide/advanced_tutorial.md"
         ],
         "Usage" => Any[
+            "guide/jobs.md",
             "guide/pseudo.md",
         ],
         # "Examples" => EXAMPLES,

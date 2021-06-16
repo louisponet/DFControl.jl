@@ -250,7 +250,6 @@ searchdir(job::DFJob, str::AbstractString) = joinpath.((job,), searchdir(job.loc
 
 for f in (:cp, :mv)
     @eval function Base.$f(job::DFJob, dest::String; all=false, temp=false, kwargs...)
-        tjob = DFJob(job.local_dir)
         for file in readdir(job.local_dir)
             if !all
                 if file == VERSION_DIR_NAME
@@ -259,7 +258,10 @@ for f in (:cp, :mv)
                     continue
                 end
             end
-            $f(joinpath(tjob, file), joinpath(dest, file); kwargs...)
+            if joinpath(job, file) == abspath(dest)
+                continue
+            end
+            $f(joinpath(job, file), joinpath(dest, file); kwargs...)
         end
     end
 end

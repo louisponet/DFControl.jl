@@ -36,7 +36,6 @@ set_kpoints!(nscf2, (3,3,3,0,0,1), print=false)
 @test data(nscf2, :k_points).option  == :automatic
 @test data(nscf2, :k_points).data  == [3,3,3,0,0,1]
 
-@show outputdata(job, "nscf")
 fermi = outputdata(job, "nscf")[:fermi]
 @test fermi == 17.4572
 
@@ -286,7 +285,6 @@ set_magnetization!(job, :Pt => [0, 0, 1])
 orig_projs = projections(atoms(job, :Pt)[1])
 
 job.structure = create_supercell(structure(job), 1, 0, 0, make_afm=true)
-@show atoms(job)
 DFControl.sanitize_magnetization!(job)
 DFControl.set_starting_magnetization_flags!.(filter(x -> DFControl.package(x) == QE, DFControl.inputs(job)), (job.structure,))
 @test length(atoms(job, :Pt)) == prevlen_Pt

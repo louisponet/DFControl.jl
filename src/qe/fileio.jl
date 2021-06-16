@@ -412,10 +412,10 @@ function qe_read_pdos(filename::String)
 end
 
 function qe_read_projwfc_output(input::DFInput{QE}, args...; kwargs...)
-    out = Dict{Symbol}()
+    out = Dict{Symbol, Any}()
     pdos_files = searchdir(dir(input), ".pdos_")
     if flag(input, :kresolveddos) == true
-        out[:heatmaps]   = Vector{Matrix{Float64}}()
+        out[:heatmaps]  = Vector{Matrix{Float64}}()
         out[:ytickvals] = Vector{Vector{Float64}}()
         out[:yticks]    = Vector{Vector{Float64}}()
         for f in pdos_files

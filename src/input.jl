@@ -187,6 +187,9 @@ pdos(input::DFInput, args...) =
 Emin_from_projwfc(input::DFInput, args...) =
     @error "Emin_from_projwfc is not implemented for package $(package(input))."
 
+
+Base.joinpath(input::DFInput, args...) = joinpath(dir(input), args...)
+
 include("qe/input.jl")
 include("elk/input.jl")
 include("wannier90/input.jl")
