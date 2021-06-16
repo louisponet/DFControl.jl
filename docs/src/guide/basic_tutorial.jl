@@ -93,7 +93,7 @@ set_localdir!(job, pwd()); #hide
 try #hide
 submit(job)
 catch #hide
-global job = DFJob("/home/ponet/.julia/dev/DFControl/docs/src/assets/job/");#hide
+global job = DFJob(joinpath(@__DIR__, "../assets/job/"));#hide
 end #hide
 
 # We can access the bands through
