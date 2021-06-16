@@ -6,8 +6,8 @@
 # in it.
 using DFControl
 
-tjob = DFJob(joinpath(@__DIR__, "../assets/job/"))#hide
-tjob2 = DFJob(joinpath(@__DIR__, "../assets/job/Job2"))#hide
+tjob = DFJob(joinpath(@__DIR__, "../../src/assets/job/"))#hide
+tjob2 = DFJob(joinpath(@__DIR__, "../../src/assets/job/Job2"))#hide
 try#hide
 job = DFJob(pwd())
 catch#hide

@@ -53,7 +53,7 @@ job = DFJob("Si", structure, [scf_input],
 try #hide
 submit(job)
 catch #hide
-global job = DFJob(joinpath(@__DIR__, "../assets/job/"))#hide
+global job = DFJob(joinpath(@__DIR__, "../../src/assets/job/"))#hide
 pop!(job); #hide
 end #hide
 
