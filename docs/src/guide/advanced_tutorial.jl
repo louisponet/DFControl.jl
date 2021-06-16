@@ -20,7 +20,14 @@ end#hide
 # further details and options on how to load previously saved jobs.
 
 # The next thing we may want to do is to change the directory where the job is running.
+try#hide
 set_localdir!(job, "Job2", copy=true)
+catch#hide
+global job = deepcopy(tjob2);#hide
+pop!(job);#hide
+pop!(job);#hide
+job#hide
+end#hide
 # With the `copy=true` flag we let DFControl know that not only to create and set the
 # new directory, but also to copy the previous results and temporary files to the
 # new directory so we don't have to rerun the scf calculation.

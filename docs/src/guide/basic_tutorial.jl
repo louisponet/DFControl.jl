@@ -90,7 +90,7 @@ job["scf"].run = false
 job
 
 # Seeing that all is right we submit the job again
-set_localdir!(job, pwd()); #hide
+set_localdir!(job, "job"); #hide
 try #hide
 submit(job)
 catch #hide
