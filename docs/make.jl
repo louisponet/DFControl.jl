@@ -28,7 +28,7 @@ Pkg.activate(@__DIR__)
 if !isfile(joinpath(@__DIR__, "Manifest.toml"))
     Pkg.develop(Pkg.PackageSpec(path=ROOTPATH))
     Pkg.instantiate()
-    Pkg.add(url="https://github.com/kimikage/Documenter.jl#ansicolor")
+    Pkg.add(url="https://github.com/kimikage/Documenter.jl", rev="ansicolor")
 end
 
 # Setup environment for making plots
