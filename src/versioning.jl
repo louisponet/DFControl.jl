@@ -8,6 +8,12 @@ function job_versions(dir::String)
         return Int[]
     end
 end
+
+"""
+    versions(job::DFJob)
+
+Returs the valid versions of `job`.
+"""
 versions(job::DFJob) = job_versions(job.local_dir)
 version(job::DFJob) = job.version
 
@@ -38,7 +44,13 @@ function maybe_increment_version(job::DFJob)
     end
 end
 
-function switch_version(job::DFJob, version)
+"""
+    switch_version(job::DFJob, version::Int)
+
+Switches the version of `job` to one of the previously stored ones.
+It will save also the current version for future reference.
+"""
+function switch_version(job::DFJob, version::Int)
     @assert !isrunning(job; print=false) "Can't switch job versions on a running job."
     cur_version = job.version
     if version != cur_version
@@ -67,16 +79,20 @@ end
 
 version_assert(job, version) = @assert exists_version(job, version) "Version $version does not exist for job."
 
-"Removes the job version if it exists." 
-function rm_version!(job::DFJob, version)
+"""
+    rm_version!(job::DFJob, version::Int)
+    rm_versions!(job::DFJob, versions::Int...)
+
+Removes the specified `versions` from the `job` if they exists.
+""" 
+function rm_version!(job::DFJob, version::Int)
     version_assert(job, version)
     rm(version_path(job, version), recursive=true)
 end
 
-"Removes the job versions if they exist." 
-function rm_versions!(job, versions...)
+function rm_versions!(job::DFJob, versions::Int...)
     for v in versions
-        rm_version(job, v)
+        rm_version!(job, v)
     end
 end
 
