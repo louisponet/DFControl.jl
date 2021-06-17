@@ -127,7 +127,7 @@ function qdel(job::DFJob)
     end
 end
 
-function schedule_job(job::DFJob, submit_command; rm_prev=true)
+function schedule_job(job::DFJob, submit_command)
     outstr = ""
     if !runslocal(job)
         push(job)
@@ -135,12 +135,6 @@ function schedule_job(job::DFJob, submit_command; rm_prev=true)
     else
         curdir = pwd()
         cd(job.local_dir)
-        if rm_prev
-	        prev_files = searchdir(job.local_dir, "job.tt.")
-	        for p in prev_files
-		        rm(joinpath(job.local_dir, p))
-	        end
-        end
         try
             outstr = read(`$submit_command job.tt`, String)
             cd(curdir)
@@ -160,9 +154,9 @@ function schedule_job(job::DFJob, submit_command; rm_prev=true)
     end
 end
 
-qsub(job::DFJob; kwargs...) = schedule_job(job, "qsub"; kwargs...) 
-sbatch(job::DFJob; kwargs...) = schedule_job(job, "sbatch"; kwargs...) 
-Base.run(job; kwargs...) = schedule_job(job, "bash"; kwargs...)
+qsub(job::DFJob) = schedule_job(job, "qsub") 
+sbatch(job::DFJob) = schedule_job(job, "sbatch") 
+Base.run(job) = schedule_job(job, "bash")
 
 "Tests whether a directory exists on a server and if not, creates it."
 function mkserverdir(server, dir)

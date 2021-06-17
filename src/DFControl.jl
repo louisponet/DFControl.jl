@@ -16,8 +16,6 @@ module DFControl
     using RecipesBase
     @reexport using StaticArrays
     using Parameters
-    using FileIO
-    import FileIO: save
     using JLD2
     
     using spglib_jll

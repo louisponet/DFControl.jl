@@ -2,20 +2,49 @@
 #TODO should we also create a config file for each job with stuff like server etc? and other config things,
 #      which if not supplied could contain the default stuff?
 """
-Represents a full DFT job with multiple input files and calculations.
+    DFJob(name::String, structure::AbstractStructure;
+          inputs            ::Vector{DFInput} = DFInput[],
+          local_dir         ::String = pwd(),
+          header            ::Vector{String} = getdefault_jobheader(),
+          metadata          ::Dict = Dict(),
+          version           ::Int = last_job_version(local_dir),
+          copy_temp_folders ::Bool = false, 
+          server            ::String = getdefault_server(),
+          server_dir        ::String = "")
+
+A `DFJob` embodies a set of calculations with `inputs` to be ran in directory `local_dir`, with the `structure` as the subject.
+## Keywords/further attributes
+- `inputs`: inputs to calculations that will be run sequentially.
+- `local_dir`: the directory where the calculations will be run.
+- `header`: lines that will be pasted at the head of the job script, e.g. exports `export OMP_NUM_THREADS=1`, slurm settings`#SBATCH`, etc.
+- `metadata`: various additional information, will be saved in `.metadata.jld2` in the `local_dir`.
+- `version`: the current version of the job.
+- `copy_temp_folders`: whether or not the temporary directory associated with intermediate calculation results should be copied when storing a job version. *CAUTION* These can be quite large.
+- The `server` and `server_dir` keywords should be avoided for the time being, as this functionality is not well tested.
+ 
+    DFJob(job_dir::String, job_script="job.tt"; version=nothing, kwargs...)
+
+Loads the job in the `local_dir`.
+If `job_dir` is not a valid job path, the previously saved jobs will be scanned for a job with a `local_dir` that
+partly includes `job_dir`. If `version` is specified the corresponding job version will be returned if it exists. 
+The `kwargs...` will be passed to the `DFJob` constructor.
+
+    DFJob(job_name::String, structure::AbstractStructure, calculations::Vector{<:DFInput}, common_flags::Pair{Symbol, <:Any}...; kwargs...)
+
+Creates a new job. The common flags will be attempted to be set in each of the `calculations`. The `kwargs...` are passed to the `DFJob` constructor. 
 """
 @with_kw_noshow mutable struct DFJob
     name         ::String
     structure    ::AbstractStructure
     inputs       ::Vector{DFInput} = DFInput[]
     local_dir    ::String = pwd()
-    server       ::String = getdefault_server()
-    server_dir   ::String = ""
     header       ::Vector{String} = getdefault_jobheader()
     metadata     ::Dict = Dict()
     version      ::Int = last_job_version(local_dir)
     copy_temp_folders::Bool = false
-    function DFJob(name, structure, calculations, local_dir, server, server_dir, header, metadata, version, copy_temp_folders)
+    server       ::String = getdefault_server()
+    server_dir   ::String = ""
+    function DFJob(name, structure, calculations, local_dir, header, metadata, version, copy_temp_folders, server, server_dir)
         if local_dir[end] == '/'
             local_dir = local_dir[1:end-1]
         end
@@ -32,7 +61,7 @@ Represents a full DFT job with multiple input files and calculations.
                 metadata = load(mpath)["metadata"]
             end
         end
-        out = new(name, structure, calculations, local_dir, server, server_dir, header, metadata, version, copy_temp_folders)
+        out = new(name, structure, calculations, local_dir, header, metadata, version, copy_temp_folders, server, server_dir)
         # TODO add check_version, and if it doesn't match the one that's currently in the main directory,
         # load the previous one from the versions
         !occursin("versions", local_dir) && maybe_register_job(local_dir)
@@ -41,48 +70,26 @@ Represents a full DFT job with multiple input files and calculations.
 end
 
 #TODO implement abinit
-function DFJob(job_name, structure::AbstractStructure, calculations::Vector{<:DFInput}, common_flags::Pair{Symbol, <:Any}...;
-                    job_kwargs...)
+function DFJob(job_name::String, structure::AbstractStructure, calculations::Vector{<:DFInput}, common_flags::Pair{Symbol, <:Any}...;
+                    kwargs...)
 
     shared_flags = typeof(common_flags) <: Dict ? common_flags : Dict(common_flags...)
     for i in calculations
         i.flags = merge(shared_flags, i.flags)
     end
-    out = DFJob(name = job_name, structure = structure, inputs = calculations; job_kwargs...)
+    out = DFJob(name = job_name, structure = structure, inputs = calculations; kwargs...)
     return out
 end
 
-function DFJob(job::DFJob, flagstoset...; cell_=copy(cell(job)), atoms_=copy(atoms(job)), name=job.name,
-                                          server_dir = job.server_dir,
-                                          local_dir  = job.local_dir)
-    newjob = deepcopy(job)
-
-    set_cell!(newjob, cell_)
-    set_atoms!(newjob, atoms_)
-    set_serverdir!(newjob, server_dir)
-    set_localdir!(newjob, local_dir)
-    newjob.name = name
-
-    set_flags!(newjob, flagstoset..., print=false)
-    return newjob
-end
-
-"""
-    DFJob(job_dir::String; job_fuzzy = "job", kwargs...)
-
-Loads and returns a local DFJob.
-If `job_dir` is not a valid path the JOB_REGISTRY will be scanned for a job with matching directory.
-The kwargs will be passed to the `DFJob` constructor.
-"""
-function DFJob(job_dir::String; job_fuzzy="job.tt", version = nothing, kwargs...)
-    if !isempty(job_dir) && ispath(abspath(job_dir)) && !isempty(searchdir(abspath(job_dir), job_fuzzy))
+function DFJob(job_dir::String, job_script="job.tt"; version = nothing, kwargs...)
+    if !isempty(job_dir) && ispath(abspath(job_dir)) && !isempty(searchdir(abspath(job_dir), job_script))
         real_path = abspath(job_dir)
     else
         real_path = request_job(job_dir)
         real_path === nothing && return
     end
     real_version = version === nothing ? last_job_version(real_path) : version
-    return DFJob(;merge(merge((local_dir=real_path,version=real_version), read_job_inputs(joinpath(real_path, searchdir(real_path, job_fuzzy)[1]))), kwargs)...)
+    return DFJob(;merge(merge((local_dir=real_path,version=real_version), read_job_inputs(joinpath(real_path,  job_script))), kwargs)...)
 
 end        
 
@@ -268,6 +275,15 @@ end
 
 is_slurm_job(job::DFJob) = haskey(job.metadata, :slurmid)
 
+"""
+    isrunning(job::DFJob; print=true)
+
+If the job was submitted through a scheduler like `slurm`,
+this will return whether the job is queued or running.
+
+**Note:**
+For now only `slurm` is supported as scheduler.
+"""
 function isrunning(job::DFJob; print=true)
     if is_slurm_job(job)
         return slurm_isrunning(job)

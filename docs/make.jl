@@ -102,13 +102,15 @@ makedocs(
             "guide/jobs.md",
             "guide/inputs.md",
             "guide/structure.md",
+            "guide/flags.md",
+            "guide/execs.md",
             "guide/pseudo.md",
         ],
         # "Examples" => EXAMPLES,
         "api.md",
         # "publications.md",
     ],
-    strict = !DEBUG,
+    # strict = !DEBUG,
 )
 
 # Dump files for managing dependencies in binder

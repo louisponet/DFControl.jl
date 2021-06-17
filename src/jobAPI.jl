@@ -2,7 +2,12 @@
 """
     save(job::DFJob)
 
-Saves a DFJob, it's job file and all it's input files.
+Saves the job's inputs and submission script.
+Some sanity checks will be performed on the validity of flags, execs, pseudopotentials, etc.
+
+If a previous job is present in the job directory (indicated by a valid job script),
+it will be copied to the `.versions` sub directory as the previous version of `job`,
+and the version of `job` will be incremented. 
 """
 function save(job::DFJob, local_dir=job.local_dir; kwargs...)
     local_dir = local_dir != "" ? local_dir : error("Please specify a valid local_dir!")
@@ -24,22 +29,23 @@ function save(job::DFJob, local_dir=job.local_dir; kwargs...)
 end
 
 """
-    submit(job::DFJob; server=job.server, server_dir=job.server_dir, rm_prev=true, kwargs...)
+    submit(job::DFJob; kwargs...)
 
-Saves the job locally, and then either runs it locally using `qsub` (when `job.server == "localhost"`) or sends it to the specified `job.server` in `job.server_dir`, and submits it using `qsub` on the server. Kwargs get passed through to `save(job; kwargs...)`. If `rm_prev == true` previous `job.tt` output files will be removed.
+First saves `job`, the tries to submit the job script through `sbatch job.tt` or `bash job.tt` if the former command fails.
+`kwargs...` get passed to `save(job; kwargs...)`.
 """
-function submit(job::DFJob; server=job.server, server_dir=job.server_dir, rm_prev=true, kwargs...)
+function submit(job::DFJob; server=job.server, server_dir=job.server_dir, kwargs...)
     save(job; kwargs...)
     job.server = server
     try
-        job.metadata[:slurmid] = qsub(job; rm_prev=rm_prev)
+        job.metadata[:slurmid] = qsub(job)
         save_metadata(job)
     catch
         try
-            job.metadata[:slurmid] = sbatch(job; rm_prev=rm_prev)
+            job.metadata[:slurmid] = sbatch(job)
             save_metadata(job)
         catch
-            run(job; rm_prev=rm_prev)
+            run(job)
         end
     end
 end
@@ -71,9 +77,17 @@ function abort(job::DFJob)
 end
 
 """
-    set_flow!(job::DFJob, should_runs...)
+    set_flow!(job::DFJob, should_runs::Pair{String, Bool}...)
 
-Sets whether or not calculations should be run. Calculations are specified using their indices.
+Sets whether or not calculations should be scheduled to run.
+The string in each pair of `should_runs` will try to match inputs whose name
+includes that string, and put the `input.run` attribute to the associated `Bool`.
+
+Example:
+```julia
+set_flow!(job, "" => false, "scf" => true)
+```
+would un-schedule all inputs in the job, and schedule the "scf" and "nscf" inputs to run.
 """
 function set_flow!(job::DFJob, should_runs...)
     for (name, run) in should_runs
@@ -156,18 +170,47 @@ end
 
 
 #-------------- Basic Interaction with DFInputs inside the DFJob ---------------#
-set_name!(job::DFJob, oldn, newn; kwargs...) = set_name!(input(job, oldn), newn; kwargs...)
+"""
+    insert!(job::DFJob, i::Int, input::DFInput)
+
+Equal to `insert!(job.inputs, i, input)`.
+""" 
 Base.insert!(job::DFJob, index::Int, input::DFInput) = insert!(job.inputs, index, input)
+
+"""
+    push!(job::DFJob, input::DFInput)
+
+Equal to `push!(job.inputs, input)`.
+"""
 Base.push!(job::DFJob, input::DFInput) = push!(job.inputs, input)
+
+"""
+    pop!(job::DFJob)
+
+Equal to `pop!(job.inputs)`.
+"""
 Base.pop!(job::DFJob) = pop!(job.inputs)
 
+"""
+    append!(job::DFJob, args...)
+
+Equal to `append!(job.inputs, args...)`.
+"""
 Base.append!(job::DFJob, args...) = append!(job.inputs, args...)
 
 Base.getindex(job::DFJob, i::Integer) = inputs(job)[i]
 Base.length(job::DFJob) = length(inputs(job))
 Base.lastindex(job::DFJob) = length(job)
 
-"""Access an input inside the job using it's name. E.g `job["scf"]`"""
+"""
+    getindex(job::DFJob, name::String)
+    
+Returns the `DFInput` with the specified `name`.
+
+    getindex(job::DFJob, i::Integer)
+    
+Returns the i'th `DFInput` in the job.
+"""
 function Base.getindex(job::DFJob, id::String)
     tmp = getfirst(x -> name(x)==id, inputs(job))
     if tmp != nothing
@@ -178,8 +221,12 @@ function Base.getindex(job::DFJob, id::String)
 end
 
 
-"""Searches through the inputs for the requested flag.
-If a flag was found the input and value of the flag will be added to the returned Dict."""
+"""
+    getindex(job::DFJob, flag::Symbol)
+    
+Searches through the job's inputs for the requested flag.
+A `Dict` will be returned with input names as the keys and the flags as values.
+"""
 function Base.getindex(job::DFJob, flg::Symbol)
     outdict = Dict()
     for i in inputs(job)
@@ -191,10 +238,14 @@ function Base.getindex(job::DFJob, flg::Symbol)
     return outdict
 end
 
-"Set one flag in all the appropriate inputs. E.g `job[:ecutwfc] = 23.0`"
-function Base.setindex!(job::DFJob, dat, key::Symbol)
+"""
+    setindex!(job::DFJob, value, flag::Symbol)
+
+Set `flag` in all the appropriate inputs to the `value`.
+"""
+function Base.setindex!(job::DFJob, value, key::Symbol)
     for input in inputs(job)
-        input[key] = dat
+        input[key] = value
     end
 end
 
@@ -315,8 +366,24 @@ Goes through the calculations of the job and removes the specified `exec` flags.
 rmexecflags!(job::DFJob, exec, flags...) =
     rmexecflags!.(job.inputs, (exec, flags)...)
 
-"Sets the directory of the specified executable."
-set_execdir!(job::DFJob, exec, dir) =
+"""
+    set_execdir!(job::DFJob, exec::String, dir::String)
+
+Goes through all the executables that are present in the inputs of the job,
+if the executable matches `exec`, its directory will be set to `dir`.
+```julia
+set_execdir!(job, "pw.x", "/path/to/QE/bin")
+```
+
+    set_execdir!(input::DFInput, exec::String, dir::String)
+    
+Goes through the executables that are present in the input,
+if the executable matches `exec`, its directory will be set to `dir`.
+```julia
+set_execdir!(input, "pw.x", "/path/to/QE/bin")
+```
+"""
+set_execdir!(job::DFJob, exec::String, dir::String) =
     set_execdir!.(job.inputs, exec, dir)
 
 
