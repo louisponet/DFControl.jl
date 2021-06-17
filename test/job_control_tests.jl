@@ -279,9 +279,9 @@ DFControl.sanitize_projections!(job)
 # job3 = DFJob(job4.local_dir)
 
 # @test job3.server_dir == "/tmp"
-set_dataoption!(job, "scf",:k_points, :blabla, print=false)
+set_data_option!(job, "scf",:k_points, :blabla, print=false)
 @test data(job, "scf", :k_points).option == :blabla
-set_dataoption!(job, :k_points, :test, print=false)
+set_data_option!(job, :k_points, :test, print=false)
 @test data(job, "scf", :k_points).option == :test
 
 rm.(DFControl.inpath.(job.calculations))

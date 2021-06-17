@@ -6,7 +6,7 @@ export Ang, e₀, kₑ, a₀, Eₕ, Ry
 include("calculationAPI.jl")
 export DFCalculation
 #Basic Interaction with DFCalculations
-export flag, set_flags!, rm_flags!, data, set_data!, set_dataoption!, exec, execs,
+export flag, set_flags!, rm_flags!, data, set_data!, set_data_option!, exec, execs,
        set_execflags!, rmexecflags!, set_execdir!, runcommand, outputdata, set_name!,
        inpath, outpath, hasflag
 

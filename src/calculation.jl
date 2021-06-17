@@ -1,4 +1,16 @@
 #these are all the control data, they hold the flags that guide the calculation
+
+"""
+    InputData(name::Symbol, option::Symbol, data::Any)
+
+Represents a more structured block of input data.
+e.g. `InputData(:k_points, :automatic, (6,6,6,1,1,1))`
+would be translated for a QE calculation into
+```
+K_POINTS(automatic)
+6 6 6 1 1 1
+```
+"""
 mutable struct InputData
     name   ::Symbol
     option ::Symbol
@@ -9,15 +21,15 @@ Base.:(==)(d1::InputData, d2::InputData) =
     all(x -> getfield(d1, x) == getfield(d2, x), fieldnames(InputData))
 
 """
-    DFCalculation{P<:Package}(name     ::String;
-                        dir      ::String = "",
-                        flags    ::AbstractDict = Dict{Symbol, Any}(),
-                        data     ::Vector{InputData} = InputData[],
-                        execs    ::Vector{Exec},
-                        run      ::Bool = true,
-                        outdata  ::AbstractDict = Dict{Symbol, Any}(),
-                        infile   ::String = P == Wannier90 ? name * ".win" : name * ".in",
-                        outfile  ::String = name * ".out")
+    DFCalculation{P<:Package}(name::String;
+                              dir      ::String = "",
+                              flags    ::AbstractDict = Dict{Symbol, Any}(),
+                              data     ::Vector{InputData} = InputData[],
+                              execs    ::Vector{Exec},
+                              run      ::Bool = true,
+                              outdata  ::AbstractDict = Dict{Symbol, Any}(),
+                              infile   ::String = P == Wannier90 ? name * ".win" : name * ".in",
+                              outfile  ::String = name * ".out")
 
 A full representation of a *DFT* calculation of package `P`,
 holding the `flags` that will be written to the `infile`,
@@ -84,7 +96,6 @@ end
 
 name(calculation::DFCalculation)  = calculation.name
 dir(calculation::DFCalculation)   = calculation.dir
-Base.joinpath(i::DFCalculation, path...) = joinpath(dir(i), path...)
 flags(calculation::DFCalculation) = calculation.flags
 set_dir!(calculation::DFCalculation, dir) = (calculation.dir = dir)
 name_ext(calculation::DFCalculation, ext)   = name(calculation) * ext
@@ -93,8 +104,13 @@ outfilename(calculation::DFCalculation)     = calculation.outfile
 inpath(calculation::DFCalculation)          = joinpath(calculation,  infilename(calculation))
 outpath(calculation::DFCalculation)         = joinpath(calculation,  outfilename(calculation))
 
-hasflag(i::DFCalculation, s::Symbol) = haskey(flags(i), s)
-hasflag(i::DFCalculation, s) = false
+
+"""
+    joinpath(calc::DFCalculation, path...)
+"""
+Base.joinpath(c::DFCalculation, path...) = joinpath(dir(c), path...)
+hasflag(c::DFCalculation, s::Symbol) = haskey(flags(c), s)
+hasflag(c::DFCalculation, s) = false
 
 function flag(calculation::DFCalculation, flag::Symbol)
     if hasflag(calculation, flag)

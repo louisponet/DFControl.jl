@@ -1,5 +1,18 @@
 
 #----------- Basic Interaction --------------#
+"""
+    set_name!(calculation::DFCalculation, name::AbstractString)
+
+Sets `calculation.name`, and `calculation.infile` and `calculation.outfile` to conform
+with the new `name`.
+"""
+function set_name!(calculation::DFCalculation, name::AbstractString; print=true)
+    calculation.name = name
+    calculation.infile = name * splitext(infilename(calculation))[2]
+    calculation.outfile = name * splitext(outfilename(calculation))[2]
+    print && @info "\ncalculation.name = $name\ncalculation.infile = $(infilename(calculation))\ncalculation.outfile = $(outfilename(calculation))"
+    name
+end
 
 "Returns the flag with given symbol."
 function Base.getindex(calculation::DFCalculation, n::Symbol)
@@ -58,14 +71,21 @@ function rm_flags!(calculation::DFCalculation, flags...; print=true)
     return calculation
 end
 
-data(calculation::DFCalculation, n) = getfirst(x-> name(x) == n, data(calculation))
+"""
+    data(calculation::DFCalculation)
+    data(calculation::DFCalculation, n::Symbol)
+
+Returns all `data` of `calculation`, or the `InputData` with name `n`.
+"""
+data(calculation::DFCalculation, n::Symbol) = getfirst(x-> name(x) == n, data(calculation))
 
 """
-    set_data!(calculation::DFCalculation, block_name::Symbol, new_block_data; option=nothing, print=true)
+    set_data!(calculation::DFCalculation, block_name::Symbol, new_block_data; option::Symbol=nothing, print::Bool=true)
 
-sets the data of the specified 'InputData' to the new data. Optionally also sets the 'InputData' option.
+Searches for an `InputData` for which `InputData.name == block_name`, and sets `DFInput.data = new_block_data`.
+If `option` is specified it is set, i.e. `InputData.option = option`.
 """
-function set_data!(calculation::DFCalculation, block_name::Symbol, new_block_data; option=nothing, print=true)
+function set_data!(calculation::DFCalculation, block_name::Symbol, new_block_data; option::Symbol=nothing, print::Bool=true)
     setd = false
     for data_block in calculation.data
         if data_block.name == block_name
@@ -89,11 +109,11 @@ function set_data!(calculation::DFCalculation, block_name::Symbol, new_block_dat
 end
 
 """
-    set_dataoption!(calculation::DFCalculation, name::Symbol, option::Symbol; print=true)
+    set_data_option!(calculation::DFCalculation, name::Symbol, option::Symbol; print=true)
 
-Sets the option of specified data.
+Searches for an `InputData` for which `InputData.name == block_name`, and sets `InputData.option = option`.
 """
-function set_dataoption!(calculation::DFCalculation, name::Symbol, option::Symbol; print=true)
+function set_data_option!(calculation::DFCalculation, name::Symbol, option::Symbol; print=true)
     for data in calculation.data
         if data.name == name
             old_option  = data.option
@@ -128,7 +148,13 @@ rmexecflags!(calculation::DFCalculation, exec::String, flags...) =
 runcommand(calculation::DFCalculation) = calculation.execs[1]
 
 
-"Returns the outputdata for the calculation."
+"""
+    outputdata(calculation::DFCalculation; print=true, overwrite=true)
+
+If an output file exists for `calculation` this will parse it and return a `Dict` with the parsed data.
+If `overwrite=false` and `calculation.outputdata` is not empty, this will be returned instead of reparsing the
+output file.
+"""
 function outputdata(calculation::DFCalculation; print=true, overwrite=true)
     if hasoutput(calculation)
         if !overwrite && !isempty(outdata(calculation))
@@ -146,7 +172,14 @@ end
 """
     readbands(calculation::DFCalculation)
 
-Tries to read bands from the outputfile of the calculation.
+Parses the `outputdata` associated with `calculation` and returns the bands if present.
+
+    readbands(job::DFJob)
+
+Will try to find the first bandstructure calculation present in the `job` with a valid
+output file, and return the `bands` if present.
+If no normal bandstructure calculation is present, it will return the bands produced
+by a possible `nscf` calculation if one exists with a valid output file.
 """
 function readbands(calculation::DFCalculation)
     hasoutput_assert(calculation)
@@ -163,7 +196,12 @@ end
 """
     readfermi(calculation::DFCalculation)
 
-Tries to read the fermi level from the outputfile of the calculation.
+Parses the `outputdata` associated with `calculation` and returns the fermi level if present.
+
+    readfermi(job::DFJob)
+
+Finds the first `scf` calculation present in the `job`,
+reads its `outputdata` and returns the fermi level if present.
 """
 function readfermi(calculation::DFCalculation)
     hasoutput_assert(calculation)
@@ -208,16 +246,3 @@ gencalc_bands(::DFCalculation{P}, args...) where {P} =
 isconverged(::DFCalculation{P}) where {P} =
     @error "isconverged is not implemented for package $P."
 
-"""
-    set_name!(calculation::DFCalculation, name::AbstractString)
-
-Sets the name of `calculation` to `name` and updates `calculation.infile` and `calculation.outfile` to conform
-with the new name.
-"""
-function set_name!(calculation::DFCalculation, name::AbstractString; print=true)
-    calculation.name = name
-    calculation.infile = name * splitext(infilename(calculation))[2]
-    calculation.outfile = name * splitext(outfilename(calculation))[2]
-    print && @info "\ncalculation.name = $name\ncalculation.infile = $(infilename(calculation))\ncalculation.outfile = $(outfilename(calculation))"
-    name
-end

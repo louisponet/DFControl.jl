@@ -177,23 +177,17 @@ end
 Base.insert!(job::DFJob, index::Int, calculation::DFCalculation) = insert!(job.calculations, index, calculation)
 
 """
-    push!(job::DFJob, calculation::DFCalculation)
-
-`push!(job.calculations, calculation)`.
+    push!(job::DFJob, calculation::DFCalculation) = `push!(job.calculations, calculation)`
 """
 Base.push!(job::DFJob, calculation::DFCalculation) = push!(job.calculations, calculation)
 
 """
-    pop!(job::DFJob)
-
-`pop!(job.calculations)`.
+    pop!(job::DFJob) = `pop!(job.calculations)`
 """
 Base.pop!(job::DFJob) = pop!(job.calculations)
 
 """
-    append!(job::DFJob, args...)
-
-`append!(job.calculations, args...)`.
+    append!(job::DFJob, args...) = `append!(job.calculations, args...)`
 """
 Base.append!(job::DFJob, args...) = append!(job.calculations, args...)
 
@@ -309,24 +303,24 @@ set_data!(job::DFJob, name::String, dataname::Symbol, data; fuzzy=true, kwargs..
     set_data!(job, calculations(job, name, fuzzy), dataname, data; kwargs...)
 
 """
-    set_dataoption!(job::DFJob, names::Vector{String}, dataname::Symbol, option::Symbol)
+    set_data_option!(job::DFJob, names::Vector{String}, dataname::Symbol, option::Symbol)
 
 sets the option of specified data in the specified calculations.
 """
-function set_dataoption!(job::DFJob, names::Vector{String}, dataname::Symbol, option::Symbol; kwargs...)
-    set_dataoption!.(calculations(job, names), dataname, option; kwargs...)
+function set_data_option!(job::DFJob, names::Vector{String}, dataname::Symbol, option::Symbol; kwargs...)
+    set_data_option!.(calculations(job, names), dataname, option; kwargs...)
     return job
 end
-set_dataoption!(job::DFJob, n::String, name::Symbol, option::Symbol; kw...) =
-    set_dataoption!(job, [n], name, option; kw...)
+set_data_option!(job::DFJob, n::String, name::Symbol, option::Symbol; kw...) =
+    set_data_option!(job, [n], name, option; kw...)
 
 """
-    set_dataoption!(job::DFJob, name::Symbol, option::Symbol)
+    set_data_option!(job::DFJob, name::Symbol, option::Symbol)
 
 sets the option of specified data block in all calculations that have the block.
 """
-set_dataoption!(job::DFJob, n::Symbol, option::Symbol; kw...) =
-    set_dataoption!(job, name.(calculations(job)), n, option; kw...)
+set_data_option!(job::DFJob, n::Symbol, option::Symbol; kw...) =
+    set_data_option!(job, name.(calculations(job)), n, option; kw...)
 
 """
     rm_flags!(job::DFJob, calculations::Vector{<:DFCalculation}, flags...)
@@ -614,7 +608,6 @@ function bandgap(job::DFJob, fermi=nothing)
 	return minimum(bandgap.(bands, fermi))
 end
 
-"Searches for the first scf or nscf calculation with output, and reads the fermi level from it."
 function readfermi(job::DFJob)
     ins = filter(x -> (isscf(x) || isnscf(x)) && hasoutfile(x), calculations(job))
     @assert isempty(ins) !== nothing "Job does not have a valid scf or nscf output."
@@ -628,7 +621,6 @@ function readfermi(job::DFJob)
     return 0.0
 end
 
-"Searches for the first bands calculation with output, and reads the fermi level from it."
 function readbands(job::DFJob)
     calculation = getfirst(x -> isbands(x) && hasoutfile(x), calculations(job))
     if calculation === nothing

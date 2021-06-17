@@ -210,6 +210,14 @@ function pdos(calculation::DFCalculation{QE}, atsym::Symbol, magnetic::Bool, soc
     return (energies=energies, pdos=atdos) 
 end
 
+"""
+    set_kpoints!(calculation::DFCalculation{QE}, k_grid::NTuple{3, Int}; print=true)
+    set_kpoints!(calculation::DFCalculation{QE}, k_grid::NTuple{6, Int}; print=true)
+    set_kpoints!(calculation::DFCalculation{QE}, k_grid::Vector{<:NTuple{4}}; print=true, k_option=:crystal_b)
+
+Convenience function to set the `:k_points` data block of `calculation`. The three different methods are
+targeted at `nscf`, `scf` or `vcrelax` and `bands` calculations, respectively.
+"""
 function set_kpoints!(calculation::DFCalculation{QE}, k_grid::NTuple{3, Int}; print=true) #nscf
     calc = flag(calculation, :calculation)
     print && calc != "nscf" && (@warn "Expected calculation to be 'nscf'.\nGot $calc.")
@@ -251,26 +259,25 @@ end
 """
     gencalc_scf(template::DFCalculation{QE}, kpoints::NTuple{6, Int}, newflags...; name="scf")
 
-Uses the information from the template and supplied kpoints to generate an scf calculation.
+Uses the information from the template and `supplied` kpoints to generate an scf calculation.
 Extra flags can be supplied which will be set for the generated calculation.
 """
 gencalc_scf(template::DFCalculation{QE}, kpoints::NTuple{6, Int}, newflags...; name="scf") =
     calculation_from_kpoints(template, name, kpoints, :calculation => "scf", newflags...)
 
 """
-    gencalc_vcrelax(template::DFCalculation{QE}, kpoints::NTuple{6, Int}=data(template, :k_points).data, newflags...; name="scf")
+    gencalc_vcrelax(template::DFCalculation{QE}, kpoints::NTuple{6, Int}, newflags...; name="scf")
 
-Uses the information from the template and supplied kpoints to generate a vcrelax calculation.
+Uses the information from the template and supplied `kpoints` to generate a vcrelax calculation.
 Extra flags can be supplied which will be set for the generated calculation.
 """
-gencalc_vcrelax(template::DFCalculation{QE}, kpoints::NTuple{6, Int} = (data(template, :k_points).data...,), newflags...; name="vcrelax") =
+gencalc_vcrelax(template::DFCalculation{QE}, kpoints::NTuple{6, Int}, newflags...; name="vcrelax") =
     calculation_from_kpoints(template, name, kpoints, :calculation => "vc-relax", newflags...)
 
 """
     gencalc_bands(template::DFCalculation{QE}, kpoints::Vector{NTuple{4}}, newflags...; name="bands")
-    gencalc_bands(job::DFJob, kpoints::Vector{NTuple{4}}, newflags...; name="bands", template_name="scf")
 
-Uses the information from the template and supplied kpoints to generate a bands calculation.
+Uses the information from the template and supplied `kpoints` to generate a bands calculation.
 Extra flags can be supplied which will be set for the generated calculation.
 """
 gencalc_bands(template::DFCalculation{QE}, kpoints::Vector{<:NTuple{4}}, newflags...; name="bands") =
@@ -278,9 +285,8 @@ gencalc_bands(template::DFCalculation{QE}, kpoints::Vector{<:NTuple{4}}, newflag
 
 """
     gencalc_nscf(template::DFCalculation{QE}, kpoints::NTuple{3, Int}, newflags...; name="nscf")
-    gencalc_nscf(job::DFJob, kpoints::NTuple{3, Int}, newflags...; name="nscf", template_name="scf")
 
-Uses the information from the template and supplied kpoints to generate an nscf calculation.
+Uses the information from the template and supplied `kpoints` to generate an nscf calculation.
 Extra flags can be supplied which will be set for the generated calculation.
 """
 gencalc_nscf(template::DFCalculation{QE}, kpoints::NTuple{3, Int}, newflags...; name="nscf") =
@@ -288,9 +294,8 @@ gencalc_nscf(template::DFCalculation{QE}, kpoints::NTuple{3, Int}, newflags...; 
 
 """
     gencalc_projwfc(template::DFCalculation{QE}, Emin, Emax, DeltaE, newflags...; name="projwfc")
-    gencalc_projwfc(job::DFJob, Emin, Emax, DeltaE, newflags...; name="projwfc", template_name="nscf")
 
-Uses the information from the template and supplied kpoints to generate a projwfc.x calculation.
+Uses the information from the template and supplied `kpoints` to generate a `projwfc.x` calculation.
 Extra flags can be supplied which will be set for the generated calculation.
 """
 function gencalc_projwfc(template::DFCalculation{QE}, Emin, Emax, DeltaE, extraflags...; name="projwfc")
