@@ -119,28 +119,6 @@ begin
     end
 end
 
-job3 = DFJob(job2, :lspinorb => true)
-@test all(atoms(job3).==atoms(job2))
-@test length(job3[:lspinorb]) == length(searchinputs(job3, QE))
-rm_flags!(job3, :lspinorb, print=false)
-
-begin
-    for (calc, calc2) in zip(job.inputs, job3.inputs)
-        for (f, v) in calc.flags
-            if f in (:Hubbard_J, :pseudo_dir, :wannier_plot)
-                continue
-            else
-                @test v == calc2.flags[f]
-            end
-        end
-        for (b1, b2) in zip(calc.data, calc2.data)
-            for n in fieldnames(typeof(b1))
-                @test getfield(b1, n) == getfield(b2,n)
-            end
-        end
-    end
-end
-
 set_cutoffs!(job)
 @test job["scf"][:ecutwfc] == 32.0
 
@@ -170,9 +148,9 @@ rmexecflags!(job, "pw.x", :nk)
 set_execdir!(job, "pw.x", joinpath(homedir(), "bin"))
 @test execs(job, "nscf")[2].dir == joinpath(homedir(), "bin")
 
-set_name!(job, "nscf", "test")
+set_name!(job["nscf"], "test")
 @test DFControl.inpath(job, "test") == joinpath(job.local_dir, "test.in")
-set_name!(job, "test", "nscf")
+set_name!(job["test"], "nscf")
 
 set_serverdir!(job, "localhost")
 @test job.server_dir == "localhost"
