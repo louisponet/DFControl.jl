@@ -1,4 +1,4 @@
-# Input Flags
+# Calculation Flags
 
 ```@docs
 Base.getindex(::DFJob, ::Symbol)

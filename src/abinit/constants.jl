@@ -26,7 +26,7 @@
 #
 # function construct_abi_flags()
 #     out      = Dict{Symbol, Type}()
-#     open(joinpath(assets_dir,"inputs/abinit/input_variables.txt"), "r") do f
+#     open(joinpath(assets_dir,"calculations/abinit/calculation_variables.txt"), "r") do f
 #         while !eof(f)
 #             spl = split(readline(f))
 #             out[Meta.parse(spl[1])] = eval(Meta.parse(spl[2]))
@@ -39,4 +39,4 @@
 include(joinpath(depsdir, "abinitflags.jl"))
 const AbinitFlags  = _ABINITFLAGS()
 #
-# flagtype(input::DFInput{Abinit}, flag) = haskey(AbinitFlags, flag) ? AbinitFlags[flag] : Nothing
+# flagtype(calculation::DFCalculation{Abinit}, flag) = haskey(AbinitFlags, flag) ? AbinitFlags[flag] : Nothing

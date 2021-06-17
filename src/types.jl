@@ -87,7 +87,7 @@ function parse_qeexecflags(line::Vector{<:AbstractString})
 end
 
 const WAN_EXECFLAGS = ExecFlag[
-    ExecFlag(:pp, "preprocess", Nothing, "Whether or not to preprocess the wannier input", nothing, 1),
+    ExecFlag(:pp, "preprocess", Nothing, "Whether or not to preprocess the wannier calculation", nothing, 1),
 ]
 
 wan_execflag(flag::AbstractString) = getfirst(x -> x.name==flag, WAN_EXECFLAGS)
@@ -217,13 +217,13 @@ is_wannier_exec(exec::Exec) = exec.exec ∈ WAN_EXECS
 is_elk_exec(exec::Exec)     = exec.exec ∈ ELK_EXECS
 is_mpi_exec(exec::Exec)     = occursin("mpi", exec.exec)
 
-function inputparser(exec::Exec)
+function calculationparser(exec::Exec)
     if is_qe_exec(exec) 
-        qe_read_input
+        qe_read_calculation
     elseif is_wannier_exec(exec)
-        wan_read_input
+        wan_read_calculation
     elseif is_elk_exec(exec)
-        elk_read_input
+        elk_read_calculation
     end
 end
 

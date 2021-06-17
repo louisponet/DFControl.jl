@@ -42,5 +42,5 @@ function elk_block_variable(flag_name::Symbol)
 end
 
 
-flagtype(::DFInput{Elk}, flag::Symbol) = eltype(elk_flaginfo(flag))
+flagtype(::DFCalculation{Elk}, flag::Symbol) = eltype(elk_flaginfo(flag))
 

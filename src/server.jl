@@ -91,9 +91,9 @@ function pulloutputs(job::DFJob, server="", server_dir="", local_dir=""; job_fuz
     # pull_server_file(job_fuzzy)
 
     # job_file = searchdir(job.local_dir, strip(job_fuzzy, '*'))[1]
-    # inputs, pulloutputs= read_job_filenames(job.local_dir * job_file)
+    # calculations, pulloutputs= read_job_filenames(job.local_dir * job_file)
     pulled_outputs = String[]
-    for calc in job.inputs
+    for calc in job.calculations
         ofile = outfilename(calc)
         if any(occursin.(ignore, ofile)) || (ispath(outpath(calc)) && !overwrite)
             continue
@@ -173,7 +173,7 @@ end
 """
     pulljob(server::String, server_dir::String, local_dir::String; job_fuzzy="*job*")
 
-Pulls job from server. If no specific inputs are supplied it pulls all .in and .tt files.
+Pulls job from server. If no specific calculations are supplied it pulls all .in and .tt files.
 """
 function pulljob(server::String, server_dir::String, local_dir::String; job_fuzzy="*job*")
     server_dir = server_dir
@@ -187,8 +187,8 @@ function pulljob(server::String, server_dir::String, local_dir::String; job_fuzz
     job_file = searchdir(local_dir, strip(job_fuzzy, '*'))[1]
 
     if job_file != nothing
-        input_files, output_files = read_job_filenames(joinpath(local_dir, job_file))
-        for file in input_files
+        calculation_files, output_files = read_job_filenames(joinpath(local_dir, job_file))
+        for file in calculation_files
             pull_server_file(file)
         end
     end
@@ -204,7 +204,7 @@ Pushes a DFJob from it's local directory to its server side directory.
 function push(job::DFJob)
     mkserverdir(job.server, job.server_dir)
     scp(file) = run(`scp $(job.local_dir * file) $(job.server * ":" * job.server_dir)`)
-    for i in inputs(job)
+    for i in calculations(job)
         scp(i.filename)
     end
     scp("job.tt")

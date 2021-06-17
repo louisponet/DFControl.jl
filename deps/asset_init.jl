@@ -84,7 +84,7 @@ end
 
 open(joinpath(@__DIR__, "wannier90flags.jl"), "w") do wf
     write(wf, "_WAN_FLAGS() = Dict{Symbol, Type}(\n")
-    open(joinpath(@__DIR__, "..", "assets", "inputs", "wannier", "input_flags.txt"), "r") do f
+    open(joinpath(@__DIR__, "..", "assets", "calculations", "wannier", "calculation_flags.txt"), "r") do f
         while !eof(f)
             line = readline(f)
             if isempty(line) || line[1] == '!'
@@ -277,8 +277,8 @@ end
 searchdir(path::String, key) = filter(x -> occursin(key, x), readdir(path))
 open(joinpath(@__DIR__, "qeflags.jl"), "w") do wf
     write(wf, "_QEINPUTINFOS() = QEInputInfo[\n")
-    input_files = searchdir(joinpath(@__DIR__,  "..", "assets", "inputs", "qe"), "INPUT")
-    filepaths  = joinpath.(Ref(joinpath(@__DIR__, "..", "assets", "inputs", "qe")), input_files)
+    calculation_files = searchdir(joinpath(@__DIR__,  "..", "assets", "calculations", "qe"), "INPUT")
+    filepaths  = joinpath.(Ref(joinpath(@__DIR__, "..", "assets", "calculations", "qe")), calculation_files)
     for _f in filepaths
         exec_name = join([lowercase(splitext(split(_f, "_")[end])[1]),".x"],"")
         write_QEInputInfo(wf, _f, 1, exec_name)
@@ -287,7 +287,7 @@ open(joinpath(@__DIR__, "qeflags.jl"), "w") do wf
 end
 
 open(joinpath(@__DIR__, "abinitflags.jl"), "w") do wf
-    flaglines = split.(readlines(joinpath(@__DIR__,  "..", "assets", "inputs", "abinit", "input_variables.txt")))
+    flaglines = split.(readlines(joinpath(@__DIR__,  "..", "assets", "calculations", "abinit", "calculation_variables.txt")))
     write(wf, "_ABINITFLAGS() = Dict{Symbol, Type}(\n")
     for (fl, typ) in flaglines
         write(wf, "\t:$fl => $typ,\n")
@@ -419,7 +419,7 @@ function read_elk_doc(fn::String)
 	return blocks
 end
 
-ELK_CONTROLBLOCKS = read_elk_doc(joinpath(@__DIR__, "..","assets", "inputs", "elk", "elk.txt"))
+ELK_CONTROLBLOCKS = read_elk_doc(joinpath(@__DIR__, "..","assets", "calculations", "elk", "elk.txt"))
 
 open(joinpath(@__DIR__,"elkflags.jl"), "w") do f
 	write(f, "_ELK_CONTROLBLOCKS() = $(repr(ELK_CONTROLBLOCKS))")

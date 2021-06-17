@@ -45,7 +45,7 @@ module DFControl
     export element
     include("structure.jl")
 
-    include("input.jl")
+    include("calculation.jl")
     include("utils.jl")
     export yesterday, lastweek, lastmonth
 
@@ -53,7 +53,7 @@ module DFControl
     include("versioning.jl")
     include("registry.jl")
 
-    export DFJob, Exec, DFInput, InputData
+    export DFJob, Exec, DFCalculation, InputData
     include("server.jl")
     include("API.jl")
 

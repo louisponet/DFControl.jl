@@ -131,8 +131,8 @@ function write_job_header(f, job::DFJob)
     end
 end
 
-function writetojob(f, job, inputs::Vector{DFInput{Abinit}}; kwargs...)
-    abinit_jobfiles   = write_abi_datasets(inputs, job.local_dir; kwargs...)
+function writetojob(f, job, calculations::Vector{DFCalculation{Abinit}}; kwargs...)
+    abinit_jobfiles   = write_abi_datasets(calculations, job.local_dir; kwargs...)
     abifiles = String[]
     num_abi = 0
     for (filename, pseudos, runcommand) in abinit_jobfiles
@@ -148,15 +148,15 @@ function writetojob(f, job, inputs::Vector{DFInput{Abinit}}; kwargs...)
     return abifiles
 end
 
-function writetojob(f, job, inputs::Vector{DFInput{Elk}}; kwargs...)
-    save(inputs, job.structure; kwargs...)
-    should_run = any(map(x->x.run, inputs)) 
+function writetojob(f, job, calculations::Vector{DFCalculation{Elk}}; kwargs...)
+    save(calculations, job.structure; kwargs...)
+    should_run = any(map(x->x.run, calculations)) 
     if !should_run
         write(f, "#")
     end
-    writeexec.((f,), execs(inputs[1]))
-    write(f, "< $(infilename(inputs[1])) > $(outfilename(inputs[1]))\n")
-    return inputs
+    writeexec.((f,), execs(calculations[1]))
+    write(f, "< $(infilename(calculations[1])) > $(outfilename(calculations[1]))\n")
+    return calculations
 end
 
 function writeexec(f, exec::Exec)
@@ -176,55 +176,55 @@ function writeexec(f, exec::Exec)
     write(f, " ")
 end
 
-function writetojob(f, job, input::DFInput; kwargs...)
-    filename    = infilename(input)
-    should_run  = input.run
-    save(input, job.structure; kwargs...)
+function writetojob(f, job, calculation::DFCalculation; kwargs...)
+    filename    = infilename(calculation)
+    should_run  = calculation.run
+    save(calculation, job.structure; kwargs...)
     if !should_run
         write(f, "#")
     end
-    writeexec.((f, ), execs(input))
-    write(f, "< $filename > $(outfilename(input))\n")
-    return (input,)
+    writeexec.((f, ), execs(calculation))
+    write(f, "< $filename > $(outfilename(calculation))\n")
+    return (calculation,)
 end
 
-function writetojob(f, job, _input::DFInput{Wannier90}; kwargs...)
-    filename    = infilename(_input)
-    should_run  = _input.run
-    id = findfirst(isequal(_input), job.inputs)
-    seedname = name(_input)
+function writetojob(f, job, _calculation::DFCalculation{Wannier90}; kwargs...)
+    filename    = infilename(_calculation)
+    should_run  = _calculation.run
+    id = findfirst(isequal(_calculation), job.calculations)
+    seedname = name(_calculation)
 
-	nscf_calc = getfirst(x -> isnscf(x), job.inputs)
+	nscf_calc = getfirst(x -> isnscf(x), job.calculations)
 	if nscf_calc !== nothing
         runexec   = nscf_calc.execs
-        # For elk the setup necessary for the wan_calc needs to be done before writing the wan input
+        # For elk the setup necessary for the wan_calc needs to be done before writing the wan calculation
         # because it's inside elk.in
     	if package(nscf_calc) == QE
-    	    pw2waninput = qe_generate_pw2waninput(_input, nscf_calc, runexec)
-    	    preprocess  = pop!(flags(_input), :preprocess)
-    	    wannier_plot = pop!(flags(_input), :wannier_plot, nothing)
+    	    pw2wancalculation = qe_generate_pw2wancalculation(_calculation, nscf_calc, runexec)
+    	    preprocess  = pop!(flags(_calculation), :preprocess)
+    	    wannier_plot = pop!(flags(_calculation), :wannier_plot, nothing)
 
     	    if !preprocess || !should_run
     	        write(f, "#")
     	    end
-    	    writeexec.((f,), execs(_input))
-    	    write(f, "-pp $filename > $(outfilename(_input))\n")
+    	    writeexec.((f,), execs(_calculation))
+    	    write(f, "-pp $filename > $(outfilename(_calculation))\n")
 
-    	    save(_input, job.structure; kwargs...)
-    	    writetojob(f, job, pw2waninput; kwargs...)
-    	    flags(_input)[:preprocess] = preprocess
-    	    wannier_plot !== nothing && (flags(_input)[:wannier_plot] = wannier_plot)
+    	    save(_calculation, job.structure; kwargs...)
+    	    writetojob(f, job, pw2wancalculation; kwargs...)
+    	    flags(_calculation)[:preprocess] = preprocess
+    	    wannier_plot !== nothing && (flags(_calculation)[:wannier_plot] = wannier_plot)
         elseif package(nscf_calc) == Elk
-    	    pw2waninput = job["elk2wannier"]
+    	    pw2wancalculation = job["elk2wannier"]
         end
     end
 
     if !should_run
         write(f, "#")
     end
-    writeexec.((f, ), execs(_input))
-    write(f, "$filename > $(outfilename(_input))\n")
-    return (_input,)
+    writeexec.((f, ), execs(_calculation))
+    write(f, "$filename > $(outfilename(_calculation))\n")
+    return (_calculation,)
 end
 
 function write_job_preamble(f, job::DFJob)
@@ -246,7 +246,7 @@ end
 """
     writejobfiles(job::DFJob; kwargs...)
 
-Writes all the input files and job file that are linked to a DFJob.
+Writes all the calculation files and job file that are linked to a DFJob.
 Kwargs will be passed down to various writetojob functions.
 """
 function writejobfiles(job::DFJob; kwargs...)
@@ -256,18 +256,18 @@ function writejobfiles(job::DFJob; kwargs...)
         write_job_name(f, job)
         write_job_header(f, job)
         write_job_preamble(f, job)
-        written_inputs = DFInput[]
-        abiinputs = Vector{DFInput{Abinit}}(filter(x -> package(x) == Abinit, inputs(job)))
-        !isempty(abiinputs) && writetojob(f, job, abiinputs; kwargs...)
-        elkinputs = Vector{DFInput{Elk}}(filter(x -> package(x) == Elk, inputs(job)))
-        !isempty(elkinputs) && append!(written_inputs, writetojob(f, job, elkinputs; kwargs...))
-        # i = length(abiinputs) + 1
-        # while i <= length(inputs(job))
-        #     i += writetojob(f, job, inputs(job)[i])
+        written_calculations = DFCalculation[]
+        abicalculations = Vector{DFCalculation{Abinit}}(filter(x -> package(x) == Abinit, calculations(job)))
+        !isempty(abicalculations) && writetojob(f, job, abicalculations; kwargs...)
+        elkcalculations = Vector{DFCalculation{Elk}}(filter(x -> package(x) == Elk, calculations(job)))
+        !isempty(elkcalculations) && append!(written_calculations, writetojob(f, job, elkcalculations; kwargs...))
+        # i = length(abicalculations) + 1
+        # while i <= length(calculations(job))
+        #     i += writetojob(f, job, calculations(job)[i])
         # end
-        for i in inputs(job)
-            if i ∉ written_inputs
-                append!(written_inputs, writetojob(f, job, i; kwargs...))
+        for i in calculations(job)
+            if i ∉ written_calculations
+                append!(written_calculations, writetojob(f, job, i; kwargs...))
             end
         end
         write_job_postamble(f, job)
@@ -285,7 +285,7 @@ function read_job_line(line)
     end
     spl = strip_split(line)
 
-    input  = spl[end-1]
+    calculation  = spl[end-1]
     output = spl[end]
     spl    = spl[1:end-2]
     exec_and_flags = Pair{String, Vector{SubString}}[]
@@ -314,14 +314,14 @@ function read_job_line(line)
         elseif any(occursin.(QE_EXECS, (efile,))) 
             push!(execs, Exec(efile, dir, parse_qeexecflags(flags)))
         elseif any(occursin.(ELK_EXECS, (efile,)))
-	        input = "elk.in"
+	        calculation = "elk.in"
 	        output = "elk.out"
             push!(execs, Exec(efile, dir))
         else
             push!(execs, Exec(efile, dir, parse_generic_flags(flags)))
         end
     end
-    return execs, input, output, run
+    return execs, calculation, output, run
 end
 
 function parse_generic_flags(flags::Vector{<:SubString})
@@ -348,7 +348,7 @@ end
 
 # TODO: make this work again
 # function read_job_filenames(job_file::String)
-#     input_files = String[]
+#     calculation_files = String[]
 #     output_files = String[]
 #     open(job_file, "r") do f
 #         readline(f)
@@ -358,20 +358,20 @@ end
 #                 continue
 #             end
 #             if occursin(".x", line)
-#                 runcommand, exec, input, output, run = read_job_line(line)
-#                 !in(input,  input_files)  && push!(input_files,  input)
+#                 runcommand, exec, calculation, output, run = read_job_line(line)
+#                 !in(calculation,  calculation_files)  && push!(calculation_files,  calculation)
 #                 !in(output, output_files) && push!(output_files, output)
 #             end
 #         end
 #     end
-#     return input_files, output_files
+#     return calculation_files, output_files
 # end
 
-function read_job_inputs(job_file::String)
+function read_job_calculations(job_file::String)
     dir = splitdir(job_file)[1]
     name   = ""
     header = Vector{String}()
-    inputs     = DFInput[]
+    calculations     = DFCalculation[]
     structures = AbstractStructure[]
     serverdir = ""
     open(job_file, "r") do f
@@ -382,32 +382,32 @@ function read_job_inputs(job_file::String)
                 continue
             end
             if has_parseable_exec(line)
-                execs, inputfile, output, run = read_job_line(line)
-                inpath = joinpath(dir, inputfile)
+                execs, calculationfile, output, run = read_job_line(line)
+                inpath = joinpath(dir, calculationfile)
                 if !ispath(inpath)
-                    input = (nothing, nothing)
+                    calculation = (nothing, nothing)
                 else
                     calccommand = getfirst(isparseable, execs)
-                    input = calccommand != nothing ? inputparser(calccommand)(inpath, execs=execs, run=run) : (nothing, nothing)
+                    calculation = calccommand != nothing ? calculationparser(calccommand)(inpath, execs=execs, run=run) : (nothing, nothing)
                 end
-                if input[1] !== nothing
-                    input[1].outfile = output
-                    input[1].infile = inputfile
+                if calculation[1] !== nothing
+                    calculation[1].outfile = output
+                    calculation[1].infile = calculationfile
                 end
-                if input != (nothing, nothing)
-                    id = findall(x -> infilename(x) == inputfile, inputs)
+                if calculation != (nothing, nothing)
+                    id = findall(x -> infilename(x) == calculationfile, calculations)
                     if !isempty(id) #this can only happen for stuff that needs to get preprocessed
-                        merge!(flags(input[1]), flags(inputs[id[1]]))
-                        inputs[id[1]] = input[1]
-                        # structures[id[1]] = input[2]
+                        merge!(flags(calculation[1]), flags(calculations[id[1]]))
+                        calculations[id[1]] = calculation[1]
+                        # structures[id[1]] = calculation[2]
                     else
-	                    if isa(input[1], Vector)
-	                        append!(inputs, input[1])
+	                    if isa(calculation[1], Vector)
+	                        append!(calculations, calculation[1])
                         else
-	                        push!(inputs, input[1])
+	                        push!(calculations, calculation[1])
                         end
-                        if input[2] != nothing
-                            push!(structures, input[2])
+                        if calculation[2] != nothing
+                            push!(structures, calculation[2])
                         end
                     end
                 end
@@ -426,10 +426,10 @@ function read_job_inputs(job_file::String)
         end
     end
     if isempty(structures)
-	    error("Something went wrong and no valid structures could be read from input files.")
+	    error("Something went wrong and no valid structures could be read from calculation files.")
     end
     outstruct = mergestructures(structures)
-    return (name=name, header=header, inputs=inputs, structure=outstruct, server_dir=serverdir)
+    return (name=name, header=header, calculations=calculations, structure=outstruct, server_dir=serverdir)
 end
 
 #---------------------------END GENERAL SECTION-------------------#
@@ -510,7 +510,7 @@ function write_cell(f::IO, cell::AbstractMatrix)
 end
 
 "LOL this absolutely is impossible to do for QE"
-function writeabortfile(job::DFJob, input::DFInput{QE})
+function writeabortfile(job::DFJob, calculation::DFCalculation{QE})
     abortpath = joinpath(job.local_dir, TEMP_CALC_DIR, "$(job.name).EXIT")
     open(abortpath, "w") do f
         write(f, " \n")

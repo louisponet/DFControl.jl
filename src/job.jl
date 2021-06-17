@@ -3,7 +3,7 @@ const TEMP_CALC_DIR = "outputs"
 #      which if not supplied could contain the default stuff?
 """
     DFJob(name::String, structure::AbstractStructure;
-          inputs            ::Vector{DFInput} = DFInput[],
+          calculations      ::Vector{DFCalculation} = DFCalculation[],
           local_dir         ::String = pwd(),
           header            ::Vector{String} = getdefault_jobheader(),
           metadata          ::Dict = Dict(),
@@ -12,9 +12,9 @@ const TEMP_CALC_DIR = "outputs"
           server            ::String = getdefault_server(),
           server_dir        ::String = "")
 
-A `DFJob` embodies a set of calculations with `inputs` to be ran in directory `local_dir`, with the `structure` as the subject.
+A `DFJob` embodies a set of calculations with `calculations` to be ran in directory `local_dir`, with the `structure` as the subject.
 ## Keywords/further attributes
-- `inputs`: inputs to calculations that will be run sequentially.
+- `calculations`: calculations to calculations that will be run sequentially.
 - `local_dir`: the directory where the calculations will be run.
 - `header`: lines that will be pasted at the head of the job script, e.g. exports `export OMP_NUM_THREADS=1`, slurm settings`#SBATCH`, etc.
 - `metadata`: various additional information, will be saved in `.metadata.jld2` in the `local_dir`.
@@ -22,7 +22,7 @@ A `DFJob` embodies a set of calculations with `inputs` to be ran in directory `l
 - `copy_temp_folders`: whether or not the temporary directory associated with intermediate calculation results should be copied when storing a job version. *CAUTION* These can be quite large.
 - The `server` and `server_dir` keywords should be avoided for the time being, as this functionality is not well tested.
  
-    DFJob(job_name::String, structure::AbstractStructure, calculations::Vector{<:DFInput}, common_flags::Pair{Symbol, <:Any}...; kwargs...)
+    DFJob(job_name::String, structure::AbstractStructure, calculations::Vector{<:DFCalculation}, common_flags::Pair{Symbol, <:Any}...; kwargs...)
 
 Creates a new job. The common flags will be attempted to be set in each of the `calculations`. The `kwargs...` are passed to the `DFJob` constructor. 
 
@@ -36,7 +36,7 @@ The `kwargs...` will be passed to the `DFJob` constructor.
 @with_kw_noshow mutable struct DFJob
     name         ::String
     structure    ::AbstractStructure
-    inputs       ::Vector{DFInput} = DFInput[]
+    calculations ::Vector{DFCalculation} = DFCalculation[]
     local_dir    ::String = pwd()
     header       ::Vector{String} = getdefault_jobheader()
     metadata     ::Dict = Dict()
@@ -67,14 +67,14 @@ The `kwargs...` will be passed to the `DFJob` constructor.
 end
 
 #TODO implement abinit
-function DFJob(job_name::String, structure::AbstractStructure, calculations::Vector{<:DFInput}, common_flags::Pair{Symbol, <:Any}...;
+function DFJob(job_name::String, structure::AbstractStructure, calculations::Vector{<:DFCalculation}, common_flags::Pair{Symbol, <:Any}...;
                     kwargs...)
 
     shared_flags = typeof(common_flags) <: Dict ? common_flags : Dict(common_flags...)
     for i in calculations
         i.flags = merge(shared_flags, i.flags)
     end
-    out = DFJob(name = job_name, structure = structure, inputs = calculations; kwargs...)
+    out = DFJob(name = job_name, structure = structure, calculations = calculations; kwargs...)
     return out
 end
 
@@ -86,7 +86,7 @@ function DFJob(job_dir::String, job_script="job.tt"; version = nothing, kwargs..
         real_path === nothing && return
     end
     real_version = version === nothing ? last_job_version(real_path) : version
-    return DFJob(;merge(merge((local_dir=real_path,version=real_version), read_job_inputs(joinpath(real_path,  job_script))), kwargs)...)
+    return DFJob(;merge(merge((local_dir=real_path,version=real_version), read_job_calculations(joinpath(real_path,  job_script))), kwargs)...)
 
 end        
 
@@ -97,26 +97,26 @@ starttime(job::DFJob)        = mtime(scriptpath(job))
 
 runslocal(job::DFJob)        = job.server        =="localhost"
 structure(job::DFJob)        = job.structure
-isQEjob(job::DFJob)          = any(x->package(x) == QE, inputs(job))
-iswannierjob(job::DFJob)     = any(x->package(x) == Wannier90, inputs(job)) && any(x->isnscf(x), inputs(job))
-getnscfcalc(job::DFJob)      = getfirst(x -> isnscf(x), inputs(job))
+isQEjob(job::DFJob)          = any(x->package(x) == QE, calculations(job))
+iswannierjob(job::DFJob)     = any(x->package(x) == Wannier90, calculations(job)) && any(x->isnscf(x), calculations(job))
+getnscfcalc(job::DFJob)      = getfirst(x -> isnscf(x), calculations(job))
 cell(job::DFJob)             = cell(structure(job))
 
-input(job::DFJob, n::String) = getfirst(x -> occursin(n, name(x)), inputs(job))
-inputs(job::DFJob)           = job.inputs
+calculation(job::DFJob, n::String) = getfirst(x -> occursin(n, name(x)), calculations(job))
+calculations(job::DFJob)           = job.calculations
 
 """
-    inputs(job::DFJob, names::Vector)
+    calculations(job::DFJob, names::Vector)
 
-Returns an array of the inputs that match the names.
+Returns an array of the calculations that match the names.
 """
-inputs(job::DFJob, names::Vector, fuzzy=true) = fuzzy ? filter(x -> any(occursin.(names, name(x))), inputs(job)) : input.(job, names)
-inputs(job::DFJob, n::String, fuzzy=true) = inputs(job, [n], fuzzy)
-inputs(job::DFJob, package_::Package) = filter(x->package(x)==package_, inputs(job))
-inpath(job::DFJob, n) = inpath(input(job,n))
-outpath(job::DFJob, n) = outpath(input(job,n))
+calculations(job::DFJob, names::Vector, fuzzy=true) = fuzzy ? filter(x -> any(occursin.(names, name(x))), calculations(job)) : calculation.(job, names)
+calculations(job::DFJob, n::String, fuzzy=true) = calculations(job, [n], fuzzy)
+calculations(job::DFJob, package_::Package) = filter(x->package(x)==package_, calculations(job))
+inpath(job::DFJob, n) = inpath(calculation(job,n))
+outpath(job::DFJob, n) = outpath(calculation(job,n))
 
-"Runs some checks on the set flags for the inputs in the job, and sets metadata (:prefix, :outdir etc) related flags to the correct ones. It also checks whether flags in the various inputs are allowed and set to the correct types."
+"Runs some checks on the set flags for the calculations in the job, and sets metadata (:prefix, :outdir etc) related flags to the correct ones. It also checks whether flags in the various calculations are allowed and set to the correct types."
 function sanitize_flags!(job::DFJob)
     set_flags!(job, :prefix => "$(job.name)", print=false)
     if iswannierjob(job)
@@ -133,31 +133,31 @@ function sanitize_flags!(job::DFJob)
             end
         end
     end
-    for i in filter(x -> package(x) == QE, inputs(job))
+    for i in filter(x -> package(x) == QE, calculations(job))
         outdir = isempty(job.server_dir) ? joinpath(job, TEMP_CALC_DIR) : joinpath(job.server_dir, splitdir(job.local_dir)[end], TEMP_CALC_DIR)
         set_flags!(i, :outdir => "$outdir", print=false)
     end
-    sanitize_flags!.(inputs(job), (job.structure,))
+    sanitize_flags!.(calculations(job), (job.structure,))
 end
 
 function sanitize_cutoffs!(job)
     # the assumption is that the most important cutoff calculation is the scf/vcrelax that is ran first 
-    ψ_cut_calc = getfirst(x -> hasflag(x, ψ_cutoff_flag(x)), inputs(job))
+    ψ_cut_calc = getfirst(x -> hasflag(x, ψ_cutoff_flag(x)), calculations(job))
     if ψ_cut_calc !== nothing
         ψcut = ψ_cut_calc[ψ_cutoff_flag(ψ_cut_calc)]
     else
         ψcut, = find_cutoffs(job) # Ideally this should also be at the end stage
-        @assert ψcut != 0.0 "No energy cutoff was specified in any input, and the calculated cutoff from the pseudopotentials was 0.0.\nPlease manually set one."
-        @info "No energy cutoff was specified in the scf input.\nCalculated ψcut=$ψcut."
+        @assert ψcut != 0.0 "No energy cutoff was specified in any calculation, and the calculated cutoff from the pseudopotentials was 0.0.\nPlease manually set one."
+        @info "No energy cutoff was specified in the scf calculation.\nCalculated ψcut=$ψcut."
     end
-    for i in inputs(job)
+    for i in calculations(job)
         ψflag = ψ_cutoff_flag(i)
         ψflag !== nothing && !hasflag(i, ψflag) && set_flags!(i, ψflag => ψcut, print=false)
     end
-    ρ_cut_calc = getfirst(x -> hasflag(x, ρ_cutoff_flag(x)), inputs(job))
+    ρ_cut_calc = getfirst(x -> hasflag(x, ρ_cutoff_flag(x)), calculations(job))
     if ρ_cut_calc !== nothing
         ρcut = ρ_cut_calc[ρ_cutoff_flag(ρ_cut_calc)]
-        for i in inputs(job)
+        for i in calculations(job)
             ρflag = ρ_cutoff_flag(i)
             ρflag !== nothing && set_flags!(i, ρflag => ρcut, print=false)
         end
@@ -182,7 +182,7 @@ function sanitize_pseudos!(job::DFJob)
 end
 
 function sanitize_magnetization!(job::DFJob)
-    if !any(x -> package(x) == QE, inputs(job))
+    if !any(x -> package(x) == QE, calculations(job))
         return
     end
     sanitize_magnetization!(job.structure)
@@ -193,7 +193,7 @@ function find_cutoffs(job::DFJob)
     pseudofiles = map(x->x.name, filter(!isempty, [pseudo(at) for at in atoms(job)]))
     pseudodirs  = map(x->x.dir, filter(!isempty, [pseudo(at) for at in atoms(job)]))
     @assert !isempty(pseudofiles) "No atoms with pseudo files found."
-    @assert !isempty(pseudodirs) "No valid pseudo directories found in the inputs."
+    @assert !isempty(pseudodirs) "No valid pseudo directories found in the calculations."
     maxecutwfc = 0.0
     maxecutrho = 0.0
     for d in pseudodirs
@@ -221,14 +221,14 @@ function sanitize_projections!(job::DFJob)
 end
 
 """
-    last_running_input(job::DFJob)
+    last_running_calculation(job::DFJob)
 
-Returns the last `DFInput` for which an output file was created.
+Returns the last `DFCalculation` for which an output file was created.
 """
-function last_running_input(job::DFJob)
+function last_running_calculation(job::DFJob)
     @assert job.server == "localhost" "Intended use for now is locally."
     t = mtime(scriptpath(job))
-    for i in reverse(inputs(job))
+    for i in reverse(calculations(job))
         p = outpath(i)
         if ispath(p) && mtime(p) > t
             return i
@@ -236,8 +236,8 @@ function last_running_input(job::DFJob)
     end
 end
 
-"Finds the input corresponding to the name and returns the full output path."
-outpath(job::DFJob, n::String) = outpath(input(job,n))
+"Finds the calculation corresponding to the name and returns the full output path."
+outpath(job::DFJob, n::String) = outpath(calculation(job,n))
 
 """
     joinpath(job::DFJob, args...)
@@ -250,12 +250,12 @@ runslocal_assert(job::DFJob) =
     @assert runslocal(job) "This only works if the job runs on `localhost`."
 
 function Base.pop!(job::DFJob, name::String)
-    i = findfirst(x -> x.name == name, job.inputs)
+    i = findfirst(x -> x.name == name, job.calculations)
     if i === nothing
-        error("No input with name $name found.")
+        error("No calculation with name $name found.")
     end
-    out = job.inputs[i]
-    deleteat!(job.inputs, i)
+    out = job.calculations[i]
+    deleteat!(job.calculations, i)
     return out
 end
 

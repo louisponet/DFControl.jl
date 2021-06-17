@@ -63,7 +63,7 @@ function show(io::IO, job::DFJob)
         end
         dfprintln(io, crayon"cyan", "|", reset)
     end
-    is = inputs(job)
+    is = calculations(job)
     if !isempty(is)
         dfprintln(io, crayon"cyan", line, reset)
         dfprintln(io, reset,"(", crayon"green", "scheduled", reset, ", ", crayon"red", "not scheduled", reset, ")")
@@ -82,7 +82,7 @@ function show(io::IO, job::DFJob)
 end
 
 
-function show(io::IO, in::DFInput)
+function show(io::IO, in::DFCalculation)
     df_show_type(io, in)
     s = """name  = $(in.name)
     dir   = $(in.dir)

@@ -32,21 +32,21 @@ function qe_parse_time(str::AbstractString)
     return t
 end
 
-function qe_read_output(input::DFInput{QE}, args...; kwargs...)
+function qe_read_output(calculation::DFCalculation{QE}, args...; kwargs...)
     out = Dict{Symbol, Any}()
-    if isprojwfc(input)
-        return qe_read_projwfc_output(input, args...; kwargs...)
-    elseif ishp(input)
-        return qe_read_hp_output(input, args...; kwargs...)
+    if isprojwfc(calculation)
+        return qe_read_projwfc_output(calculation, args...; kwargs...)
+    elseif ishp(calculation)
+        return qe_read_hp_output(calculation, args...; kwargs...)
     else
-        return qe_read_pw_output(outpath(input))
+        return qe_read_pw_output(outpath(calculation))
     end
 end
 
 """
     qe_read_pw_output(filename::String, T=Float64)
 
-Reads a pw quantum espresso input, returns a dictionary with all found data in the file.
+Reads a pw quantum espresso calculation, returns a dictionary with all found data in the file.
 """
 function qe_read_pw_output(filename::String, T=Float64; cleanup = true)
     out = Dict{Symbol,Any}()
@@ -70,7 +70,7 @@ function qe_read_pw_output(filename::String, T=Float64; cleanup = true)
                 out[:polarization] = Point3{T}(P * s_line[1], P * s_line[2], P * s_line[3])
                 out[:pol_mod]      = mod
 
-            #input structure parameters
+            #calculation structure parameters
             elseif occursin("lattice parameter", line)
                 out[:in_alat] = ustrip(uconvert(Ang, parse(T, split(line)[5])*1a₀))
                 out[:alat] = :crystal
@@ -374,8 +374,8 @@ end
     qe_read_kpdos(filename::String,column=1;fermi=0)
 
 Reads the k_resolved partial density of states from a Quantum Espresso projwfc output file.
-Only use this if the flag kresolveddos=true in the projwfc input file!! The returned matrix can be readily plotted using heatmap() from Plots.jl!
-Optional input: column = 1 (column of the output, 1 = first column after ik and E)
+Only use this if the flag kresolveddos=true in the projwfc calculation file!! The returned matrix can be readily plotted using heatmap() from Plots.jl!
+Optional calculation: column = 1 (column of the output, 1 = first column after ik and E)
 fermi  = 0 (possible fermi offset of the read energy values)
 Return:         Array{Float64,2}(length(k_points),length(energies)) ,
 (ytickvals,yticks)
@@ -411,15 +411,15 @@ function qe_read_pdos(filename::String)
     return energies, values
 end
 
-function qe_read_projwfc_output(input::DFInput{QE}, args...; kwargs...)
+function qe_read_projwfc_output(calculation::DFCalculation{QE}, args...; kwargs...)
     out = Dict{Symbol, Any}()
-    pdos_files = searchdir(dir(input), ".pdos_")
-    if flag(input, :kresolveddos) == true
+    pdos_files = searchdir(dir(calculation), ".pdos_")
+    if flag(calculation, :kresolveddos) == true
         out[:heatmaps]  = Vector{Matrix{Float64}}()
         out[:ytickvals] = Vector{Vector{Float64}}()
         out[:yticks]    = Vector{Vector{Float64}}()
         for f in pdos_files
-            th, vals, ticks = qe_read_kpdos(joinpath(dir(input), f), args...; kwargs...)
+            th, vals, ticks = qe_read_kpdos(joinpath(dir(calculation), f), args...; kwargs...)
             push!(out[:heatmaps], th)
             push!(out[:ytickvals], vals)
             push!(out[:yticks], ticks)
@@ -427,11 +427,11 @@ function qe_read_projwfc_output(input::DFInput{QE}, args...; kwargs...)
     else
         out[:pdos] = NamedTuple{(:energies, :values), Tuple{Vector{Float64}, Matrix{Float64}}}[]
         for f in pdos_files
-            energs, vals = qe_read_pdos(joinpath(dir(input), f), args...; kwargs...)
+            energs, vals = qe_read_pdos(joinpath(dir(calculation), f), args...; kwargs...)
             push!(out[:pdos], (energies=energs, values=vals))
         end
     end
-    out[:states], out[:bands] = qe_read_projwfc(outpath(input))
+    out[:states], out[:bands] = qe_read_projwfc(outpath(calculation))
     return out
 end
 
@@ -534,9 +534,9 @@ function qe_read_projwfc(filename::String)
     return states, bands
 end
 
-function qe_read_hp_output(input::DFInput{QE})
+function qe_read_hp_output(calculation::DFCalculation{QE})
     out = Dict()
-    open(outpath(input), "r") do f
+    open(outpath(calculation), "r") do f
         while !eof(f)
             line = readline(f)
             if occursin("will be perturbed", line)
@@ -551,7 +551,7 @@ function qe_read_hp_output(input::DFInput{QE})
             end
         end
     end
-    hubbard_file = joinpath(dir(input), "$(input[:prefix]).Hubbard_parameters.dat") 
+    hubbard_file = joinpath(dir(calculation), "$(calculation[:prefix]).Hubbard_parameters.dat") 
     if ispath(hubbard_file)
         open(hubbard_file, "r") do f
             while !eof(f)
@@ -700,12 +700,12 @@ end
 
 
 """
-    qe_read_input(filename, T=Float64; execs=[Exec("pw.x")], run=true, structure_name="noname")
+    qe_read_calculation(filename, T=Float64; execs=[Exec("pw.x")], run=true, structure_name="noname")
 
-Reads a Quantum Espresso input file. The `QE_EXEC` inside execs gets used to find which flags are allowed in this input file, and convert the read values to the correct Types.
-Returns a `DFInput{QE}` and the `Structure` that is found in the input.
+Reads a Quantum Espresso calculation file. The `QE_EXEC` inside execs gets used to find which flags are allowed in this calculation file, and convert the read values to the correct Types.
+Returns a `DFCalculation{QE}` and the `Structure` that is found in the calculation.
 """
-function qe_read_input(filename; execs=[Exec("pw.x")], run=true, structure_name="noname")
+function qe_read_calculation(filename; execs=[Exec("pw.x")], run=true, structure_name="noname")
     @assert ispath(filename) "$filename is not a valid path."
     t_lines = read(filename)          |>
         String                        |>
@@ -851,7 +851,7 @@ function qe_read_input(filename; execs=[Exec("pw.x")], run=true, structure_name=
     !isempty(remlines) && push!(datablocks, InputData(:noname, :nooption, remlines))
 
     dir, file = splitdir(filename)
-    return DFInput{QE}(splitext(file)[1], dir, parsed_flags, datablocks, execs, run), structure
+    return DFCalculation{QE}(splitext(file)[1], dir, parsed_flags, datablocks, execs, run), structure
 end
 
 function qe_writeflag(f, flag, value)
@@ -885,16 +885,16 @@ end
 
 
 """
-    save(input::DFInput{QE}, structure, filename::String=inpath(input))
+    save(calculation::DFCalculation{QE}, structure, filename::String=inpath(calculation))
 
-Writes a Quantum Espresso input file.
+Writes a Quantum Espresso calculation file.
 """
-function save(input::DFInput{QE}, structure, filename::String=inpath(input); relative_positions=true)
-    if haskey(flags(input), :calculation)
-        set_flags!(input, :calculation => replace(input[:calculation], "_" => "-"), print=false)
+function save(calculation::DFCalculation{QE}, structure, filename::String=inpath(calculation); relative_positions=true)
+    if haskey(flags(calculation), :calculation)
+        set_flags!(calculation, :calculation => replace(calculation[:calculation], "_" => "-"), print=false)
     end
     open(filename, "w") do f
-        if exec(input, "ph.x") !== nothing
+        if exec(calculation, "ph.x") !== nothing
             write(f, "--\n")
         end
         writeflag(flag_data) = qe_writeflag(f, flag_data[1], flag_data[2])
@@ -902,8 +902,8 @@ function save(input::DFInput{QE}, structure, filename::String=inpath(input); rel
 
         controls = Dict{Symbol, Dict{Symbol, Any}}()
 
-        for (flag, val) in input.flags
-            block, variable = qe_block_variable(input, flag)
+        for (flag, val) in calculation.flags
+            block, variable = qe_block_variable(calculation, flag)
             if !haskey(controls, block.name)
                 controls[block.name] = Dict{Symbol, Any}()
             end
@@ -911,7 +911,7 @@ function save(input::DFInput{QE}, structure, filename::String=inpath(input); rel
         end
 
         #Here we try to figure out the correct order of the control blocks
-        # first we find the order of the pw.x inputs, the rest should follow.
+        # first we find the order of the pw.x calculations, the rest should follow.
         blocks2file = []
         for name in [:control, :system, :electrons, :ions, :cell]
             push!(blocks2file, name => pop!(controls, name, nothing))
@@ -935,10 +935,10 @@ function save(input::DFInput{QE}, structure, filename::String=inpath(input); rel
             map(writeflag, [(flag, data) for (flag, data) in flags])
             write(f, "/\n\n")
         end
-        if exec(input, "pw.x") !== nothing
-            write_structure(f, input, structure, relative_positions=relative_positions)
+        if exec(calculation, "pw.x") !== nothing
+            write_structure(f, calculation, structure, relative_positions=relative_positions)
         end
-        for dat in input.data
+        for dat in calculation.data
             if dat.name != :noname
                 if dat.option != :none
                     write(f, "$(uppercase(String(dat.name))) ($(dat.option))\n")
@@ -956,11 +956,11 @@ function save(input::DFInput{QE}, structure, filename::String=inpath(input); rel
         end
     end
     #TODO handle writing hubbard and magnetization better
-    delete!.((input.flags,), (:Hubbard_U, :Hubbard_J0, :Hubbard_J, :Hubbard_alpha, :Hubbard_beta,
+    delete!.((calculation.flags,), (:Hubbard_U, :Hubbard_J0, :Hubbard_J, :Hubbard_alpha, :Hubbard_beta,
                               :starting_magnetization, :angle1, :angle2, :pseudo_dir))
 end
 
-function write_structure(f, input::DFInput{QE}, structure; relative_positions=true)
+function write_structure(f, calculation::DFCalculation{QE}, structure; relative_positions=true)
     unique_at = unique(atoms(structure))
     pseudo_lines = String[]
     atom_lines   = String[]
@@ -989,24 +989,24 @@ function write_structure(f, input::DFInput{QE}, structure; relative_positions=tr
     write(f, "\n")
 end
 
-function qe_generate_pw2waninput(input::DFInput{Wannier90}, nscf_input::DFInput{QE}, runexecs)
+function qe_generate_pw2wancalculation(calculation::DFCalculation{Wannier90}, nscf_calculation::DFCalculation{QE}, runexecs)
     flags = Dict()
-    flags[:prefix] = nscf_input[:prefix]
-    flags[:seedname] = "$(name(input))"
-    flags[:outdir] = nscf_input[:outdir]
+    flags[:prefix] = nscf_calculation[:prefix]
+    flags[:seedname] = "$(name(calculation))"
+    flags[:outdir] = nscf_calculation[:outdir]
     flags[:wan_mode] = "standalone"
     flags[:write_mmn] = true
     flags[:write_amn] = true
-    if flag(input, :spin) !== nothing
-        flags[:spin_component] = flag(input, :spin)
+    if flag(calculation, :spin) !== nothing
+        flags[:spin_component] = flag(calculation, :spin)
     end
-    if flag(input, :wannier_plot) !== nothing
-        flags[:write_unk] = flag(input, :wannier_plot)
+    if flag(calculation, :wannier_plot) !== nothing
+        flags[:write_unk] = flag(calculation, :wannier_plot)
     end
-    if any(flag(input, :berry_task) .== ("morb"))
+    if any(flag(calculation, :berry_task) .== ("morb"))
         flags[:write_uHu] = true
     end
     pw2wanexec = Exec("pw2wannier90.x", runexecs[2].dir)
-    run = get(input.flags, :preprocess, false) && input.run
-    return DFInput{QE}("pw2wan_$(flags[:seedname])", dir(input), flags, InputData[], [runexecs[1], pw2wanexec], run)
+    run = get(calculation.flags, :preprocess, false) && calculation.run
+    return DFCalculation{QE}("pw2wan_$(flags[:seedname])", dir(calculation), flags, InputData[], [runexecs[1], pw2wanexec], run)
 end

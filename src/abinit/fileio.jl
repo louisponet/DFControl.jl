@@ -114,7 +114,7 @@
 #
 # #Everything is in angstrom, bohr lengths begone foul beasts!
 # function extract_structures!(abi_datasets...; structure_name = "NoName")
-#     #possible different structures for different inputs
+#     #possible different structures for different calculations
 #     out_structures = Vector{Vector{AbinitDataBlock}}()
 #     out_structures = Vector{Structure}()
 #     natom = 1
@@ -226,7 +226,7 @@
 #                 rprimd = out_structures[1].cell
 #                 atoms = out_structures[1].atoms
 #             catch
-#                 error("xred|xcart|xangs must be given in input.")
+#                 error("xred|xcart|xangs must be given in calculation.")
 #             end
 #         end
 #         # up till here everything was in bohr, not anymore.
@@ -238,20 +238,20 @@
 # end
 #
 # """
-#     read_abi_input(filename::String, T=Float64)
+#     read_abi_calculation(filename::String, T=Float64)
 #
-# Returns an ABINIT input. We assume that jdtset is on a seperate line.
+# Returns an ABINIT calculation. We assume that jdtset is on a seperate line.
 # If # DATASET is supplied as first line, it will make sure that amount of datasets are read no matter what ndtset and jdtset are.
 # `ndtset` and `jdtset` will be taken into account to decide which calculations will be marked as 'should run'.
-# Either all structures of the input are the same or all are different, otherwise there will be an error.
+# Either all structures of the calculation are the same or all are different, otherwise there will be an error.
 # """
-# function read_abi_input(filename::String, T=Float64; runcommand= "", pseudos=[""], structure_name = "NoName")
+# function read_abi_calculation(filename::String, T=Float64; runcommand= "", pseudos=[""], structure_name = "NoName")
 #     datasets = read_abi_datasets(filename, T)
 #     structures = extract_structures!(datasets..., structure_name = structure_name)
-#     inputs = Array{AbinitInput,1}()
+#     calculations = Array{AbinitInput,1}()
 #     jdtset = Int[]
 #     ndtset = 0
-#     @assert length(datasets) == length(structures) || length(structures) == 1 "All structures of the input have to be the same or all different."
+#     @assert length(datasets) == length(structures) || length(structures) == 1 "All structures of the calculation have to be the same or all different."
 #     for (i, data) in enumerate(datasets)
 #         structure = length(structures) == 1 ? structures[1] : structures[i]
 #         file, ext= splitext(splitdir(filename)[2])
@@ -267,9 +267,9 @@
 #         if isempty(data)
 #             continue
 #         end
-#         push!(inputs, AbinitInput(newfile, structure, data, [AbinitDataBlock(:pseudos, :pseudos, pseudos)], runcommand, run))
+#         push!(calculations, AbinitInput(newfile, structure, data, [AbinitDataBlock(:pseudos, :pseudos, pseudos)], runcommand, run))
 #     end
-#     return inputs
+#     return calculations
 # end
 #
 # function write_abi_structure(f, structure)
@@ -305,17 +305,17 @@
 #
 # #question: Does it matter that we might be writing redundant data such as spinat etc?
 # """
-#     write_abi_datasets(inputs::Array{AbinitInput,1}, directory)
+#     write_abi_datasets(calculations::Array{AbinitInput,1}, directory)
 #
-# Takes all the inputs, sees which ones have the same structure and constructs input files for each seperate sturcture.
-# The filename of the first input of a certain structure is used as file for all the datasets.
+# Takes all the calculations, sees which ones have the same structure and constructs calculation files for each seperate sturcture.
+# The filename of the first calculation of a certain structure is used as file for all the datasets.
 # """
-# function write_abi_datasets(inputs::Vector{DFInput{Abinit}}, directory)
-#     input_groups = Vector{Vector{DFInput{Abinit}}}([[inputs[end]]])
-#     for input in reverse(inputs)[2:end]
-#         for group in input_groups
-#             if group[1].structure == input.structure
-#                 push!(group, input)
+# function write_abi_datasets(calculations::Vector{DFCalculation{Abinit}}, directory)
+#     calculation_groups = Vector{Vector{DFCalculation{Abinit}}}([[calculations[end]]])
+#     for calculation in reverse(calculations)[2:end]
+#         for group in calculation_groups
+#             if group[1].structure == calculation.structure
+#                 push!(group, calculation)
 #                 break
 #             end
 #         end
@@ -325,10 +325,10 @@
 #     run_commands = String[]
 #     pseudos      = Vector{Vector{String}}()
 #
-#     for group in input_groups
+#     for group in calculation_groups
 #         run_indices = Int[]
-#         for (i, _input) in enumerate(reverse(group))
-#             if _input.run
+#         for (i, _calculation) in enumerate(reverse(group))
+#             if _calculation.run
 #                 push!(run_indices, i)
 #             end
 #         end

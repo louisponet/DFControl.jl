@@ -11,15 +11,15 @@ Returns the documentation for a given flag.
 """
 function documentation(::Type{QE}, searchstring::AbstractString)
     found = Pair{String, Vector{QEFlagInfo}}[]
-    for inputinfo in QEInputInfos
+    for calculationinfo in QEInputInfos
         foundflags = QEFlagInfo[]
-        for fi in allflags(inputinfo)
+        for fi in allflags(calculationinfo)
             if occursin(searchstring, fi.description)
                 push!(foundflags, fi)
             end
         end
         if !isempty(foundflags)
-            push!(found, inputinfo.exec => foundflags)
+            push!(found, calculationinfo.exec => foundflags)
         end
     end
     return found

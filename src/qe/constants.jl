@@ -55,9 +55,9 @@ allflags(info::QEInputInfo) = flatten([[i.flags for i in info.control]; [i.flags
 
 include(joinpath(depsdir, "qeflags.jl"))
 const QEInputInfos = _QEINPUTINFOS()
-push!(QEInputInfos, QEInputInfo("pw2wannier90.x", [QEControlBlockInfo(:inputpp,[QEFlagInfo{String}(:outdir        , "location of temporary output files"),
+push!(QEInputInfos, QEInputInfo("pw2wannier90.x", [QEControlBlockInfo(:calculationpp,[QEFlagInfo{String}(:outdir        , "location of temporary output files"),
                           QEFlagInfo{String}(:prefix        , "pwscf filename prefix"),
-                          QEFlagInfo{String}(:seedname      , "wannier90 input/output filename prefix"),
+                          QEFlagInfo{String}(:seedname      , "wannier90 calculation/output filename prefix"),
                           QEFlagInfo{String}(:wan_mode      , "'standalone' or 'library'"),
                           QEFlagInfo{String}(:spin_component, "'none', 'up' or 'down'"),
                           QEFlagInfo{Bool}(:write_mmn     , "compute M_mn matrix"),
@@ -67,12 +67,12 @@ push!(QEInputInfos, QEInputInfo("pw2wannier90.x", [QEControlBlockInfo(:inputpp,[
                           QEFlagInfo{Bool}(:wvfn_formatted, "formatted or unformatted output for wavefunctions"),
                           QEFlagInfo{Bool}(:reduce_unk    , "output wavefunctions on a coarse grid to save memory")])], QEDataBlockInfo[]))
 
-qe_input_info(input::DFInput{QE}) = getfirst(x-> occursin(x.exec, input.exec), QEInputInfos)
-qe_input_info(exec::AbstractString) = getfirst(x-> occursin(x.exec, exec), QEInputInfos)
-qe_input_flags(exec::AbstractString) = allflags(qe_input_info(exec))
+qe_calculation_info(calculation::DFCalculation{QE}) = getfirst(x-> occursin(x.exec, calculation.exec), QEInputInfos)
+qe_calculation_info(exec::AbstractString) = getfirst(x-> occursin(x.exec, exec), QEInputInfos)
+qe_calculation_flags(exec::AbstractString) = allflags(qe_calculation_info(exec))
 
-function qe_flaginfo(input_info::QEInputInfo, variable_name::Symbol)
-    for block in vcat(input_info.control, input_info.data)
+function qe_flaginfo(calculation_info::QEInputInfo, variable_name::Symbol)
+    for block in vcat(calculation_info.control, calculation_info.data)
         var = qe_flaginfo(block, variable_name)
         if eltype(var) != Nothing
             return var
@@ -91,8 +91,8 @@ function qe_flaginfo(variable_name::Symbol)
     return QEFlagInfo()
 end
 
-function qe_block_variable(input_info::QEInputInfo, variable_name)
-    for block in vcat(input_info.control, input_info.data)
+function qe_block_variable(calculation_info::QEInputInfo, variable_name)
+    for block in vcat(calculation_info.control, calculation_info.data)
         var = qe_flaginfo(block, variable_name)
         if eltype(var) != Nothing
             return block, var
@@ -102,9 +102,9 @@ function qe_block_variable(input_info::QEInputInfo, variable_name)
 end
 
 function qe_flaginfo(exec::Exec, varname)
-    for input_info in QEInputInfos
-        if occursin(input_info.exec, exec.exec)
-            return qe_flaginfo(input_info, varname)
+    for calculation_info in QEInputInfos
+        if occursin(calculation_info.exec, exec.exec)
+            return qe_flaginfo(calculation_info, varname)
         end
     end
     return QEFlagInfo()
@@ -112,8 +112,8 @@ end
 
 
 function qe_block_info(block_name::Symbol)
-    for input_info in QEInputInfos
-        for block in [input_info.control;input_info.data]
+    for calculation_info in QEInputInfos
+        for block in [calculation_info.control;calculation_info.data]
             if block.name == block_name
                 return block
             end
@@ -122,29 +122,29 @@ function qe_block_info(block_name::Symbol)
 end
 
 
-qe_all_block_flags(input::DFInput{QE}, block_name) = getfirst(x -> x.name == block, qe_input_info(input).control).flags
-qe_all_block_flags(exec::AbstractString, block_name) = getfirst(x -> x.name == block_name, qe_input_info(exec).control).flags
+qe_all_block_flags(calculation::DFCalculation{QE}, block_name) = getfirst(x -> x.name == block, qe_calculation_info(calculation).control).flags
+qe_all_block_flags(exec::AbstractString, block_name) = getfirst(x -> x.name == block_name, qe_calculation_info(exec).control).flags
 
 function qe_block_variable(exec::AbstractString, flagname)
-    for input_info in QEInputInfos
-        if occursin(input_info.exec, exec)
-            return qe_block_variable(input_info, flagname)
+    for calculation_info in QEInputInfos
+        if occursin(calculation_info.exec, exec)
+            return qe_block_variable(calculation_info, flagname)
         end
     end
     return :error, QEFlagInfo()
 end
 
-function qe_exec(input::DFInput{QE})
-    exec = getfirst(x -> x.exec ∈ QE_EXECS, execs(input))
+function qe_exec(calculation::DFCalculation{QE})
+    exec = getfirst(x -> x.exec ∈ QE_EXECS, execs(calculation))
     if exec === nothing
-        error("Input $input does not have a valid QE executable, please set it first.")
+        error("Input $calculation does not have a valid QE executable, please set it first.")
     end
     return exec
 end
 
-qe_block_variable(input::DFInput, flagname) = qe_block_variable(qe_exec(input).exec, flagname)
+qe_block_variable(calculation::DFCalculation, flagname) = qe_block_variable(qe_exec(calculation).exec, flagname)
 
-flagtype(input::DFInput{QE}, flag) = eltype(qe_flaginfo(qe_exec(input), flag))
+flagtype(calculation::DFCalculation{QE}, flag) = eltype(qe_flaginfo(qe_exec(calculation), flag))
 flagtype(::Type{QE}, exec, flag) = eltype(qe_flaginfo(exec, flag))
 
 ψ_cutoff_flag(::Type{QE}) = :ecutwfc

@@ -16,12 +16,12 @@ header = ["#SBATCH -N 1", "#SBATCH --ntasks-per-node=24",
           "module load open-mpi/gcc/1.10.4-hfi", "module load mkl/2016.1.056"
          ]
 
-calculations = [DFInput{QE}(name="vc_relax", execs = excs,flags = Dict(:calculation => "vc-relax", :verbosity => "low"), data = [InputData(:k_points, :automatic, [6,6,6,1,1,1])]),
-                DFInput{QE}(name="scf", execs = excs,   flags = Dict(:calculation => "scf", :verbosity => "low"), data = [InputData(:k_points, :automatic, [6,6,6,1,1,1])]),
-                DFInput{QE}(name="bands", execs = excs, flags = Dict(:calculation => "bands", :verbosity => "high", :nbnd=>8), data = [InputData(:k_points,:crystal_b, [[0.5, 0.5, 0.5, 100.],
+calculations = [DFCalculation{QE}(name="vc_relax", execs = excs,flags = Dict(:calculation => "vc-relax", :verbosity => "low"), data = [InputData(:k_points, :automatic, [6,6,6,1,1,1])]),
+                DFCalculation{QE}(name="scf", execs = excs,   flags = Dict(:calculation => "scf", :verbosity => "low"), data = [InputData(:k_points, :automatic, [6,6,6,1,1,1])]),
+                DFCalculation{QE}(name="bands", execs = excs, flags = Dict(:calculation => "bands", :verbosity => "high", :nbnd=>8), data = [InputData(:k_points,:crystal_b, [[0.5, 0.5, 0.5, 100.],
                                                                                                                                     [0.0, 0.0, 0.0, 100.],
                                                                                                                                     [0.0, 0.5, 0.0, 1.]])]),
-                DFInput{QE}(name="nscf", execs = excs, flags = Dict(:calculation => "nscf", :verbosity => "low"))]
+                DFCalculation{QE}(name="nscf", execs = excs, flags = Dict(:calculation => "nscf", :verbosity => "low"))]
 str = Structure(joinpath(testjobpath, "Pt.cif"), name="Pt")
 set_pseudos!(str, :test)
 job = DFJob(name, str, calculations,

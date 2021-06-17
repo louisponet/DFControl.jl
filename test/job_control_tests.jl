@@ -11,8 +11,8 @@ out = outputdata(job;print=false,onlynew=false);
 @test haskey(out["nscf"], :fermi)
 
 @test isconverged(job["scf"])
-nscf = DFControl.input(job, "nscf")
-nscf2 = DFInput(nscf, "nscf2", data=[:testdata => (:testoption, "test"), :k_points => (:blabla, [1,1,1,1,1,1])])
+nscf = DFControl.calculation(job, "nscf")
+nscf2 = DFCalculation(nscf, "nscf2", data=[:testdata => (:testoption, "test"), :k_points => (:blabla, [1,1,1,1,1,1])])
 
 @test data(nscf2, :testdata).option == :testoption
 @test data(nscf2, :testdata).data   == "test"
@@ -68,7 +68,7 @@ append!(job, wancalc)
 wanout = outputdata(job, "wan")
 @test length(wanout[:final_state]) == 20
 @test length(wanout[:wannierise]) == 203
-job.inputs = job.inputs[1:4]
+job.calculations = job.calculations[1:4]
 
 job[:nbnd] = 300
 @test job["scf"][:nbnd] == 300
@@ -95,14 +95,14 @@ push!.((job,), gencalc_wan(nscf, structure(job), fermi-7.0, wanflags..., Epad=5.
 #TODO: add test with the new wancalc from projwfc
 
 set_flow!(job, ""=>false)
-@test job.inputs[1].run == false
+@test job.calculations[1].run == false
 set_flow!(job, "nscf" => true, "bands" => true)
-@test job.inputs[3].run
+@test job.calculations[3].run
 
 save(job)
 job2 = DFJob(local_dir)
 begin
-    for (calc, calc2) in zip(job.inputs, job2.inputs)
+    for (calc, calc2) in zip(job.calculations, job2.calculations)
 
         for (f, v) in calc.flags
             if f in (:Hubbard_J, :pseudo_dir, :wannier_plot)
@@ -225,11 +225,11 @@ scale_bondlength!(at, at2, 0.5, c)
 @test isapprox(bandgap(job), 2.6701999999999995)
 
 t = job["nscf"]
-curlen = length(job.inputs)
-id = findfirst(x->x.name == "nscf", job.inputs)
+curlen = length(job.calculations)
+id = findfirst(x->x.name == "nscf", job.calculations)
 n = pop!(job, "nscf")
 @test n == t
-@test length(job.inputs) == curlen - 1
+@test length(job.calculations) == curlen - 1
 
 nscf = job["scf"]
 rm_flags!(job, :nspin, :lda_plus_u, :noncolin)
@@ -237,8 +237,8 @@ set_magnetization!(job, :Pt => [0.2, 1.0, 0.2])
 DFControl.sanitize_flags!(job)
 set_Hubbard_U!(job, :Pt => 2.3)
 DFControl.sanitize_magnetization!(job)
-DFControl.set_hubbard_flags!.(filter(x -> DFControl.package(x) == QE, DFControl.inputs(job)), (job.structure,))
-DFControl.set_starting_magnetization_flags!.(filter(x -> DFControl.package(x) == QE, DFControl.inputs(job)), (job.structure,))
+DFControl.set_hubbard_flags!.(filter(x -> DFControl.package(x) == QE, DFControl.calculations(job)), (job.structure,))
+DFControl.set_starting_magnetization_flags!.(filter(x -> DFControl.package(x) == QE, DFControl.calculations(job)), (job.structure,))
 @test job["scf"][:lda_plus_u]
 @test job["scf"][:noncolin]
 @test job["scf"][:lda_plus_u_kind] == 1
@@ -247,8 +247,8 @@ rm_flags!(job, :nspin, :lda_plus_u, :noncolin)
 set_magnetization!(job, :Pt => [0.0, 0.0, 0.5])
 DFControl.sanitize_flags!(job)
 DFControl.sanitize_magnetization!(job)
-DFControl.set_hubbard_flags!.(filter(x -> DFControl.package(x) == QE, DFControl.inputs(job)), (job.structure,))
-DFControl.set_starting_magnetization_flags!.(filter(x -> DFControl.package(x) == QE, DFControl.inputs(job)), (job.structure,))
+DFControl.set_hubbard_flags!.(filter(x -> DFControl.package(x) == QE, DFControl.calculations(job)), (job.structure,))
+DFControl.set_starting_magnetization_flags!.(filter(x -> DFControl.package(x) == QE, DFControl.calculations(job)), (job.structure,))
 @test job["scf"][:nspin] == 2
 
 using LinearAlgebra
@@ -264,7 +264,7 @@ orig_projs = projections(atoms(job, :Pt)[1])
 
 job.structure = create_supercell(structure(job), 1, 0, 0, make_afm=true)
 DFControl.sanitize_magnetization!(job)
-DFControl.set_starting_magnetization_flags!.(filter(x -> DFControl.package(x) == QE, DFControl.inputs(job)), (job.structure,))
+DFControl.set_starting_magnetization_flags!.(filter(x -> DFControl.package(x) == QE, DFControl.calculations(job)), (job.structure,))
 @test length(atoms(job, :Pt)) == prevlen_Pt
 @test length(atoms(job, :Pt1)) == prevlen_Pt
 
@@ -284,8 +284,8 @@ set_dataoption!(job, "scf",:k_points, :blabla, print=false)
 set_dataoption!(job, :k_points, :test, print=false)
 @test data(job, "scf", :k_points).option == :test
 
-rm.(DFControl.inpath.(job.inputs))
-job.inputs = [job.inputs[2]]
+rm.(DFControl.inpath.(job.calculations))
+job.calculations = [job.calculations[2]]
 set_kpoints!(job["scf"],(6,6,6,1,1,1))
 rm(joinpath(job, DFControl.VERSION_DIR_NAME), recursive=true)
 
@@ -311,7 +311,7 @@ rm(joinpath(job, DFControl.VERSION_DIR_NAME), recursive=true)
 end
 
 rm(joinpath(job, DFControl.VERSION_DIR_NAME), recursive=true)
-rm.(DFControl.inpath.(job.inputs))
+rm.(DFControl.inpath.(job.calculations))
 
 rm(joinpath(job, "job.tt"))
 rm(joinpath(job, ".metadata.jld2"))

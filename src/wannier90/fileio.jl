@@ -67,7 +67,7 @@ function extract_structure(name, cell_block::T, atoms_block::T, projections_bloc
     return Structure(name, Mat3(cell), atoms)
 end
 
-function wan_read_input(::Type{T}, f::IO) where T
+function wan_read_calculation(::Type{T}, f::IO) where T
     flags = Dict{Symbol,Any}()
     data  = Vector{InputData}()
     atoms_block = nothing
@@ -196,26 +196,26 @@ function wan_read_input(::Type{T}, f::IO) where T
     return flags, data, atoms_block, cell_block, proj_block
 end
 
-wan_read_input(f::IO) = wan_read_input(Float64, f)
+wan_read_calculation(f::IO) = wan_read_calculation(Float64, f)
 
 """
-    wan_read_input(filename::String, T=Float64; runcommand= Exec(""), run=true, exec=Exec("wannier90.x"), structure_name="NoName")
+    wan_read_calculation(filename::String, T=Float64; runcommand= Exec(""), run=true, exec=Exec("wannier90.x"), structure_name="NoName")
 
-Reads a `DFInput{Wannier90}` and the included `Structure` from a WANNIER90 input file.
+Reads a `DFCalculation{Wannier90}` and the included `Structure` from a WANNIER90 calculation file.
 """
-function wan_read_input(filename::String, T=Float64; execs=[Exec("wannier90.x")], run=true, structure_name="NoName")
+function wan_read_calculation(filename::String, T=Float64; execs=[Exec("wannier90.x")], run=true, structure_name="NoName")
     flags = Dict{Symbol,Any}()
     data  = Vector{InputData}()
     atoms_block = nothing
     cell_block  = nothing
     proj_block  = nothing
     open(filename,"r") do f
-    	flags, data, atoms_block, cell_block, proj_block = wan_read_input(T, f)
+    	flags, data, atoms_block, cell_block, proj_block = wan_read_calculation(T, f)
 	end
     structure = extract_structure(structure_name, cell_block, atoms_block, proj_block, get(flags, :spinors, false))
     dir, file = splitdir(filename)
     flags[:preprocess] = hasflag(getfirst(x->x.exec == "wannier90.x", execs), :pp)  ? true : false
-    return DFInput{Wannier90}(splitext(file)[1], dir, flags, data, execs, run), structure
+    return DFCalculation{Wannier90}(splitext(file)[1], dir, flags, data, execs, run), structure
 end
 
 function wan_parse_array_value(eltyp, value_str)
@@ -293,14 +293,14 @@ function wan_write_projections(f::IO, atoms::Vector{<:AbstractAtom})
 end
 
 """
-    save(input::DFInput{Wannier90}, structure, filename::String=inpath(input))
+    save(calculation::DFCalculation{Wannier90}, structure, filename::String=inpath(calculation))
 
-Writes the `DFInput{Wannier90}` and `structure` to a file, that can be interpreted by WANNIER90.
+Writes the `DFCalculation{Wannier90}` and `structure` to a file, that can be interpreted by WANNIER90.
 The atoms in the structure must have projections defined.
 """
-function save(input::DFInput{Wannier90}, structure, filename::String=inpath(input))
+function save(calculation::DFCalculation{Wannier90}, structure, filename::String=inpath(calculation))
     open(filename, "w") do f
-        for (flag, value) in input.flags
+        for (flag, value) in calculation.flags
             write_flag_line(f, flag, value)
         end
         write(f, "\n")
@@ -322,7 +322,7 @@ function save(input::DFInput{Wannier90}, structure, filename::String=inpath(inpu
         write(f, "end atoms_frac\n")
         write(f, "\n")
 
-        for block in input.data
+        for block in calculation.data
             write(f, "begin $(block.name)\n")
             if block.name == :kpoint_path
                 for i = 1:2:length(block.data)

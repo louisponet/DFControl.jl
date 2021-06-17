@@ -90,14 +90,14 @@ function apply_fermi_level(band::Band, fermi)
 end
 
 """
-    kgrid(na, nb, nc, input)
+    kgrid(na, nb, nc, calculation)
 
-Returns an array of k-grid points that are equally spaced, input can be either `:wan` or `:nscf`, the returned grids are appropriate as inputs for wannier90 or an nscf calculation respectively.
+Returns an array of k-grid points that are equally spaced, calculation can be either `:wan` or `:nscf`, the returned grids are appropriate as calculations for wannier90 or an nscf calculation respectively.
 """
 kgrid(na, nb, nc, ::Type{QE}) = reshape([[a, b, c, 1 / (na * nb * nc)] for a in collect(range(0, stop=1, length=na + 1))[1:end - 1], b in collect(range(0, stop=1, length=nb + 1))[1:end - 1], c in collect(range(0, stop=1, length=nc + 1))[1:end - 1]], (na * nb * nc))
 kgrid(na, nb, nc, ::Type{Wannier90}) = reshape([[a, b, c] for a in collect(range(0, stop=1, length=na + 1))[1:end - 1], b in collect(range(0, stop=1, length=nb + 1))[1:end - 1], c in collect(range(0, stop=1, length=nc + 1))[1:end - 1]],(na * nb * nc))
-kgrid(na, nb, nc, input::Symbol) = input==:wan ? kgrid(na, nb, nc, Wannier90) : kgrid(na, nb, nc, QE)
-kgrid(na, nb, nc, input::DFInput{T}) where T = kgrid(na, nb, nc, T)
+kgrid(na, nb, nc, calculation::Symbol) = calculation==:wan ? kgrid(na, nb, nc, Wannier90) : kgrid(na, nb, nc, QE)
+kgrid(na, nb, nc, calculation::DFCalculation{T}) where T = kgrid(na, nb, nc, T)
 
 kakbkc(kgrid) = length.(unique.([[n[i] for n in kgrid] for i=1:3]))
 

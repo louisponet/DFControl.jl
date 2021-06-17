@@ -1,5 +1,0 @@
-# Inputs
-
-```@docs
-DFInput
-```

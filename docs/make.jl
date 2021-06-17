@@ -100,7 +100,7 @@ makedocs(
         ],
         "Usage" => Any[
             "guide/jobs.md",
-            "guide/inputs.md",
+            "guide/calculations.md",
             "guide/structure.md",
             "guide/flags.md",
             "guide/execs.md",

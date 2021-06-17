@@ -62,15 +62,15 @@ end
 		
 
 """
-    elk_read_input(filename; execs=[Exec("elk")], run=true, structure_name="noname")
+    elk_read_calculation(filename; execs=[Exec("elk")], run=true, structure_name="noname")
 
-Reads an Elk input file. The `ELK_EXEC` inside execs gets used to find which flags are allowed in this input file, and convert the read values to the correct Types.
-Returns a `DFInput{Elk}` and the `Structure` that is found in the input.
+Reads an Elk calculation file. The `ELK_EXEC` inside execs gets used to find which flags are allowed in this calculation file, and convert the read values to the correct Types.
+Returns a `DFCalculation{Elk}` and the `Structure` that is found in the calculation.
 """
-function elk_read_input(fn::String; execs=[Exec("elk")], run=true, structure_name="noname")
+function elk_read_calculation(fn::String; execs=[Exec("elk")], run=true, structure_name="noname")
 	blocknames_flaglines = Dict{Symbol, Any}()
 	atoms = Atom{Float64}[]
-	inputs = DFInput[]
+	calculations = DFCalculation[]
 	dir, file = splitdir(fn)
 
 	#TODO it's a bit messy that the atoms block is not handled like this, not sure if we want to clean this up
@@ -88,11 +88,11 @@ function elk_read_input(fn::String; execs=[Exec("elk")], run=true, structure_nam
 				if blockname == :atoms
 					atoms = read_atoms(f)
 				elseif blockname == :wannierExtra
-					@warn "Please supply the .win file instead of wannierExtra block for extracting the Wannier DFInput."
+					@warn "Please supply the .win file instead of wannierExtra block for extracting the Wannier DFCalculation."
 
-					wflags, wdata, ab, cb, proj_block = wan_read_input(f)
+					wflags, wdata, ab, cb, proj_block = wan_read_calculation(f)
 					continue
-					# push!(inputs, DFInput{Wannier90}("wannier", dir, wflags, wdata, execs, run))
+					# push!(calculations, DFCalculation{Wannier90}("wannier", dir, wflags, wdata, execs, run))
 				elseif info != nothing
 					blocklines = String[]
 					line = sane_readline()
@@ -124,19 +124,19 @@ function elk_read_input(fn::String; execs=[Exec("elk")], run=true, structure_nam
 	should_run = map(x -> !occursin("!", x), tasks_)
 	tasks      = map(x -> strip(strip(x, '!')), tasks_)
 
-	#The wan tasks can prbably be skipped completely and added depending on the wannier input
+	#The wan tasks can prbably be skipped completely and added depending on the wannier calculation
 	wan_tasks = String[]
 	for (x, run) in zip(tasks, should_run)
 		if x ∈ ["601", "602", "603", "604", "605"]
 			push!(wan_tasks, x)
 		else
-			push!(inputs, input_from_task(x, blocknames_flaglines, dir, execs, run))
+			push!(calculations, calculation_from_task(x, blocknames_flaglines, dir, execs, run))
 		end
 	end
 	if haskey(blocknames_flaglines, :wannier) && !isempty(wan_tasks)
 		flags = pop!(blocknames_flaglines, :wannier)
 		# flags[:elk2wan_tasks] = wan_tasks
-		push!(inputs, DFInput{Elk}(name="elk2wannier", dir=dir, flags=flags, execs=execs, run=true))
+		push!(calculations, DFCalculation{Elk}(name="elk2wannier", dir=dir, flags=flags, execs=execs, run=true))
 	end
 	for f in (:ngrid, :vkloff, :plot1d, :plot2d, :plot3d)
 		haskey(blocknames_flaglines, f) && pop!(blocknames_flaglines, f)
@@ -154,12 +154,12 @@ function elk_read_input(fn::String; execs=[Exec("elk")], run=true, structure_nam
 		merge!(flags, v)
 	end
 
-	for i in inputs
+	for i in calculations
 		if isempty(i.flags)
 			i.flags = deepcopy(flags)
 		end
 	end
-	return inputs, structure
+	return calculations, structure
 end
 
 function find_data(flags, blocknames_flaglines)
@@ -172,13 +172,13 @@ function find_data(flags, blocknames_flaglines)
 	return data
 end
 
-function input_from_task(task, blocknames_flaglines, dir, execs, run)
+function calculation_from_task(task, blocknames_flaglines, dir, execs, run)
 	if task ∈ ["0", "1", "2", "3", "5"]
 		data = find_data((:ngridk, :vkloff), blocknames_flaglines)
 	elseif task ∈ ["20", "21"]
 		data = find_data((:plot1d, :plot2d, :plot3d), blocknames_flaglines)
 	end
-	return DFInput{Elk}(task, dir, SymAnyDict(), data, execs, run)
+	return DFCalculation{Elk}(task, dir, SymAnyDict(), data, execs, run)
 end
 
 function parse(::Type{UnitRange{Int}}, l::AbstractString)
@@ -263,9 +263,9 @@ function elk_write_structure(f, structure)
 	write(f, "\n")
 end
 
-function construct_flag_blocks(inputs::Vector{DFInput{Elk}})
+function construct_flag_blocks(calculations::Vector{DFCalculation{Elk}})
 	all_flags = SymAnyDict()
-	for i in inputs
+	for i in calculations
 		merge!(all_flags, i.flags)
 		for d in data(i)
 			merge!(all_flags, d.data)
@@ -317,14 +317,14 @@ function elk_write_DFTU(f::IO, structure::AbstractStructure, dftu_vals::Vector)
 	write(f, "\n")
 end
 
-function save(inputs::Vector{DFInput{Elk}}, structure::Structure)
-	tasks = map(x -> x.run ? "$(x.name)" : "!$(x.name)", filter(x->x.name != "elk2wannier", inputs))
-	elk2wan_input = getfirst(x->x.name == "elk2wannier", inputs)
-	if elk2wan_input != nothing && haskey(elk2wan_input.flags, :elk2wan_tasks)
-		append!(tasks, pop!(elk2wan_input.flags, :elk2wan_tasks))
+function save(calculations::Vector{DFCalculation{Elk}}, structure::Structure)
+	tasks = map(x -> x.run ? "$(x.name)" : "!$(x.name)", filter(x->x.name != "elk2wannier", calculations))
+	elk2wan_calculation = getfirst(x->x.name == "elk2wannier", calculations)
+	if elk2wan_calculation != nothing && haskey(elk2wan_calculation.flags, :elk2wan_tasks)
+		append!(tasks, pop!(elk2wan_calculation.flags, :elk2wan_tasks))
 	end
-	flags = construct_flag_blocks(inputs)
-	open(joinpath(inputs[1].dir, "elk.in"), "w") do f
+	flags = construct_flag_blocks(calculations)
+	open(joinpath(calculations[1].dir, "elk.in"), "w") do f
 
 		write(f, "tasks\n")
 		for t in tasks

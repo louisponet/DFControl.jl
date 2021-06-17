@@ -2,7 +2,7 @@
 """
     save(job::DFJob)
 
-Saves the job's inputs and `job.tt` submission script in `job.local_dir`.
+Saves the job's calculations and `job.tt` submission script in `job.local_dir`.
 Some sanity checks will be performed on the validity of flags, execs, pseudopotentials, etc.
 The job will also be registered for easy retrieval at a later stage.
 
@@ -55,16 +55,16 @@ end
     abort(job::DFJob)
 
 Will try to remove the job from the scheduler's queue.
-If the last running input happened to be a `DFInput{QE}`, the correct abort file will be written.
+If the last running calculation happened to be a `DFCalculation{QE}`, the correct abort file will be written.
 For other codes the process is not smooth, and restarting is not guaranteed.
 """
 function abort(job::DFJob)
-    lastrunning = last_running_input(job)
+    lastrunning = last_running_calculation(job)
     if lastrunning == nothing
         error("Is this job running?")
     end
     if package(lastrunning) == QE
-        length(inputs(job, QE)) > 1 &&
+        length(calculations(job, QE)) > 1 &&
             @warn "It's absolutely impossible to guarantee a graceful abort of a multi job script with QE."
 
         abortpath = writeabortfile(job, lastrunning)
@@ -81,19 +81,19 @@ end
     set_flow!(job::DFJob, should_runs::Pair{String, Bool}...)
 
 Sets whether or not calculations should be scheduled to run.
-The `name` of each input in the job will be checked against the string in each pair of `should_runs`, and the
-`input.run` will be set accordingly.
+The `name` of each calculation in the job will be checked against the string in each pair of `should_runs`, and the
+`calculation.run` will be set accordingly.
 
 Example:
 ```julia
 set_flow!(job, "" => false, "scf" => true)
 ```
-would un-schedule all inputs in the job, and schedule the "scf" and "nscf" inputs to run.
+would un-schedule all calculations in the job, and schedule the "scf" and "nscf" calculations to run.
 """
 function set_flow!(job::DFJob, should_runs...)
     for (name, run) in should_runs
-        for input in inputs(job, name)
-            input.run = run
+        for calculation in calculations(job, name)
+            calculation.run = run
         end
     end
     return job
@@ -124,7 +124,7 @@ function progressreport(job::DFJob; kwargs...)
     dat = outputdata(job; kwargs...)
     plotdat = SymAnyDict(:fermi=>0.0)
     for (n, d) in dat
-        i = input(job, n)
+        i = calculation(job, n)
         if isbands(i) && haskey(d, :bands)
             plotdat[:bands] = d[:bands]
         elseif isscf(i) || isnscf(i)
@@ -147,7 +147,7 @@ end
     set_localdir!(job::DFJob, dir::String; copy=false)
     
 Sets `job.local_dir` to `dir`. If necessary the directory will be created.
-If `copy` is set to `true`, all previous inputs and output files of the current job version
+If `copy` is set to `true`, all previous calculations and output files of the current job version
 (i.e. those in the main job directory) will be copied to the new directory, including the
 `outputs` directory with temporary files created during jobs runs.
 """
@@ -163,55 +163,55 @@ function set_localdir!(job::DFJob, dir::String; copy=false)
         cp(job, dir; temp=true)
     end
     job.local_dir = dir
-    for i in inputs(job)
+    for i in calculations(job)
         set_dir!(i, dir)
     end
     return job
 end
 
 
-#-------------- Basic Interaction with DFInputs inside the DFJob ---------------#
+#-------------- Basic Interaction with DFCalculations inside the DFJob ---------------#
 """
-    insert!(job::DFJob, i::Int, input::DFInput) = insert!(job.inputs, i, input)
+    insert!(job::DFJob, i::Int, calculation::DFCalculation) = insert!(job.calculations, i, calculation)
 """ 
-Base.insert!(job::DFJob, index::Int, input::DFInput) = insert!(job.inputs, index, input)
+Base.insert!(job::DFJob, index::Int, calculation::DFCalculation) = insert!(job.calculations, index, calculation)
 
 """
-    push!(job::DFJob, input::DFInput)
+    push!(job::DFJob, calculation::DFCalculation)
 
-`push!(job.inputs, input)`.
+`push!(job.calculations, calculation)`.
 """
-Base.push!(job::DFJob, input::DFInput) = push!(job.inputs, input)
+Base.push!(job::DFJob, calculation::DFCalculation) = push!(job.calculations, calculation)
 
 """
     pop!(job::DFJob)
 
-`pop!(job.inputs)`.
+`pop!(job.calculations)`.
 """
-Base.pop!(job::DFJob) = pop!(job.inputs)
+Base.pop!(job::DFJob) = pop!(job.calculations)
 
 """
     append!(job::DFJob, args...)
 
-`append!(job.inputs, args...)`.
+`append!(job.calculations, args...)`.
 """
-Base.append!(job::DFJob, args...) = append!(job.inputs, args...)
+Base.append!(job::DFJob, args...) = append!(job.calculations, args...)
 
-Base.getindex(job::DFJob, i::Integer) = inputs(job)[i]
-Base.length(job::DFJob) = length(inputs(job))
+Base.getindex(job::DFJob, i::Integer) = calculations(job)[i]
+Base.length(job::DFJob) = length(calculations(job))
 Base.lastindex(job::DFJob) = length(job)
 
 """
     getindex(job::DFJob, name::String)
     
-Returns the `DFInput` with the specified `name`.
+Returns the `DFCalculation` with the specified `name`.
 
     getindex(job::DFJob, i::Integer)
     
-Returns the i'th `DFInput` in the job.
+Returns the i'th `DFCalculation` in the job.
 """
 function Base.getindex(job::DFJob, id::String)
-    tmp = getfirst(x -> name(x)==id, inputs(job))
+    tmp = getfirst(x -> name(x)==id, calculations(job))
     if tmp != nothing
         return tmp
     else
@@ -223,12 +223,12 @@ end
 """
     getindex(job::DFJob, flag::Symbol)
     
-Searches through the job's inputs for the requested flag.
-A `Dict` will be returned with input names as the keys and the flags as values.
+Searches through the job's calculations for the requested flag.
+A `Dict` will be returned with calculation names as the keys and the flags as values.
 """
 function Base.getindex(job::DFJob, flg::Symbol)
     outdict = Dict()
-    for i in inputs(job)
+    for i in calculations(job)
         tfl = flag(i, flg)
         if tfl != nothing
             outdict[name(i)] = tfl
@@ -240,28 +240,28 @@ end
 """
     setindex!(job::DFJob, value, flag::Symbol)
 
-Set `flag` in all the appropriate inputs to the `value`.
+Set `flag` in all the appropriate calculations to the `value`.
 """
 function Base.setindex!(job::DFJob, value, key::Symbol)
-    for input in inputs(job)
-        input[key] = value
+    for calculation in calculations(job)
+        calculation[key] = value
     end
 end
 
 Base.getindex(job::DFJob, el::Element) = job.structure[el]
 
-"Fuzzily search inputs in the job whose name contain the fuzzy."
-searchinputs(job::DFJob, fuzzy::AbstractString) = inputs(job, fuzzy, true)
+"Fuzzily search calculations in the job whose name contain the fuzzy."
+searchcalculations(job::DFJob, fuzzy::AbstractString) = calculations(job, fuzzy, true)
 
-"Fuzzily search the first input in the job whose name contains the fuzzy."
-searchinput(job::DFJob,  fuzzy::AbstractString) = input(job, fuzzy)
+"Fuzzily search the first calculation in the job whose name contains the fuzzy."
+searchcalculation(job::DFJob,  fuzzy::AbstractString) = calculation(job, fuzzy)
 
-"Returns all inputs from a certain package."
-searchinputs(job::DFJob, ::Type{P}) where {P <: Package} = filter(x->package(x) == P, inputs(job))
+"Returns all calculations from a certain package."
+searchcalculations(job::DFJob, ::Type{P}) where {P <: Package} = filter(x->package(x) == P, calculations(job))
 
 
 """
-    set_flags!(job::DFJob, inputs::Vector{<:DFInput}, flags...; print=true)
+    set_flags!(job::DFJob, calculations::Vector{<:DFCalculation}, flags...; print=true)
 
 Sets the flags in the names to the flags specified.
 This only happens if the specified flags are valid for the names.
@@ -269,52 +269,52 @@ If necessary the correct control block will be added to the calculation (e.g. fo
 
 The values that are supplied will be checked whether they are valid.
 """
-function set_flags!(job::DFJob, inputs::Vector{<:DFInput}, flags...; print=true)
+function set_flags!(job::DFJob, calculations::Vector{<:DFCalculation}, flags...; print=true)
     found_keys = Symbol[]
 
-    for calc in inputs
+    for calc in calculations
         t_, = set_flags!(calc, flags..., print=print)
         push!(found_keys, t_...)
     end
     nfound = setdiff([k for (k, v) in flags], found_keys)
     if print && length(nfound) > 0
         f = length(nfound) == 1 ? "flag" : "flags"
-        dfprintln("$f '$(join(":" .* String.(setdiff(flagkeys, found_keys)),", "))' were not found in the allowed input variables of the specified inputs!")
+        dfprintln("$f '$(join(":" .* String.(setdiff(flagkeys, found_keys)),", "))' were not found in the allowed calculation variables of the specified calculations!")
     end
     return job
 end
 set_flags!(job::DFJob, flags...;kwargs...) =
-    set_flags!(job, inputs(job), flags...;kwargs...)
+    set_flags!(job, calculations(job), flags...;kwargs...)
 set_flags!(job::DFJob, name::String, flags...; fuzzy=true, kwargs...) =
-    set_flags!(job, inputs(job, name, fuzzy), flags...; kwargs...)
+    set_flags!(job, calculations(job, name, fuzzy), flags...; kwargs...)
 
 """ data(job::DFJob, name::String, dataname::Symbol)
 
 Looks through the calculation filenames and returns the data with the specified symbol.
 """
 data(job::DFJob, name::String, dataname::Symbol) =
-    data(input(job, name), dataname)
+    data(calculation(job, name), dataname)
 
 """
-    set_data!(job::DFJob, inputs::Vector{<:DFInput}, dataname::Symbol, data; option=nothing)
+    set_data!(job::DFJob, calculations::Vector{<:DFCalculation}, dataname::Symbol, data; option=nothing)
 
 Looks through the calculation filenames and sets the data of the datablock with `data_block_name` to `new_block_data`.
 if option is specified it will set the block option to it.
 """
-function set_data!(job::DFJob, inputs::Vector{<:DFInput}, dataname::Symbol, data; kwargs...)
-    set_data!.(inputs, dataname, data; kwargs...)
+function set_data!(job::DFJob, calculations::Vector{<:DFCalculation}, dataname::Symbol, data; kwargs...)
+    set_data!.(calculations, dataname, data; kwargs...)
     return job
 end
 set_data!(job::DFJob, name::String, dataname::Symbol, data; fuzzy=true, kwargs...) =
-    set_data!(job, inputs(job, name, fuzzy), dataname, data; kwargs...)
+    set_data!(job, calculations(job, name, fuzzy), dataname, data; kwargs...)
 
 """
     set_dataoption!(job::DFJob, names::Vector{String}, dataname::Symbol, option::Symbol)
 
-sets the option of specified data in the specified inputs.
+sets the option of specified data in the specified calculations.
 """
 function set_dataoption!(job::DFJob, names::Vector{String}, dataname::Symbol, option::Symbol; kwargs...)
-    set_dataoption!.(inputs(job, names), dataname, option; kwargs...)
+    set_dataoption!.(calculations(job, names), dataname, option; kwargs...)
     return job
 end
 set_dataoption!(job::DFJob, n::String, name::Symbol, option::Symbol; kw...) =
@@ -326,25 +326,25 @@ set_dataoption!(job::DFJob, n::String, name::Symbol, option::Symbol; kw...) =
 sets the option of specified data block in all calculations that have the block.
 """
 set_dataoption!(job::DFJob, n::Symbol, option::Symbol; kw...) =
-    set_dataoption!(job, name.(inputs(job)), n, option; kw...)
+    set_dataoption!(job, name.(calculations(job)), n, option; kw...)
 
 """
-    rm_flags!(job::DFJob, inputs::Vector{<:DFInput}, flags...)
+    rm_flags!(job::DFJob, calculations::Vector{<:DFCalculation}, flags...)
 
-Looks through the input names and removes the specified flags.
+Looks through the calculation names and removes the specified flags.
 """
-function rm_flags!(job::DFJob, inputs::Vector{<:DFInput}, flags...; kwargs...)
-    rm_flags!.(inputs, flags...; kwargs...)
+function rm_flags!(job::DFJob, calculations::Vector{<:DFCalculation}, flags...; kwargs...)
+    rm_flags!.(calculations, flags...; kwargs...)
     return job
 end
 rm_flags!(job::DFJob, name::String, flags...; fuzzy=true, kwargs...) =
-    rm_flags!(job, inputs(job, name, fuzzy), flags...; kwargs...)
+    rm_flags!(job, calculations(job, name, fuzzy), flags...; kwargs...)
 rm_flags!(job::DFJob, flags...; kwargs...) =
-    rm_flags!(job, inputs(job), flags...; kwargs...)
+    rm_flags!(job, calculations(job), flags...; kwargs...)
 
-"Returns the executables attached to a given input."
+"Returns the executables attached to a given calculation."
 execs(job::DFJob, name) =
-    execs(input(job, name))
+    execs(calculation(job, name))
 
 """
     set_execflags!(job::DFJob, exec, flags...)
@@ -352,7 +352,7 @@ execs(job::DFJob, name) =
 Goes through the calculations of the job and sets the exec flags to the specified ones.
 """
 function set_execflags!(job::DFJob, exec, flags...)
-	for i in job.inputs
+	for i in job.calculations
 	    set_execflags!(i, exec, flags...)
     end
 end
@@ -363,63 +363,63 @@ end
 Goes through the calculations of the job and removes the specified `exec` flags.
 """
 rmexecflags!(job::DFJob, exec, flags...) =
-    rmexecflags!.(job.inputs, (exec, flags)...)
+    rmexecflags!.(job.calculations, (exec, flags)...)
 
 """
     set_execdir!(job::DFJob, exec::String, dir::String)
 
-Goes through all the executables that are present in the inputs of the job,
+Goes through all the executables that are present in the calculations of the job,
 if the executable matches `exec`, its directory will be set to `dir`.
 ```julia
 set_execdir!(job, "pw.x", "/path/to/QE/bin")
 ```
 
-    set_execdir!(input::DFInput, exec::String, dir::String)
+    set_execdir!(calculation::DFCalculation, exec::String, dir::String)
     
-Goes through the executables that are present in the input,
+Goes through the executables that are present in the calculation,
 if the executable matches `exec`, its directory will be set to `dir`.
 ```julia
-set_execdir!(input, "pw.x", "/path/to/QE/bin")
+set_execdir!(calculation, "pw.x", "/path/to/QE/bin")
 ```
 """
 set_execdir!(job::DFJob, exec::String, dir::String) =
-    set_execdir!.(job.inputs, exec, dir)
+    set_execdir!.(job.calculations, exec, dir)
 
 
-"Finds the output files for each of the inputs of a job, and groups all found data into a dictionary."
-function outputdata(job::DFJob, inputs::Vector{DFInput}; print=true, onlynew=false)
+"Finds the output files for each of the calculations of a job, and groups all found data into a dictionary."
+function outputdata(job::DFJob, calculations::Vector{DFCalculation}; print=true, onlynew=false)
     datadict = Dict()
     stime = starttime(job)
-    for input in inputs
-        newout = hasnewout(input, stime)
+    for calculation in calculations
+        newout = hasnewout(calculation, stime)
         if onlynew && !newout
             continue
         end
-        tout = outputdata(input; print=print, overwrite=newout)
+        tout = outputdata(calculation; print=print, overwrite=newout)
         if !isempty(tout)
-            datadict[name(input)] = tout
+            datadict[name(calculation)] = tout
         end
     end
     return datadict
 end
-outputdata(job::DFJob; kwargs...) = outputdata(job, inputs(job); kwargs...)
+outputdata(job::DFJob; kwargs...) = outputdata(job, calculations(job); kwargs...)
 outputdata(job::DFJob, names::String...; kwargs...) =
-    outputdata(job, inputs(job, names); kwargs...)
+    outputdata(job, calculations(job, names); kwargs...)
 function outputdata(job::DFJob, n::String; fuzzy=true, kwargs...)
-    dat = outputdata(job, inputs(job, n, fuzzy); kwargs...)
-    if dat != nothing && haskey(dat, name(input(job, n)))
-        return dat[name(input(job, n))]
+    dat = outputdata(job, calculations(job, n, fuzzy); kwargs...)
+    if dat != nothing && haskey(dat, name(calculation(job, n)))
+        return dat[name(calculation(job, n))]
     end
 end
 
-#------------ Specialized Interaction with DFInputs inside DFJob --------------#
+#------------ Specialized Interaction with DFCalculations inside DFJob --------------#
 """
     set_kpoints!(job::DFJob, name::String, k_points)
 
-sets the data in the k point `DataBlock` inside the specified inputs.
+sets the data in the k point `DataBlock` inside the specified calculations.
 """
 function set_kpoints!(job::DFJob, n::String, k_points; print=true)
-    for calc in inputs(job, n)
+    for calc in calculations(job, n)
         set_kpoints!(calc, k_points, print=print)
     end
     return job
@@ -428,26 +428,26 @@ end
 
 "Reads throught the pseudo files and tries to figure out the correct cutoffs"
 set_cutoffs!(job::DFJob) = 
-    set_cutoffs!.(inputs(job), find_cutoffs(job)...)
+    set_cutoffs!.(calculations(job), find_cutoffs(job)...)
 
 
 """
-    set_wanenergies!(job::DFJob, nscf::DFInput{QE}, Emin::Real; Epad=5.0)
+    set_wanenergies!(job::DFJob, nscf::DFCalculation{QE}, Emin::Real; Epad=5.0)
 
 Will set the energy window limits correctly according to the projections specified in the
 structure of the job and the specified Emin. The output of `nscf` will be used to determine the
 DOS, and what the size of the frozen window needs to be to fit enough bands inside it,
 depending on the projections.
 """
-function set_wanenergies!(job::DFJob, nscf::DFInput, Emin::Real; Epad=5.0)
-    wancalcs = searchinputs(job, Wannier90)
+function set_wanenergies!(job::DFJob, nscf::DFCalculation, Emin::Real; Epad=5.0)
+    wancalcs = searchcalculations(job, Wannier90)
     @assert length(wancalcs) != 0 "Job ($(job.name)) has no Wannier90 calculations, nothing to do."
     map(x->set_wanenergies!(x, structure(job), nscf, Emin; Epad=Epad), wancalcs)
     return job
 end
 
 """
-    set_wanenergies!(job::DFJob, nscf::DFInput{QE}, projwfc::DFInput{QE}, threshold::Real; Epad=5.0)
+    set_wanenergies!(job::DFJob, nscf::DFCalculation{QE}, projwfc::DFCalculation{QE}, threshold::Real; Epad=5.0)
 
 Will set the energy window limits correctly according to the projections specified in the
 structure of the job. The output of `projwfc` and the `threshold` will be used to determine
@@ -455,7 +455,7 @@ the minimum limit of the frozen energy window such that the interesting DOS of i
 the threshold. `nscf` will be used to determine the DOS, and what the upper limit of the frozen window
 needs to be to fit enough bands inside it, depending on the projections.
 """
-function set_wanenergies!(job::DFJob, nscf::DFInput, projwfc::DFInput, threshold::Real; Epad=5.0)
+function set_wanenergies!(job::DFJob, nscf::DFCalculation, projwfc::DFCalculation, threshold::Real; Epad=5.0)
     hasoutput_assert(projwfc)
     @assert isprojwfc(projwfc) "Please specify a valid projwfc calculation."
     @assert isnscf(nscf) "Please specify a valid nscf calculation."
@@ -473,14 +473,14 @@ it will be used as the `Emin` value from which to start counting the number of b
 projections.
 """
 function set_wanenergies!(job::DFJob, min_window_determinator::Real; kwargs...)
-    nscf_input = getfirst(isnscf, inputs(job))
-    projwfc_input = getfirst(isprojwfc, inputs(job))
-    if projwfc_input === nothing || !hasoutput(projwfc_input)
-        @info "No projwfc input found with valid output, using $min_window_determinator as Emin"
-        return set_wanenergies!(job, nscf_input, min_window_determinator; kwargs...)
+    nscf_calculation = getfirst(isnscf, calculations(job))
+    projwfc_calculation = getfirst(isprojwfc, calculations(job))
+    if projwfc_calculation === nothing || !hasoutput(projwfc_calculation)
+        @info "No projwfc calculation found with valid output, using $min_window_determinator as Emin"
+        return set_wanenergies!(job, nscf_calculation, min_window_determinator; kwargs...)
     else
         @info "Valid projwfc output found, using $min_window_determinator as the dos threshold."
-        return set_wanenergies!(job, nscf_input, projwfc_input, min_window_determinator; kwargs...)
+        return set_wanenergies!(job, nscf_calculation, projwfc_calculation, min_window_determinator; kwargs...)
     end
 end
 
@@ -534,7 +534,7 @@ projections(job::DFJob) = projections(structure(job))
 sets the projections of the specified atoms inside the job structure.
 """
 function set_projections!(job::DFJob, projections...; kwargs...)
-    socid = findfirst(issoc, inputs(job))
+    socid = findfirst(issoc, calculations(job))
     set_projections!(job.structure, projections...; soc=socid !== nothing, kwargs...)
 end
 
@@ -598,12 +598,12 @@ Calculates the bandgap (possibly indirect) around the fermi level.
 Uses the first found bands calculation, if there is none it uses the first found nscf calculation.
 """
 function bandgap(job::DFJob, fermi=nothing)
-	band_calcs = getfirst.([isbands, isnscf, isscf], (inputs(job),))
+	band_calcs = getfirst.([isbands, isnscf, isscf], (calculations(job),))
 	if all(x -> x === nothing, band_calcs)
 		error("No valid calculation found to calculate the bandgap.\nMake sure the job has either a valid bands or nscf calculation.")
 	end
 	if fermi === nothing
-    	fermi_calcs = getfirst.([isnscf, isscf], (inputs(job),))
+    	fermi_calcs = getfirst.([isnscf, isscf], (calculations(job),))
     	if all(x -> x === nothing, band_calcs)
     		error("No valid calculation found to extract the fermi level.\nPlease supply the fermi level manually.")
 		end
@@ -616,7 +616,7 @@ end
 
 "Searches for the first scf or nscf calculation with output, and reads the fermi level from it."
 function readfermi(job::DFJob)
-    ins = filter(x -> (isscf(x) || isnscf(x)) && hasoutfile(x), inputs(job))
+    ins = filter(x -> (isscf(x) || isnscf(x)) && hasoutfile(x), calculations(job))
     @assert isempty(ins) !== nothing "Job does not have a valid scf or nscf output."
     for i in ins
         o = outputdata(i)
@@ -630,17 +630,17 @@ end
 
 "Searches for the first bands calculation with output, and reads the fermi level from it."
 function readbands(job::DFJob)
-    input = getfirst(x -> isbands(x) && hasoutfile(x), inputs(job))
-    if input === nothing
-        input = getfirst(x -> isnscf(x) && hasoutfile(x), inputs(job))
-        if input === nothing
+    calculation = getfirst(x -> isbands(x) && hasoutfile(x), calculations(job))
+    if calculation === nothing
+        calculation = getfirst(x -> isnscf(x) && hasoutfile(x), calculations(job))
+        if calculation === nothing
             @warn "Job does not have a valid bands output."
             return nothing
         end
         @warn "No bands calculation found, return bands from nscf calculation." 
-        return readbands(input)
+        return readbands(calculation)
     end
-    return readbands(input)
+    return readbands(calculation)
 end
 
 """
@@ -669,8 +669,8 @@ niggli_reduce(j::DFJob; kwargs...) = niggli_reduce(j.structure; kwargs...)
 
 for (calc, tn) in zip((:gencalc_bands, :gencalc_nscf, :gencalc_projwfc), ("scf", "scf", "nscf"))
     @eval function $calc(job::DFJob, args...;template_name::String=$tn, kwargs...)
-            template = input(job, template_name)
-            @assert template !== nothing "No valid input with template_name $template_name found in job."
+            template = calculation(job, template_name)
+            @assert template !== nothing "No valid calculation with template_name $template_name found in job."
             return $calc(template, args...; kwargs...)
         end
 end
@@ -683,27 +683,27 @@ When a projwfc calculation is present in the `job`, `min_window_determinator` wi
 determine the threshold value for including a band in the window based on the projections, otherwise
 it will be used as the `Emin` value from which to start counting the number of bands needed for all
 projections.
-`extra_wan_flags` can be any extra flags for the Wannier90 input such as `write_hr` etc.
+`extra_wan_flags` can be any extra flags for the Wannier90 calculation such as `write_hr` etc.
 """
 function gencalc_wan(job::DFJob, min_window_determinator::Real, extra_wan_flags...; kwargs...)
-    nscf_input = getfirst(x -> isnscf(x), inputs(job))
-    projwfc_input = getfirst(x -> isprojwfc(x), inputs(job))
-    if projwfc_input === nothing || !hasoutput(projwfc_input)
-        @info "No projwfc input found with valid output, using $min_window_determinator as Emin"
-        return gencalc_wan(nscf_input, job.structure, min_window_determinator, extra_wan_flags...; kwargs...)
+    nscf_calculation = getfirst(x -> isnscf(x), calculations(job))
+    projwfc_calculation = getfirst(x -> isprojwfc(x), calculations(job))
+    if projwfc_calculation === nothing || !hasoutput(projwfc_calculation)
+        @info "No projwfc calculation found with valid output, using $min_window_determinator as Emin"
+        return gencalc_wan(nscf_calculation, job.structure, min_window_determinator, extra_wan_flags...; kwargs...)
     else
         @info "Valid projwfc output found, using $min_window_determinator as the dos threshold."
-        return gencalc_wan(nscf_input, job.structure, projwfc_input, min_window_determinator, extra_wan_flags...; kwargs...)
+        return gencalc_wan(nscf_calculation, job.structure, projwfc_calculation, min_window_determinator, extra_wan_flags...; kwargs...)
     end
 end
 
 #TODO: only for QE 
 "Reads the pdos for a particular atom. Only works for QE."  
 function pdos(job::DFJob, atsym::Symbol, filter_word="") 
-    projwfc = getfirst(isprojwfc, inputs(job)) 
+    projwfc = getfirst(isprojwfc, calculations(job)) 
     ats = atoms(job, atsym)
     @assert length(ats) > 0 "No atoms found with name $atsym."
-    scf = getfirst(isscf, inputs(job))
+    scf = getfirst(isscf, calculations(job))
     magnetic = any(ismagnetic, atoms(job)) || ismagnetic(scf) 
     soc = issoc(scf)
     return pdos(projwfc, atsym, magnetic, soc, filter_word)

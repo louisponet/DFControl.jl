@@ -4,25 +4,25 @@
 DFJob
 ```
 
-## Interacting with inputs
+## Interacting with calculations
 ```@docs
 Base.getindex(::DFJob, ::String)
 ```
-```@setup job_input_access
+```@setup job_calculation_access
 using DFControl
 job = DFJob(joinpath(pathof(DFControl), "..", "..", "docs", "src", "assets", "job"))
 ```
 Example: 
-```@repl job_input_access
+```@repl job_calculation_access
 job["scf"]
 job[2]
 ```
 
 ```@docs
-Base.push!(::DFJob, ::DFInput)
+Base.push!(::DFJob, ::DFCalculation)
 Base.append!(::DFJob, ::Any...)
 Base.pop!(::DFJob)
-Base.insert!(::DFJob, ::Int, ::DFInput)
+Base.insert!(::DFJob, ::Int, ::DFCalculation)
 ```
 
 ## Scheduling, submission and monitoring
@@ -31,7 +31,7 @@ set_flow!
 save(::DFJob)
 submit
 isrunning
-last_running_input
+last_running_calculation
 abort
 ```
 

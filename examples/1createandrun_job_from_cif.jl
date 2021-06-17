@@ -13,32 +13,32 @@ set_pseudos!(str, :pbesol)
 # Since we are going to run QuantumEspresso, we define the executables to be used
 pw_execs = [Exec("mpirun", "", :np => 4), Exec("pw.x", "/opt/qe/bin/", :nk => 4)]
 
-# Then we generate the first input for our job, we name it scf, pass the executables to be used
+# Then we generate the first calculation for our job, we name it scf, pass the executables to be used
 # and set some specific flags.
 # Afterwards the kpoints can also be set
-scf_input = DFInput{QE}("scf", pw_execs, :calculation => "scf")
-set_kpoints!(scf_input, (6,6,6,1,1,1))
+scf_calculation = DFCalculation{QE}("scf", pw_execs, :calculation => "scf")
+set_kpoints!(scf_calculation, (6,6,6,1,1,1))
 # Or
 
-scf_input = DFInput{QE}("scf", pw_execs, :calculation => "scf",
+scf_calculation = DFCalculation{QE}("scf", pw_execs, :calculation => "scf",
                         data=[InputData(:k_points, :automatic, (6,6,6,1,1,1))])
 
-# Using these we can now define our job, if we would have more inputs they would be added
-# to the list [scf_input].
-# The flag => value pairs will set the specified flags to that value for all inputs in the job
+# Using these we can now define our job, if we would have more calculations they would be added
+# to the list [scf_calculation].
+# The flag => value pairs will set the specified flags to that value for all calculations in the job
 # that allow that flag to be set, so it's ideal for things like cutoffs and smearing etc.
 # The header can contain any lines that will be pasted in the job script in front of
 # the calculation lines.
-job = DFJob("Si", str, [scf_input],
-            :ecutwfc => 20, #these flags will be set_ on all inputs that are passed to the job
+job = DFJob("Si", str, [scf_calculation],
+            :ecutwfc => 20, #these flags will be set_ on all calculations that are passed to the job
             :verbosity => "high",
             :conv_thr => 1e-6,
             header=["export OMP_NUM_THREADS=1"])
 
 # Now the job can be submitted to be ran.
 submit(job)
-# this first saves the job and it's input files to the `job.local_dir` then pushes the `job.tt` file and the inputs to the `job.server_dir` on `job.server`, and tries to first submit it through slurm, otherwise just runs `bash job.tt`
-# You can check the job.local_dir to see the input files and `job.tt` script.
+# this first saves the job and it's calculation files to the `job.local_dir` then pushes the `job.tt` file and the calculations to the `job.server_dir` on `job.server`, and tries to first submit it through slurm, otherwise just runs `bash job.tt`
+# You can check the job.local_dir to see the calculation files and `job.tt` script.
 
 # If the job was submitted via slurm, one can check if it's running through
 slurm_isrunning(job)
@@ -48,9 +48,9 @@ out = outputdata(job)
 # Or, to retrieve the output of a specific calculation,
 out = outputdata(job["scf"])
 
-# Indeed specific inputs of the job can be accessed through their name  
+# Indeed specific calculations of the job can be accessed through their name  
 # If for some reason we discover that smearing was needed, the flags related to that
-# can be changed either job-wide (the flag will be set for every input that allows for that flag):
+# can be changed either job-wide (the flag will be set for every calculation that allows for that flag):
 job[:occupations] = "smearing"
 job[:degauss] = 0.001
 # Or on a specific calculation
@@ -63,7 +63,7 @@ bands_in = gencalc_bands(job["scf"], high_symmetry_kpath(job.structure))
 # generated from the structure symmetries.
 # k-points can also be passed as e.g. :
 bands_in = gencalc_bands(job["scf"], [(0.5, 0.5, 0.5, 10.0), (0.0, 0.0, 0.0, 1.0)])
-# mimicking the usual structure in the bands pw.x input.
+# mimicking the usual structure in the bands pw.x calculation.
 
 # Then we add the bands calculation to the job,
 push!(job, bands_in)

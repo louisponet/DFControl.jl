@@ -140,10 +140,10 @@ end
 function cif2structure(cif_file::String; structure_name = "NoName")
     tmpdir = dirname(cif_file)
     tmpfile = joinpath(tmpdir, "tmp.in")
-    @assert splitext(cif_file)[2] == ".cif" error("Please specify a valid cif input file")
+    @assert splitext(cif_file)[2] == ".cif" error("Please specify a valid cif calculation file")
     run(`$pythonpath $cif2cellpath $cif_file --no-reduce -p quantum-espresso -o $tmpfile`)
 
-    bla, structure = qe_read_input(tmpfile, structure_name = structure_name)
+    bla, structure = qe_read_calculation(tmpfile, structure_name = structure_name)
     rm(tmpfile)
     return structure
 end
@@ -399,7 +399,7 @@ end
     cell_parameters(cell::Mat3)
     cell_parameters(str::Structure)
 
-Parameters (a, b, c, α, β, γ) of the input cell returned in a named tuple.
+Parameters (a, b, c, α, β, γ) of the calculation cell returned in a named tuple.
 """
 function cell_parameters(cell::Mat3)
     G = transpose(cell) * cell
@@ -444,7 +444,7 @@ end
     high_symmetry_kpath(j::DFJob, npoints_per_segment::Int; package=QE, kwargs...)
 
 Generates a QE bands calculation compliant high symmetry kpath, to be used with
-e.g. `set_kpoints!(bands_input, kpoints)`. 
+e.g. `set_kpoints!(bands_calculation, kpoints)`. 
 """
 function high_symmetry_kpath(s::AbstractStructure, npoints_per_segment::Int; package=QE, kwargs...)
     kpoints, kpath = high_symmetry_kpoints(s)
