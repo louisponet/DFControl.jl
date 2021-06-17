@@ -42,7 +42,7 @@ registered_jobs(fuzzy::AbstractString) = filter(x -> occursin(fuzzy, x), JOB_REG
 
 function request_job(job_dir::String)
     cleanup_job_registry(print=false)
-    matching_jobs = registered_jobs(job_dir) 
+    matching_jobs = sort(registered_jobs(job_dir), by = x -> has_timestamp(x) ? timestamp(x) : zero(DateTime), rev=true)
     if length(matching_jobs) == 1
         return matching_jobs[1]
     else

@@ -18,6 +18,7 @@ function save(job::DFJob, local_dir=job.local_dir; kwargs...)
     sanitize_magnetization!(job)
     sanitize_projections!(job)
     sanitize_flags!(job)
+    timestamp(job) = now()
     save_metadata(job)
     return writejobfiles(job; kwargs...)
 end

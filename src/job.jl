@@ -316,3 +316,6 @@ function cleanup(job::DFJob)
 end
 
 save_metadata(job) = jldsave(joinpath(job, ".metadata.jld2"); metadata=job.metadata)
+
+timestamp(job) = job.metadata[:timestamp]
+has_timestamp(job) = haskey(job.metadata, :timestamp)
