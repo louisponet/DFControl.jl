@@ -84,6 +84,6 @@ end
 function rm_tmp_dirs!(job, vers=versions(job)...)
     for v in vers
         version_assert(job, v)
-        rm(joinpath(version_path(job, v), "outputs"), recursive=true)
+        rm(joinpath(version_path(job, v), TEMP_CALC_DIR), recursive=true)
     end
 end

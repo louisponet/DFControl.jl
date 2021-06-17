@@ -12,6 +12,7 @@ Base.getindex(::DFJob, ::String)
 using DFControl
 job = DFJob(joinpath(pathof(DFControl), "..", "..", "docs", "src", "assets", "job"))
 ```
+Example: 
 ```@repl job_input_access
 job["scf"]
 job[2]
@@ -30,4 +31,18 @@ set_flow!
 save(::DFJob)
 submit
 isrunning
+last_running_input
+abort
 ```
+
+## Management
+
+### Directories
+```@docs
+set_localdir!(::DFJob, ::String)
+Base.cp(::DFJob, ::String)
+Base.mv(::DFJob, ::String)
+Base.filesize
+cleanup
+```
+### Versioning

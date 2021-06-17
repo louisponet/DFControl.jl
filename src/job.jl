@@ -1,4 +1,4 @@
-
+const TEMP_CALC_DIR = "outputs"
 #TODO should we also create a config file for each job with stuff like server etc? and other config things,
 #      which if not supplied could contain the default stuff?
 """
@@ -22,16 +22,16 @@ A `DFJob` embodies a set of calculations with `inputs` to be ran in directory `l
 - `copy_temp_folders`: whether or not the temporary directory associated with intermediate calculation results should be copied when storing a job version. *CAUTION* These can be quite large.
 - The `server` and `server_dir` keywords should be avoided for the time being, as this functionality is not well tested.
  
+    DFJob(job_name::String, structure::AbstractStructure, calculations::Vector{<:DFInput}, common_flags::Pair{Symbol, <:Any}...; kwargs...)
+
+Creates a new job. The common flags will be attempted to be set in each of the `calculations`. The `kwargs...` are passed to the `DFJob` constructor. 
+
     DFJob(job_dir::String, job_script="job.tt"; version=nothing, kwargs...)
 
 Loads the job in the `local_dir`.
 If `job_dir` is not a valid job path, the previously saved jobs will be scanned for a job with a `local_dir` that
 partly includes `job_dir`. If `version` is specified the corresponding job version will be returned if it exists. 
 The `kwargs...` will be passed to the `DFJob` constructor.
-
-    DFJob(job_name::String, structure::AbstractStructure, calculations::Vector{<:DFInput}, common_flags::Pair{Symbol, <:Any}...; kwargs...)
-
-Creates a new job. The common flags will be attempted to be set in each of the `calculations`. The `kwargs...` are passed to the `DFJob` constructor. 
 """
 @with_kw_noshow mutable struct DFJob
     name         ::String
@@ -62,9 +62,6 @@ Creates a new job. The common flags will be attempted to be set in each of the `
             end
         end
         out = new(name, structure, calculations, local_dir, header, metadata, version, copy_temp_folders, server, server_dir)
-        # TODO add check_version, and if it doesn't match the one that's currently in the main directory,
-        # load the previous one from the versions
-        !occursin("versions", local_dir) && maybe_register_job(local_dir)
         return out
     end
 end
@@ -137,7 +134,7 @@ function sanitize_flags!(job::DFJob)
         end
     end
     for i in filter(x -> package(x) == QE, inputs(job))
-        outdir = isempty(job.server_dir) ? joinpath(job, "outputs") : joinpath(job.server_dir, splitdir(job.local_dir)[end], "outputs")
+        outdir = isempty(job.server_dir) ? joinpath(job, TEMP_CALC_DIR) : joinpath(job.server_dir, splitdir(job.local_dir)[end], TEMP_CALC_DIR)
         set_flags!(i, :outdir => "$outdir", print=false)
     end
     sanitize_flags!.(inputs(job), (job.structure,))
@@ -223,8 +220,12 @@ function sanitize_projections!(job::DFJob)
     set_projections!(job, projs...;print=false)
 end
 
-"Checks the last created output file for a certain job."
-function runninginput(job::DFJob)
+"""
+    last_running_input(job::DFJob)
+
+Returns the last `DFInput` for which an output file was created.
+"""
+function last_running_input(job::DFJob)
     @assert job.server == "localhost" "Intended use for now is locally."
     t = mtime(scriptpath(job))
     for i in reverse(inputs(job))
@@ -255,13 +256,23 @@ end
 
 searchdir(job::DFJob, str::AbstractString) = joinpath.((job,), searchdir(job.local_dir, str))
 
-for f in (:cp, :mv)
-    @eval function Base.$f(job::DFJob, dest::String; all=false, temp=false, kwargs...)
+
+for (f, strs) in zip((:cp, :mv), (("copy", "Copies"), ("move", "Moves")))
+    @eval begin
+    """
+        $($f)(job::DFJob, dest::String; all=false, temp=false, kwargs...)
+
+    $($(strs[2])) the contents of `job.local_dir` to `dest`. If `all=true`, it will also $($(strs[1])) the
+    `.version` directory with all previous versions. If `temp=true` it will override
+    `job.copy_temp_folders` and $($(strs[1])) also the temporary calculation directories.
+    The `kwargs...` are passed to `Base.$($f)`.
+    """
+    function Base.$f(job::DFJob, dest::String; all=false, temp=false, kwargs...)
         for file in readdir(job.local_dir)
             if !all
                 if file == VERSION_DIR_NAME
                     continue
-                elseif file == "outputs" && !(temp || job.copy_temp_folders)
+                elseif file == TEMP_CALC_DIR && !(temp || job.copy_temp_folders)
                     continue
                 end
             end
@@ -271,6 +282,7 @@ for f in (:cp, :mv)
             $f(joinpath(job, file), joinpath(dest, file); kwargs...)
         end
     end
+end
 end
 
 is_slurm_job(job::DFJob) = haskey(job.metadata, :slurmid)
@@ -302,10 +314,18 @@ function dirsize(path::String)
     return totsize
 end
 
-"Total filesize on disk for a job and all its versions."
+"""
+    filesize(job::DFJob)
+
+Total filesize on disk for a job and all its versions.
+"""
 Base.filesize(job::DFJob) = dirsize(job.local_dir)
 
-"Cleanup job files interactively."
+"""
+    cleanup(job::DFJob)
+    
+Cleanup `job.local_dir` interactively.
+"""
 function cleanup(job::DFJob)
     labels = String[]
     paths = String[]
@@ -314,7 +334,7 @@ function cleanup(job::DFJob)
         s = round(dirsize(vpath)/1e6, digits=3)
         push!(labels, "Version $v:  $s Mb")
         push!(paths, vpath)
-        opath = joinpath(vpath, "outputs")
+        opath = joinpath(vpath, TEMP_CALC_DIR)
         if ispath(opath)
             s_out = round(dirsize(opath)/1e6, digits=3)
             push!(labels, "Version $v/outputs:  $s_out Mb")

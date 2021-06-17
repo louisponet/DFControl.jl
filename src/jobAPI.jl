@@ -2,8 +2,9 @@
 """
     save(job::DFJob)
 
-Saves the job's inputs and submission script.
+Saves the job's inputs and `job.tt` submission script in `job.local_dir`.
 Some sanity checks will be performed on the validity of flags, execs, pseudopotentials, etc.
+The job will also be registered for easy retrieval at a later stage.
 
 If a previous job is present in the job directory (indicated by a valid job script),
 it will be copied to the `.versions` sub directory as the previous version of `job`,
@@ -31,7 +32,7 @@ end
 """
     submit(job::DFJob; kwargs...)
 
-First saves `job`, the tries to submit the job script through `sbatch job.tt` or `bash job.tt` if the former command fails.
+First saves the job, then tries to submit the job script through `sbatch job.tt` or `bash job.tt` if the former command fails.
 `kwargs...` get passed to `save(job; kwargs...)`.
 """
 function submit(job::DFJob; server=job.server, server_dir=job.server_dir, kwargs...)
@@ -53,12 +54,12 @@ end
 """
     abort(job::DFJob)
 
-Will look for the job id inside it's metadata and try to remove it from the server queue.
-If the lastrunning input happened to be a QE input, the correct abort file will be written.
-If it's Wannier90 the job will be brutally removed from the slurm queue.
+Will try to remove the job from the scheduler's queue.
+If the last running input happened to be a `DFInput{QE}`, the correct abort file will be written.
+For other codes the process is not smooth, and restarting is not guaranteed.
 """
 function abort(job::DFJob)
-    lastrunning = runninginput(job)
+    lastrunning = last_running_input(job)
     if lastrunning == nothing
         error("Is this job running?")
     end
@@ -80,8 +81,8 @@ end
     set_flow!(job::DFJob, should_runs::Pair{String, Bool}...)
 
 Sets whether or not calculations should be scheduled to run.
-The string in each pair of `should_runs` will try to match inputs whose name
-includes that string, and put the `input.run` attribute to the associated `Bool`.
+The `name` of each input in the job will be checked against the string in each pair of `should_runs`, and the
+`input.run` will be set accordingly.
 
 Example:
 ```julia
@@ -145,7 +146,7 @@ end
 """
     set_localdir!(job::DFJob, dir::String; copy=false)
     
-Sets the directory where the job will be saved or ran. If necessary the directory will be created.
+Sets `job.local_dir` to `dir`. If necessary the directory will be created.
 If `copy` is set to `true`, all previous inputs and output files of the current job version
 (i.e. those in the main job directory) will be copied to the new directory, including the
 `outputs` directory with temporary files created during jobs runs.

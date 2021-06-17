@@ -26,15 +26,13 @@ function cleanup_job_registry(;print=true)
 end
 
 function maybe_register_job(abspath::String)
-    if !ispath(abspath)
-        push!(JOB_REGISTRY, abspath)
-    else
+    if ispath(abspath)
         jid = findfirst(isequal(abspath), JOB_REGISTRY)
         if jid === nothing
             push!(JOB_REGISTRY, abspath)
+            write_job_registry()
         end
     end
-    write_job_registry()
 end
 maybe_register_job(job::DFJob) = maybe_register_job(job.local_dir)
 

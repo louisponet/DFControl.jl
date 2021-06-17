@@ -511,7 +511,7 @@ end
 
 "LOL this absolutely is impossible to do for QE"
 function writeabortfile(job::DFJob, input::DFInput{QE})
-    abortpath = joinpath(job.local_dir,"$(flag(input, :prefix)[2:end-1]).EXIT")
+    abortpath = joinpath(job.local_dir, TEMP_CALC_DIR, "$(job.name).EXIT")
     open(abortpath, "w") do f
         write(f, " \n")
     end
