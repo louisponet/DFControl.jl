@@ -43,6 +43,7 @@ set_localdir!(::DFJob, ::String)
 Base.cp(::DFJob, ::String)
 Base.mv(::DFJob, ::String)
 Base.filesize
+Base.joinpath(::DFJob, ::Any...)
 cleanup
 ```
 ### Versioning

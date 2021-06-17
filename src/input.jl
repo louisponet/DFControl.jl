@@ -8,6 +8,32 @@ name(data::InputData) = data.name
 Base.:(==)(d1::InputData, d2::InputData) =
     all(x -> getfield(d1, x) == getfield(d2, x), fieldnames(InputData))
 
+"""
+    DFInput{P<:Package}(name     ::String;
+                        dir      ::String = "",
+                        flags    ::AbstractDict = Dict{Symbol, Any}(),
+                        data     ::Vector{InputData} = InputData[],
+                        execs    ::Vector{Exec},
+                        run      ::Bool = true,
+                        outdata  ::AbstractDict = Dict{Symbol, Any}(),
+                        infile   ::String = P == Wannier90 ? name * ".win" : name * ".in",
+                        outfile  ::String = name * ".out")
+
+A full representation of a *DFT* calculation of package `P`,
+holding the `flags` that will be written to the `infile`,
+the executables in `execs` and the output written by the calculation to the `outfile`.
+`outdata` stores the parsed calculation output after it was read at least once.
+The `run` field indicates whether the calculation should be actually performed,
+e.g. if `run=false` the corresponding line will be commented out in the job script.
+
+    DFInput{P<:Package}(name::AbstractString, flags::Pair{Symbol, Any}...; kwargs...)
+
+Create a `DFInput` from `name` and `flags`, other `kwargs...` will be passed to the constructor.
+
+    DFInput(template::DFInput, name::AbstractString, flags::Pair{Symbol, Any}...; excs=deepcopy(execs(template)), run=true, data=nothing, dir=copy(template.dir))
+
+Creates a new `DFInput` from the `template`, setting the `flags` of the newly created one to the specified ones.
+"""
 @with_kw_noshow mutable struct DFInput{P <: Package}
     name     ::String
     dir      ::String = ""
@@ -18,15 +44,27 @@ Base.:(==)(d1::InputData, d2::InputData) =
     outdata  ::SymAnyDict=SymAnyDict()
     infile   ::String = P == Wannier90 ? name * ".win" : name * ".in"
     outfile  ::String = name * ".out"
+    function DFInput{P}(name, dir, flags, data, execs, run, outdata, infile, outfile) where {P <: Package}
+        out = new{P}(name, dir, SymAnyDict(), data, execs, run, outdata, infile, outfile)
+        set_flags!(out, flags...; print=false)
+        for (f, v) in flags
+            if !hasflag(out, f)
+                @warn "Flag $f was not valid for calculation $name."
+            end
+        end
+        return out
+    end
 end
 DFInput{P}(name, dir, flags, data, execs, run) where P<:Package = DFInput{P}(name, abspath(dir), flags, data, execs, run, SymAnyDict(), P == Wannier90 ? name * ".win" : name * ".in", P == Wannier90 ? name * ".wout" : name * ".out")
 
-"""
-    DFInput(template::DFInput, name::AbstractString, flags::Pair{Symbol}...; excs=deepcopy(execs(template)), run=true, data=nothing, dir=copy(template.dir))
+DFInput{P}(name, flags...; kwargs...) where P<:Package =
+    DFInput{P}(name=name, flags=flags; kwargs...)
 
-Creates a new `DFInput` from a template `DFInput`, setting the newflags in the new one.
-"""
-function DFInput(template::DFInput, name, newflags...; excs=deepcopy(execs(template)), run=true, data=nothing, dir=deepcopy(template.dir))
+function DFInput(template::DFInput, name, newflags...;
+                 excs = deepcopy(execs(template)),
+                 run  = true,
+                 data = nothing,
+                 dir  = deepcopy(template.dir))
     newflags = Dict(newflags...)
 
     input          = deepcopy(template)
@@ -44,20 +82,9 @@ function DFInput(template::DFInput, name, newflags...; excs=deepcopy(execs(templ
     return input
 end
 
-"""
-    DFInput{P}(name::AbstractString, execs::Vector{Exec}, flags::Pair{Symbol}...; kwargs...) where {P<:Package}
-
-Create a input from the name and flags, other fields will set to default values.
-"""
-function DFInput{P}(name::AbstractString, execs::Vector{Exec}, flags::Pair{Symbol}...; kwargs...) where {P<:Package}
-    out = DFInput{P}(name=name, execs=execs; kwargs...)
-    set_flags!(out, flags..., print=false)
-    return out
-end
-
 name(input::DFInput)  = input.name
 dir(input::DFInput)   = input.dir
-Base.joinpath(i::DFInput, path) = joinpath(dir(i), path)
+Base.joinpath(i::DFInput, path...) = joinpath(dir(i), path...)
 flags(input::DFInput) = input.flags
 set_dir!(input::DFInput, dir) = (input.dir = dir)
 name_ext(input::DFInput, ext)   = name(input) * ext
@@ -186,9 +213,6 @@ pdos(input::DFInput, args...) =
 
 Emin_from_projwfc(input::DFInput, args...) =
     @error "Emin_from_projwfc is not implemented for package $(package(input))."
-
-
-Base.joinpath(input::DFInput, args...) = joinpath(dir(input), args...)
 
 include("qe/input.jl")
 include("elk/input.jl")

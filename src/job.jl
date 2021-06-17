@@ -239,6 +239,11 @@ end
 "Finds the input corresponding to the name and returns the full output path."
 outpath(job::DFJob, n::String) = outpath(input(job,n))
 
+"""
+    joinpath(job::DFJob, args...)
+
+`joinpath(job.local_dir, args...)`.
+"""
 Base.joinpath(job::DFJob, args...) = joinpath(job.local_dir, args...)
 
 runslocal_assert(job::DFJob) =

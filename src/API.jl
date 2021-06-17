@@ -7,7 +7,8 @@ include("inputAPI.jl")
 export DFInput
 #Basic Interaction with DFInputs
 export flag, set_flags!, rm_flags!, data, set_data!, set_dataoption!, exec, execs,
-       set_execflags!, rmexecflags!, set_execdir!, runcommand, outputdata, set_name!
+       set_execflags!, rmexecflags!, set_execdir!, runcommand, outputdata, set_name!,
+       inpath, outpath, hasflag
 
 #Extended Interaction with DFInputs
 export set_kpoints!, readbands, readfermi, set_wanenergies!, isconverged

@@ -172,30 +172,28 @@ end
 
 #-------------- Basic Interaction with DFInputs inside the DFJob ---------------#
 """
-    insert!(job::DFJob, i::Int, input::DFInput)
-
-Equal to `insert!(job.inputs, i, input)`.
+    insert!(job::DFJob, i::Int, input::DFInput) = insert!(job.inputs, i, input)
 """ 
 Base.insert!(job::DFJob, index::Int, input::DFInput) = insert!(job.inputs, index, input)
 
 """
     push!(job::DFJob, input::DFInput)
 
-Equal to `push!(job.inputs, input)`.
+`push!(job.inputs, input)`.
 """
 Base.push!(job::DFJob, input::DFInput) = push!(job.inputs, input)
 
 """
     pop!(job::DFJob)
 
-Equal to `pop!(job.inputs)`.
+`pop!(job.inputs)`.
 """
 Base.pop!(job::DFJob) = pop!(job.inputs)
 
 """
     append!(job::DFJob, args...)
 
-Equal to `append!(job.inputs, args...)`.
+`append!(job.inputs, args...)`.
 """
 Base.append!(job::DFJob, args...) = append!(job.inputs, args...)
 
