@@ -1,13 +1,4 @@
 const celldm_1 = Symbol("celldm(1)")
-const QE_EXECS = [
-    "pw.x",
-    "projwfc.x",
-    "pp.x",
-    "ld1.x",
-    "ph.x",
-    "pw2wannier90.x",
-    "hp.x"
-]
 #REVIEW: Should we make the flag name a String?
 #QE calls these flags
 struct QEFlagInfo{T}

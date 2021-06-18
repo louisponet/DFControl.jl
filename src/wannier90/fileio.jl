@@ -199,11 +199,11 @@ end
 wan_read_calculation(f::IO) = wan_read_calculation(Float64, f)
 
 """
-    wan_read_calculation(filename::String, T=Float64; runcommand= Exec(""), run=true, exec=Exec("wannier90.x"), structure_name="NoName")
+    wan_read_calculation(filename::String, T=Float64; run=true, execs=[Exec(exec="wannier90.x")], structure_name="NoName")
 
 Reads a `DFCalculation{Wannier90}` and the included `Structure` from a WANNIER90 calculation file.
 """
-function wan_read_calculation(filename::String, T=Float64; execs=[Exec("wannier90.x")], run=true, structure_name="NoName")
+function wan_read_calculation(filename::String, T=Float64; execs=[Exec(exec="wannier90.x")], run=true, structure_name="NoName")
     flags = Dict{Symbol,Any}()
     data  = Vector{InputData}()
     atoms_block = nothing

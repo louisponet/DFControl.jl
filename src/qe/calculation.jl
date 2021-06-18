@@ -210,14 +210,6 @@ function pdos(calculation::DFCalculation{QE}, atsym::Symbol, magnetic::Bool, soc
     return (energies=energies, pdos=atdos) 
 end
 
-"""
-    set_kpoints!(calculation::DFCalculation{QE}, k_grid::NTuple{3, Int}; print=true)
-    set_kpoints!(calculation::DFCalculation{QE}, k_grid::NTuple{6, Int}; print=true)
-    set_kpoints!(calculation::DFCalculation{QE}, k_grid::Vector{<:NTuple{4}}; print=true, k_option=:crystal_b)
-
-Convenience function to set the `:k_points` data block of `calculation`. The three different methods are
-targeted at `nscf`, `scf` or `vcrelax` and `bands` calculations, respectively.
-"""
 function set_kpoints!(calculation::DFCalculation{QE}, k_grid::NTuple{3, Int}; print=true) #nscf
     calc = flag(calculation, :calculation)
     print && calc != "nscf" && (@warn "Expected calculation to be 'nscf'.\nGot $calc.")
@@ -314,9 +306,9 @@ function gencalc_projwfc(template::DFCalculation{QE}, Emin, Emax, DeltaE, extraf
     tdegaussflag = flag(template, :degauss)
     degauss = tdegaussflag != nothing ? tdegaussflag : 0.0
     if length(execs(template)) == 2
-        excs = [execs(template)[1], Exec("projwfc.x", execs(template)[end].dir)]
+        excs = [execs(template)[1], Exec(exec="projwfc.x", dir=execs(template)[end].dir)]
     else
-        excs = [Exec("projwfc.x", execs(template)[end].dir)]
+        excs = [Exec(exec="projwfc.x", dir=execs(template)[end].dir)]
     end
 
     out = DFCalculation(template, name, excs=excs)
@@ -331,14 +323,14 @@ end
 """
     gencalc_wan(nscf::DFCalculation{QE}, structure::AbstractStructure, Emin, wanflags...;
                 Epad     = 5.0,
-                wanexec  = Exec("wannier90.x", ""))
+                wanexec  = Exec(exec="wannier90.x", dir=""))
 
 Generates a Wannier90 calculation to follow on the supplied `nscf` calculation. It uses the projections defined in the `structure`, and starts counting the required amount of bands from `Emin`.
 The `nscf` needs to have a valid output since it will be used in conjunction with `Emin` to find the required amount of bands and energy window for the Wannier90 calculation.
 """
 function gencalc_wan(nscf::DFCalculation{QE}, structure::AbstractStructure, Emin, wanflags...;
                      Epad     = 5.0,
-                     wanexec  = Exec("wannier90.x", ""))
+                     wanexec  = Exec(exec="wannier90.x", dir=""))
 
     hasoutput_assert(nscf)
     iscalc_assert(nscf, "nscf")

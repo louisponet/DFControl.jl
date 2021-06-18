@@ -312,7 +312,7 @@ function read_job_line(line)
         elseif efile == "wannier90.x"
             push!(execs, Exec(efile, dir, parse_wan_execflags(flags)))
         elseif any(occursin.(QE_EXECS, (efile,))) 
-            push!(execs, Exec(efile, dir, parse_qeexecflags(flags)))
+            push!(execs, Exec(efile, dir, parse_qe_execflags(flags)))
         elseif any(occursin.(ELK_EXECS, (efile,)))
 	        calculation = "elk.in"
 	        output = "elk.out"

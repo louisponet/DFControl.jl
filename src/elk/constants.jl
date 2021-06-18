@@ -17,7 +17,6 @@ end
 
 const ELK_CONTROLBLOCKS = _ELK_CONTROLBLOCKS()
 
-const ELK_EXECS = ["elk", "elk-omp"]
 
 function elk_flaginfo(flag::Symbol)
 	for b in ELK_CONTROLBLOCKS

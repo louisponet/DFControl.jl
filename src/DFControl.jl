@@ -39,12 +39,16 @@ module DFControl
 
     const depsdir = joinpath(dirname(@__DIR__), "deps")
 
-    include("types.jl")
+    include("typedefs.jl")
     export Vec3, Point3
     include("atom.jl")
     export element
     include("structure.jl")
+    include("types.jl")
+    export DFJob, Exec, DFCalculation, InputData
+    
 
+    include("execs.jl")
     include("calculation.jl")
     include("utils.jl")
     export yesterday, lastweek, lastmonth
@@ -53,7 +57,6 @@ module DFControl
     include("versioning.jl")
     include("registry.jl")
 
-    export DFJob, Exec, DFCalculation, InputData
     include("server.jl")
     include("API.jl")
 

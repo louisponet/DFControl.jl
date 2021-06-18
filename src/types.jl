@@ -1,14 +1,233 @@
-const SymAnyDict = Dict{Symbol, Any}
-const Vec{N, T} = SVector{N, T}
-const Point = Vec
-const Point3 = Point{3}
-const Vec3   = Vec{3}
-const Mat3{T} = SMatrix{3, 3, T}
-const Mat4{T} = SMatrix{4, 4, T}
+mutable struct ExecFlag
+    symbol     ::Symbol
+    name       ::String
+    typ        ::Type
+    description::String
+    value
+    minus_count::Int
+end
 
-Point{N, T}(x::T) where {N, T} = Point{N, T}(x, x, x)
+ExecFlag(e::ExecFlag, value) = ExecFlag(e.symbol, e.name, e.typ, e.description, value, 1)
+ExecFlag(p::Pair{Symbol, T}) where T = ExecFlag(first(p), String(first(p)), T, "", last(p), 1)
+ExecFlag(p::Pair{Symbol, T}, count::Int) where T = ExecFlag(first(p), String(first(p)), T, "", last(p), count)
 
-Base.convert(::Type{Point3{T}}, x::Vector{T}) where T<:AbstractFloat = Point3{T}(x[1], x[2], x[3])
+"""
+    Exec(;exec::String = "", dir::String = "", flags::Vector{ExecFlag} = ExecFlag[])
+
+Representation of an `executable` that will run the `DFCalculation`.
+Basically `dir/exec --<flags>` inside a job script.
+
+    Exec(exec::String, dir::String, flags::Pair{Symbol}...)
+
+Will first transform `flags` into a `Vector{ExecFlag}`, and construct the `Exec`. 
+"""
+Parameters.@with_kw mutable struct Exec
+    exec ::String = ""
+    dir  ::String = ""
+    flags::Vector{ExecFlag} = ExecFlag[]
+end
+
+Exec(exec::String, dir::String, flags::Pair{Symbol}...) =
+    Exec(exec, dir, SymAnyDict(flags))
+
+function Exec(exec::String, dir::String, flags::SymAnyDict)
+    _flags = ExecFlag[]
+    for (f, v) in flags
+        if occursin("mpi", exec)
+            mflag = mpi_flag(f)
+            @assert mflag !== nothing "$f is not a recognized mpirun flag."
+        end            
+        push!(_flags, ExecFlag(f => v))
+    end
+    return Exec(exec, dir, _flags)
+end
+
+
+"""
+    InputData(name::Symbol, option::Symbol, data::Any)
+
+Represents a more structured block of input data.
+e.g. `InputData(:k_points, :automatic, (6,6,6,1,1,1))`
+would be translated for a QE calculation into
+```
+K_POINTS(automatic)
+6 6 6 1 1 1
+```
+"""
+mutable struct InputData
+    name   ::Symbol
+    option ::Symbol
+    data   ::Any
+end
+
+
+"""
+    DFCalculation{P<:Package}(name    ::String;
+                              dir     ::String = "",
+                              flags   ::AbstractDict = Dict{Symbol, Any}(),
+                              data    ::Vector{InputData} = InputData[],
+                              execs   ::Vector{Exec},
+                              run     ::Bool = true,
+                              outdata ::AbstractDict = Dict{Symbol, Any}(),
+                              infile  ::String = P == Wannier90 ? name * ".win" : name * ".in",
+                              outfile ::String = name * ".out")
+
+The representation of a *DFT* calculation of package `P`,
+holding the `flags` that will be written to the `infile`,
+the executables in `execs` and the output written by the calculation to the `outfile`.
+It essentially represents a line in a job script similar to `exec1 exec2 < infile.in > outfile.out`. 
+`outdata` stores the parsed calculation output after it was read at least once.
+The `run` field indicates whether the calculation should be actually performed,
+e.g. if `run=false` the corresponding line will be commented out in the job script.
+
+    DFCalculation{P<:Package}(name::AbstractString, flags::Pair{Symbol, Any}...; kwargs...)
+
+Create a `DFCalculation` from `name` and `flags`, other `kwargs...` will be passed to the constructor.
+
+    DFCalculation(template::DFCalculation, name::AbstractString, flags::Pair{Symbol, Any}...; excs=deepcopy(execs(template)), run=true, data=nothing, dir=copy(template.dir))
+
+Creates a new `DFCalculation` from the `template`, setting the `flags` of the newly created one to the specified ones.
+"""
+@with_kw_noshow mutable struct DFCalculation{P <: Package}
+    name     ::String
+    dir      ::String = ""
+    flags    ::AbstractDict = SymAnyDict()
+    data     ::Vector{InputData} = InputData[]
+    execs    ::Vector{Exec}
+    run      ::Bool = true
+    outdata  ::SymAnyDict=SymAnyDict()
+    infile   ::String = P == Wannier90 ? name * ".win" : name * ".in"
+    outfile  ::String = name * ".out"
+    function DFCalculation{P}(name, dir, flags, data, execs, run, outdata, infile, outfile) where {P <: Package}
+        out = new{P}(name, dir, SymAnyDict(), data, execs, run, outdata, infile, outfile)
+        set_flags!(out, flags...; print=false)
+        for (f, v) in flags
+            if !hasflag(out, f)
+                @warn "Flag $f was not valid for calculation $name."
+            end
+        end
+        return out
+    end
+end
+DFCalculation{P}(name, dir, flags, data, execs, run) where P<:Package = DFCalculation{P}(name, abspath(dir), flags, data, execs, run, SymAnyDict(), P == Wannier90 ? name * ".win" : name * ".in", P == Wannier90 ? name * ".wout" : name * ".out")
+
+DFCalculation{P}(name, flags...; kwargs...) where P<:Package =
+    DFCalculation{P}(name=name, flags=flags; kwargs...)
+
+function DFCalculation(template::DFCalculation, name, newflags...;
+                 excs = deepcopy(execs(template)),
+                 run  = true,
+                 data = nothing,
+                 dir  = deepcopy(template.dir))
+    newflags = Dict(newflags...)
+
+    calculation          = deepcopy(template)
+    calculation.name     = name
+    calculation.execs    = excs
+    calculation.run      = run
+    calculation.dir      = dir
+    set_flags!(calculation, newflags..., print=false)
+
+    if data != nothing
+        for (name, (option, data)) in data
+            set_data!(calculation, name, data, option=option, print=false)
+        end
+    end
+    return calculation
+end
+
+
+#TODO should we also create a config file for each job with stuff like server etc? and other config things,
+#      which if not supplied could contain the default stuff?
+"""
+    DFJob(name::String, structure::AbstractStructure;
+          calculations      ::Vector{DFCalculation} = DFCalculation[],
+          local_dir         ::String = pwd(),
+          header            ::Vector{String} = getdefault_jobheader(),
+          metadata          ::Dict = Dict(),
+          version           ::Int = last_job_version(local_dir),
+          copy_temp_folders ::Bool = false, 
+          server            ::String = getdefault_server(),
+          server_dir        ::String = "")
+
+A `DFJob` embodies a set of calculations with `calculations` to be ran in directory `local_dir`, with the `structure` as the subject.
+## Keywords/further attributes
+- `calculations`: calculations to calculations that will be run sequentially.
+- `local_dir`: the directory where the calculations will be run.
+- `header`: lines that will be pasted at the head of the job script, e.g. exports `export OMP_NUM_THREADS=1`, slurm settings`#SBATCH`, etc.
+- `metadata`: various additional information, will be saved in `.metadata.jld2` in the `local_dir`.
+- `version`: the current version of the job.
+- `copy_temp_folders`: whether or not the temporary directory associated with intermediate calculation results should be copied when storing a job version. *CAUTION* These can be quite large.
+- The `server` and `server_dir` keywords should be avoided for the time being, as this functionality is not well tested.
+ 
+    DFJob(job_name::String, structure::AbstractStructure, calculations::Vector{<:DFCalculation}, common_flags::Pair{Symbol, <:Any}...; kwargs...)
+
+Creates a new job. The common flags will be attempted to be set in each of the `calculations`. The `kwargs...` are passed to the `DFJob` constructor. 
+
+    DFJob(job_dir::String, job_script="job.tt"; version=nothing, kwargs...)
+
+Loads the job in the `local_dir`.
+If `job_dir` is not a valid job path, the previously saved jobs will be scanned for a job with a `local_dir` that
+partly includes `job_dir`. If `version` is specified the corresponding job version will be returned if it exists. 
+The `kwargs...` will be passed to the `DFJob` constructor.
+"""
+@with_kw_noshow mutable struct DFJob
+    name         ::String
+    structure    ::AbstractStructure
+    calculations ::Vector{DFCalculation} = DFCalculation[]
+    local_dir    ::String = pwd()
+    header       ::Vector{String} = getdefault_jobheader()
+    metadata     ::Dict = Dict()
+    version      ::Int = last_job_version(local_dir)
+    copy_temp_folders::Bool = false
+    server       ::String = getdefault_server()
+    server_dir   ::String = ""
+    function DFJob(name, structure, calculations, local_dir, header, metadata, version, copy_temp_folders, server, server_dir)
+        if local_dir[end] == '/'
+            local_dir = local_dir[1:end-1]
+        end
+        if !isabspath(local_dir)
+            local_dir = abspath(local_dir)
+        end
+        if isempty(structure.name)
+            structure.name = split(name, "_")[1]
+        end
+        last_version = last_job_version(local_dir)
+        if isempty(metadata)
+            mpath = joinpath(local_dir, ".metadata.jld2")
+            if ispath(mpath)
+                metadata = load(mpath)["metadata"]
+            end
+        end
+        out = new(name, structure, calculations, local_dir, header, metadata, version, copy_temp_folders, server, server_dir)
+        return out
+    end
+end
+
+#TODO implement abinit
+function DFJob(job_name::String, structure::AbstractStructure, calculations::Vector{<:DFCalculation}, common_flags::Pair{Symbol, <:Any}...;
+                    kwargs...)
+
+    shared_flags = typeof(common_flags) <: Dict ? common_flags : Dict(common_flags...)
+    for i in calculations
+        i.flags = merge(shared_flags, i.flags)
+    end
+    out = DFJob(name = job_name, structure = structure, calculations = calculations; kwargs...)
+    return out
+end
+
+function DFJob(job_dir::String, job_script="job.tt"; version = nothing, kwargs...)
+    if !isempty(job_dir) && ispath(abspath(job_dir)) && !isempty(searchdir(abspath(job_dir), job_script))
+        real_path = abspath(job_dir)
+    else
+        real_path = request_job(job_dir)
+        real_path === nothing && return
+    end
+    real_version = version === nothing ? last_job_version(real_path) : version
+    return DFJob(;merge(merge((local_dir=real_path,version=real_version), read_job_calculations(joinpath(real_path,  job_script))), kwargs)...)
+
+end        
+
 
 abstract type Band end
 
@@ -49,218 +268,6 @@ function bandgap(bands::Union{Iterators.Flatten, AbstractVector{<:Band}}, fermi=
 	return min_conduction - max_valence
 end
 bandgap(u_d_bands::Union{NamedTuple, Tuple}, args...) = bandgap(Iterators.flatten(u_d_bands), args...)
-
-mutable struct ExecFlag
-    symbol     ::Symbol
-    name       ::String
-    typ        ::Type
-    description::String
-    value
-    minus_count::Int
-end
-Base.:(==)(e1::ExecFlag, e2::ExecFlag) =
-    all(x -> getfield(e1, x) == getfield(e2, x), (:symbol, :value))
-
-ExecFlag(e::ExecFlag, value) = ExecFlag(e.symbol, e.name, e.typ, e.description, value, 1)
-ExecFlag(p::Pair{Symbol, T}) where T = ExecFlag(first(p), String(first(p)), T, "", last(p), 1)
-ExecFlag(p::Pair{Symbol, T}, count::Int) where T = ExecFlag(first(p), String(first(p)), T, "", last(p), count)
-
-const QE_EXECFLAGS = ExecFlag[
-    ExecFlag(:nk, "kpoint-pools", Int, "groups k-point parallelization into nk processor pools", 0, 1),
-    ExecFlag(:ntg, "task-groups", Int, "FFT task groups", 0, 1),
-    ExecFlag(:ndiag, "diag", Int, "Number of processes for linear algebra", 0, 1),
-    ExecFlag(:ni, "images", Int, "Number of processes used for the images", 0, 1)
-]
-
-qeexecflag(flag::AbstractString) = getfirst(x -> x.name==flag, QE_EXECFLAGS)
-qeexecflag(flag::Symbol) = getfirst(x -> x.symbol==flag, QE_EXECFLAGS)
-
-function parse_qeexecflags(line::Vector{<:AbstractString})
-    flags = ExecFlag[]
-    i=1
-    while i<=length(line)
-        s = strip(line[i], '-')
-        push!(flags, ExecFlag(qeexecflag(Symbol(s)), parse(Int, line[i+1])))
-        i += 2
-    end
-    flags
-end
-
-const WAN_EXECFLAGS = ExecFlag[
-    ExecFlag(:pp, "preprocess", Nothing, "Whether or not to preprocess the wannier calculation", nothing, 1),
-]
-
-wan_execflag(flag::AbstractString) = getfirst(x -> x.name==flag, WAN_EXECFLAGS)
-wan_execflag(flag::Symbol) = getfirst(x -> x.symbol==flag, WAN_EXECFLAGS)
-function parse_wan_execflags(line::Vector{<:AbstractString})
-    flags = ExecFlag[]
-    i=1
-    while i<=length(line)
-        s = strip(line[i], '-')
-        push!(flags, ExecFlag(wan_execflag(Symbol(s)), nothing))
-        i += 1
-    end
-    flags
-end
-
-include(joinpath(depsdir, "mpirunflags.jl"))
-const MPI_FLAGS = _MPI_FLAGS()
-
-mpi_flag(flag::AbstractString) = getfirst(x -> x.name==flag, MPI_FLAGS)
-mpi_flag(flag::Symbol) = getfirst(x -> x.symbol==flag, MPI_FLAGS)
-
-function mpi_flag_val(::Type{String}, line, i)
-    v = line[i+1]
-    return v, i + 2
-end
-
-function mpi_flag_val(::Type{Vector{String}}, line, i)
-    tval = String[]
-    while i+1 <= length(line) && !occursin('-', line[i+1])
-        push!(tval, line[i+1])
-        i += 1
-    end
-    return tval, i + 1
-end
-
-function mpi_flag_val(::Type{Int}, line, i)
-    if line[i+1][1] == '\$'
-        tval = line[i+1]
-    else
-        tval = parse(Int, line[i+1])
-    end
-    return tval, i + 2
-end
-
-function mpi_flag_val(::Type{Vector{Int}}, line, i)
-    tval = Union{Int, String}[]
-    while i+1 <= length(line) && !occursin('-', line[i+1])
-        if line[i+1][1] == '\$'
-            push!(tval, line[i+1])
-        else
-            push!(tval, parse(Int, line[i+1]))
-        end
-        i += 1
-    end
-    return tval, i + 1
-end
-
-function mpi_flag_val(::Type{Pair{Int, String}}, line, i)
-    tval = Union{Int, String}[]
-    while i+1<=length(line) && !occursin('-', line[i+1])
-        if line[i+1][1] == '\$'
-            push!(tval, line[i+1])
-        else
-            tparse = tryparse(Int, line[i+1])
-            if tparse != nothing
-                push!(tval, tparse)
-            else
-                push!(tval, string(line[i+1]))
-            end
-        end
-        i += 1
-    end
-    return tval, i + 1
-end
-function parse_mpi_flags(line::Vector{<:SubString})
-    eflags = ExecFlag[]
-    i = 1
-    while i <= length(line)
-        s = line[i]
-        if s[1] != '-'
-            break
-        end
-        if s[2] == '-'
-            mflag = mpi_flag(strip(s, '-'))
-        else
-            mflag = mpi_flag(Symbol(strip(s, '-')))
-        end
-
-        @assert mflag != nothing "$(strip(s, '-')) is not a recognized mpi_flag"
-        val, i = mpi_flag_val(mflag.typ, line, i)
-        push!(eflags, ExecFlag(mflag, val))
-    end
-    eflags
-end
-
-const RUN_EXECS = ["mpirun", "mpiexec", "srun"]
-allexecs() = vcat(RUN_EXECS, QE_EXECS, WAN_EXECS, ELK_EXECS)
-parseable_execs() = vcat(QE_EXECS, WAN_EXECS, ELK_EXECS)
-has_parseable_exec(l::String) = occursin(">", l) && any(occursin.(parseable_execs(), (l,)))
-
-mutable struct Exec
-    exec ::String
-    dir  ::String
-    flags::Vector{ExecFlag}
-end
-
-Exec() = Exec("")
-Exec(exec::String) = Exec(exec, "")
-Exec(exec::String, dir::String) = Exec(exec, dir, ExecFlag[])
-Exec(exec::String, dir::String, flags...) = Exec(exec, dir, SymAnyDict(flags))
-function Exec(exec::String, dir::String, flags::SymAnyDict)
-    _flags = ExecFlag[]
-    for (f, v) in flags
-        if occursin("mpi", exec)
-            mflag = mpi_flag(f)
-            @assert mflag !== nothing "$f is not a recognized mpirun flag."
-        end            
-        push!(_flags, ExecFlag(f => v))
-    end
-    return Exec(exec, dir, _flags)
-end
-
-isparseable(exec::Exec) = exec.exec ∈ parseable_execs()
-
-is_qe_exec(exec::Exec)      = exec.exec ∈ QE_EXECS
-is_wannier_exec(exec::Exec) = exec.exec ∈ WAN_EXECS
-is_elk_exec(exec::Exec)     = exec.exec ∈ ELK_EXECS
-is_mpi_exec(exec::Exec)     = occursin("mpi", exec.exec)
-
-function calculationparser(exec::Exec)
-    if is_qe_exec(exec) 
-        qe_read_calculation
-    elseif is_wannier_exec(exec)
-        wan_read_calculation
-    elseif is_elk_exec(exec)
-        elk_read_calculation
-    end
-end
-
-function set_flags!(exec::Exec, flags...)
-    for (f, val) in flags
-        flag = isa(f, String) ? getfirst(x -> x.name == f, exec.flags) : getfirst(x -> x.symbol == f, exec.flags)
-        if flag != nothing
-            flag.value = convert(flag.typ, val)
-        else
-	        for (f1, f2) in zip((is_qe_exec, is_wannier_exec, is_mpi_exec), (qeexecflag, wan_execflag, mpi_flag))
-	        	if f1(exec)
-		        	def_flag = f2(f)
-			        if def_flag != nothing
-				        push!(exec.flags, ExecFlag(def_flag, val))
-				        break
-			        end
-		        end
-	        end
-        end
-    end
-    exec.flags
-end
-
-function rm_flags!(exec::Exec, flags...)
-    for f in flags
-        if isa(f, String)
-            filter!(x -> x.name != f, exec.flags)
-        elseif isa(f, Symbol)
-            filter!(x -> x.symbol != f, exec.flags)
-        end
-    end
-    exec.flags
-end
-hasflag(exec::Exec, s::Symbol) = findfirst(x->x.symbol == s, exec.flags) != nothing
-set_execdir!(exec::Exec, dir) = exec.dir = dir
-
-Base.:(==)(e1::Exec, e2::Exec) = all(x -> getfield(e1, x) == getfield(e2, x), fieldnames(Exec))
 
 mutable struct TimingData
     name::String

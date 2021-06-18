@@ -336,50 +336,6 @@ rm_flags!(job::DFJob, name::String, flags...; fuzzy=true, kwargs...) =
 rm_flags!(job::DFJob, flags...; kwargs...) =
     rm_flags!(job, calculations(job), flags...; kwargs...)
 
-"Returns the executables attached to a given calculation."
-execs(job::DFJob, name) =
-    execs(calculation(job, name))
-
-"""
-    set_execflags!(job::DFJob, exec, flags...)
-
-Goes through the calculations of the job and sets the exec flags to the specified ones.
-"""
-function set_execflags!(job::DFJob, exec, flags...)
-	for i in job.calculations
-	    set_execflags!(i, exec, flags...)
-    end
-end
-
-"""
-    rmexecflags!(job::DFJob, exec, flags...)
-
-Goes through the calculations of the job and removes the specified `exec` flags.
-"""
-rmexecflags!(job::DFJob, exec, flags...) =
-    rmexecflags!.(job.calculations, (exec, flags)...)
-
-"""
-    set_execdir!(job::DFJob, exec::String, dir::String)
-
-Goes through all the executables that are present in the calculations of the job,
-if the executable matches `exec`, its directory will be set to `dir`.
-```julia
-set_execdir!(job, "pw.x", "/path/to/QE/bin")
-```
-
-    set_execdir!(calculation::DFCalculation, exec::String, dir::String)
-    
-Goes through the executables that are present in the calculation,
-if the executable matches `exec`, its directory will be set to `dir`.
-```julia
-set_execdir!(calculation, "pw.x", "/path/to/QE/bin")
-```
-"""
-set_execdir!(job::DFJob, exec::String, dir::String) =
-    set_execdir!.(job.calculations, exec, dir)
-
-
 "Finds the output files for each of the calculations of a job, and groups all found data into a dictionary."
 function outputdata(job::DFJob, calculations::Vector{DFCalculation}; print=true, onlynew=false)
     datadict = Dict()
@@ -407,19 +363,6 @@ function outputdata(job::DFJob, n::String; fuzzy=true, kwargs...)
 end
 
 #------------ Specialized Interaction with DFCalculations inside DFJob --------------#
-"""
-    set_kpoints!(job::DFJob, name::String, k_points)
-
-sets the data in the k point `DataBlock` inside the specified calculations.
-"""
-function set_kpoints!(job::DFJob, n::String, k_points; print=true)
-    for calc in calculations(job, n)
-        set_kpoints!(calc, k_points, print=print)
-    end
-    return job
-end
-
-
 "Reads throught the pseudo files and tries to figure out the correct cutoffs"
 set_cutoffs!(job::DFJob) = 
     set_cutoffs!.(calculations(job), find_cutoffs(job)...)
@@ -512,7 +455,7 @@ set_pseudos!(job::DFJob, set::Symbol, specifier::String=""; kwargs...) =
 
 "sets the pseudopotentials for the atom with name `atsym` to the specified one in the default pseudoset."
 set_pseudos!(job::DFJob, atsym::Symbol, set::Symbol, specifier::String=""; kwargs...) =
-	set_pseudos!(job.structure, atsym, set, specifier; kwargs...)
+    set_pseudos!(job.structure, atsym, set, specifier; kwargs...)
 
 "sets the pseudopotentials to the specified one in the default pseudoset."
 set_pseudos!(job::DFJob, at_pseudos::Pair{Symbol, Pseudo}...; kwargs...) = 
@@ -533,38 +476,38 @@ function set_projections!(job::DFJob, projections...; kwargs...)
 end
 
 for hub_param in (:U, :J0, :α, :β)
-	f = Symbol("set_Hubbard_$(hub_param)!")
-	str = "$hub_param"
-	@eval begin
-		"""
-			$($(f))(job::DFJob, ats_$($(str))s::Pair{Symbol, <:AbstractFloat}...; print=true)
+    f = Symbol("set_Hubbard_$(hub_param)!")
+    str = "$hub_param"
+    @eval begin
+        """
+            $($(f))(job::DFJob, ats_$($(str))s::Pair{Symbol, <:AbstractFloat}...; print=true)
 
-		Set the Hubbard $($(str)) parameter for the specified atoms.
+        Set the Hubbard $($(str)) parameter for the specified atoms.
 
-		Example:
-			`$($(f))(job, :Ir => 2.1, :Ni => 1.0, :O => 0.0)`
-		"""
-		function $f(job::DFJob, $(hub_param)::Pair{Symbol, <:AbstractFloat}...; print=true)
-			for (atsym, val) in $(hub_param)
-				$f.(atoms(job, atsym), val; print=print)
-			end
-		end
-		export $f
-	end
+        Example:
+            `$($(f))(job, :Ir => 2.1, :Ni => 1.0, :O => 0.0)`
+        """
+        function $f(job::DFJob, $(hub_param)::Pair{Symbol, <:AbstractFloat}...; print=true)
+            for (atsym, val) in $(hub_param)
+                $f.(atoms(job, atsym), val; print=print)
+            end
+        end
+        export $f
+    end
 end
 
 """
-	set_Hubbard_J!(job::DFJob, ats_Js::Pair{Symbol, Vector{<:AbstractFloat}}...; print=true)
+    set_Hubbard_J!(job::DFJob, ats_Js::Pair{Symbol, Vector{<:AbstractFloat}}...; print=true)
 
 Set the Hubbard J parameter for the specified atom.
 
 Example:
-	`set_Hubbard_J(job, :Ir => [2.1], :Ni => [1.0])'
+    `set_Hubbard_J(job, :Ir => [2.1], :Ni => [1.0])'
 """
 function set_Hubbard_J!(job::DFJob, ats_Js::Pair{Symbol, <:Vector{<:AbstractFloat}}...; print=true)
-	for (atsym, val) in ats_Js
-		set_Hubbard_J!.(atoms(job, atsym), (val,); print=print)
-	end
+    for (atsym, val) in ats_Js
+        set_Hubbard_J!.(atoms(job, atsym), (val,); print=print)
+    end
 end
 
 export set_Hubbard_J!
@@ -572,40 +515,40 @@ export set_Hubbard_J!
 
 "Rescales the unit cell."
 scale_cell!(job::DFJob, s) =
-	scale_cell!(job.structure, s)
+    scale_cell!(job.structure, s)
 
 set_magnetization!(job::DFJob, args...) =
-	set_magnetization!(job.structure, args...)
+    set_magnetization!(job.structure, args...)
 
 Base.joinpath(job::DFJob, p) =
-	joinpath(job.local_dir, p)
+    joinpath(job.local_dir, p)
 
 create_supercell(job::DFJob, args...) =
-	create_supercell(structure(job), args...)
+    create_supercell(structure(job), args...)
 
 volume(job::DFJob) = volume(structure(job))
 
 """
-	bandgap(job::DFJob, fermi=nothing)
+    bandgap(job::DFJob, fermi=nothing)
 
 Calculates the bandgap (possibly indirect) around the fermi level.
 Uses the first found bands calculation, if there is none it uses the first found nscf calculation.
 """
 function bandgap(job::DFJob, fermi=nothing)
-	band_calcs = getfirst.([isbands, isnscf, isscf], (calculations(job),))
-	if all(x -> x === nothing, band_calcs)
-		error("No valid calculation found to calculate the bandgap.\nMake sure the job has either a valid bands or nscf calculation.")
-	end
-	if fermi === nothing
-    	fermi_calcs = getfirst.([isnscf, isscf], (calculations(job),))
-    	if all(x -> x === nothing, band_calcs)
-    		error("No valid calculation found to extract the fermi level.\nPlease supply the fermi level manually.")
-		end
-		fermi = maximum(readfermi.(filter(x -> x!==nothing, fermi_calcs)))
-	end
+    band_calcs = getfirst.([isbands, isnscf, isscf], (calculations(job),))
+    if all(x -> x === nothing, band_calcs)
+        error("No valid calculation found to calculate the bandgap.\nMake sure the job has either a valid bands or nscf calculation.")
+    end
+    if fermi === nothing
+        fermi_calcs = getfirst.([isnscf, isscf], (calculations(job),))
+        if all(x -> x === nothing, band_calcs)
+            error("No valid calculation found to extract the fermi level.\nPlease supply the fermi level manually.")
+        end
+        fermi = maximum(readfermi.(filter(x -> x!==nothing, fermi_calcs)))
+    end
 
-	bands = readbands.(filter(x -> x!==nothing, band_calcs))
-	return minimum(bandgap.(bands, fermi))
+    bands = readbands.(filter(x -> x!==nothing, band_calcs))
+    return minimum(bandgap.(bands, fermi))
 end
 
 function readfermi(job::DFJob)

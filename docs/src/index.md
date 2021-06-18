@@ -2,7 +2,7 @@
 ## Introduction
 The goal of DFControl is to alleviate some of the tedious day to day busy-work that material's scientists using DFT 
 codes encounter. It aids in the creation, execution, monitoring, management, and post-processing of DFT jobs. 
-The core framework is code-agnostic, however, most of the handy features are so far only implemented for [Quantum-Espresso](https://quantum-espresso.org) and [Wannier90](http://www.wannier.org/). [ABINIT](https://www.abinit.org) and [ELK](https://elk.sourceforge.io) support is highly experimental and incomplete.
+The core framework is code-agnostic, however, most of the convenience features are so far only implemented for [Quantum-Espresso](https://quantum-espresso.org) and [Wannier90](http://www.wannier.org/). [ABINIT](https://www.abinit.org) and [ELK](https://elk.sourceforge.io) support is highly experimental and incomplete.
 
 ## Philosophy
 DFControl is aimed to be user friendly first and foremost, with features being added as time progresses without changing this core value. On the other hand, a core requirement has always been that power users that know all the ins and outs of the codes that they run should be able to have all the control they want without incurring friction from the library.

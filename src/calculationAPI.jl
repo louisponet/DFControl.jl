@@ -75,7 +75,7 @@ end
     data(calculation::DFCalculation)
     data(calculation::DFCalculation, n::Symbol)
 
-Returns all `data` of `calculation`, or the `InputData` with name `n`.
+The former returns `calculation.data`, the later -- the `InputData` with name `n`.
 """
 data(calculation::DFCalculation, n::Symbol) = getfirst(x-> name(x) == n, data(calculation))
 
@@ -123,29 +123,6 @@ function set_data_option!(calculation::DFCalculation, name::Symbol, option::Symb
     end
     return calculation
 end
-
-execs(calculation::DFCalculation, exec::String) =
-	filter(x -> occursin(exec, x.exec), calculation.execs)
-
-exec(calculation::DFCalculation, exec::String) =
-	getfirst(x -> occursin(exec, x.exec), calculation.execs)
-
-execflags(calculation::DFCalculation, exec::String) =
-	[x.exec => x.flags for x in execs(calculation, exec)]
-
-function set_execflags!(calculation::DFCalculation, exec::String, flags...)
-	for e in execs(calculation, exec)
-		set_flags!(e, flags...)
-	end
-end
-
-set_execdir!(calculation::DFCalculation, exec, dir) =
-	set_execdir!.(execs(calculation, exec), dir)
-
-rmexecflags!(calculation::DFCalculation, exec::String, flags...) =
-	rm_flags!.(execs(calculation, exec), flags...)
-
-runcommand(calculation::DFCalculation) = calculation.execs[1]
 
 
 """
@@ -213,6 +190,22 @@ function readfermi(calculation::DFCalculation)
     end
 end
 
+"""
+    set_kpoints!(calculation::DFCalculation{QE}, k_grid::NTuple{3, Int}; print=true)
+    set_kpoints!(calculation::DFCalculation{QE}, k_grid::NTuple{6, Int}; print=true)
+    set_kpoints!(calculation::DFCalculation{QE}, k_grid::Vector{<:NTuple{4}}; print=true, k_option=:crystal_b)
+
+Convenience function to set the `:k_points` data block of `calculation`.
+The three different methods are targeted at `nscf`, `scf` or `vcrelax`,
+and `bands` calculations, respectively.
+For the `nscf` version an explicit list of `k_points` will be generated.
+
+    set_kpoints!(calculation::DFCalculation{Wannier90}, k_grid::NTuple{3, Int})
+
+Similar to the `nscf` targeted function in the sense that it will generate
+an explicit list of `k_points`, adhering to the same rules as for the `nscf`.
+The `mp_grid` flag will also automatically be set.
+"""
 set_kpoints!(::DFCalculation{P}, args...; kwargs...) where {P} =
     @error "set_kpoints! not implemented for package $P."
     

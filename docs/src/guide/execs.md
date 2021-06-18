@@ -1,4 +1,9 @@
 # Execs
 ```@docs
-set_execdir!(::DFJob, ::String, ::String)
+Exec
+exec
+execs
+set_execdir!
+set_execflags!
+rm_execflags!
 ```

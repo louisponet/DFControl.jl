@@ -140,13 +140,13 @@ set_wanenergies!(job, nscf, fermi-7.0, Epad=3.0)
 @test job["wanup"][:dis_win_max] == 16.292099999999998
 
 set_execflags!(job, "pw.x", :nk => 230, :ndiag => 3)
-@test DFControl.getfirst(x->x.symbol==:nk, execs(job, "nscf")[2].flags).value == 230
-@test DFControl.getfirst(x->x.symbol==:ndiag, execs(job, "nscf")[2].flags).value == 3
-rmexecflags!(job, "pw.x", :nk)
-@test isempty(filter(x->x.symbol == :nk, execs(job, "nscf")[2].flags))
+@test DFControl.getfirst(x->x.symbol==:nk, execs(job["nscf"])[2].flags).value == 230
+@test DFControl.getfirst(x->x.symbol==:ndiag, execs(job["nscf"])[2].flags).value == 3
+rm_execflags!(job, "pw.x", :nk)
+@test isempty(filter(x->x.symbol == :nk, execs(job["nscf"])[2].flags))
 
 set_execdir!(job, "pw.x", joinpath(homedir(), "bin"))
-@test execs(job, "nscf")[2].dir == joinpath(homedir(), "bin")
+@test execs(job["nscf"])[2].dir == joinpath(homedir(), "bin")
 
 set_name!(job["nscf"], "test")
 @test DFControl.inpath(job, "test") == joinpath(job.local_dir, "test.in")

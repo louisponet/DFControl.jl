@@ -12,11 +12,6 @@ for f in (:cp, :mv)
     end
 end
 
-"""
-    set_kpoints!(calculation::DFCalculation, k_grid::NTuple{3, Int})
-
-Sets the kpoints of the calculation.
-"""
 function set_kpoints!(calculation::DFCalculation{Wannier90}, k_grid::NTuple{3, Int}; print=true)
     set_flags!(calculation, :mp_grid => [k_grid...], print=print)
     set_data!(calculation, :kpoints, kgrid(k_grid..., :wan), print=print)

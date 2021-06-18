@@ -700,12 +700,12 @@ end
 
 
 """
-    qe_read_calculation(filename, T=Float64; execs=[Exec("pw.x")], run=true, structure_name="noname")
+    qe_read_calculation(filename, T=Float64; execs=[Exec(exec="pw.x")], run=true, structure_name="noname")
 
 Reads a Quantum Espresso calculation file. The `QE_EXEC` inside execs gets used to find which flags are allowed in this calculation file, and convert the read values to the correct Types.
 Returns a `DFCalculation{QE}` and the `Structure` that is found in the calculation.
 """
-function qe_read_calculation(filename; execs=[Exec("pw.x")], run=true, structure_name="noname")
+function qe_read_calculation(filename; execs=[Exec(exec="pw.x")], run=true, structure_name="noname")
     @assert ispath(filename) "$filename is not a valid path."
     t_lines = read(filename)          |>
         String                        |>

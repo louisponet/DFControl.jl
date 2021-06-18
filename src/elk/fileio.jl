@@ -62,12 +62,12 @@ end
 		
 
 """
-    elk_read_calculation(filename; execs=[Exec("elk")], run=true, structure_name="noname")
+    elk_read_calculation(filename; execs=[Exec(exec="elk")], run=true, structure_name="noname")
 
 Reads an Elk calculation file. The `ELK_EXEC` inside execs gets used to find which flags are allowed in this calculation file, and convert the read values to the correct Types.
 Returns a `DFCalculation{Elk}` and the `Structure` that is found in the calculation.
 """
-function elk_read_calculation(fn::String; execs=[Exec("elk")], run=true, structure_name="noname")
+function elk_read_calculation(fn::String; execs=[Exec(exec="elk")], run=true, structure_name="noname")
 	blocknames_flaglines = Dict{Symbol, Any}()
 	atoms = Atom{Float64}[]
 	calculations = DFCalculation[]
