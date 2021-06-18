@@ -46,10 +46,8 @@ module DFControl
     export Structure, Atom, Pseudo, DFTU
     
     include("atom.jl")
-    export element
     include("structure.jl")
     
-
     include("execs.jl")
     include("calculation.jl")
     include("utils.jl")

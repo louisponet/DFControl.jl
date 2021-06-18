@@ -33,7 +33,25 @@ scale_cell!
 
 ## Atom
 ```@docs
-DFControl.Element
 Atom
 atoms(::Structure)
+```
+## Element
+```@docs
+DFControl.Element
+element
+```
+
+# [Pseudo Potentials](@id pseudo_header)
+```@docs
+Pseudo
+```
+
+## Magnetization
+
+## Projections
+
+## DFT + U 
+```@docs
+DFTU
 ```

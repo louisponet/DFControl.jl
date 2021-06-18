@@ -6,27 +6,6 @@ struct Orbital
 end
 
 
-@with_kw mutable struct DFTU{T}
-	l::Int = -1
-	U::T   = zero(T)
-	J0::T  = zero(T)
-	#QE params
-	α::T   = zero(T)
-	β::T   = zero(T)
-	J::Vector{T} = T[zero(T)]
-end
-
-
-mutable struct Pseudo
-	name::String
-	dir ::String
-	Pseudo() =
-		new("", "")
-	Pseudo(name::AbstractString, dir::AbstractString) =
-		new(name, abspath(dir))
-end
-
-
 @with_kw_noshow struct Projection
     orb   ::Orbital = ORBITALS[1]
     start ::Int = 0
@@ -35,9 +14,44 @@ end
 
 
 """
+    DFTU(;l ::Int = -1,
+          U ::T   = zero(T),
+          J0::T  = zero(T),
+          α ::T   = zero(T),
+          β ::T   = zero(T),
+          J ::Vector{T} = T[zero(T)])
+
+DFT+U parameters for a given [`Atom`](@ref Atom).
+"""
+@with_kw mutable struct DFTU{T}
+    l::Int = -1
+    U::T   = zero(T)
+    J0::T  = zero(T)
+    #QE params
+    α::T   = zero(T)
+    β::T   = zero(T)
+    J::Vector{T} = T[zero(T)]
+end
+
+
+"""
+    Pseudo(name::String, dir::String)
+
+A pseudo potential file.
+"""
+mutable struct Pseudo
+    name::String
+    dir ::String
+    Pseudo() =
+        new("", "")
+    Pseudo(name::AbstractString, dir::AbstractString) =
+        new(name, abspath(dir))
+end
+
+
+"""
     Element(symbol::Symbol, Z::Int, name::String, atomic_weight::Float64, color::NTuple{3, Float64})
-Represents an element. Most conveniently used trough the function `element`,
-i.e. `element(:Si)` will return the pregenerated Silicon `Element`.
+Represents an element. Most conveniently used trough the function [`element`](@ref).
 """
 struct Element
     symbol        ::Symbol
@@ -60,11 +74,11 @@ abstract type AbstractAtom{T, LT<:Length{T}} end
          
 Representation of an `atom`.
     
-The `name` of the `atom` is used as an identifier for the `atom` type, in the sense that atoms with the same `pseudo`, `projections`, `magnetization` and `dftu` attributes should belong to the same type. This also means that during sanity checks atoms that are not of the same type will be given different names. This is done in this way because it often makes sense to change these parameters on all atoms of the same kind at the same time, but still allow the flexibility to change them for individual atoms as well.
+The `name` of the `atom` is used as an identifier for the `atom` type, in the sense that atoms with the same `pseudo`, `projections`, `magnetization` and [`dftu`](@ref DFTU) attributes should belong to the same type. This also means that during sanity checks atoms that are not of the same type will be given different names. This is done in this way because it often makes sense to change these parameters on all atoms of the same kind at the same time, but still allow the flexibility to change them for individual atoms as well.
 
 `position_cart` should have a valid `Unitful.Length` type such as `Ang`.
 
-See documentation for [`Element`](@ref) and [`Pseudo Potentials`](@ref pseudo_header) for further information on these attributes.
+See documentation for [`Element`](@ref) and [`Pseudo`](@ref pseudo_header) for further information on these attributes.
 """
 @with_kw_noshow mutable struct Atom{T<:AbstractFloat, LT<:Length{T}} <: AbstractAtom{T, LT}
     name          ::Symbol
@@ -77,9 +91,9 @@ See documentation for [`Element`](@ref) and [`Pseudo Potentials`](@ref pseudo_he
     dftu          ::DFTU{T} = DFTU{T}()
 end
 Atom(name::Symbol, el::Element, pos_cart::Point3{LT}, pos_cryst::Point3{T}; kwargs...) where {T, LT<:Length{T}} =
-	Atom{T, LT}(name=name, element=el, position_cart=pos_cart, position_cryst=pos_cryst; kwargs...)
+    Atom{T, LT}(name=name, element=el, position_cart=pos_cart, position_cryst=pos_cryst; kwargs...)
 Atom(name::Symbol, el::Symbol, args...; kwargs...) =
-	Atom(name, element(el), args...; kwargs...)
+    Atom(name, element(el), args...; kwargs...)
 
 #TODO this is a little iffy
 Atom(orig_at::Atom, new_pos_cart::Point3, new_pos_cryst::Point3) = Atom(name(orig_at), element(orig_at), new_pos_cart, new_pos_cryst, pseudo(orig_at), projections(orig_at), magnetization(orig_at), dftu(orig_at))
@@ -368,24 +382,24 @@ kpoints(band::DFBand, kind=:cryst) = kind == :cart ? band.k_points_cart : band.k
 eigvals(band::DFBand) = band.eigvals
 
 """
-	bandgap(bands::AbstractVector{DFBand}, fermi=0.0)
+    bandgap(bands::AbstractVector{DFBand}, fermi=0.0)
 
 Calculates the bandgap (possibly indirect) around the fermi level.
 """
 function bandgap(bands::Union{Iterators.Flatten, AbstractVector{<:Band}}, fermi=0.0)
-	max_valence = -Inf
-	min_conduction = Inf
-	for b in bands
-		max = maximum(eigvals(b).-fermi)
-		min = minimum(eigvals(b).-fermi)
-		if max_valence <= max <= 0.0
-			max_valence = max
-		end
-		if 0.0 <= min <= min_conduction
-			min_conduction = min
-		end
-	end
-	return min_conduction - max_valence
+    max_valence = -Inf
+    min_conduction = Inf
+    for b in bands
+        max = maximum(eigvals(b).-fermi)
+        min = minimum(eigvals(b).-fermi)
+        if max_valence <= max <= 0.0
+            max_valence = max
+        end
+        if 0.0 <= min <= min_conduction
+            min_conduction = min
+        end
+    end
+    return min_conduction - max_valence
 end
 bandgap(u_d_bands::Union{NamedTuple, Tuple}, args...) = bandgap(Iterators.flatten(u_d_bands), args...)
 

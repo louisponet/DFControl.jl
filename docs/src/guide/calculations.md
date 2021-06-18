@@ -14,6 +14,18 @@ set_data_option!
 set_kpoints!
 ```
 
+## Flags
+
+## Execs
+```@docs
+Exec
+exec
+execs
+set_execdir!
+set_execflags!
+rm_execflags!
+```
+
 ## Generating new calculations
 ```@docs
 gencalc_vcrelax(::DFCalculation{QE}, ::NTuple{6, Int}, ::Any...)

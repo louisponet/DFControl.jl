@@ -29,7 +29,7 @@ export searchcalculation, searchcalculations, set_cutoffs!
 #Interacting with the Structure inside DFJob
 export atom, atoms, set_atoms!, set_pseudos!, projections, set_projections!, 
 	   set_magnetization!, symmetry_operators, international, niggli_reduce, update_geometry!,
-	   high_symmetry_kpath, high_symmetry_kpoints
+	   high_symmetry_kpath, high_symmetry_kpoints, element
 
 export create_supercell, cell_parameters, cell, a, b, c, volume, scale_cell!, volume
 

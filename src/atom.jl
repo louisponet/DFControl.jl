@@ -13,6 +13,13 @@ open(joinpath(@__DIR__, "..", "assets", "elements.txt"), "r") do f
 end
 #undefined element
 push!(ELEMENTS, Element(:undef, 0, "undef",0, (0.0, 0.0, 0.0)))
+
+"""
+    element(sym::Symbol)
+
+Returns the predefined `Element` with symbol `sym`,
+i.e. `element(:Si)` will return the pregenerated Silicon `Element`.
+"""
 function element(sym::Symbol)
     if tryparse(Int, String(sym)[end:end]) != nothing
         sym = Symbol(String(sym)[1:end-1])
