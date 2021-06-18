@@ -2,17 +2,6 @@ include("wannier90/projections.jl")
 
 import Base: ==
 """
-Represents an element.
-"""
-struct Element
-    symbol        ::Symbol
-    Z             ::Int64
-    name          ::String
-    atomic_weight ::Float64
-    color         ::NTuple{3, Float64}
-end
-
-"""
 Reads all the elements from the file.
 """
 const ELEMENTS = Element[]
@@ -38,7 +27,6 @@ end
 
 element(z::Int) = getfirst(x->x.Z == z, ELEMENTS)
 
-abstract type AbstractAtom{T, LT<:Length{T}} end
 
 #Definition of the AbstractAtom interface, each AbstractAtom needs to provide a method `atom(...)` that returns a datastructure with the Atom fields.
 elsym(atom::AbstractAtom) = element(atom).symbol
@@ -59,16 +47,6 @@ function Base.unique(atoms::Vector{A}) where A <: AbstractAtom
     return uni
 end
 
-@with_kw mutable struct DFTU{T}
-	l::Int = -1
-	U::T   = zero(T)
-	J0::T  = zero(T)
-	#QE params
-	α::T   = zero(T)
-	β::T   = zero(T)
-	J::Vector{T} = T[zero(T)]
-end
-
 function ==(x::DFTU, y::DFTU)
 	fnames = fieldnames(DFTU)
 	for fn in fnames
@@ -87,15 +65,6 @@ isdefault(x::AbstractVector) = isempty(x) || all(iszero, x)
 
 Base.string(::Type{Elk}, dftu::DFTU) = "$(dftu.l) $(dftu.U) $(dftu.J0)"
 
-mutable struct Pseudo
-	name::String
-	dir ::String
-	Pseudo() =
-		new("", "")
-	Pseudo(name::AbstractString, dir::AbstractString) =
-		new(name, abspath(dir))
-end
-
 Base.isempty(p::Pseudo) =
 	isempty(p.name) && isempty(p.dir)
 
@@ -103,26 +72,6 @@ Base.isempty(p::Pseudo) =
 	p1.name == p2.name && p1.dir == p2.dir
 
 path(p::Pseudo) = joinpath(p.dir, p.name)
-# TODO Multiple l per atom in Elk??
-#We use angstrom everywhere
-@with_kw_noshow mutable struct Atom{T<:AbstractFloat, LT<:Length{T}} <: AbstractAtom{T, LT}
-    name          ::Symbol
-    element       ::Element
-    position_cart ::Point3{LT}
-    position_cryst::Point3{T}=zero(Point3{T})
-    pseudo        ::Pseudo=Pseudo()
-    projections   ::Vector{Projection} = Projection[]
-    magnetization ::Vec3{T} = zero(Vec3{T})
-    dftu          ::DFTU{T} = DFTU{T}()
-end
-
-Atom(name::Symbol, el::Element, pos_cart::Point3{LT}, pos_cryst::Point3{T}; kwargs...) where {T, LT<:Length{T}} =
-	Atom{T, LT}(name=name, element=el, position_cart=pos_cart, position_cryst=pos_cryst; kwargs...)
-Atom(name::Symbol, el::Symbol, args...; kwargs...) =
-	Atom(name, element(el), args...; kwargs...)
-
-#TODO this is a little iffy
-Atom(orig_at::Atom, new_pos_cart::Point3, new_pos_cryst::Point3) = Atom(name(orig_at), element(orig_at), new_pos_cart, new_pos_cryst, pseudo(orig_at), projections(orig_at), magnetization(orig_at), dftu(orig_at))
 #Easiest way to implement a new abstractatom is to provide a way to access
 #the struct holding `name`, `position_cart`, `element`, `pseudo`, `projection` fields
 atom(at::Atom) = at
@@ -131,6 +80,30 @@ for interface_function in fieldnames(Atom)
 	@eval $interface_function(at::AbstractAtom) = atom(at).$interface_function
 	@eval export $interface_function
 end
+
+"""
+    atoms(job::DFJob)
+
+Returns the atoms inside the structure of the job.
+"""
+atoms(job::DFJob) = atoms(job.structure)
+atoms(job::DFJob, name::Symbol) = job.structure[name]
+atoms(job::DFJob, el::Element) = job.structure[el]
+atoms(f::Function, job::DFJob) = atoms(f, job.structure)
+
+"""
+    atoms([f::Function,], structure::AbstractStructure)
+    
+Returns `structure.atoms` or `filter(f, structure.atoms)` if `f` is specified.
+"""
+atoms(str::AbstractStructure) = structure(str).atoms
+atoms(f::Function, str::AbstractStructure) = filter(f, atoms(str))
+
+
+"""job.structure.atoms = atoms"""
+set_atoms!(job::DFJob, atoms::Vector{<:AbstractAtom}) =
+    job.structure.atoms = atoms
+
 
 function Base.range(at::AbstractAtom)
 	projs = projections(at)
@@ -155,6 +128,41 @@ function set_projections!(at::AbstractAtom, projections::Vector{Projection}; pri
     print && @info "Setting projections for atom $(name(at)) to $projections"
     atom(at).projections = projections
 end
+
+"""
+    set_projections!(str::Structure, projs::Pair...; soc=false)
+
+Sets the projections of the specified atoms. `projs` has to be of form `:atsym => [:proj]`,
+where proj = :s, :p, :d, :f, etc. If `soc` is set to `true` both up and down projections will be taken into account.
+"""
+function set_projections!(str::Structure, projs::Pair...; soc = false, kwargs...)
+    projdict = Dict(projs)
+    for at in unique(str.atoms)
+        if !haskey(projdict, name(at))
+            projdict[name(at)] = [proj.orb for proj in projections(at)]
+        end
+    end
+    emptyprojections!(str)
+    addprojections!(atoms(str), projdict, soc; kwargs...)
+end
+
+function emptyprojections!(str::Structure)
+    for at in str.atoms
+        empty!(projections(at))
+    end
+end
+
+function nprojections(structure)
+    n = 0
+    for at in atoms(structure)
+        projs = projections(at)
+        if !isempty(projs)
+            n += sum(orbsize.(projs))
+        end
+    end
+    return n
+end
+
 
 bondlength(at1::AbstractAtom{T}, at2::AbstractAtom{T}, R=T(0.0)) where T<:AbstractFloat = norm(position_cart(at1) - position_cart(at2) - R)
 
@@ -216,6 +224,25 @@ function set_magnetization!(at::AbstractAtom, mag; print=true)
 	print && @info "Magnetization of at $(name(at)) was set to $(magnetization(at))"
 end
 
+set_magnetization!(job::DFJob, args...) =
+    set_magnetization!(job.structure, args...)
+
+function set_magnetization!(str::Structure, atsym_mag::Pair{Symbol,<:AbstractVector}...)
+    for (atsym, mag) in atsym_mag
+        for at in str[atsym]
+            set_magnetization!(at, mag)
+        end
+    end
+end
+
+
+projections(str::AbstractStructure) = projections.(atoms(str))
+hasprojections(str::AbstractStructure) = !all(isempty, projections(str))
+hasprojections_assert(str::AbstractStructure) =
+    @assert hasprojections(str) "No projections found in structure $(str.name).
+    Please set the projections for the atoms inside the structure first using `setprojections!`."
+
+
 """
 	distance(at1::AbstractAtom, at2::AbstractAtom)
 
@@ -259,15 +286,93 @@ function scale_bondlength!(at1::AbstractAtom, at2::AbstractAtom, scale::Real, ce
 	set_position!(at2, new_p2, cell)
 end
 
-"""
-    polyhedron(at::AbstractAtom, atoms::Vector{<:AbstractAtom}, order::Int)
-    polyhedron(at::AbstractAtom, str::AbstractStructure, order::Int)
+"sets the pseudopotentials to the specified one in the default pseudoset."
+set_pseudos!(job::DFJob, set::Symbol, specifier::String=""; kwargs...) = 
+    set_pseudos!(job.structure, set, specifier; kwargs...)
 
-Returns a polyhedron around the atom, i.e. the `order` closest atoms.
-The returned atoms will be ordered according to their distance to the first one.
-In the case of a structure rather than a set of atoms, the search will
-be performed over all atoms in the structure.
-"""
-function polyhedron(at::AbstractAtom, atoms::Vector{<:AbstractAtom}, order::Int)
-    return sort(atoms, by = x -> distance(x, at))[1:order]
+"sets the pseudopotentials for the atom with name `atsym` to the specified one in the default pseudoset."
+set_pseudos!(job::DFJob, atsym::Symbol, set::Symbol, specifier::String=""; kwargs...) =
+    set_pseudos!(job.structure, atsym, set, specifier; kwargs...)
+
+"sets the pseudopotentials to the specified one in the default pseudoset."
+set_pseudos!(job::DFJob, at_pseudos::Pair{Symbol, Pseudo}...; kwargs...) = 
+    set_pseudos!(job.structure, at_pseudos...; kwargs...)
+
+function set_pseudos!(structure::AbstractStructure, atoms::Vector{<:AbstractAtom}, set::Symbol, specifier::String = ""; kwargs...)
+    dir = getdefault_pseudodir(set)
+    if dir == nothing
+        @warn "No pseudos found for set $set."
+        return
+    end
+    for (i, at) in enumerate(atoms)
+        pseudo = getdefault_pseudo(name(at), set, specifier = specifier)
+        if pseudo == nothing
+            @warn "Pseudo for $(name(at)) at index $i not found in set $set."
+        else
+            set_pseudo!(at, pseudo; kwargs...)
+        end
+    end
 end
+
+set_pseudos!(structure::AbstractStructure, atname::Symbol, set::Symbol, specifier::String = ""; kwargs...) =
+    set_pseudos!(structure, structure[atname], set, specifier; kwargs...)
+
+set_pseudos!(structure::AbstractStructure, set::Symbol, specifier::String = ""; kwargs...) =
+    set_pseudos!(structure, atoms(structure), set, specifier; kwargs...)
+
+function set_pseudos!(structure::AbstractStructure, at_pseudos::Pair{Symbol,Pseudo}...; kwargs...)
+    for (atsym, pseudo) in at_pseudos
+        for at in structure[atsym]
+            set_pseudo!(at, pseudo; kwargs...)
+        end
+    end
+end
+
+"Returns all the projections inside the job."
+projections(job::DFJob) = projections(structure(job))
+
+"""
+sets the projections of the specified atoms inside the job structure.
+"""
+function set_projections!(job::DFJob, projections...; kwargs...)
+    socid = findfirst(issoc, calculations(job))
+    set_projections!(job.structure, projections...; soc=socid !== nothing, kwargs...)
+end
+
+for hub_param in (:U, :J0, :α, :β)
+    f = Symbol("set_Hubbard_$(hub_param)!")
+    str = "$hub_param"
+    @eval begin
+        """
+            $($(f))(job::DFJob, ats_$($(str))s::Pair{Symbol, <:AbstractFloat}...; print=true)
+
+        Set the Hubbard $($(str)) parameter for the specified atoms.
+
+        Example:
+            `$($(f))(job, :Ir => 2.1, :Ni => 1.0, :O => 0.0)`
+        """
+        function $f(job::DFJob, $(hub_param)::Pair{Symbol, <:AbstractFloat}...; print=true)
+            for (atsym, val) in $(hub_param)
+                $f.(atoms(job, atsym), val; print=print)
+            end
+        end
+        export $f
+    end
+end
+
+"""
+    set_Hubbard_J!(job::DFJob, ats_Js::Pair{Symbol, Vector{<:AbstractFloat}}...; print=true)
+
+Set the Hubbard J parameter for the specified atom.
+
+Example:
+    `set_Hubbard_J(job, :Ir => [2.1], :Ni => [1.0])'
+"""
+function set_Hubbard_J!(job::DFJob, ats_Js::Pair{Symbol, <:Vector{<:AbstractFloat}}...; print=true)
+    for (atsym, val) in ats_Js
+        set_Hubbard_J!.(atoms(job, atsym), (val,); print=print)
+    end
+end
+
+export set_Hubbard_J!
+

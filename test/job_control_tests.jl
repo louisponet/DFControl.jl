@@ -133,7 +133,7 @@ set_pseudos!(job, :test)
 
 testorbs = ["s", "p"]
 set_projections!(job, :Pt => testorbs)
-@test convert.(String, [p.orb for p in projections(job, :Pt)]) == testorbs
+@test convert.(String, [p.orb for p in Iterators.flatten(projections.(atoms(job, :Pt)))]) == testorbs
 set_wanenergies!(job, nscf, fermi-7.0, Epad=3.0)
 
 @test job["wanup"][:dis_froz_max] == 13.2921
@@ -171,7 +171,7 @@ cp(joinpath(testdir, "testassets", "pseudos"), joinpath(testdir, "testassets", "
 set_pseudos!(job, :Si => Pseudo("Si.UPF", joinpath(testdir, "testassets", "pseudos_copy")))
 save(job)
 @test ispath(joinpath(job.local_dir, "Si.UPF"))
-@test atom(job, :Si).pseudo == Pseudo("Si.UPF", job.local_dir)
+@test atoms(job, :Si)[1].pseudo == Pseudo("Si.UPF", job.local_dir)
 rm(joinpath(testdir, "testassets", "pseudos_copy"), recursive=true)
 
 job["nscf"][:occupations] = "smearing"
@@ -199,7 +199,7 @@ for (p, at) in zip(prev_pos, atoms(job))
 end
 
 set_magnetization!(job, :Pt => [1.0, 0.0, 0.0])
-@test magnetization(atom(job, :Pt)) == DFControl.Vec3(1.0, 0.0, 0.0)
+@test magnetization(atoms(job, :Pt)[1]) == DFControl.Vec3(1.0, 0.0, 0.0)
 
 
 at = atoms(job)[1]

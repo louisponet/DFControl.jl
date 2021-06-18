@@ -41,11 +41,13 @@ module DFControl
 
     include("typedefs.jl")
     export Vec3, Point3
+    include("types.jl")
+    export DFJob, Exec, DFCalculation, InputData
+    export Structure, Atom, Pseudo, DFTU
+    
     include("atom.jl")
     export element
     include("structure.jl")
-    include("types.jl")
-    export DFJob, Exec, DFCalculation, InputData
     
 
     include("execs.jl")

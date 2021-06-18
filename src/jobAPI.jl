@@ -422,111 +422,9 @@ function set_wanenergies!(job::DFJob, min_window_determinator::Real; kwargs...)
 end
 
 #--------------- Interacting with the Structure inside the DFJob ---------------#
-"Returns the ith atom with id `atsym`."
-atom(job::DFJob, atsym::Symbol, i=1) = filter(x -> x.name == atsym, atoms(job))[i]
-
-"""
-    atoms(job::DFJob)
-
-Returns the atoms inside the structure of the job.
-"""
-atoms(job::DFJob) = atoms(job.structure)
-atoms(job::DFJob, args...) = atoms(job.structure, args...)
-atoms(f::Function, job::DFJob) = atoms(f, job.structure)
-
-"""job.structure.atoms = atoms"""
-set_atoms!(job::DFJob, atoms::Vector{<:AbstractAtom}) =
-    job.structure.atoms = atoms
-
 #automatically sets the cell parameters for the entire job, implement others
-"""
-    set_cell!(job::DFJob, cell_::Mat3)
-
-sets the cell parameters of the structure in the job.
-"""
-function set_cell!(job::DFJob, cell_::Mat3)
-    job.structure.cell = cell_
-    return job
-end
-
-"sets the pseudopotentials to the specified one in the default pseudoset."
-set_pseudos!(job::DFJob, set::Symbol, specifier::String=""; kwargs...) = 
-    set_pseudos!(job.structure, set, specifier; kwargs...)
-
-"sets the pseudopotentials for the atom with name `atsym` to the specified one in the default pseudoset."
-set_pseudos!(job::DFJob, atsym::Symbol, set::Symbol, specifier::String=""; kwargs...) =
-    set_pseudos!(job.structure, atsym, set, specifier; kwargs...)
-
-"sets the pseudopotentials to the specified one in the default pseudoset."
-set_pseudos!(job::DFJob, at_pseudos::Pair{Symbol, Pseudo}...; kwargs...) = 
-    set_pseudos!(job.structure, at_pseudos...; kwargs...)
-
-"Returns the projections inside the job for the specified `i`th atom in the job with id `atsym`."
-projections(job::DFJob, atsym::Symbol, i=1) = projections(atom(job, atsym, i))
-
-"Returns all the projections inside the job."
-projections(job::DFJob) = projections(structure(job))
-
-"""
-sets the projections of the specified atoms inside the job structure.
-"""
-function set_projections!(job::DFJob, projections...; kwargs...)
-    socid = findfirst(issoc, calculations(job))
-    set_projections!(job.structure, projections...; soc=socid !== nothing, kwargs...)
-end
-
-for hub_param in (:U, :J0, :α, :β)
-    f = Symbol("set_Hubbard_$(hub_param)!")
-    str = "$hub_param"
-    @eval begin
-        """
-            $($(f))(job::DFJob, ats_$($(str))s::Pair{Symbol, <:AbstractFloat}...; print=true)
-
-        Set the Hubbard $($(str)) parameter for the specified atoms.
-
-        Example:
-            `$($(f))(job, :Ir => 2.1, :Ni => 1.0, :O => 0.0)`
-        """
-        function $f(job::DFJob, $(hub_param)::Pair{Symbol, <:AbstractFloat}...; print=true)
-            for (atsym, val) in $(hub_param)
-                $f.(atoms(job, atsym), val; print=print)
-            end
-        end
-        export $f
-    end
-end
-
-"""
-    set_Hubbard_J!(job::DFJob, ats_Js::Pair{Symbol, Vector{<:AbstractFloat}}...; print=true)
-
-Set the Hubbard J parameter for the specified atom.
-
-Example:
-    `set_Hubbard_J(job, :Ir => [2.1], :Ni => [1.0])'
-"""
-function set_Hubbard_J!(job::DFJob, ats_Js::Pair{Symbol, <:Vector{<:AbstractFloat}}...; print=true)
-    for (atsym, val) in ats_Js
-        set_Hubbard_J!.(atoms(job, atsym), (val,); print=print)
-    end
-end
-
-export set_Hubbard_J!
-
-
-"Rescales the unit cell."
-scale_cell!(job::DFJob, s) =
-    scale_cell!(job.structure, s)
-
-set_magnetization!(job::DFJob, args...) =
-    set_magnetization!(job.structure, args...)
-
 Base.joinpath(job::DFJob, p) =
     joinpath(job.local_dir, p)
-
-create_supercell(job::DFJob, args...) =
-    create_supercell(structure(job), args...)
-
-volume(job::DFJob) = volume(structure(job))
 
 """
     bandgap(job::DFJob, fermi=nothing)
@@ -655,10 +553,4 @@ function pdos(job::DFJob, atoms::Vector{AbstractAtom} = atoms(job), args...)
     end
     return (energies=t_energies, pdos=t_pdos)
 end
-
-update_geometry!(job::DFJob, new_str::AbstractStructure) =
-    update_geometry!(job.structure, new_str)
-
-high_symmetry_kpath(j::DFJob, args...;kwargs...) =
-    high_symmetry_kpath(j.structure, args...; kwargs...)
 

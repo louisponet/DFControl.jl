@@ -1,114 +1,14 @@
 
-abstract type AbstractStructure{T,LT} end
+"Uses cif2cell to Meta.parse a cif file, then returns the parsed structure."
+function cif2structure(cif_file::String; structure_name = "NoName")
+    tmpdir = dirname(cif_file)
+    tmpfile = joinpath(tmpdir, "tmp.in")
+    @assert splitext(cif_file)[2] == ".cif" error("Please specify a valid cif calculation file")
+    run(`$pythonpath $cif2cellpath $cif_file --no-reduce -p quantum-espresso -o $tmpfile`)
 
-mutable struct Structure{T <: AbstractFloat,AA <: AbstractAtom{T},LT <: Length{T}} <: AbstractStructure{T,LT}
-    name::AbstractString
-    cell::Mat3{LT}
-    atoms::Vector{AA}
-    data::Dict{Symbol,Any}
-end
-Structure() =
-	Structure("NoName", eye(3), Atom[], Dict{Symbol,Any}())
-
-Structure(name, cell::Mat3{LT}, atoms::Vector{<:Atom{T,LT}}) where {T <: AbstractFloat,LT <: Length{T}} =
-	Structure{T,Atom{T,LT},LT}(name, cell, atoms, Dict{Symbol,Any}())
-
-Structure(str::AbstractStructure{T}, atoms::Vector{AT}) where {T <: AbstractFloat,AT <: AbstractAtom{T}} =
-	Structure{T,AT}(name(str), cell(str), atoms, data(str))
-
-Structure(cell::Matrix{LT}, atoms::Vector{Atom{T,LT}}) where {T <: AbstractFloat,LT <: Length{T}} =
-	Structure{T,Atom{T,LT},LT}("NoName", cell, atoms, Dict{Symbol,Any}())
-
-"""
-    Structure(cif_file::String; name = "NoName")
-
-Creates a structure from the supplied cif, and names it with the specified name.
-"""
-function Structure(cif_file::String; name = "NoName")
-	str = cif2structure(cif_file, structure_name = name)
-	@info "Structure extracted from $cif_file\n\tcell parameters: \n\t a = $((str.cell[:,1]...,))\n\t b = $((str.cell[:,2]...,))\n\t c = $((str.cell[:,3]...,))\n\tnat = $(length(str.atoms))\n\telements = $(unique(getfield.(str.atoms, :name)))"
-	return str
-end
-	
-
-structure(str::Structure) = str
-
-name(str::AbstractStructure) = structure(str).name
-data(str::AbstractStructure) = structure(str).data
-
-atoms(str::AbstractStructure) = structure(str).atoms
-"Filter atoms depending on `f`."
-atoms(f::Function, str::AbstractStructure) = filter(f, atoms(str))
-"All atoms that have symbol `s`."
-atoms(str::AbstractStructure, s::Symbol) = str[s]
-"All atoms that have element `el`."
-atoms(str::AbstractStructure, el::Element) = str[el]
-
-Base.length(str::AbstractStructure) = length(atoms(str))
-cell(str::AbstractStructure) = structure(str).cell
-
-projections(str::AbstractStructure) = projections.(atoms(str))
-hasprojections(str::AbstractStructure) = !all(isempty, projections(str))
-hasprojections_assert(str::AbstractStructure) =
-    @assert hasprojections(str) "No projections found in structure $(str.name).
-    Please set the projections for the atoms inside the structure first using `setprojections!`."
-
-reciprocal(cell::AbstractMatrix) = inv(cell)
-
-a(str::AbstractStructure) = cell(str)[:,1]
-b(str::AbstractStructure) = cell(str)[:,2]
-c(str::AbstractStructure) = cell(str)[:,3]
-
-Base.getindex(str::AbstractStructure, el::Element) = atoms(x -> element(x) == el, str)
-Base.getindex(str::AbstractStructure, el::Symbol) = atoms(x -> x.name == el, str)
-Base.getindex(str::AbstractStructure, i::Int) = atoms(str)[i]
-
-NearestNeighbors.KDTree(str::AbstractStructure, args...; kwargs...) =
-    NearestNeighbors.KDTree(position_cryst.(atoms(str)), args...; kwargs...)
-
-ismagnetic(str::Structure) =
-    any(x -> norm(magnetization(x)) > 0, atoms(str))
-
-function iscolin(str::Structure)
-    magats = filter(x -> norm(magnetization(x)) > 0, atoms(str))
-    return !isempty(magats) && all(x -> isapprox(abs(normalize(magnetization(x)) ⋅ [0, 0, 1]), 1.0), magats)
-end
-
-isnoncolin(str::Structure) =
-    any(x -> norm(magnetization(x)) > 0 &&!isapprox(abs(normalize(magnetization(x)) ⋅ [0, 0, 1]), 1.0), atoms(str))
-
-"""
-    set_projections!(str::Structure, projs::Pair...; soc=false)
-
-Sets the projections of the specified atoms. `projs` has to be of form `:atsym => [:proj]`,
-where proj = :s, :p, :d, :f, etc. If `soc` is set to `true` both up and down projections will be taken into account.
-"""
-function set_projections!(str::Structure, projs::Pair...; soc = false, kwargs...)
-    projdict = Dict(projs)
-    for at in unique(str.atoms)
-        if !haskey(projdict, name(at))
-            projdict[name(at)] = [proj.orb for proj in projections(at)]
-        end
-    end
-    emptyprojections!(str)
-    addprojections!(atoms(str), projdict, soc; kwargs...)
-end
-
-function emptyprojections!(str::Structure)
-    for at in str.atoms
-        empty!(projections(at))
-    end
-end
-
-function nprojections(structure)
-    n = 0
-    for at in atoms(structure)
-        projs = projections(at)
-        if !isempty(projs)
-            n += sum(orbsize.(projs))
-        end
-    end
-    return n
+    bla, structure = qe_read_calculation(tmpfile, structure_name = structure_name)
+    rm(tmpfile)
+    return structure
 end
 
 # TODO extend base.merge
@@ -136,47 +36,99 @@ function mergestructures(structures::Vector{<:AbstractStructure})
     return out
 end
 
-"Uses cif2cell to Meta.parse a cif file, then returns the parsed structure."
-function cif2structure(cif_file::String; structure_name = "NoName")
-    tmpdir = dirname(cif_file)
-    tmpfile = joinpath(tmpdir, "tmp.in")
-    @assert splitext(cif_file)[2] == ".cif" error("Please specify a valid cif calculation file")
-    run(`$pythonpath $cif2cellpath $cif_file --no-reduce -p quantum-espresso -o $tmpfile`)
+"""
+    update_geometry!(str1::AbstractStructure, str2::AbstractStructure)
+    update_geometry!(job::DFJob, str2::AbstractStructure)
 
-    bla, structure = qe_read_calculation(tmpfile, structure_name = structure_name)
-    rm(tmpfile)
-    return structure
-end
-
-function set_pseudos!(structure::AbstractStructure, atoms::Vector{<:AbstractAtom}, set::Symbol, specifier::String = ""; kwargs...)
-	dir = getdefault_pseudodir(set)
-	if dir == nothing
-		@warn "No pseudos found for set $set."
-		return
-	end
-    for (i, at) in enumerate(atoms)
-        pseudo = getdefault_pseudo(name(at), set, specifier = specifier)
-        if pseudo == nothing
-            @warn "Pseudo for $(name(at)) at index $i not found in set $set."
-        else
-            set_pseudo!(at, pseudo; kwargs...)
+Updates the spatial parameters of the `atoms` and `cell` of the first structure to those found in the second.
+"""
+function update_geometry!(str1::AbstractStructure, str2::AbstractStructure)
+    str1.cell = copy(str2.cell)
+    ats2 = atoms(str2)
+    for at1 in atoms(str1)
+        id = findmin(map(x -> distance(x, at1), filter(y -> y.name == name(at1),ats2)))[2]
+        if id === nothing
+            @error "No atom of the species $(name(at1)) found in the second structure"
         end
+        set_position!(at1, atoms(str2)[id].position_cryst, cell(str1))
     end
 end
 
-set_pseudos!(structure::AbstractStructure, atname::Symbol, set::Symbol, specifier::String = ""; kwargs...) =
-	set_pseudos!(structure, atoms(structure, atname), set, specifier; kwargs...)
+update_geometry!(job::DFJob, new_str::AbstractStructure) =
+    update_geometry!(job.structure, new_str)
 
-set_pseudos!(structure::AbstractStructure, set::Symbol, specifier::String = ""; kwargs...) =
-	set_pseudos!(structure, atoms(structure), set, specifier; kwargs...)
 
-function set_pseudos!(structure::AbstractStructure, at_pseudos::Pair{Symbol,Pseudo}...; kwargs...)
-    for (atsym, pseudo) in at_pseudos
-        for at in atoms(structure, atsym)
-            set_pseudo!(at, pseudo; kwargs...)
-        end
+structure(str::Structure) = str
+
+name(str::AbstractStructure) = structure(str).name
+data(str::AbstractStructure) = structure(str).data
+
+Base.length(str::AbstractStructure) = length(atoms(str))
+
+### CELL ###
+cell(str::AbstractStructure) = structure(str).cell
+
+"""
+    set_cell!(structure::AbstractStructure, c::Mat3)
+    set_cell!(job::DFJob, cell_::Mat3)
+
+Sets the `cell` of the `Structure` to `c`.
+`c` will first be converted to the right units to match those
+of the current `cell`.
+All the absolute coordinates of the atoms will be recalculated
+based on the new `cell`. 
+"""
+function set_cell!(structure::AbstractStructure, c::Mat3)
+    @warn "Converting cell to the units of the current cell of the structure."
+    cell_ = uconvert.(unit(cell(structure)[1]), c)
+    for a in atoms(structure)
+        set_position!(a, position_cryst(a), cell_)
     end
+    structure.cell = cell_
 end
+function set_cell!(job::DFJob, cell_::Mat3)
+    job.structure.cell = cell_
+    return job
+end
+
+"Rescales the unit cell."
+scale_cell!(job::DFJob, s) =
+    scale_cell!(job.structure, s)
+
+create_supercell(job::DFJob, args...) =
+    create_supercell(structure(job), args...)
+
+volume(job::DFJob) = volume(structure(job))
+"""
+    volume(cell::Mat3)
+    volume(str::Structure)
+
+Calculates the volume for the unit cell.
+"""
+volume(cell::Mat3) = det(cell)
+volume(str::Structure) = volume(cell(str))
+
+
+reciprocal(cell::AbstractMatrix) = inv(cell)
+
+"""
+    a(str::AbstractStructure)
+
+First lattice vector.
+"""
+a(str::AbstractStructure) = cell(str)[:,1]
+"""
+    b(str::AbstractStructure)
+
+Second lattice vector.
+"""
+b(str::AbstractStructure) = cell(str)[:,2]
+"""
+    c(str::AbstractStructure)
+
+Third lattice vector.
+"""
+c(str::AbstractStructure) = cell(str)[:,3]
 
 """
     create_supercell(structure::AbstractStructure, na::Int, nb::Int, nc::Int; make_afm=false)
@@ -198,8 +150,8 @@ function create_supercell(structure::AbstractStructure, na::UnitRange, nb::UnitR
         transl_vec = orig_cell * [ia, ib, ic]
         factor = isodd(ia + ib + ic) ? -1 : 1
         for at in orig_ats
-	        cart_pos = position_cart(at) + transl_vec
-	        cryst_pos = inv(new_cell) * cart_pos
+            cart_pos = position_cart(at) + transl_vec
+            cryst_pos = inv(new_cell) * cart_pos
             if make_afm && ismagnetic(at)
                 new_magnetization = factor * magnetization(at)
                 push!(new_atoms, Atom(at, projections = deepcopy(projections(at)), magnetization = new_magnetization, position_cart = cart_pos, position_cryst = Point3(cryst_pos)))
@@ -216,20 +168,35 @@ create_supercell(structure::AbstractStructure, na::Int, nb::Int, nc::Int; make_a
    
 "Rescales the cell of the structure."
 function scale_cell!(structure::Structure, scalemat::Matrix)
-	structure.cell *= scalemat
-	for at in atoms(structure)
-		at.position_cart = structure.cell * at.position_cryst
-	end
-	structure.cell
+    structure.cell *= scalemat
+    for at in atoms(structure)
+        at.position_cart = structure.cell * at.position_cryst
+    end
+    structure.cell
     end
 
-function set_magnetization!(str::Structure, atsym_mag::Pair{Symbol,<:AbstractVector}...)
-	for (atsym, mag) in atsym_mag
-		for at in atoms(str, atsym)
-			set_magnetization!(at, mag)
-		end
-	end
+### Atoms ###
+"""
+    getindex(structure::AbstractStructure, i::Int)
+    getindex(structure::AbstractStructure, name::Symbol)
+    getindex(structure::AbstractStructure, el::Element)
+
+Returns the `i`th atom in `structure`, or all atoms with `name` or are of element `el`.
+"""
+Base.getindex(str::AbstractStructure, i::Int) = atoms(str)[i]
+Base.getindex(str::AbstractStructure, el::Symbol) = atoms(x -> x.name == el, str)
+Base.getindex(str::AbstractStructure, el::Element) = atoms(x -> element(x) == el, str)
+ismagnetic(str::Structure) =
+    any(x -> norm(magnetization(x)) > 0, atoms(str))
+
+## Magnetism ##
+function iscolin(str::Structure)
+    magats = filter(x -> norm(magnetization(x)) > 0, atoms(str))
+    return !isempty(magats) && all(x -> isapprox(abs(normalize(magnetization(x)) ⋅ [0, 0, 1]), 1.0), magats)
 end
+
+isnoncolin(str::Structure) =
+    any(x -> norm(magnetization(x)) > 0 &&!isapprox(abs(normalize(magnetization(x)) ⋅ [0, 0, 1]), 1.0), atoms(str))
 
 function sanitize_magnetization!(str::Structure)
     magnetic_ats = filter(ismagnetic, atoms(str))
@@ -273,36 +240,25 @@ function sanitize_magnetization!(str::Structure)
     end
 end
 
+NearestNeighbors.KDTree(str::AbstractStructure, args...; kwargs...) =
+    NearestNeighbors.KDTree(position_cryst.(atoms(str)), args...; kwargs...)
+    
 """
-    volume(cell::Mat3)
-	volume(str::Structure)
+    polyhedron(at::AbstractAtom, atoms::Vector{<:AbstractAtom}, order::Int)
+    polyhedron(at::AbstractAtom, str::AbstractStructure, order::Int)
 
-Calculates the volume for the unit cell.
+Returns a polyhedron around the atom, i.e. the `order` closest atoms.
+The returned atoms will be ordered according to their distance to the first one.
+In the case of a structure rather than a set of atoms, the search will
+be performed over all atoms in the structure.
 """
-volume(cell::Mat3) = det(cell)
-volume(str::Structure) = volume(cell(str))
-
-"""
-    update_geometry!(str1::AbstractStructure, str2::AbstractStructure)
-    update_geometry!(job::DFJob, str2::AbstractStructure)
-
-Updates the spatial parameters of the atoms and cell of the first structure to those found in the second.
-"""
-function update_geometry!(str1::AbstractStructure, str2::AbstractStructure)
-    str1.cell = copy(str2.cell)
-    ats2 = atoms(str2)
-    for at1 in atoms(str1)
-        id = findmin(map(x -> distance(x, at1), filter(y -> y.name == name(at1),ats2)))[2]
-        if id === nothing
-            @error "No atom of the species $(name(at1)) found in the second structure"
-        end
-        set_position!(at1, atoms(str2)[id].position_cryst, cell(str1))
-    end
+function polyhedron(at::AbstractAtom, atoms::Vector{<:AbstractAtom}, order::Int)
+    return sort(atoms, by = x -> distance(x, at))[1:order]
 end
-
 polyhedron(at::AbstractAtom, str::AbstractStructure, order::Int) =
     polyhedron(at, atoms(create_supercell(str, -1:1, -1:1, -1:1)), order)
 
+### SPGLIB ###
 const DEFAULT_TOLERANCE = 1e-5
 
 struct SPGStructure
@@ -319,6 +275,12 @@ function SPGStructure(s::Structure)
     return SPGStructure(clattice, cpositions, species_indices)
 end
 
+"""
+    symmetry_operators(s::Structure; tolerance = 1e-5)
+
+Returns the symmetry operators found for the `Structure`.
+"""
+symmetry_operators(s::Structure; kwargs...) = symmetry_operators(SPGStructure(s); kwargs...)
 function symmetry_operators(s::SPGStructure; maxsize = 52, tolerance = DEFAULT_TOLERANCE)
     rotations    = Array{Cint}(undef, 3, 3, maxsize)
     translations = Array{Cdouble}(undef, 3, maxsize)
@@ -328,8 +290,13 @@ function symmetry_operators(s::SPGStructure; maxsize = 52, tolerance = DEFAULT_T
        rotations, translations, maxsize, s.lattice, s.positions, s.species_indices, length(s.species_indices), tolerance)
     return (rotations = [Mat3{Int}(rotations[:, :, i]) for i = 1:num_ops], translations = [Vec3(translations[:, i]) for i = 1:num_ops])
 end
-symmetry_operators(s::Structure; kwargs...) = symmetry_operators(SPGStructure(s); kwargs...)
 
+"""
+    international(s::Structure; tolerance = 1e-5)
+
+Returns the international symbol for the `Structure`.
+"""
+international(s::Structure; kwargs...) = international(SPGStructure(s); kwargs...)
 function international(s::SPGStructure; tolerance = DEFAULT_TOLERANCE)
     res = zeros(Cchar, 11)
 
@@ -340,7 +307,23 @@ function international(s::SPGStructure; tolerance = DEFAULT_TOLERANCE)
 
     return num, join(convert(Vector{Char}, res[1:findfirst(iszero, res) - 1]))
 end
-international(s::Structure; kwargs...) = international(SPGStructure(s); kwargs...)
+
+"""
+    niggli_reduce(s::Structure; tolerance = 1e-5)
+
+Returns a niggli reduced `Structure`, 
+"""
+function niggli_reduce(s::Structure; tolerance = DEFAULT_TOLERANCE)
+    reduced_spg_structure = niggli_reduce!(SPGStructure(s); tolerance = DEFAULT_TOLERANCE)
+    uats = unique(atoms(s))
+    c = Mat3{Float64}(reduced_spg_structure.lattice') .* 1Ang
+    return Structure(s.name, c, map(1:length(reduced_spg_structure.species_indices)) do i
+        at = deepcopy(uats[reduced_spg_structure.species_indices[i]])
+        pos = reduced_spg_structure.positions[:, i]
+        set_position!(at, pos, c)
+        at
+    end, s.data)
+end
 
 function niggli_reduce(c::Mat3{Float64}; tolerance = DEFAULT_TOLERANCE)
     ccell = convert(Matrix{Cdouble}, c)
@@ -358,17 +341,6 @@ function niggli_reduce!(s::SPGStructure; tolerance = DEFAULT_TOLERANCE)
     numops == 0 && error("Could not determine the niggli reduced cell.")
 
     return s
-end
-function niggli_reduce(s::Structure; kwargs...)
-    reduced_spg_structure = niggli_reduce!(SPGStructure(s); kwargs...)
-    uats = unique(atoms(s))
-    c = Mat3{Float64}(reduced_spg_structure.lattice') .* 1angstrom
-    return Structure(s.name, c, map(1:length(reduced_spg_structure.species_indices)) do i
-        at = deepcopy(uats[reduced_spg_structure.species_indices[i]])
-        pos = reduced_spg_structure.positions[:, i]
-        set_position!(at, pos, c)
-        at
-    end, s.data)
 end
 
 
@@ -399,8 +371,9 @@ end
     cell_parameters(cell::Mat3)
     cell_parameters(str::Structure)
 
-Parameters (a, b, c, α, β, γ) of the calculation cell returned in a named tuple.
+Parameters `(a, b, c, α, β, γ)`of the calculation cell returned in a `NamedTuple`.
 """
+cell_parameters(s::Structure) = cell_parameters(ustrip.(cell(s)))
 function cell_parameters(cell::Mat3)
     G = transpose(cell) * cell
     a, b, c = sqrt.(diag(G))
@@ -409,8 +382,6 @@ function cell_parameters(cell::Mat3)
     γ = acos(0.5(G[1, 2] + G[2, 1]) / (a * b))
     a, b, c, α, β, γ
 end
-
-cell_parameters(s::Structure) = cell_parameters(ustrip.(cell(s)))
 
 function crystal_kind(s::Structure; tolerance = DEFAULT_TOLERANCE)
     n, sym = international(s)
@@ -461,7 +432,16 @@ function high_symmetry_kpath(s::AbstractStructure, npoints_per_segment::Int; pac
     out_k[end] = (out_k[end][1:3]..., 1.0)
     return out_k
 end
+high_symmetry_kpath(j::DFJob, args...;kwargs...) =
+    high_symmetry_kpath(j.structure, args...; kwargs...)
 
+"""
+    high_symmetry_kpoints(s::Structure; tolerance = 1e-5)
+    high_symmetry_kpoints(j::DFJob; tolerance = 1e-5)
+
+Returns `(kpoints, path)` where `kpoints` are the high-symmetry k-points,
+and `path` are the sections of the high symmetry path through the first Brillouin Zone.
+"""
 function high_symmetry_kpoints(s::Structure; tolerance = DEFAULT_TOLERANCE)
     n, sym       = international(s)
     kind = lattice_kind(s)

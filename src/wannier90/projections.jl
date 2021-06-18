@@ -1,9 +1,3 @@
-struct Orbital
-    name::String
-    size::Int
-    l   ::Int
-    mr  ::Int
-end
 const ORBITALS = [
     Orbital("s", 1, 0, 1),
     Orbital("p", 3, 1, 0),
@@ -35,12 +29,6 @@ orbital(l::Number) = getfirst(x -> x.l == l, ORBITALS)
 Base.convert(::Type{String}, x::Orbital) = x.name
 orbsize(orb::Orbital) = orb.size
 orbsize(orb::String)  = orbsize(orbital(orb))
-
-@with_kw_noshow struct Projection
-    orb   ::Orbital = ORBITALS[1]
-    start ::Int = 0
-    last  ::Int = 0
-end
 
 orbital(proj::Projection) = proj.orb
 orbsize(proj::Projection) = proj.last - proj.start + 1

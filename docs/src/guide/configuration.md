@@ -15,7 +15,7 @@ configuredefault_pseudos()
 This will go through the specified directories and find files that follow the naming convention
 `element.x_y_z.xyz` e.g. `Si.pbesol-n-kjpaw_psl.0.1.UPF` or `si.pbesol-n-kjpaw_psl.0.1.UPF`. 
 If multiple are found, all will be stored and the required one can be later specified.
-See [Pseudo Potentials](@ref) for further usage details.
+See [Pseudo Potentials](@ref pseudo_header) for further usage details.
 
 In order to change the pseudos associated with a set name simply:
 ```julia
