@@ -125,52 +125,6 @@ set_name!(at::AbstractAtom, name::Symbol) =
 
 length_unit(at::Atom{T, LT}) where {T, LT} = LT
 
-function set_pseudo!(at::AbstractAtom, pseudo::Pseudo; print=true)
-	print && @info "Pseudo of atom $(name(at)) set to $pseudo."
-	!ispath(path(pseudo)) && @warn "Pseudopath $(path(pseudo)) not found."
-	atom(at).pseudo = pseudo
-end
-
-function set_projections!(at::AbstractAtom, projections::Vector{Projection}; print=true)
-    print && @info "Setting projections for atom $(name(at)) to $projections"
-    atom(at).projections = projections
-end
-
-"""
-    set_projections!(str::Structure, projs::Pair...; soc=false)
-
-Sets the projections of the specified atoms. `projs` has to be of form `:atsym => [:proj]`,
-where proj = :s, :p, :d, :f, etc. If `soc` is set to `true` both up and down projections will be taken into account.
-"""
-function set_projections!(str::Structure, projs::Pair...; soc = false, kwargs...)
-    projdict = Dict(projs)
-    for at in unique(str.atoms)
-        if !haskey(projdict, name(at))
-            projdict[name(at)] = [proj.orb for proj in projections(at)]
-        end
-    end
-    emptyprojections!(str)
-    addprojections!(atoms(str), projdict, soc; kwargs...)
-end
-
-function emptyprojections!(str::Structure)
-    for at in str.atoms
-        empty!(projections(at))
-    end
-end
-
-function nprojections(structure)
-    n = 0
-    for at in atoms(structure)
-        projs = projections(at)
-        if !isempty(projs)
-            n += sum(orbsize.(projs))
-        end
-    end
-    return n
-end
-
-
 bondlength(at1::AbstractAtom{T}, at2::AbstractAtom{T}, R=T(0.0)) where T<:AbstractFloat = norm(position_cart(at1) - position_cart(at2) - R)
 
 ==(at1::AbstractAtom{T, LT}, at2::AbstractAtom{T, LT}) where {T, LT} =
@@ -226,13 +180,28 @@ function position_string(::Type{QE}, at::AbstractAtom; relative=true)
 	return "$(name(at))  $(pos[1]) $(pos[2]) $(pos[3])\n"
 end
 
+"""
+    set_magnetization!(at::AbstractAtom, mag; print=true)
+
+Sets the magnetization of the [`Atom`](@ref Atom).
+
+    set_magnetization!(str::Structure, atsym_mag::Pair{Symbol,<:AbstractVector}...)
+    set_magnetization!(job::DFJob, atsym_mag::Pair{Symbol,<:AbstractVector}...)
+
+Each of the names in `atsym_mag` will be matched with the [`Atoms`](@ref Atom) and their magnetization
+will be set to the specified ones.
+
+Example:
+```
+set_magnetization!(job, :Ni1 => [0.0, 0.0, -1.0], :Ni2 => [0.0, 0.0, 1.0])
+```
+will set all the moments of [`Atoms`](@ref Atom) with name `Ni1` to `[0.0, 0.0, -1.0]` and `Ni2` to `[0.0, 0.0, 1.0]`.
+Since the moments are aligned with the z-direction this will signal that colinear calculations should be ran.
+"""
 function set_magnetization!(at::AbstractAtom, mag; print=true)
 	at.magnetization = convert(Vec3, mag)
 	print && @info "Magnetization of at $(name(at)) was set to $(magnetization(at))"
 end
-
-set_magnetization!(job::DFJob, args...) =
-    set_magnetization!(job.structure, args...)
 
 function set_magnetization!(str::Structure, atsym_mag::Pair{Symbol,<:AbstractVector}...)
     for (atsym, mag) in atsym_mag
@@ -241,6 +210,10 @@ function set_magnetization!(str::Structure, atsym_mag::Pair{Symbol,<:AbstractVec
         end
     end
 end
+
+set_magnetization!(job::DFJob, args...) =
+    set_magnetization!(job.structure, args...)
+
 
 
 projections(str::AbstractStructure) = projections.(atoms(str))
@@ -293,7 +266,40 @@ function scale_bondlength!(at1::AbstractAtom, at2::AbstractAtom, scale::Real, ce
 	set_position!(at2, new_p2, cell)
 end
 
-"sets the pseudopotentials to the specified one in the default pseudoset."
+"""
+    set_pseudo!(at::AbstractAtom, pseudo::Pseudo; print=true)
+
+Sets the pseudopotential `at` to `pseudo`, and the validity of the `Pseudo` is checked.
+"""
+function set_pseudo!(at::AbstractAtom, pseudo::Pseudo; print=true)
+	print && @info "Pseudo of atom $(name(at)) set to $pseudo."
+	!ispath(path(pseudo)) && @warn "Pseudopath $(path(pseudo)) not found."
+	atom(at).pseudo = pseudo
+end
+
+"""
+    set_pseudos!(job::DFJob, set::Symbol, specifier::String=""; kwargs...)
+    set_pseudos!(structure::AbstractStructure, set::Symbol, specifier::String=""; kwargs...)
+    set_pseudos!(job::DFJob, atsym::Symbol, set::Symbol, specifier::String=""; kwargs...)
+    set_pseudos!(structure::AbstractStructure, atsym::Symbol, set::Symbol, specifier::String=""; kwargs...)
+
+Sets the pseudopotentials of the atoms inside the `structure` (or `job.structure`) to the ones of `set`.
+`specifier` can be specified to select a specific pseudo if multiple pseudopotentials
+for a given element exist in the set.
+Example:
+```
+set_pseudos!(job, :pbesol, "rrkjus")
+```
+will select the pseudo file that contains "rrkjus" in the filename.
+
+If `atsym` is used, only the pseudos of the atoms with that name will be set.
+
+    set_pseudos!(job::DFJob, at_pseudos::Pair{Symbol, Pseudo}...; kwargs...)
+    set_pseudos!(structure::AbstractStructure, at_pseudos::Pair{Symbol, Pseudo}...; kwargs...)
+
+Convenience function that allows to set pseudopotentials for multiple atom types at the same time.
+e.g. `set_pseudos!(job, :Si => getdefault_pseudo(:Si, :sssp)
+"""
 set_pseudos!(job::DFJob, set::Symbol, specifier::String=""; kwargs...) = 
     set_pseudos!(job.structure, set, specifier; kwargs...)
 
@@ -333,17 +339,6 @@ function set_pseudos!(structure::AbstractStructure, at_pseudos::Pair{Symbol,Pseu
             set_pseudo!(at, pseudo; kwargs...)
         end
     end
-end
-
-"Returns all the projections inside the job."
-projections(job::DFJob) = projections(structure(job))
-
-"""
-sets the projections of the specified atoms inside the job structure.
-"""
-function set_projections!(job::DFJob, projections...; kwargs...)
-    socid = findfirst(issoc, calculations(job))
-    set_projections!(job.structure, projections...; soc=socid !== nothing, kwargs...)
 end
 
 for hub_param in (:U, :J0, :α, :β)

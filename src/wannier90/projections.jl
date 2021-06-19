@@ -23,6 +23,11 @@ const ORBITALS = [
     Orbital("sp3", 4, -3, 0),
     Orbital("sp3d2", 6, -5, 0),
 ]
+"""
+    orbital(s::String)
+
+Returns the [Orbital](@ref Orbitals) identified by `s`. 
+"""
 orbital(s::String) = getfirst(x -> x.name == s, ORBITALS)
 orbital(l::Number) = getfirst(x -> x.l == l, ORBITALS)
 
@@ -75,3 +80,61 @@ Base.zero(::Projection) = Projection(Orbital("zero", 0, 0, 0), 0, 0)
 
 
 Base.range(proj::Projection)  = proj.start:proj.last
+
+"Returns all the projections inside the job."
+projections(job::DFJob) = projections(structure(job))
+
+"""
+    set_projections!(at::AbstractAtom, projections::Vector{Projection}; print=true)
+
+Sets the projections of the atom.
+
+    set_projections!(str::Structure, projs::Pair...; soc=false)
+    set_projections!(job::DFJob, projs::Pair...; kwargs...)
+
+Sets the projections of the specified atoms. `projs` has to be of form `:atsym => [:proj]`,
+where `proj = "s", "p", "d", "f"`, see [Orbital](@ref Orbitals) to see which projections are allowed. 
+If `soc` is set to `true` both up and down projections will be taken into account.
+
+!!! note
+    The previously existing projections will be overwritten when using the last two functions.
+"""
+function set_projections!(at::AbstractAtom, projections::Vector{Projection}; print=true)
+    print && @info "Setting projections for atom $(name(at)) to $projections"
+    atom(at).projections = projections
+end
+
+function set_projections!(job::DFJob, projections...; kwargs...)
+    socid = findfirst(issoc, calculations(job))
+    set_projections!(job.structure, projections...; soc=socid !== nothing, kwargs...)
+end
+
+function set_projections!(str::Structure, projs::Pair...; soc = false, kwargs...)
+    projdict = Dict(projs)
+    for at in unique(str.atoms)
+        if !haskey(projdict, name(at))
+            projdict[name(at)] = [proj.orb for proj in projections(at)]
+        end
+    end
+    empty_projections!(str)
+    addprojections!(atoms(str), projdict, soc; kwargs...)
+end
+
+function empty_projections!(str::Structure)
+    for at in str.atoms
+        empty!(projections(at))
+    end
+end
+
+function nprojections(structure)
+    n = 0
+    for at in atoms(structure)
+        projs = projections(at)
+        if !isempty(projs)
+            n += sum(orbsize.(projs))
+        end
+    end
+    return n
+end
+
+

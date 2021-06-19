@@ -43,7 +43,7 @@ module DFControl
     export Vec3, Point3
     include("types.jl")
     export DFJob, Exec, DFCalculation, InputData
-    export Structure, Atom, Pseudo, DFTU
+    export Structure, Atom, Pseudo, DFTU, Orbital, Projection
     
     include("atom.jl")
     include("structure.jl")

@@ -144,7 +144,7 @@ end
 
 Returns the pseudo potential string linked to the atom.
 """
-function getdefault_pseudo(atom::Symbol, set=:default; specifier="")
+function getdefault_pseudo(atom::Symbol, set::Symbol; specifier="")
     maybe_init_defaults() 
     if tryparse(Int, String(atom)[end:end]) !== nothing
         pp_atom = Symbol(String(atom)[1:end-1])

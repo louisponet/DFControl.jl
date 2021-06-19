@@ -19,7 +19,7 @@ export gencalc_scf, gencalc_vcrelax, gencalc_nscf, gencalc_bands,
 include("jobAPI.jl")
 #Basic Job Control Functionality
 export save, submit, abort, set_flow!, set_headerword!, isrunning, last_running_calculation, progressreport,
-       set_serverdir!, set_localdir!, structure,
+       set_serverdir!, set_localdir!, structure, scale_cell!, volume,
        switch_version, version, versions, registered_jobs, rm_version!, rm_versions!, rm_tmp_dirs!,
        cleanup
 
@@ -27,11 +27,11 @@ export save, submit, abort, set_flow!, set_headerword!, isrunning, last_running_
 export searchcalculation, searchcalculations, set_cutoffs!
 
 #Interacting with the Structure inside DFJob
-export atom, atoms, set_atoms!, set_pseudos!, projections, set_projections!, 
-	   set_magnetization!, symmetry_operators, international, niggli_reduce, update_geometry!,
-	   high_symmetry_kpath, high_symmetry_kpoints, element
+export atom, atoms, set_atoms!, set_pseudo!, set_pseudos!, projections, set_projections!, orbital, cell, a, b, c,
+	   cell_parameters, set_magnetization!, symmetry_operators, international, niggli_reduce, update_geometry!,
+	   high_symmetry_kpath, high_symmetry_kpoints
 
-export create_supercell, cell_parameters, cell, a, b, c, volume, scale_cell!, volume
+export create_supercell
 
 # Atom interface functions
 export name, position_cart, position_cryst, element, pseudo, projections, magnetization, dftu

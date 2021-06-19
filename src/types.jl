@@ -1,16 +1,28 @@
+"""
+    Orbital(name::String, size::Int, l::Int, mr::Int)
+
+Wannier90 orbital as defined in the [Wannier90 User Guide](https://github.com/wannier-developers/wannier90/raw/v3.1.0/doc/compiled_docs/user_guide.pdf). The `name` will be written in the `projections` block of the Wannier90 input.
+"""
 struct Orbital
     name::String
     size::Int
     l   ::Int
     mr  ::Int
 end
+Orbital() = Orbital("none", 0, 0, 0)
 
 
-@with_kw_noshow struct Projection
-    orb   ::Orbital = ORBITALS[1]
-    start ::Int = 0
-    last  ::Int = 0
+"""
+    Projection(orb::Orbital, start::Int, last::Int)
+
+A Wannier90 `Projection`, representing an `Orbital` with indices from `start` to `last`.
+"""
+struct Projection
+    orb   ::Orbital
+    start ::Int
+    last  ::Int
 end
+Projection() = Projection(Orbital(), 0, 0)
 
 
 """
