@@ -161,7 +161,7 @@ ExecFlag(p::Pair{Symbol, T}, count::Int) where T = ExecFlag(first(p), String(fir
 """
     Exec(;exec::String = "", dir::String = "", flags::Vector{ExecFlag} = ExecFlag[])
 
-Representation of an `executable` that will run the [DFCalculation](@ref).
+Representation of an `executable` that will run the [`DFCalculation`](@ref).
 Basically `dir/exec --<flags>` inside a job script.
 
     Exec(exec::String, dir::String, flags::Pair{Symbol}...)
