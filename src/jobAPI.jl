@@ -176,17 +176,17 @@ end
 Base.insert!(job::DFJob, index::Int, calculation::DFCalculation) = insert!(job.calculations, index, calculation)
 
 """
-    push!(job::DFJob, calculation::DFCalculation) = `push!(job.calculations, calculation)`
+    push!(job::DFJob, calculation::DFCalculation) = push!(job.calculations, calculation)
 """
 Base.push!(job::DFJob, calculation::DFCalculation) = push!(job.calculations, calculation)
 
 """
-    pop!(job::DFJob) = `pop!(job.calculations)`
+    pop!(job::DFJob) = pop!(job.calculations)
 """
 Base.pop!(job::DFJob) = pop!(job.calculations)
 
 """
-    append!(job::DFJob, args...) = `append!(job.calculations, args...)`
+    append!(job::DFJob, args...) = append!(job.calculations, args...)
 """
 Base.append!(job::DFJob, args...) = append!(job.calculations, args...)
 
@@ -214,13 +214,6 @@ end
 
 Base.getindex(job::DFJob, el::Element) = job.structure[el]
 
-
-""" data(job::DFJob, name::String, dataname::Symbol)
-
-Looks through the calculation filenames and returns the data with the specified symbol.
-"""
-data(job::DFJob, name::String, dataname::Symbol) =
-    data(calculation(job, name), dataname)
 
 """
     set_data!(job::DFJob, calculations::Vector{<:DFCalculation}, dataname::Symbol, data; option=nothing)

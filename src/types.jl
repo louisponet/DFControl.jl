@@ -63,6 +63,7 @@ end
 
 """
     Element(symbol::Symbol, Z::Int, name::String, atomic_weight::Float64, color::NTuple{3, Float64})
+    
 Represents an element. Most conveniently used trough the function [`element`](@ref).
 """
 struct Element
@@ -86,11 +87,11 @@ abstract type AbstractAtom{T, LT<:Length{T}} end
          
 Representation of an `atom`.
     
-The `name` of the `atom` is used as an identifier for the `atom` type, in the sense that atoms with the same `pseudo`, `projections`, `magnetization` and [`dftu`](@ref DFTU) attributes should belong to the same type. This also means that during sanity checks atoms that are not of the same type will be given different names. This is done in this way because it often makes sense to change these parameters on all atoms of the same kind at the same time, but still allow the flexibility to change them for individual atoms as well.
+The `name` of the `atom` is used as an identifier for the `atom` type, in the sense that atoms with the same `pseudo`, `projections`, `magnetization` and [dftu](@ref DFTU) attributes should belong to the same type. This also means that during sanity checks atoms that are not of the same type will be given different names. This is done in this way because it often makes sense to change these parameters on all atoms of the same kind at the same time, but still allow the flexibility to change them for individual atoms as well.
 
 `position_cart` should have a valid `Unitful.Length` type such as `Ang`.
 
-See documentation for [`Element`](@ref) and [`Pseudo`](@ref pseudo_header) for further information on these attributes.
+See documentation for [Element](@ref) and [Pseudo](@ref pseudo_header) for further information on these attributes.
 """
 @with_kw_noshow mutable struct Atom{T<:AbstractFloat, LT<:Length{T}} <: AbstractAtom{T, LT}
     name          ::Symbol
@@ -115,7 +116,7 @@ abstract type AbstractStructure{T,LT} end
 """
     Structure([name::String,] cell::Mat3, atoms::Vector{<:AbstractAtom}[, data::Dict{Symbol,Any}])
 
-The structure on which the `DFCalculations` will be performed.
+The structure on which the [DFCalculations](@ref Calculations) will be performed.
 
     Structure(cif_file::String; name = "NoName")
 
@@ -160,7 +161,7 @@ ExecFlag(p::Pair{Symbol, T}, count::Int) where T = ExecFlag(first(p), String(fir
 """
     Exec(;exec::String = "", dir::String = "", flags::Vector{ExecFlag} = ExecFlag[])
 
-Representation of an `executable` that will run the `DFCalculation`.
+Representation of an `executable` that will run the [DFCalculation](@ref).
 Basically `dir/exec --<flags>` inside a job script.
 
     Exec(exec::String, dir::String, flags::Pair{Symbol}...)
