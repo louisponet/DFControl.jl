@@ -87,7 +87,7 @@ abstract type AbstractAtom{T, LT<:Length{T}} end
          
 Representation of an `atom`.
     
-The `name` of the `atom` is used as an identifier for the `atom` type, in the sense that atoms with the same `pseudo`, `projections`, `magnetization` and [dftu](@ref DFTU) attributes should belong to the same type. This also means that during sanity checks atoms that are not of the same type will be given different names. This is done in this way because it often makes sense to change these parameters on all atoms of the same kind at the same time, but still allow the flexibility to change them for individual atoms as well.
+The `name` of the `atom` is used as an identifier for the `atom` type, in the sense that atoms with the same `pseudo`, `projections`, `magnetization` and [dftu](@ref DFControl.DFTU) attributes should belong to the same type. This also means that during sanity checks atoms that are not of the same type will be given different names. This is done in this way because it often makes sense to change these parameters on all atoms of the same kind at the same time, but still allow the flexibility to change them for individual atoms as well.
 
 `position_cart` should have a valid `Unitful.Length` type such as `Ang`.
 
@@ -161,7 +161,7 @@ ExecFlag(p::Pair{Symbol, T}, count::Int) where T = ExecFlag(first(p), String(fir
 """
     Exec(;exec::String = "", dir::String = "", flags::Vector{ExecFlag} = ExecFlag[])
 
-Representation of an `executable` that will run the [`DFCalculation`](@ref).
+Representation of an `executable` that will run the [`DFCalculation`](@ref DFCalculation).
 Basically `dir/exec --<flags>` inside a job script.
 
     Exec(exec::String, dir::String, flags::Pair{Symbol}...)
