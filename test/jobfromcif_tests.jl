@@ -39,7 +39,7 @@ save(job)
 show(job)
 
 @test data(job["scf"], :k_points).data == [6, 6, 6, 1, 1, 1]
-@test data(job, "nscf", :k_points).data == DFControl.kgrid(10, 10, 10, :nscf)
+@test data(job["nscf"], :k_points).data == DFControl.kgrid(10, 10, 10, :nscf)
 @test all(values(job[:ecutwfc]) .== 32.0)
 @test job["scf"][:prefix] == job["nscf"][:prefix] == "$name"
 @test job["bands"][:verbosity] == "high"

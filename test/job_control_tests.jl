@@ -44,7 +44,7 @@ tcalc = gencalc_bands(job["bands"], [(0.5,0.0,0.5,10.0),(0.0,0.0,0.0,10.0),(0.5,
 
 push!(job, tcalc)
 @test job["bands2"][:calculation] == "bands"
-@test data(job, "bands2", :k_points).data == [(0.5,0.0,0.5,10.0),(0.0,0.0,0.0,10.0),(0.5,0.5,0.5,1.0)]
+@test data(job["bands2"], :k_points).data == [(0.5,0.0,0.5,10.0),(0.0,0.0,0.0,10.0),(0.5,0.5,0.5,1.0)]
 
 tcalc = gencalc_nscf(job["nscf"], (10,10,10), name="nscf2")
 push!(job, tcalc)
@@ -274,10 +274,10 @@ DFControl.sanitize_projections!(job)
 # job3 = DFJob(job4.local_dir)
 
 # @test job3.server_dir == "/tmp"
-set_data_option!(job, "scf",:k_points, :blabla, print=false)
-@test data(job, "scf", :k_points).option == :blabla
+set_data_option!(job["scf"],:k_points, :blabla, print=false)
+@test data(job["scf"], :k_points).option == :blabla
 set_data_option!(job, :k_points, :test, print=false)
-@test data(job, "scf", :k_points).option == :test
+@test data(job["scf"], :k_points).option == :test
 
 rm.(DFControl.inpath.(job.calculations))
 job.calculations = [job.calculations[2]]
