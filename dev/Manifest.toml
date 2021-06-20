@@ -46,8 +46,8 @@ version = "4.0.4"
 
 [[DFControl]]
 deps = ["BinDeps", "ColorTypes", "Colors", "Crayons", "Dates", "DelimitedFiles", "JLD2", "LinearAlgebra", "Media", "NearestNeighbors", "Parameters", "REPL", "RecipesBase", "Reexport", "Requires", "StaticArrays", "Statistics", "Unitful", "spglib_jll"]
-git-tree-sha1 = "cfadf5d7f2c2231d2a4641d8fd6e5abb7d919d1c"
-repo-rev = "145501e88cc635760839abfaa98851a0bdbe2e2d"
+git-tree-sha1 = "d34f983035f3d70f797414fe386eeb733066cdb8"
+repo-rev = "c43abbc910952b7785cb4cb6e0d67f05d5499e5f"
 repo-url = "https://github.com/louisponet/DFControl.jl.git"
 uuid = "1e31e15d-4957-550d-a244-318eced754ae"
 version = "0.2.1"
