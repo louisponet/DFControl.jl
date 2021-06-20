@@ -33,7 +33,7 @@ Projection() = Projection(Orbital(), 0, 0)
           β ::T   = zero(T),
           J ::Vector{T} = T[zero(T)])
 
-DFT+U parameters for a given [`Atom`](@ref Atom).
+DFT+U parameters for a given [`Atom`](@ref).
 """
 @with_kw mutable struct DFTU{T}
     l::Int = -1
@@ -87,11 +87,11 @@ abstract type AbstractAtom{T, LT<:Length{T}} end
          
 Representation of an `atom`.
     
-The `name` of the `atom` is used as an identifier for the `atom` type, in the sense that atoms with the same `pseudo`, `projections`, `magnetization` and [dftu](@ref DFControl.DFTU) attributes should belong to the same type. This also means that during sanity checks atoms that are not of the same type will be given different names. This is done in this way because it often makes sense to change these parameters on all atoms of the same kind at the same time, but still allow the flexibility to change them for individual atoms as well.
+The `name` of the `atom` is used as an identifier for the `atom` type, in the sense that atoms with the same `pseudo`, `projections`, `magnetization` and [`dftu`](@ref DFTU) attributes should belong to the same type. This also means that during sanity checks atoms that are not of the same type will be given different names. This is done in this way because it often makes sense to change these parameters on all atoms of the same kind at the same time, but still allow the flexibility to change them for individual atoms as well.
 
 `position_cart` should have a valid `Unitful.Length` type such as `Ang`.
 
-See documentation for [Element](@ref) and [Pseudo](@ref pseudo_header) for further information on these attributes.
+See documentation for [`Element`](@ref) and [`Pseudo`](@ref) for further information on these attributes.
 """
 @with_kw_noshow mutable struct Atom{T<:AbstractFloat, LT<:Length{T}} <: AbstractAtom{T, LT}
     name          ::Symbol
@@ -116,11 +116,11 @@ abstract type AbstractStructure{T,LT} end
 """
     Structure([name::String,] cell::Mat3, atoms::Vector{<:AbstractAtom}[, data::Dict{Symbol,Any}])
 
-The structure on which the [DFCalculations](@ref Calculations) will be performed.
+The structure on which the [`DFCalculations`](@ref DFCalculation) will be performed.
 
     Structure(cif_file::String; name = "NoName")
 
-Creates a `Structure` from the supplied cif file.
+Creates a [`Structure`](@ref) from the supplied cif file.
 """
 mutable struct Structure{T <: AbstractFloat,AA <: AbstractAtom{T},LT <: Length{T}} <: AbstractStructure{T,LT}
     name  ::String
@@ -166,7 +166,7 @@ Basically `dir/exec --<flags>` inside a job script.
 
     Exec(exec::String, dir::String, flags::Pair{Symbol}...)
 
-Will first transform `flags` into a `Vector{ExecFlag}`, and construct the `Exec`. 
+Will first transform `flags` into a `Vector{ExecFlag}`, and construct the [`Exec`](@ref). 
 """
 Parameters.@with_kw mutable struct Exec
     exec ::String = ""
@@ -229,11 +229,11 @@ e.g. if `run=false` the corresponding line will be commented out in the job scri
 
     DFCalculation{P<:Package}(name::AbstractString, flags::Pair{Symbol, Any}...; kwargs...)
 
-Create a `DFCalculation` from `name` and `flags`, other `kwargs...` will be passed to the constructor.
+Create a [`DFCalculation`](@ref) from `name` and `flags`, other `kwargs...` will be passed to the constructor.
 
     DFCalculation(template::DFCalculation, name::AbstractString, flags::Pair{Symbol, Any}...; excs=deepcopy(execs(template)), run=true, data=nothing, dir=copy(template.dir))
 
-Creates a new `DFCalculation` from the `template`, setting the `flags` of the newly created one to the specified ones.
+Creates a new [`DFCalculation`](@ref) from the `template`, setting the `flags` of the newly created one to the specified ones.
 """
 @with_kw_noshow mutable struct DFCalculation{P <: Package}
     name     ::String
@@ -297,7 +297,7 @@ end
           server            ::String = getdefault_server(),
           server_dir        ::String = "")
 
-A `DFJob` embodies a set of calculations with `calculations` to be ran in directory `local_dir`, with the `structure` as the subject.
+A [`DFJob`](@ref) embodies a set of [`DFCalculations`](@ref DFCalculation) to be ran in directory `local_dir`, with the [`Structure`](@ref) as the subject.
 ## Keywords/further attributes
 - `calculations`: calculations to calculations that will be run sequentially.
 - `local_dir`: the directory where the calculations will be run.
@@ -309,14 +309,14 @@ A `DFJob` embodies a set of calculations with `calculations` to be ran in direct
  
     DFJob(job_name::String, structure::AbstractStructure, calculations::Vector{<:DFCalculation}, common_flags::Pair{Symbol, <:Any}...; kwargs...)
 
-Creates a new job. The common flags will be attempted to be set in each of the `calculations`. The `kwargs...` are passed to the `DFJob` constructor. 
+Creates a new job. The common flags will be attempted to be set in each of the `calculations`. The `kwargs...` are passed to the [`DFJob`](@ref) constructor. 
 
     DFJob(job_dir::String, job_script="job.tt"; version=nothing, kwargs...)
 
 Loads the job in the `local_dir`.
 If `job_dir` is not a valid job path, the previously saved jobs will be scanned for a job with a `local_dir` that
 partly includes `job_dir`. If `version` is specified the corresponding job version will be returned if it exists. 
-The `kwargs...` will be passed to the `DFJob` constructor.
+The `kwargs...` will be passed to the [`DFJob`](@ref) constructor.
 """
 @with_kw_noshow mutable struct DFJob
     name         ::String

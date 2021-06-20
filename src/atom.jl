@@ -17,8 +17,8 @@ push!(ELEMENTS, Element(:undef, 0, "undef",0, (0.0, 0.0, 0.0)))
 """
     element(sym::Symbol)
 
-Returns the predefined `Element` with symbol `sym`,
-i.e. `element(:Si)` will return the pregenerated Silicon `Element`.
+Returns the predefined [`Element`](@ref) with symbol `sym`,
+i.e. `element(:Si)` will return the pregenerated Silicon [`Element`](@ref).
 """
 function element(sym::Symbol)
     if tryparse(Int, String(sym)[end:end]) != nothing

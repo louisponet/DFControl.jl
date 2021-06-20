@@ -1,5 +1,14 @@
 # Calculations
 
+## Contents
+```@contents
+Pages=["calculations.md"]
+```
+## Index
+```@index
+Pages=["calculations.md"]
+```
+
 ```@docs
 DFCalculation
 InputData

@@ -1,5 +1,13 @@
 # Jobs
-
+## Contents
+```@contents
+Pages=["jobs.md"]
+```
+## Index
+```@index
+Pages=["jobs.md"]
+```
+## DFJob
 ```@docs
 DFJob
 ```

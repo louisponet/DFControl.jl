@@ -1,4 +1,14 @@
 # Structure
+## Contents
+```@contents
+Pages=["structure.md"]
+```
+## Index
+```@index
+Pages=["structure.md"]
+```
+
+
 ```@docs
 Structure
 Base.getindex(::Structure, ::Int)
