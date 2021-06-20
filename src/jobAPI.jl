@@ -102,7 +102,6 @@ end
 """
     set_headerword!(job::DFJob, old_new::Pair{String, String})
 
-
 Replaces the specified word in the header with the new word.
 """
 function set_headerword!(job::DFJob, old_new::Pair{String, String}; print=true)
@@ -213,74 +212,8 @@ function Base.getindex(job::DFJob, id::String)
     end
 end
 
-
-"""
-    getindex(job::DFJob, flag::Symbol)
-    
-Searches through the job's calculations for the requested flag.
-A `Dict` will be returned with calculation names as the keys and the flags as values.
-"""
-function Base.getindex(job::DFJob, flg::Symbol)
-    outdict = Dict()
-    for i in calculations(job)
-        tfl = flag(i, flg)
-        if tfl != nothing
-            outdict[name(i)] = tfl
-        end
-    end
-    return outdict
-end
-
-"""
-    setindex!(job::DFJob, value, flag::Symbol)
-
-Set `flag` in all the appropriate calculations to the `value`.
-"""
-function Base.setindex!(job::DFJob, value, key::Symbol)
-    for calculation in calculations(job)
-        calculation[key] = value
-    end
-end
-
 Base.getindex(job::DFJob, el::Element) = job.structure[el]
 
-"Fuzzily search calculations in the job whose name contain the fuzzy."
-searchcalculations(job::DFJob, fuzzy::AbstractString) = calculations(job, fuzzy, true)
-
-"Fuzzily search the first calculation in the job whose name contains the fuzzy."
-searchcalculation(job::DFJob,  fuzzy::AbstractString) = calculation(job, fuzzy)
-
-"Returns all calculations from a certain package."
-searchcalculations(job::DFJob, ::Type{P}) where {P <: Package} = filter(x->package(x) == P, calculations(job))
-
-
-"""
-    set_flags!(job::DFJob, calculations::Vector{<:DFCalculation}, flags...; print=true)
-
-Sets the flags in the names to the flags specified.
-This only happens if the specified flags are valid for the names.
-If necessary the correct control block will be added to the calculation (e.g. for QEInputs).
-
-The values that are supplied will be checked whether they are valid.
-"""
-function set_flags!(job::DFJob, calculations::Vector{<:DFCalculation}, flags...; print=true)
-    found_keys = Symbol[]
-
-    for calc in calculations
-        t_, = set_flags!(calc, flags..., print=print)
-        push!(found_keys, t_...)
-    end
-    nfound = setdiff([k for (k, v) in flags], found_keys)
-    if print && length(nfound) > 0
-        f = length(nfound) == 1 ? "flag" : "flags"
-        dfprintln("$f '$(join(":" .* String.(setdiff(flagkeys, found_keys)),", "))' were not found in the allowed calculation variables of the specified calculations!")
-    end
-    return job
-end
-set_flags!(job::DFJob, flags...;kwargs...) =
-    set_flags!(job, calculations(job), flags...;kwargs...)
-set_flags!(job::DFJob, name::String, flags...; fuzzy=true, kwargs...) =
-    set_flags!(job, calculations(job, name, fuzzy), flags...; kwargs...)
 
 """ data(job::DFJob, name::String, dataname::Symbol)
 
@@ -322,19 +255,6 @@ sets the option of specified data block in all calculations that have the block.
 set_data_option!(job::DFJob, n::Symbol, option::Symbol; kw...) =
     set_data_option!(job, name.(calculations(job)), n, option; kw...)
 
-"""
-    rm_flags!(job::DFJob, calculations::Vector{<:DFCalculation}, flags...)
-
-Looks through the calculation names and removes the specified flags.
-"""
-function rm_flags!(job::DFJob, calculations::Vector{<:DFCalculation}, flags...; kwargs...)
-    rm_flags!.(calculations, flags...; kwargs...)
-    return job
-end
-rm_flags!(job::DFJob, name::String, flags...; fuzzy=true, kwargs...) =
-    rm_flags!(job, calculations(job, name, fuzzy), flags...; kwargs...)
-rm_flags!(job::DFJob, flags...; kwargs...) =
-    rm_flags!(job, calculations(job), flags...; kwargs...)
 
 "Finds the output files for each of the calculations of a job, and groups all found data into a dictionary."
 function outputdata(job::DFJob, calculations::Vector{DFCalculation}; print=true, onlynew=false)
@@ -377,7 +297,7 @@ DOS, and what the size of the frozen window needs to be to fit enough bands insi
 depending on the projections.
 """
 function set_wanenergies!(job::DFJob, nscf::DFCalculation, Emin::Real; Epad=5.0)
-    wancalcs = searchcalculations(job, Wannier90)
+    wancalcs = calculations(job, Wannier90)
     @assert length(wancalcs) != 0 "Job ($(job.name)) has no Wannier90 calculations, nothing to do."
     map(x->set_wanenergies!(x, structure(job), nscf, Emin; Epad=Epad), wancalcs)
     return job
@@ -474,38 +394,6 @@ function readbands(job::DFJob)
         return readbands(calculation)
     end
     return readbands(calculation)
-end
-
-"""
-    symmetry_operators(j::DFJob; maxsize=52, tolerance=$DEFAULT_TOLERANCE)
-    symmetry_operators(s::Structure; maxsize=52, tolerance=$DEFAULT_TOLERANCE)
-
-Finds and returns all the rotations and translations that are symmetry operators of the structure.
-"""
-symmetry_operators(j::DFJob; kwargs...) = symmetry_operators(j.structure; kwargs...)
-
-"""
-    international(j::DFJob; tolerance=$DEFAULT_TOLERANCE)
-    international(s::Structure; tolerance=$DEFAULT_TOLERANCE)
-
-Returns the international symbol of the space group of the structure.
-"""
-international(j::DFJob; kwargs...) = international(j.structure; kwargs...)
-
-"""
-    niggli_reduce(j::DFJob; tolerance=$DEFAULT_TOLERANCE)
-    niggli_reduce(s::Structure; tolerance=$DEFAULT_TOLERANCE)
-
-Returns the niggli reduced lattice cell.
-"""
-niggli_reduce(j::DFJob; kwargs...) = niggli_reduce(j.structure; kwargs...)
-
-for (calc, tn) in zip((:gencalc_bands, :gencalc_nscf, :gencalc_projwfc), ("scf", "scf", "nscf"))
-    @eval function $calc(job::DFJob, args...;template_name::String=$tn, kwargs...)
-            template = calculation(job, template_name)
-            @assert template !== nothing "No valid calculation with template_name $template_name found in job."
-            return $calc(template, args...; kwargs...)
-        end
 end
 
 """

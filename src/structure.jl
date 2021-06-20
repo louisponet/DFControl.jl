@@ -86,27 +86,18 @@ function set_cell!(structure::AbstractStructure, c::Mat3)
     end
     structure.cell = cell_
 end
-function set_cell!(job::DFJob, cell_::Mat3)
-    job.structure.cell = cell_
-    return job
-end
+set_cell!(job::DFJob, cell_::Mat3) = set_cell!(job.structure, cell_)
 
-"Rescales the unit cell."
-scale_cell!(job::DFJob, s) =
-    scale_cell!(job.structure, s)
-
-create_supercell(job::DFJob, args...) =
-    create_supercell(structure(job), args...)
-
-volume(job::DFJob) = volume(structure(job))
 """
     volume(cell::Mat3)
     volume(str::Structure)
+    volume(job::DFJob)
 
 Calculates the volume for the unit cell.
 """
 volume(cell::Mat3) = det(cell)
 volume(str::Structure) = volume(cell(str))
+volume(job::DFJob) = volume(structure(job))
 
 
 reciprocal(cell::AbstractMatrix) = inv(cell)
@@ -165,15 +156,23 @@ end
 
 create_supercell(structure::AbstractStructure, na::Int, nb::Int, nc::Int; make_afm=false) =
     create_supercell(structure, 0:na, 0:nb, 0:nc; make_afm=make_afm)
+
+create_supercell(job::DFJob, args...) =
+    create_supercell(structure(job), args...)
+
    
-"Rescales the cell of the structure."
+"""
+    scale_cell!(structure::Structure, scalemat::Matrix)
+    scale_cell!(job::DFJob, scalemat::Matrix)
+    
+Rescales the cell of the `structure`.
+"""
 function scale_cell!(structure::Structure, scalemat::Matrix)
-    structure.cell *= scalemat
-    for at in atoms(structure)
-        at.position_cart = structure.cell * at.position_cryst
-    end
-    structure.cell
-    end
+    new_cell = Mat3(cell(structure) * scalemat)
+    set_cell!(structure, new_cell)
+end
+scale_cell!(job::DFJob, s) =
+    scale_cell!(job.structure, s)
 
 ### Atoms ###
 """
@@ -276,11 +275,13 @@ function SPGStructure(s::Structure)
 end
 
 """
-    symmetry_operators(s::Structure; tolerance = 1e-5)
+    symmetry_operators(j::DFJob; maxsize=52, tolerance=$DEFAULT_TOLERANCE)
+    symmetry_operators(s::Structure; maxsize=52, tolerance=$DEFAULT_TOLERANCE)
 
-Returns the symmetry operators found for the `Structure`.
+Finds and returns all the rotations and translations that are symmetry operators of the structure.
 """
 symmetry_operators(s::Structure; kwargs...) = symmetry_operators(SPGStructure(s); kwargs...)
+symmetry_operators(j::DFJob; kwargs...) = symmetry_operators(j.structure; kwargs...)
 function symmetry_operators(s::SPGStructure; maxsize = 52, tolerance = DEFAULT_TOLERANCE)
     rotations    = Array{Cint}(undef, 3, 3, maxsize)
     translations = Array{Cdouble}(undef, 3, maxsize)
@@ -292,11 +293,13 @@ function symmetry_operators(s::SPGStructure; maxsize = 52, tolerance = DEFAULT_T
 end
 
 """
-    international(s::Structure; tolerance = 1e-5)
+    international(j::DFJob; tolerance=$DEFAULT_TOLERANCE)
+    international(s::Structure; tolerance=$DEFAULT_TOLERANCE)
 
-Returns the international symbol for the `Structure`.
+Returns the international symbol of the space group of the structure.
 """
 international(s::Structure; kwargs...) = international(SPGStructure(s); kwargs...)
+international(j::DFJob; kwargs...) = international(j.structure; kwargs...)
 function international(s::SPGStructure; tolerance = DEFAULT_TOLERANCE)
     res = zeros(Cchar, 11)
 
@@ -309,9 +312,10 @@ function international(s::SPGStructure; tolerance = DEFAULT_TOLERANCE)
 end
 
 """
-    niggli_reduce(s::Structure; tolerance = 1e-5)
+    niggli_reduce(j::DFJob; tolerance=$DEFAULT_TOLERANCE)
+    niggli_reduce(s::Structure; tolerance=$DEFAULT_TOLERANCE)
 
-Returns a niggli reduced `Structure`, 
+Returns the niggli reduced `Structure`.
 """
 function niggli_reduce(s::Structure; tolerance = DEFAULT_TOLERANCE)
     reduced_spg_structure = niggli_reduce!(SPGStructure(s); tolerance = DEFAULT_TOLERANCE)
@@ -332,6 +336,8 @@ function niggli_reduce(c::Mat3{Float64}; tolerance = DEFAULT_TOLERANCE)
                    ccell, tolerance)
     return Mat3{Float64}(ccell)
 end
+
+niggli_reduce(j::DFJob; kwargs...) = niggli_reduce(j.structure; kwargs...)
 
 function niggli_reduce!(s::SPGStructure; tolerance = DEFAULT_TOLERANCE)
 

@@ -42,15 +42,11 @@ fermi = outputdata(job, "nscf")[:fermi]
 
 tcalc = gencalc_bands(job["bands"], [(0.5,0.0,0.5,10.0),(0.0,0.0,0.0,10.0),(0.5,0.5,0.5,1.0)], name="bands2")
 
-@test gencalc_bands(job, [(0.5,0.0,0.5,10.0),(0.0,0.0,0.0,10.0),(0.5,0.5,0.5,1.0)], name = "bands2", template_name="bands") ==
-    tcalc
-
 push!(job, tcalc)
 @test job["bands2"][:calculation] == "bands"
 @test data(job, "bands2", :k_points).data == [(0.5,0.0,0.5,10.0),(0.0,0.0,0.0,10.0),(0.5,0.5,0.5,1.0)]
 
 tcalc = gencalc_nscf(job["nscf"], (10,10,10), name="nscf2")
-@test gencalc_nscf(job, (10,10,10), name="nscf2", template_name="nscf") == tcalc
 push!(job, tcalc)
 @test job["nscf2"][:calculation] == "nscf"
 push!(job, gencalc_scf(job["scf"], (5,5,5,1,1,1), name="1scf2"))
@@ -61,7 +57,6 @@ wanflags = [:write_hr => true, :wannier_plot => true]
 
 set_projections!(job, :Pt => ["s", "p", "d"])
 wancalc = gencalc_wan(job["nscf"], structure(job), fermi-7.0, wanflags...; Epad=5.0)
-@test wancalc == gencalc_wan(job, fermi-7.0, wanflags...; Epad=5.0)
 append!(job, wancalc)
 @test job["wan"][:write_hr] == job["wan"][:wannier_plot] == true
 

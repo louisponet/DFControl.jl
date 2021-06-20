@@ -24,7 +24,7 @@ export save, submit, abort, set_flow!, set_headerword!, isrunning, last_running_
        cleanup
 
 #Basic Interaction with DFCalculations inside DFJob
-export searchcalculation, searchcalculations, set_cutoffs!
+export set_cutoffs!
 
 #Interacting with the Structure inside DFJob
 export atom, atoms, set_atoms!, set_pseudo!, set_pseudos!, projections, set_projections!, orbital, cell, a, b, c,

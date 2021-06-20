@@ -14,7 +14,16 @@ function set_name!(calculation::DFCalculation, name::AbstractString; print=true)
     name
 end
 
-"Returns the flag with given symbol."
+"""
+    getindex(calculation::DFCalculation, n::Symbol)
+
+Returns the flag with given symbol.
+
+    getindex(job::DFJob, flag::Symbol)
+    
+Searches through the job's calculations for the requested flag.
+A `Dict` will be returned with calculation names as the keys and the flags as values.
+"""
 function Base.getindex(calculation::DFCalculation, n::Symbol)
     if haskey(calculation.flags, n)
         return calculation.flags[n]
@@ -22,13 +31,47 @@ function Base.getindex(calculation::DFCalculation, n::Symbol)
         error("Flag:$n Not found in flags of Input $(name(calculation))")
     end
 end
-"Sets the flag"
-Base.setindex!(calculation::DFCalculation, dat, key) = set_flags!(calculation, key => dat)
+
+function Base.getindex(job::DFJob, flg::Symbol)
+    outdict = Dict()
+    for i in calculations(job)
+        tfl = flag(i, flg)
+        if tfl != nothing
+            outdict[name(i)] = tfl
+        end
+    end
+    return outdict
+end
 
 """
-    set_flags!(calculation::DFCalculation, flags...; print=true)
+    setindex!(calculation::DFCalculation, value, flag::Symbol)
 
-Sets the specified flags in the calculation.
+Sets flags.
+
+    setindex!(job::DFJob, value, flag::Symbol)
+
+Set `flag` in all the appropriate calculations to the `value`.
+"""
+Base.setindex!(calculation::DFCalculation, dat, key) = set_flags!(calculation, key => dat)
+
+function Base.setindex!(job::DFJob, value, key::Symbol)
+    for calculation in calculations(job)
+        calculation[key] = value
+    end
+end
+
+"""
+    set_flags!(calculation::DFCalculation, flags::Pair{Symbol, Any}...; print=true)
+
+Sets multiple flags in one go. Flag validity and type are verified.
+
+    set_flags!(job::DFJob, calculations::Vector{<:DFCalculation}, flags::Pair{Symbol,<:Any}...; print=true)
+    set_flags!(job::DFJob, flags::Pair{Symbol,<:Any}...; print=true)
+
+Sets the flags in the names to the flags specified.
+This only happens if the specified flags are valid for the names.
+
+The values that are supplied will be checked whether they are valid.
 """
 function set_flags!(calculation::DFCalculation{T}, flags...; print=true) where T
     found_keys = Symbol[]
@@ -56,12 +99,32 @@ function set_flags!(calculation::DFCalculation{T}, flags...; print=true) where T
     return found_keys, calculation
 end
 
+function set_flags!(job::DFJob, calculations::Vector{<:DFCalculation}, flags...; print=true)
+    found_keys = Symbol[]
+
+    for calc in calculations
+        t_, = set_flags!(calc, flags..., print=print)
+        push!(found_keys, t_...)
+    end
+    nfound = setdiff([k for (k, v) in flags], found_keys)
+    if print && length(nfound) > 0
+        f = length(nfound) == 1 ? "flag" : "flags"
+        dfprintln("$f '$(join(":" .* String.(setdiff(flagkeys, found_keys)),", "))' were not found in the allowed calculation variables of the specified calculations!")
+    end
+    return job
+end
+set_flags!(job::DFJob, flags...;kwargs...) =
+    set_flags!(job, calculations(job), flags...;kwargs...)
+set_flags!(job::DFJob, name::String, flags...; fuzzy=true, kwargs...) =
+    set_flags!(job, calculations(job, name, fuzzy), flags...; kwargs...)
+
 """
-    rm_flags!(calculation::DFCalculation, flags...)
+    rm_flags!(calculation::DFCalculation, flags::Symbol...)
+    rm_flags!(job::DFJob, flags::Symbol...)
 
 Remove the specified flags.
 """
-function rm_flags!(calculation::DFCalculation, flags...; print=true)
+function rm_flags!(calculation::DFCalculation, flags::Symbol...; print=true)
     for flag in flags
         if haskey(calculation.flags, flag)
             pop!(calculation.flags, flag, false)
@@ -69,6 +132,12 @@ function rm_flags!(calculation::DFCalculation, flags...; print=true)
         end
     end
     return calculation
+end
+
+function rm_flags!(job::DFJob, flags::Symbol...; kwargs...)
+    for c in calculations(job)
+        rm_flags!(c, flags...; kwargs...)
+    end
 end
 
 """

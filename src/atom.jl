@@ -142,39 +142,6 @@ function isequal_species(at1::AbstractAtom, at2::AbstractAtom)
     return true
 end
 
-#TODO fix documentation
-for hub_param in (:U, :J0, :α, :β)
-	f = Symbol("set_Hubbard_$(hub_param)!")
-	str = "$(hub_param)"
-	@eval begin
-		"""
-			$($(f))(at::AbstractAtom, v::AbstractFloat; print=true)
-
-		Set the Hubbard $($(str)) parameter for the specified atom.
-
-		Example:
-			`$($(f))(at, 2.1)'
-		"""
-		function $f(at::AbstractAtom{T}, v::AbstractFloat; print=true) where {T}
-			dftu(at).$(hub_param) = convert(T, v)
-			print && @info "Hubbard $($(str)) of atom $(at.name) set to $v"
-		end
-	end
-end
-
-"""
-	set_Hubbard_J!(at::AbstractAtom, v::Vector{<:AbstractFloat}; print=true)
-
-Set the Hubbard J parameter for the specified atom.
-
-Example:
-	`set_Hubbard_J(at, [2.1])'
-"""
-function set_Hubbard_J!(at::AbstractAtom{T}, v::Vector{<:AbstractFloat}; print=true) where {T}
-	dftu(at).J = convert.(T, v)
-	print && @info "Hubbard J of atom $(at.name) set to $v"
-end
-
 function position_string(::Type{QE}, at::AbstractAtom; relative=true)
 	pos = relative ? round.(position_cryst(at), digits=5) : round.(ustrip.(uconvert.(Ang, position_cart(at))), digits=5)
 	return "$(name(at))  $(pos[1]) $(pos[2]) $(pos[3])\n"
@@ -346,13 +313,20 @@ for hub_param in (:U, :J0, :α, :β)
     str = "$hub_param"
     @eval begin
         """
+			$($(f))(at::AbstractAtom, v::AbstractFloat; print=true)
             $($(f))(job::DFJob, ats_$($(str))s::Pair{Symbol, <:AbstractFloat}...; print=true)
 
-        Set the Hubbard $($(str)) parameter for the specified atoms.
+        Set the Hubbard $($(str)) parameter for the specified [Atoms](@ref Atom).
+        The latter function allows for conveniently setting the parameter for all
+        [Atoms](@ref Atom) with the specified `name`.
 
         Example:
             `$($(f))(job, :Ir => 2.1, :Ni => 1.0, :O => 0.0)`
         """
+		function $f(at::AbstractAtom{T}, v::AbstractFloat; print=true) where {T}
+			dftu(at).$(hub_param) = convert(T, v)
+			print && @info "Hubbard $($(str)) of atom $(at.name) set to $v"
+		end
         function $f(job::DFJob, $(hub_param)::Pair{Symbol, <:AbstractFloat}...; print=true)
             for (atsym, val) in $(hub_param)
                 $f.(atoms(job, atsym), val; print=print)
@@ -363,18 +337,20 @@ for hub_param in (:U, :J0, :α, :β)
 end
 
 """
+	set_Hubbard_J!(at::AbstractAtom, v::Vector{<:AbstractFloat}; print=true)
     set_Hubbard_J!(job::DFJob, ats_Js::Pair{Symbol, Vector{<:AbstractFloat}}...; print=true)
-
+    
 Set the Hubbard J parameter for the specified atom.
+The latter function allows for conveniently setting the `Hubbard_J` for all
+[Atoms](@ref Atom) with the specified `name`.
 
 Example:
+	`set_Hubbard_J(at, [2.1])'
     `set_Hubbard_J(job, :Ir => [2.1], :Ni => [1.0])'
 """
-function set_Hubbard_J!(job::DFJob, ats_Js::Pair{Symbol, <:Vector{<:AbstractFloat}}...; print=true)
-    for (atsym, val) in ats_Js
-        set_Hubbard_J!.(atoms(job, atsym), (val,); print=print)
-    end
+function set_Hubbard_J!(at::AbstractAtom{T}, v::Vector{<:AbstractFloat}; print=true) where {T}
+	dftu(at).J = convert.(T, v)
+	print && @info "Hubbard J of atom $(at.name) set to $v"
 end
 
 export set_Hubbard_J!
-

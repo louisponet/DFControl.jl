@@ -21,7 +21,7 @@ Returns an array of the calculations that match the names.
 """
 calculations(job::DFJob, names::Vector, fuzzy=true) = fuzzy ? filter(x -> any(occursin.(names, name(x))), calculations(job)) : calculation.(job, names)
 calculations(job::DFJob, n::String, fuzzy=true) = calculations(job, [n], fuzzy)
-calculations(job::DFJob, package_::Package) = filter(x->package(x)==package_, calculations(job))
+calculations(job::DFJob, ::Type{P}) where {P<:Package} = filter(x->package(x)==P, calculations(job))
 inpath(job::DFJob, n) = inpath(calculation(job,n))
 outpath(job::DFJob, n) = outpath(calculation(job,n))
 

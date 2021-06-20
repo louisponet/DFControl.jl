@@ -20,8 +20,14 @@ Remembering all the names of the flags, where they belong, and what types they a
 is quite complicated and can lead to easily made mistakes like typos.
 DFControl tries to catch these as it knows which flags are allowed for which calculations.
 It will report when a flag can not be found for a given [`DFCalculation`](@ref Calculations),
-and it will
+and it will also try to convert a flag value to the expected type.
 
+```@docs
+Base.getindex(::DFCalculation, ::Symbol)
+Base.setindex!(::DFCalculation, ::Symbol, ::Any)
+set_flags!
+rm_flags!
+```
 
 ## Execs
 ```@docs
