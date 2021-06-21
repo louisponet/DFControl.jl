@@ -286,23 +286,23 @@ rm(joinpath(job, DFControl.VERSION_DIR_NAME), recursive=true)
 
 @testset "versioning" begin
     job[:nbnd] = 30
-    job.version = 1
+    curver = DFControl.last_version(job)
     save(job)
-    @test job.version == 2
+    @test job.version == curver+1
+    save(job)
     @test ispath(joinpath(job, DFControl.VERSION_DIR_NAME))
-    @test ispath(joinpath(job, DFControl.VERSION_DIR_NAME, "1"))
+    @test ispath(joinpath(job, DFControl.VERSION_DIR_NAME, "$(curver+1)"))
     job[:nbnd] = 40
     save(job)
-    @test job.version == 3
+    @test job.version == curver + 3
     @test job["scf"][:nbnd] == 40
-    switch_version(job, 2)
-    @test job.version == 2
-    @test !(2 ∈ versions(job))
-    @test DFControl.last_version(job) == 3
+    switch_version(job, curver+1)
+    @test job.version == curver+1
+    # @test DFControl.last_version(job) == 2
     @test job["scf"][:nbnd] == 30
-    switch_version(job, 3)
-    @test !ispath(joinpath(job, DFControl.VERSION_DIR_NAME, "3"))
-    @test ispath(joinpath(job, DFControl.VERSION_DIR_NAME, "1"))
+    rm_version!(job, curver + 1)
+    @test !ispath(joinpath(job, DFControl.VERSION_DIR_NAME, "$(curver + 1)"))
+    @test ispath(joinpath(job, DFControl.VERSION_DIR_NAME, "$(curver + 2)"))
 end
 
 rm(joinpath(job, DFControl.VERSION_DIR_NAME), recursive=true)
