@@ -33,3 +33,19 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
 test = ["Plots", "Test", "Suppressor"]
+
+[compat]
+julia = "^1"
+BinDeps = "^1"
+ColorTypes = "^0.11"
+Colors = "^0.12"
+Crayons = "^4"
+JLD2 = "^0.4"
+NearestNeighbors = "^0.4"
+Parameters = "^0.12"
+RecipesBase = "^1"
+Reexport = "^1"
+Requires = "^1"
+StaticArrays = "^1"
+Unitful = "^1"
+Media = "^0.5"
