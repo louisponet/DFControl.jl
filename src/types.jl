@@ -343,7 +343,9 @@ The `kwargs...` will be passed to the [`DFJob`](@ref) constructor.
         if isempty(metadata)
             mpath = joinpath(local_dir, ".metadata.jld2")
             if ispath(mpath)
-                metadata = load(mpath)["metadata"]
+                stored_data = load(mpath)
+                metadata = haskey(stored_data, "metadata") ? stored_data["metadata"] : metadata
+                version = haskey(stored_data, "version") ? stored_data["version"] : version
             end
         end
         out = new(name, structure, calculations, local_dir, header, metadata, version, copy_temp_folders, server, server_dir)

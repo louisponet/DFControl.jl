@@ -77,7 +77,9 @@ function sanitize_pseudos!(job::DFJob)
     all_pseudos = pseudo.(atoms(job))
     uni_dirs    = unique(map(x->x.dir, all_pseudos))
     uni_pseudos = unique(all_pseudos)
-    @assert all(ispath.(path.(uni_pseudos))) "Some Pseudos could not be found, please set them to existing ones."
+    if !all(ispath.(path.(uni_pseudos)))
+        @warn "Some Pseudos could not be located on disk."
+    end
     pseudo_dir  = length(uni_dirs) == 1 ? uni_dirs[1] : job.local_dir 
     if length(uni_dirs) > 1
         @info "Found pseudos in multiple directories, copying them to job directory"
@@ -182,6 +184,9 @@ for (f, strs) in zip((:cp, :mv), (("copy", "Copies"), ("move", "Moves")))
     The `kwargs...` are passed to `Base.$($f)`.
     """
     function Base.$f(job::DFJob, dest::String; all=false, temp=false, kwargs...)
+        if !ispath(dest)
+            mkpath(dest)
+        end
         for file in readdir(job.local_dir)
             if !all
                 if file == VERSION_DIR_NAME
@@ -265,7 +270,22 @@ function cleanup(job::DFJob)
     end
 end
 
-save_metadata(job) = jldsave(joinpath(job, ".metadata.jld2"); metadata=job.metadata)
+save_metadata(job) = jldsave(joinpath(job, ".metadata.jld2");
+                             metadata=job.metadata,
+                             version=job.version)
 
 timestamp(job) = job.metadata[:timestamp]
+timestamp!(job, time) = job.metadata[:timestamp] = time
 has_timestamp(job) = haskey(job.metadata, :timestamp)
+
+
+function clean_local_dir!(job::DFJob)
+    for f in readdir(job.local_dir)
+        if f == TEMP_CALC_DIR || f == VERSION_DIR_NAME || splitext(f)[end] == ".jl"
+            continue
+        end
+        rm(joinpath(job, f), recursive=true)
+    end
+end
+            
+        

@@ -18,13 +18,15 @@ function save(job::DFJob, local_dir=job.local_dir; kwargs...)
         job.name = "noname"
     end
     maybe_register_job(job)
-    maybe_increment_version(job)
+
+    job.version = last_version(job) + 1
+    maybe_cp_prev_version(job)
     sanitize_cutoffs!(job)
     sanitize_pseudos!(job)
     sanitize_magnetization!(job)
     sanitize_projections!(job)
     sanitize_flags!(job)
-    timestamp(job) = now()
+    timestamp!(job,now())
     save_metadata(job)
     return writejobfiles(job; kwargs...)
 end

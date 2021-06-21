@@ -3,7 +3,7 @@ const VERSION_DIR_NAME = ".versions"
 function job_versions(dir::String)
     verdir = joinpath(dir, VERSION_DIR_NAME)
     if ispath(verdir)
-        return parse.(Int, readdir(joinpath(dir, VERSION_DIR_NAME)))
+        return sort(parse.(Int, readdir(joinpath(dir, VERSION_DIR_NAME))))
     else
         return Int[]
     end
@@ -28,24 +28,28 @@ version_path(job::DFJob) = version_path(job.local_dir, job.version)
 version_path(job::DFJob, version::Int) = version_path(job.local_dir, version)
 
 exists_version(dir::String, version::Int) = version ∈ job_versions(dir)
+exists_version(job::DFJob, version::Int) = exists_version(job.local_dir, version)
 
-function maybe_increment_version(job::DFJob)
+"""
+    maybe_cp_prev_version(job::DFJob)
+
+Looks in the `job.local_dir` for a previous version of the job, and copies it to the
+respective directory in the `.versions`.
+"""
+function maybe_cp_prev_version(job::DFJob)
     versions_path = joinpath(job, VERSION_DIR_NAME)
     if !ispath(versions_path)
         mkpath(versions_path)
-        job.version = 1
     end
     if ispath(joinpath(job, "job.tt"))
-        tjob = DFJob(job.local_dir, version = last_version(job) + 1)
+        tjob = DFJob(job.local_dir)
         vpath = version_path(tjob)
-        mkpath(vpath)
-        cp(job, vpath)
-        job.version = last_version(job) + 1
+        cp(tjob, vpath, force=true)
     end
 end
 
 """
-    switch_version(job::DFJob, version::Int)
+    switch_version(job::DFJob[, version::Int])
 
 Switches the version of `job` to one of the previously stored ones.
 It will save also the current version for future reference.
@@ -55,26 +59,39 @@ function switch_version(job::DFJob, version::Int)
     cur_version = job.version
     if version != cur_version
         verpath = version_path(job.local_dir, version)
-        if !ispath(verpath)
-            err_str = "Requested job version ($version) is invalid, please choose from:\n"
-            for jv in versions(job)
-                err_str *= "\t$jv\n"
-            end
-            @error err_str
-        else
-            maybe_increment_version(job)
-            out = DFJob(verpath)
-            curdir = job.local_dir
-            mv(out, job.local_dir, force=true)
-            rm(verpath, recursive=true)
-            for f in fieldnames(DFJob)
-                setfield!(job, f, getfield(out,f))
-            end
-            set_localdir!(job, curdir)
-            job.version = version
+        version_assert(job, version)
+        maybe_cp_prev_version(job)
+        clean_local_dir!(job)
+        out = DFJob(verpath)
+        curdir = job.local_dir
+        cp(out, job.local_dir, force=true)
+        for f in fieldnames(DFJob)
+            setfield!(job, f, getfield(out,f))
         end
+        set_localdir!(job, curdir)
+        job.version = version
     end
     return job
+end
+
+function switch_version(job::DFJob)
+    vs = versions(job)
+    timestamps = []
+    for v in vs
+        mdatapath = joinpath(version_path(job, v), ".metadata.jld2") 
+        if ispath(mdatapath) && haskey(load(mdatapath), "metadata") && haskey(load(mdatapath)["metadata"], :timestamp)
+            push!(timestamps, string(load(mdatapath)["metadata"][:timestamp]))
+        else
+            push!(timestamps, "")
+        end
+    end
+            
+        
+    menu = RadioMenu(join.(zip(string.(vs), timestamps), (" ",)))
+    choice = request("Please select which version to switch to:", menu)
+    if choice != -1
+        return switch_version(job, vs[choice])
+    end
 end
 
 version_assert(job, version) = @assert exists_version(job, version) "Version $version does not exist for job."
@@ -83,10 +100,18 @@ version_assert(job, version) = @assert exists_version(job, version) "Version $ve
     rm_version!(job::DFJob, version::Int)
     rm_versions!(job::DFJob, versions::Int...)
 
-Removes the specified `versions` from the `job` if they exists.
+Removes the specified `versions` from the `job` if they exist.
 """ 
 function rm_version!(job::DFJob, version::Int)
     version_assert(job, version)
+    if version == job.version
+        @warn "Job version is the same as the one to be removed, switching to last known version."
+        lv = last_version(job)
+        if lv == version
+            lv = versions(job)[end-1]
+        end
+        switch_version(job, lv)
+    end
     rm(version_path(job, version), recursive=true)
 end
 
