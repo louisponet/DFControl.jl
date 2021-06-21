@@ -46,8 +46,8 @@ version = "4.0.4"
 
 [[DFControl]]
 deps = ["BinDeps", "ColorTypes", "Colors", "Crayons", "Dates", "DelimitedFiles", "JLD2", "LinearAlgebra", "Media", "NearestNeighbors", "Parameters", "REPL", "RecipesBase", "Reexport", "Requires", "StaticArrays", "Statistics", "Unitful", "spglib_jll"]
-git-tree-sha1 = "866ca5da81921bd50a5d3fb010fa9ff091b111ec"
-repo-rev = "ef5a995b5bb59b94acb05bd2cfc01ac8eb44c2f0"
+git-tree-sha1 = "85090ff2fcd5a1377e3cc2d38eca1c6b2548207a"
+repo-rev = "2abb83b973677060576e3fadf4abfa0dba71de82"
 repo-url = "https://github.com/louisponet/DFControl.jl.git"
 uuid = "1e31e15d-4957-550d-a244-318eced754ae"
 version = "0.3.0"
@@ -237,9 +237,9 @@ uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
 [[StaticArrays]]
 deps = ["LinearAlgebra", "Random", "Statistics"]
-git-tree-sha1 = "57a9b3c69933e15e5b7041b6a57d1533ef1a9882"
+git-tree-sha1 = "745914ebcd610da69f3cb6bf76cb7bb83dcb8c9a"
 uuid = "90137ffa-7385-5640-81b9-e52037218182"
-version = "1.2.3"
+version = "1.2.4"
 
 [[Statistics]]
 deps = ["LinearAlgebra", "SparseArrays"]
