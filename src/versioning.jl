@@ -59,8 +59,6 @@ function maybe_cp_prev_version(job::DFJob)
     end
 end
 
-
-
 """
     switch_version!(job::DFJob[, version::Int])
 

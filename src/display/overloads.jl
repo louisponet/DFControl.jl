@@ -37,6 +37,8 @@ function show(io::IO, job::DFJob)
     fns = string.(fieldns)
     insert!(fns, 2, "local_dir")
     insert!(fs, 2, main_job_dir(job))
+    push!(fieldns, :available_versions)
+    push!(fns, join(string.(versions(job)), ", "))
     lfns = maximum(length.(fns)) + maximum(length.(fs)) + 4
     line = "+"
     for i=1:div(lfns,2) + 1

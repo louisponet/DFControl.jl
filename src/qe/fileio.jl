@@ -893,7 +893,6 @@ function save(calculation::DFCalculation{QE}, structure, filename::String=inpath
     if haskey(flags(calculation), :calculation)
         set_flags!(calculation, :calculation => replace(calculation[:calculation], "_" => "-"), print=false)
     end
-    @show filename
     open(filename, "w") do f
         if exec(calculation, "ph.x") !== nothing
             write(f, "--\n")

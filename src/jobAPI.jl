@@ -26,6 +26,7 @@ function save(job::DFJob; kwargs...)
         cp(job, local_dir, force=true)
     end
     set_localdir!(job, local_dir) # Needs to be done so the inputs `dir` also changes.
+    verify_or_create(local_dir)
     if isempty(job.name)
         @warn "Job had no name, changed it to: noname"
         job.name = "noname"
@@ -171,10 +172,7 @@ function set_localdir!(job::DFJob, dir::AbstractString; copy=false)
         dir = abspath(dir)
     end
     if copy
-        if !ispath(dir)
-            mkpath(dir)
-            @info "$dir did not exist, it was created."
-        end
+        verify_or_create(dir)
         cp(job, dir; temp=true)
     end
     job.local_dir = dir

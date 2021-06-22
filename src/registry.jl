@@ -36,7 +36,24 @@ function maybe_register_job(abspath::String)
 end
 maybe_register_job(job::DFJob) = maybe_register_job(job.local_dir)
 
+"""
+    registered_jobs(fuzzy::AbstractString)
+
+Lists all the known [`DFJob](@ref) directories that contain `fuzzy`.
+Intended to be used as:
+```julia
+job_dirs = registered_jobs("NiO")
+job = DFJob(job_dirs[1])
+```
+"""
 registered_jobs(fuzzy::AbstractString) = filter(x -> occursin(fuzzy, x), JOB_REGISTRY)
+
+"""
+    load_jobs(fuzzy::AbstractString)
+
+Loads all the known [`DFJobs`](@ref DFJob) whose `local_dir` contains `fuzzy`.
+"""
+load_jobs(fuzzy::AbstractString) = DFJob.(registered_jobs(fuzzy))
 
 function request_job(job_dir::String)
     cleanup_job_registry(print=false)

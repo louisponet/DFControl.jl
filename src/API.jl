@@ -21,7 +21,7 @@ include("jobAPI.jl")
 export save, submit, abort, set_flow!, set_headerword!, isrunning, last_running_calculation, progressreport,
        set_serverdir!, set_localdir!, structure, scale_cell!, volume,
        switch_version!, version, versions, registered_jobs, rm_version!, rm_versions!, rm_tmp_dirs!,
-       cleanup
+       cleanup, load_jobs
 
 #Basic Interaction with DFCalculations inside DFJob
 export set_cutoffs!

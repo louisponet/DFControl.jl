@@ -48,7 +48,7 @@ set_execflags!
 rm_execflags!
 ```
 
-## Generating new calculations
+## [Generating new calculations](@id calculation_generation)
 ```@docs
 gencalc_vcrelax(::DFCalculation{QE}, ::NTuple{6, Int}, ::Any...)
 gencalc_scf(::DFCalculation{QE}, ::NTuple{6, Int}, ::Any...)

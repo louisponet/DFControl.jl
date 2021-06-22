@@ -17,9 +17,9 @@ Using the script that is created upon saving or submitting a job, a [`DFJob`](@r
 - Creation and submission of a simple self-consistent-field calculation starting from a structure Cif file in less than 10 lines of code (see the [Basic Tutorial](@ref)])
 - Separation of [`Structure`](@ref Structure) and [`DFCalculation`](@ref Calculations) so that the same [`DFCalculations`](@ref Calculations) can be copied and used with a different [`Structure`](@ref Structure) in a new job 
 - Automatic validation and conversion of input flags
-- Tracking of jobs for ease of continuation at later times
-- Ease of input generation
-- Automatic plotting of available results using a single command
+- [Tracking](@ref Registry) of [`DFJobs`](@ref DFJob) for ease of continuation at later times
+- Ease of [calculation generation](@ref calculation_generation)
+- Automatic [plotting of available results](@ref result_plotting) using a single command
 - Input flag sanity checks
-- Rudimentary job versioning to never lose previous job's results even if running in the same directory
-- Fully human readable and transparent job directory structure 
+- Rudimentary [`DFJob`](@ref) [versioning](@ref Versioning) to never lose previous [`DFJob's`](@ref DFJob) results even if running in the same directory
+- Fully human readable and transparent [`DFJob`](@ref) directory structure 

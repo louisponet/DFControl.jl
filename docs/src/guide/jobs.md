@@ -54,6 +54,18 @@ Base.filesize
 Base.joinpath(::DFJob, ::Any...)
 cleanup
 ```
+### Registry
+All [`DFJobs`](@ref DFJob) are stored in an internal registry the first time `save(job)` is called. 
+This means that finding all previously worked on [`DFJobs`](@ref DFJob) is as straightforward as
+calling `DFJob(fuzzy)` where `fuzzy` is a part of the previously saved [`DFJob`](@ref) `local_dir`. 
+This will then show a menu in the REPL with the possible choices and one will be loaded upon choosing.
+
+Loading all [`DFJobs`](@ref DFJob) that contain a given `fuzzy` can be done through [`load_jobs(fuzzy)`](@ref load_jobs).
+
+```@docs
+registered_jobs
+load_jobs
+```
 ### Versioning
 
 As previously mentioned, a rudimentary implementation of a `DFJob` versioning system is implemented. 

@@ -177,6 +177,12 @@ function parse_block(f, types...; to_strip=',')
     return output
 end
 
+function verify_or_create(dir)
+    if !ispath(dir)
+        mkpath(dir)
+        @info "$dir did not exist, it was created."
+    end
+end
 
 yesterday() = today() - Day(1)
 lastweek()  = today() - Week(1)
