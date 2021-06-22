@@ -296,16 +296,17 @@ rm(joinpath(job, DFControl.VERSION_DIR_NAME), recursive=true)
     save(job)
     @test job.version == curver + 3
     @test job["scf"][:nbnd] == 40
-    switch_version(job, curver+1)
+    switch_version!(job, curver+1)
     @test job.version == curver+1
     # @test DFControl.last_version(job) == 2
     @test job["scf"][:nbnd] == 30
     rm_version!(job, curver + 1)
-    @test !ispath(joinpath(job, DFControl.VERSION_DIR_NAME, "$(curver + 1)"))
-    @test ispath(joinpath(job, DFControl.VERSION_DIR_NAME, "$(curver + 2)"))
+    @test !ispath(joinpath(DFControl.main_job_dir(job), DFControl.VERSION_DIR_NAME, "$(curver + 1)"))
+    @test ispath(joinpath(DFControl.main_job_dir(job), DFControl.VERSION_DIR_NAME, "$(curver + 2)"))
 end
 
-rm(joinpath(job, DFControl.VERSION_DIR_NAME), recursive=true)
+rm(joinpath(DFControl.main_job_dir(job), DFControl.VERSION_DIR_NAME), recursive=true)
+set_localdir!(job, DFControl.main_job_dir(job))
 rm.(DFControl.inpath.(job.calculations))
 
 rm(joinpath(job, "job.tt"))

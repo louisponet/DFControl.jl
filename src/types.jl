@@ -365,9 +365,13 @@ function DFJob(job_name::String, structure::AbstractStructure, calculations::Vec
     return out
 end
 
-function DFJob(job_dir::String, job_script="job.tt"; version = nothing, kwargs...)
-    if !isempty(job_dir) && ispath(abspath(job_dir)) && !isempty(searchdir(abspath(job_dir), job_script))
-        real_path = abspath(job_dir)
+function DFJob(job_dir::AbstractString, job_script="job.tt"; version::Union{Nothing, Int} = nothing, kwargs...)
+    apath = abspath(job_dir)
+    if !isempty(job_dir) && ispath(apath) && !isempty(searchdir(apath, job_script))
+        if occursin(VERSION_DIR_NAME, apath)
+            @error "It is not allowed to directly load a job version, please use `DFJob(dir, version=$(splitdir(apath)[end]))`"
+        end
+        real_path = version === nothing ? apath : joinpath(apath, VERSION_DIR_NAME, "$version")
     else
         real_path = request_job(job_dir)
         real_path === nothing && return

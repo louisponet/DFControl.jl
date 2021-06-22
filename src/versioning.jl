@@ -1,12 +1,27 @@
 const VERSION_DIR_NAME = ".versions"
+# 0 Job version means that no jobs have ran yet.
+"Returns the version found in the .metadata.jld2 if it exists. Otherwise 0." 
+function main_job_version(dir::AbstractString)
+    mdatapath = joinpath(dir, ".metadata.jld2") 
+    if ispath(mdatapath)
+        metadata = load(mdatapath)
+        if haskey(metadata, "version")
+            return metadata["version"]
+        end
+    end
+    return 0
+end
+    
 
-function job_versions(dir::String)
+function job_versions(dir::AbstractString)
+    versions = Int[]
+    mainver = main_job_version(dir)
+    mainver != 0 && push!(versions, mainver)
     verdir = joinpath(dir, VERSION_DIR_NAME)
     if ispath(verdir)
-        return sort(parse.(Int, readdir(joinpath(dir, VERSION_DIR_NAME))))
-    else
-        return Int[]
+        return append!(versions, parse.(Int, readdir(joinpath(dir, VERSION_DIR_NAME))))
     end
+    return sort(versions)
 end
 
 """
@@ -14,21 +29,21 @@ end
 
 Returs the valid versions of `job`.
 """
-versions(job::DFJob) = job_versions(job.local_dir)
+versions(job::DFJob) = job_versions(main_job_dir(job))
 version(job::DFJob) = job.version
 
-function last_job_version(dir::String)
+function last_job_version(dir::AbstractString)
     versions = job_versions(dir)
     return isempty(versions) ? 0 : versions[end]
 end
-last_version(job::DFJob) = last_job_version(job.local_dir)
+last_version(job::DFJob) = last_job_version(main_job_dir(job))
 
-version_path(dir::String, version::Int) = joinpath(dir, VERSION_DIR_NAME, "$version")
-version_path(job::DFJob) = version_path(job.local_dir, job.version)
-version_path(job::DFJob, version::Int) = version_path(job.local_dir, version)
+version_path(dir::AbstractString, version::Int) = joinpath(dir, VERSION_DIR_NAME, "$version")
+version_path(job::DFJob) = version_path(main_job_dir(job), job.version)
+version_path(job::DFJob, version::Int) = version_path(main_job_dir(job), version)
 
-exists_version(dir::String, version::Int) = version ∈ job_versions(dir)
-exists_version(job::DFJob, version::Int) = exists_version(job.local_dir, version)
+exists_version(dir::AbstractString, version::Int) = version ∈ job_versions(dir)
+exists_version(job::DFJob, version::Int) = exists_version(main_job_dir(job), version)
 
 """
     maybe_cp_prev_version(job::DFJob)
@@ -37,60 +52,50 @@ Looks in the `job.local_dir` for a previous version of the job, and copies it to
 respective directory in the `.versions`.
 """
 function maybe_cp_prev_version(job::DFJob)
-    versions_path = joinpath(job, VERSION_DIR_NAME)
-    if !ispath(versions_path)
-        mkpath(versions_path)
-    end
-    if ispath(joinpath(job, "job.tt"))
-        tjob = DFJob(job.local_dir)
-        vpath = version_path(tjob)
-        cp(tjob, vpath, force=true)
+    maindir = main_job_dir(job)
+    if ispath(joinpath(maindir, "job.tt"))
+        tjob = DFJob(maindir)
+        cp(tjob, version_path(tjob), force=true)
     end
 end
 
+
+
 """
-    switch_version(job::DFJob[, version::Int])
+    switch_version!(job::DFJob[, version::Int])
 
 Switches the version of `job` to one of the previously stored ones.
 It will save also the current version for future reference.
 """
-function switch_version(job::DFJob, version::Int)
-    @assert !isrunning(job; print=false) "Can't switch job versions on a running job."
+function switch_version!(job::DFJob, version::Int)
     cur_version = job.version
     if version != cur_version
-        verpath = version_path(job.local_dir, version)
         version_assert(job, version)
-        maybe_cp_prev_version(job)
-        clean_local_dir!(job)
-        out = DFJob(verpath)
-        curdir = job.local_dir
-        cp(out, job.local_dir, force=true)
+        out = DFJob(main_job_dir(job), version=version)
         for f in fieldnames(DFJob)
             setfield!(job, f, getfield(out,f))
         end
-        set_localdir!(job, curdir)
-        job.version = version
     end
     return job
 end
 
-function switch_version(job::DFJob)
+function switch_version!(job::DFJob)
     vs = versions(job)
     timestamps = []
     for v in vs
         mdatapath = joinpath(version_path(job, v), ".metadata.jld2") 
         if ispath(mdatapath) && haskey(load(mdatapath), "metadata") && haskey(load(mdatapath)["metadata"], :timestamp)
-            push!(timestamps, string(load(mdatapath)["metadata"][:timestamp]))
+            push!(timestamps, string(round(load(mdatapath)["metadata"][:timestamp], Dates.Second)))
         else
             push!(timestamps, "")
         end
     end
             
-        
-    menu = RadioMenu(join.(zip(string.(vs), timestamps), (" ",)))
+    
+    menu = RadioMenu(join.(zip(["v$v" for v in string.(vs)], timestamps), ("\tsaved on: ",)))
     choice = request("Please select which version to switch to:", menu)
     if choice != -1
-        return switch_version(job, vs[choice])
+        return switch_version!(job, vs[choice])
     end
 end
 
@@ -110,7 +115,7 @@ function rm_version!(job::DFJob, version::Int)
         if lv == version
             lv = versions(job)[end-1]
         end
-        switch_version(job, lv)
+        switch_version!(job, lv)
     end
     rm(version_path(job, version), recursive=true)
 end

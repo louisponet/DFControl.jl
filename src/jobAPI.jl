@@ -10,17 +10,33 @@ If a previous job is present in the job directory (indicated by a valid job scri
 it will be copied to the `.versions` sub directory as the previous version of `job`,
 and the version of `job` will be incremented. 
 """
-function save(job::DFJob, local_dir=job.local_dir; kwargs...)
-    local_dir = local_dir != "" ? local_dir : error("Please specify a valid local_dir!")
-    set_localdir!(job, local_dir)
+function save(job::DFJob; kwargs...)
+    local_dir = main_job_dir(job)
+    @show local_dir
+    @show job.local_dir
+    if ispath(joinpath(local_dir, "job.tt"))
+        tj = DFJob(local_dir)
+        @assert !isrunning(tj) "Can't save a job in a directory where another is running."
+        # We want to first make sure that the previous job in the main directory is safely stored
+        cp(tj, version_path(tj), force=true)
+    end
+    if local_dir != job.local_dir
+        # We know for sure it was a previously saved job
+        # Now that we have safely stored it we can clean out the directory to then fill
+        # it with the files from the job.version
+        clean_local_dir!(tj)
+        cp(job, local_dir, force=true)
+    end
+    set_localdir!(job, local_dir) # Needs to be done so the inputs `dir` also changes.
     if isempty(job.name)
         @warn "Job had no name, changed it to: noname"
         job.name = "noname"
     end
     maybe_register_job(job)
 
+    curver = job.version
     job.version = last_version(job) + 1
-    maybe_cp_prev_version(job)
+    @info "Job version: $(curver) => $(job.version)."
     sanitize_cutoffs!(job)
     sanitize_pseudos!(job)
     sanitize_magnetization!(job)
@@ -145,14 +161,14 @@ function set_serverdir!(job, dir)
 end
 
 """
-    set_localdir!(job::DFJob, dir::String; copy=false)
+    set_localdir!(job::DFJob, dir::AbstractString; copy=false)
     
 Sets `job.local_dir` to `dir`. If necessary the directory will be created.
 If `copy` is set to `true`, all previous calculations and output files of the current job version
 (i.e. those in the main job directory) will be copied to the new directory, including the
 `outputs` directory with temporary files created during jobs runs.
 """
-function set_localdir!(job::DFJob, dir::String; copy=false)
+function set_localdir!(job::DFJob, dir::AbstractString; copy=false)
     if !isabspath(dir)
         dir = abspath(dir)
     end

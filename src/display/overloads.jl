@@ -32,9 +32,11 @@ show(io::IO, bands::Vector{<:DFBand}) = map(x->show(io,x),bands)
 
 function show(io::IO, job::DFJob)
     reset = crayon"reset"
-    fieldns  = [:name, :local_dir, :server, :server_dir]
+    fieldns  = [:name, :version]
     fs   = string.(filter(x->!isempty(x), getfield.((job,), fieldns)))
     fns = string.(fieldns)
+    insert!(fns, 2, "local_dir")
+    insert!(fs, 2, main_job_dir(job))
     lfns = maximum(length.(fns)) + maximum(length.(fs)) + 4
     line = "+"
     for i=1:div(lfns,2) + 1

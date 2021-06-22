@@ -73,7 +73,7 @@ breaking changes, or to pull out previous results after further experimentation 
 
 ```@docs
 versions
-switch_version
+switch_version!
 rm_version!
 ```
 More functionality related to versioning will be added in the future.

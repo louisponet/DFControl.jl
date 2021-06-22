@@ -288,4 +288,4 @@ function clean_local_dir!(job::DFJob)
     end
 end
             
-        
+main_job_dir(job::DFJob) = split(job.local_dir, VERSION_DIR_NAME)[1]        
