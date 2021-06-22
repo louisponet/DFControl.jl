@@ -12,8 +12,6 @@ and the version of `job` will be incremented.
 """
 function save(job::DFJob; kwargs...)
     local_dir = main_job_dir(job)
-    @show local_dir
-    @show job.local_dir
     if ispath(joinpath(local_dir, "job.tt"))
         tj = DFJob(local_dir)
         @assert !isrunning(tj) "Can't save a job in a directory where another is running."

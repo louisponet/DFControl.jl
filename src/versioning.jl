@@ -19,9 +19,9 @@ function job_versions(dir::AbstractString)
     mainver != 0 && push!(versions, mainver)
     verdir = joinpath(dir, VERSION_DIR_NAME)
     if ispath(verdir)
-        return append!(versions, parse.(Int, readdir(joinpath(dir, VERSION_DIR_NAME))))
+        append!(versions, parse.(Int, readdir(joinpath(dir, VERSION_DIR_NAME))))
     end
-    return sort(versions)
+    return sort(unique(versions))
 end
 
 """
