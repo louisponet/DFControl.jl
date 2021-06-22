@@ -45,13 +45,15 @@ data(job["nscf"], :k_points)
 # The arguments are structured as (template, Emin, Emax, deltaE) respectively.
 fermi = readfermi(job)
 push!(job, gencalc_projwfc(job["nscf"], fermi-10, fermi+1, 0.1))
-# Next we disable the bands calculation, run the new ones, and plot the results
+# Next we disable the bands calculation and run the new ones.
 job["bands"].run = false
 if false#hide
 submit(job)
 else#hide
 global job = deepcopy(tjob2)#hide
 end#hide
+
+# ## [Plot Results](@id results_plotting)
 using Plots
 plot(job, -10, 1)
 
