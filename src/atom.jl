@@ -197,7 +197,6 @@ Calculates the distance between the two atoms.
 """
 distance(at1::AbstractAtom, at2::AbstractAtom) = norm(at1.position_cart - at2.position_cart)
 
-
 """
 	set_position!(at::AbstractAtom, pos::AbstractVector{T}, unit_cell::Mat3) where {T<:Real}
 
