@@ -52,9 +52,9 @@ job = DFJob("Si", structure, [scf_calculation],
 # that allow recognize that flag, so it's ideal for things like cutoffs and smearing etc.
 
 # We are now ready to submit the job, which will run in the current working directory
-try #hide
+if false #hide
 submit(job)
-catch #hide
+else #hide
 global job = DFJob(joinpath(@__DIR__, "../../src/assets/job/"))#hide
 pop!(job); #hide
 end #hide
@@ -92,9 +92,9 @@ job
 
 # Seeing that all is right we submit the job again
 set_localdir!(job, "job"); #hide
-try #hide
+if false #hide
 submit(job)
-catch #hide
+else #hide
 global job = DFJob(joinpath(pathof(DFControl), "..","..", "docs", "src", "assets", "job"));#hide
 end #hide
 

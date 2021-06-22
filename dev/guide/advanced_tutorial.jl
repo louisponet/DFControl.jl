@@ -8,9 +8,9 @@ using DFControl
 
 tjob = DFJob(joinpath(pathof(DFControl), "..","..","docs", "src", "assets", "job"))#hide
 tjob2 = DFJob(joinpath(pathof(DFControl), "..","..", "docs", "src", "assets", "Job2"))#hide
-try#hide
+if false#hide
 global job = DFJob("job")
-catch#hide
+else#hide
 global job = deepcopy(tjob)#hide
 set_localdir!(job, "job"); #hide
 job#hide
@@ -20,9 +20,9 @@ end#hide
 # further details and options on how to load previously saved jobs.
 
 # The next thing we may want to do is to change the directory where the job is running.
-try#hide
+if false#hide
 set_localdir!(job, "Job2", copy=true)
-catch#hide
+else#hide
 global job = deepcopy(tjob2);#hide
 pop!(job);#hide
 pop!(job);#hide
@@ -47,9 +47,9 @@ fermi = readfermi(job)
 push!(job, gencalc_projwfc(job["nscf"], fermi-10, fermi+1, 0.1))
 # Next we disable the bands calculation, run the new ones, and plot the results
 job["bands"].run = false
-try#hide
+if false#hide
 submit(job)
-catch#hide
+else#hide
 global job = deepcopy(tjob2)#hide
 end#hide
 using Plots
