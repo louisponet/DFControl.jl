@@ -19,7 +19,7 @@ Using the script that is created upon saving or submitting a job, a [`DFJob`](@r
 - Automatic validation and conversion of input flags
 - [Tracking](@ref Registry) of [`DFJobs`](@ref DFJob) for ease of continuation at later times
 - Ease of [calculation generation](@ref calculation_generation)
-- Automatic [plotting of available results](@ref result_plotting) using a single command
+- Automatic [plotting of available results](@ref results_plotting) using a single command
 - Input flag sanity checks
 - Rudimentary [`DFJob`](@ref) [versioning](@ref Versioning) to never lose previous [`DFJob's`](@ref DFJob) results even if running in the same directory
 - Fully human readable and transparent [`DFJob`](@ref) directory structure 
