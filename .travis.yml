@@ -17,8 +17,8 @@ git:
 matrix:
   allow_failures:
     - julia:
-      nightly
-      1.4
+      - nightly
+      - 1.4
 
 ## uncomment and modify the following lines to manually install system packages
 #addons:
