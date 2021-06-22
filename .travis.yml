@@ -6,6 +6,7 @@ julia:
   - 1.4
   - 1.6
   - nightly
+
 notifications:
   email: false
 git:
