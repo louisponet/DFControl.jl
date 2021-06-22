@@ -8,11 +8,13 @@ const ELEMENTS = Element[]
 open(joinpath(@__DIR__, "..", "assets", "elements.txt"), "r") do f
     while !eof(f)
         line = split(readline(f))
-        push!(ELEMENTS, Element(Symbol(line[4]), Meta.parse(line[1]), line[9], Meta.parse(line[10]), (Meta.parse.(line[5:7],)...,)./65535))
+        push!(ELEMENTS,
+              Element(Symbol(line[4]), Meta.parse(line[1]), line[9], Meta.parse(line[10]),
+                      (Meta.parse.(line[5:7],)...,) ./ 65535))
     end
 end
 #undefined element
-push!(ELEMENTS, Element(:undef, 0, "undef",0, (0.0, 0.0, 0.0)))
+push!(ELEMENTS, Element(:undef, 0, "undef", 0, (0.0, 0.0, 0.0)))
 
 """
     element(sym::Symbol)
@@ -24,27 +26,28 @@ function element(sym::Symbol)
     if tryparse(Int, String(sym)[end:end]) != nothing
         sym = Symbol(String(sym)[1:end-1])
     end
-    found = filter(x->x.symbol == sym, ELEMENTS)
+    found = filter(x -> x.symbol == sym, ELEMENTS)
     if isempty(found)
-       @warn "No element found with symbol '$sym'."
-       return ELEMENTS[end]
+        @warn "No element found with symbol '$sym'."
+        return ELEMENTS[end]
     end
     return found[1]
 end
 
-element(z::Int) = getfirst(x->x.Z == z, ELEMENTS)
-
+element(z::Int) = getfirst(x -> x.Z == z, ELEMENTS)
 
 #Definition of the AbstractAtom interface, each AbstractAtom needs to provide a method `atom(...)` that returns a datastructure with the Atom fields.
 elsym(atom::AbstractAtom) = element(atom).symbol
 "Extracts all the positions of the atoms and puts them in a vector."
-positions(atoms::Vector{<:AbstractAtom}, name::Symbol) = [position_cart(x) for x in filter(y -> name(y) == name, atoms)]
+function positions(atoms::Vector{<:AbstractAtom}, name::Symbol)
+    return [position_cart(x) for x in filter(y -> name(y) == name, atoms)]
+end
 getpseudoset(at::AbstractAtom) = getpseudoset(elsym(at), pseudo(at))
 
 ismagnetic(at::AbstractAtom) = !iszero(sum(magnetization(at)))
 
 "Takes a Vector of atoms and returns a Vector with the atoms having unique symbols."
-function Base.unique(atoms::Vector{A}) where A <: AbstractAtom
+function Base.unique(atoms::Vector{A}) where {A<:AbstractAtom}
     uni = A[]
     for at in atoms
         if findfirst(x -> isequal_species(x, at), uni) === nothing
@@ -55,28 +58,25 @@ function Base.unique(atoms::Vector{A}) where A <: AbstractAtom
 end
 
 function ==(x::DFTU, y::DFTU)
-	fnames = fieldnames(DFTU)
-	for fn in fnames
-		if getfield(x, fn) != getfield(y, fn)
-			return false
-		end
-	end
-	return true
+    fnames = fieldnames(DFTU)
+    for fn in fnames
+        if getfield(x, fn) != getfield(y, fn)
+            return false
+        end
+    end
+    return true
 end
 
-isdefault(x::DFTU{T}) where {T} =
-	x == DFTU{T}() 
+isdefault(x::DFTU{T}) where {T} = x == DFTU{T}()
 
 isdefault(x::Any) = isempty(x)
 isdefault(x::AbstractVector) = isempty(x) || all(iszero, x)
 
 Base.string(::Type{Elk}, dftu::DFTU) = "$(dftu.l) $(dftu.U) $(dftu.J0)"
 
-Base.isempty(p::Pseudo) =
-	isempty(p.name) && isempty(p.dir)
+Base.isempty(p::Pseudo) = isempty(p.name) && isempty(p.dir)
 
-==(p1::Pseudo, p2::Pseudo) =
-	p1.name == p2.name && p1.dir == p2.dir
+==(p1::Pseudo, p2::Pseudo) = p1.name == p2.name && p1.dir == p2.dir
 
 path(p::Pseudo) = joinpath(p.dir, p.name)
 #Easiest way to implement a new abstractatom is to provide a way to access
@@ -84,8 +84,8 @@ path(p::Pseudo) = joinpath(p.dir, p.name)
 atom(at::Atom) = at
 
 for interface_function in fieldnames(Atom)
-	@eval $interface_function(at::AbstractAtom) = atom(at).$interface_function
-	@eval export $interface_function
+    @eval $interface_function(at::AbstractAtom) = atom(at).$interface_function
+    @eval export $interface_function
 end
 
 """
@@ -106,29 +106,30 @@ Returns `structure.atoms` or `filter(f, structure.atoms)` if `f` is specified.
 atoms(str::AbstractStructure) = structure(str).atoms
 atoms(f::Function, str::AbstractStructure) = filter(f, atoms(str))
 
-
 """job.structure.atoms = atoms"""
-set_atoms!(job::DFJob, atoms::Vector{<:AbstractAtom}) =
-    job.structure.atoms = atoms
-
+set_atoms!(job::DFJob, atoms::Vector{<:AbstractAtom}) = job.structure.atoms = atoms
 
 function Base.range(at::AbstractAtom)
-	projs = projections(at)
-	@assert length(projs) != 0 "At $(name(at)) has no defined projections. Please use `setprojections!` first."
-	return projs[1].start : projs[end].last
+    projs = projections(at)
+    @assert length(projs) != 0 "At $(name(at)) has no defined projections. Please use `setprojections!` first."
+    return projs[1].start:projs[end].last
 end
 
 Base.range(v::Vector{AbstractAtom}) = vcat(range.(v)...)
 
-set_name!(at::AbstractAtom, name::Symbol) =
-	atom(at).name = name
+set_name!(at::AbstractAtom, name::Symbol) = atom(at).name = name
 
-length_unit(at::Atom{T, LT}) where {T, LT} = LT
+length_unit(at::Atom{T,LT}) where {T,LT} = LT
 
-bondlength(at1::AbstractAtom{T}, at2::AbstractAtom{T}, R=T(0.0)) where T<:AbstractFloat = norm(position_cart(at1) - position_cart(at2) - R)
+function bondlength(at1::AbstractAtom{T}, at2::AbstractAtom{T},
+                    R = T(0.0)) where {T<:AbstractFloat}
+    return norm(position_cart(at1) - position_cart(at2) - R)
+end
 
-==(at1::AbstractAtom{T, LT}, at2::AbstractAtom{T, LT}) where {T, LT} =
-    name(at1) == name(at2) && norm(position_cart(at1) - position_cart(at2)) < LT(1e-6)
+function ==(at1::AbstractAtom{T,LT}, at2::AbstractAtom{T,LT}) where {T,LT}
+    return name(at1) == name(at2) &&
+           norm(position_cart(at1) - position_cart(at2)) < LT(1e-6)
+end
 
 function isequal_species(at1::AbstractAtom, at2::AbstractAtom)
     for f in fieldnames(typeof(at1))
@@ -142,9 +143,10 @@ function isequal_species(at1::AbstractAtom, at2::AbstractAtom)
     return true
 end
 
-function position_string(::Type{QE}, at::AbstractAtom; relative=true)
-	pos = relative ? round.(position_cryst(at), digits=5) : round.(ustrip.(uconvert.(Ang, position_cart(at))), digits=5)
-	return "$(name(at))  $(pos[1]) $(pos[2]) $(pos[3])\n"
+function position_string(::Type{QE}, at::AbstractAtom; relative = true)
+    pos = relative ? round.(position_cryst(at), digits = 5) :
+          round.(ustrip.(uconvert.(Ang, position_cart(at))), digits = 5)
+    return "$(name(at))  $(pos[1]) $(pos[2]) $(pos[3])\n"
 end
 
 """
@@ -165,9 +167,9 @@ set_magnetization!(job, :Ni1 => [0.0, 0.0, -1.0], :Ni2 => [0.0, 0.0, 1.0])
 will set all the moments of [`Atoms`](@ref Atom) with name `Ni1` to `[0.0, 0.0, -1.0]` and `Ni2` to `[0.0, 0.0, 1.0]`.
 Since the moments are aligned with the z-direction this will signal that colinear calculations should be ran.
 """
-function set_magnetization!(at::AbstractAtom, mag; print=true)
-	at.magnetization = convert(Vec3, mag)
-	print && @info "Magnetization of at $(name(at)) was set to $(magnetization(at))"
+function set_magnetization!(at::AbstractAtom, mag; print = true)
+    at.magnetization = convert(Vec3, mag)
+    return print && @info "Magnetization of at $(name(at)) was set to $(magnetization(at))"
 end
 
 function set_magnetization!(str::Structure, atsym_mag::Pair{Symbol,<:AbstractVector}...)
@@ -178,17 +180,14 @@ function set_magnetization!(str::Structure, atsym_mag::Pair{Symbol,<:AbstractVec
     end
 end
 
-set_magnetization!(job::DFJob, args...) =
-    set_magnetization!(job.structure, args...)
-
-
+set_magnetization!(job::DFJob, args...) = set_magnetization!(job.structure, args...)
 
 projections(str::AbstractStructure) = projections.(atoms(str))
 hasprojections(str::AbstractStructure) = !all(isempty, projections(str))
-hasprojections_assert(str::AbstractStructure) =
+function hasprojections_assert(str::AbstractStructure)
     @assert hasprojections(str) "No projections found in structure $(str.name).
     Please set the projections for the atoms inside the structure first using `setprojections!`."
-
+end
 
 """
 	distance(at1::AbstractAtom, at2::AbstractAtom)
@@ -202,16 +201,18 @@ distance(at1::AbstractAtom, at2::AbstractAtom) = norm(at1.position_cart - at2.po
 
 Updates the position of the atom to this. The unit cell is used to make sure both `position_cryst` and `position_cart` are correct.
 """
-function set_position!(at::AbstractAtom, pos::AbstractVector{T}, unit_cell::Mat3) where {T<:Real}
-	atom(at).position_cryst = Point3{T}(pos...)
-	atom(at).position_cart  = unit_cell * atom(at).position_cryst
-	return at
+function set_position!(at::AbstractAtom, pos::AbstractVector{T},
+                       unit_cell::Mat3) where {T<:Real}
+    atom(at).position_cryst = Point3{T}(pos...)
+    atom(at).position_cart  = unit_cell * atom(at).position_cryst
+    return at
 end
 
-function set_position!(at::AbstractAtom, pos::AbstractVector{T}, unit_cell::Mat3) where {T<:Length}
-	atom(at).position_cart  = Point3{T}(pos...)
-	atom(at).position_cryst = unit_cell^-1 * atom(at).position_cart
-	return at
+function set_position!(at::AbstractAtom, pos::AbstractVector{T},
+                       unit_cell::Mat3) where {T<:Length}
+    atom(at).position_cart  = Point3{T}(pos...)
+    atom(at).position_cryst = unit_cell^-1 * atom(at).position_cart
+    return at
 end
 
 """
@@ -220,16 +221,16 @@ end
 Scales the bondlength between two atoms. The center of mass remains the same.
 """
 function scale_bondlength!(at1::AbstractAtom, at2::AbstractAtom, scale::Real, cell::Mat3)
-	p1 = position_cryst(at1) 
-	p2 = position_cryst(at2) 
-	mid = (p1 + p2)/2
-	orig_dist = norm(p1 - p2)
-	direction = (p1 - mid)/norm(p1-mid)
-	new_dist = orig_dist * scale
-	new_p1 = mid + new_dist * direction/2
-	new_p2 = mid - new_dist * direction/2
-	set_position!(at1, new_p1, cell)
-	set_position!(at2, new_p2, cell)
+    p1 = position_cryst(at1)
+    p2 = position_cryst(at2)
+    mid = (p1 + p2) / 2
+    orig_dist = norm(p1 - p2)
+    direction = (p1 - mid) / norm(p1 - mid)
+    new_dist = orig_dist * scale
+    new_p1 = mid + new_dist * direction / 2
+    new_p2 = mid - new_dist * direction / 2
+    set_position!(at1, new_p1, cell)
+    return set_position!(at2, new_p2, cell)
 end
 
 """
@@ -237,10 +238,10 @@ end
 
 Sets the pseudopotential `at` to `pseudo`, and the validity of the `Pseudo` is checked.
 """
-function set_pseudo!(at::AbstractAtom, pseudo::Pseudo; print=true)
-	print && @info "Pseudo of atom $(name(at)) set to $pseudo."
-	!ispath(path(pseudo)) && @warn "Pseudopath $(path(pseudo)) not found."
-	atom(at).pseudo = pseudo
+function set_pseudo!(at::AbstractAtom, pseudo::Pseudo; print = true)
+    print && @info "Pseudo of atom $(name(at)) set to $pseudo."
+    !ispath(path(pseudo)) && @warn "Pseudopath $(path(pseudo)) not found."
+    return atom(at).pseudo = pseudo
 end
 
 """
@@ -266,25 +267,30 @@ If `atsym` is used, only the pseudos of the atoms with that name will be set.
 Convenience function that allows to set pseudopotentials for multiple atom types at the same time.
 e.g. `set_pseudos!(job, :Si => getdefault_pseudo(:Si, :sssp)
 """
-set_pseudos!(job::DFJob, set::Symbol, specifier::String=""; kwargs...) = 
-    set_pseudos!(job.structure, set, specifier; kwargs...)
+function set_pseudos!(job::DFJob, set::Symbol, specifier::String = ""; kwargs...)
+    return set_pseudos!(job.structure, set, specifier; kwargs...)
+end
 
 "sets the pseudopotentials for the atom with name `atsym` to the specified one in the default pseudoset."
-set_pseudos!(job::DFJob, atsym::Symbol, set::Symbol, specifier::String=""; kwargs...) =
-    set_pseudos!(job.structure, atsym, set, specifier; kwargs...)
+function set_pseudos!(job::DFJob, atsym::Symbol, set::Symbol, specifier::String = "";
+                      kwargs...)
+    return set_pseudos!(job.structure, atsym, set, specifier; kwargs...)
+end
 
 "sets the pseudopotentials to the specified one in the default pseudoset."
-set_pseudos!(job::DFJob, at_pseudos::Pair{Symbol, Pseudo}...; kwargs...) = 
-    set_pseudos!(job.structure, at_pseudos...; kwargs...)
+function set_pseudos!(job::DFJob, at_pseudos::Pair{Symbol,Pseudo}...; kwargs...)
+    return set_pseudos!(job.structure, at_pseudos...; kwargs...)
+end
 
-function set_pseudos!(structure::AbstractStructure, atoms::Vector{<:AbstractAtom}, set::Symbol, specifier::String = ""; kwargs...)
+function set_pseudos!(structure::AbstractStructure, atoms::Vector{<:AbstractAtom},
+                      set::Symbol, specifier::String = ""; kwargs...)
     dir = getdefault_pseudodir(set)
     if dir == nothing
         @warn "No pseudos found for set $set."
         return
     end
     for (i, at) in enumerate(atoms)
-        pseudo = getdefault_pseudo(name(at), set, specifier = specifier)
+        pseudo = getdefault_pseudo(name(at), set; specifier = specifier)
         if pseudo == nothing
             @warn "Pseudo for $(name(at)) at index $i not found in set $set."
         else
@@ -293,13 +299,18 @@ function set_pseudos!(structure::AbstractStructure, atoms::Vector{<:AbstractAtom
     end
 end
 
-set_pseudos!(structure::AbstractStructure, atname::Symbol, set::Symbol, specifier::String = ""; kwargs...) =
-    set_pseudos!(structure, structure[atname], set, specifier; kwargs...)
+function set_pseudos!(structure::AbstractStructure, atname::Symbol, set::Symbol,
+                      specifier::String = ""; kwargs...)
+    return set_pseudos!(structure, structure[atname], set, specifier; kwargs...)
+end
 
-set_pseudos!(structure::AbstractStructure, set::Symbol, specifier::String = ""; kwargs...) =
-    set_pseudos!(structure, atoms(structure), set, specifier; kwargs...)
+function set_pseudos!(structure::AbstractStructure, set::Symbol, specifier::String = "";
+                      kwargs...)
+    return set_pseudos!(structure, atoms(structure), set, specifier; kwargs...)
+end
 
-function set_pseudos!(structure::AbstractStructure, at_pseudos::Pair{Symbol,Pseudo}...; kwargs...)
+function set_pseudos!(structure::AbstractStructure, at_pseudos::Pair{Symbol,Pseudo}...;
+                      kwargs...)
     for (atsym, pseudo) in at_pseudos
         for at in structure[atsym]
             set_pseudo!(at, pseudo; kwargs...)
@@ -312,7 +323,7 @@ for hub_param in (:U, :J0, :α, :β)
     str = "$hub_param"
     @eval begin
         """
-			$($(f))(at::AbstractAtom, v::AbstractFloat; print=true)
+   $($(f))(at::AbstractAtom, v::AbstractFloat; print=true)
             $($(f))(job::DFJob, ats_$($(str))s::Pair{Symbol, <:AbstractFloat}...; print=true)
 
         Set the Hubbard $($(str)) parameter for the specified [Atoms](@ref Atom).
@@ -322,13 +333,13 @@ for hub_param in (:U, :J0, :α, :β)
         Example:
             `$($(f))(job, :Ir => 2.1, :Ni => 1.0, :O => 0.0)`
         """
-		function $f(at::AbstractAtom{T}, v::AbstractFloat; print=true) where {T}
-			dftu(at).$(hub_param) = convert(T, v)
-			print && @info "Hubbard $($(str)) of atom $(at.name) set to $v"
-		end
-        function $f(job::DFJob, $(hub_param)::Pair{Symbol, <:AbstractFloat}...; print=true)
+        function $f(at::AbstractAtom{T}, v::AbstractFloat; print = true) where {T}
+            dftu(at).$(hub_param) = convert(T, v)
+            return print && @info "Hubbard $($(str)) of atom $(at.name) set to $v"
+        end
+        function $f(job::DFJob, $(hub_param)::Pair{Symbol,<:AbstractFloat}...; print = true)
             for (atsym, val) in $(hub_param)
-                $f.(atoms(job, atsym), val; print=print)
+                $f.(atoms(job, atsym), val; print = print)
             end
         end
         export $f
@@ -347,9 +358,10 @@ Example:
 	`set_Hubbard_J(at, [2.1])'
     `set_Hubbard_J(job, :Ir => [2.1], :Ni => [1.0])'
 """
-function set_Hubbard_J!(at::AbstractAtom{T}, v::Vector{<:AbstractFloat}; print=true) where {T}
-	dftu(at).J = convert.(T, v)
-	print && @info "Hubbard J of atom $(at.name) set to $v"
+function set_Hubbard_J!(at::AbstractAtom{T}, v::Vector{<:AbstractFloat};
+                        print = true) where {T}
+    dftu(at).J = convert.(T, v)
+    return print && @info "Hubbard J of atom $(at.name) set to $v"
 end
 
 export set_Hubbard_J!

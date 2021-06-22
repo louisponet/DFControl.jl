@@ -6,14 +6,14 @@
 # in it.
 using DFControl
 
-tjob = DFJob(joinpath(pathof(DFControl), "..","..","docs", "src", "assets", "job"))#hide
-tjob2 = DFJob(joinpath(pathof(DFControl), "..","..", "docs", "src", "assets", "Job2"))#hide
+tjob = DFJob(joinpath(pathof(DFControl), "..", "..", "docs", "src", "assets", "job"))#hide
+tjob2 = DFJob(joinpath(pathof(DFControl), "..", "..", "docs", "src", "assets", "Job2"))#hide
 if false#hide
-global job = DFJob("job")
+    global job = DFJob("job")
 else#hide
-global job = deepcopy(tjob)#hide
-set_localdir!(job, "job"); #hide
-job#hide
+    global job = deepcopy(tjob)#hide
+    set_localdir!(job, "job") #hide
+    job#hide
 end#hide
 
 # Since the job created in the [Basic Tutorial](@ref) was saved in the "job" directory this will work, see the section on [Jobs](@ref) for
@@ -21,12 +21,12 @@ end#hide
 
 # The next thing we may want to do is to change the directory where the job is running.
 if false#hide
-set_localdir!(job, "Job2", copy=true)
+    set_localdir!(job, "Job2"; copy = true)
 else#hide
-global job = deepcopy(tjob2);#hide
-pop!(job);#hide
-pop!(job);#hide
-job#hide
+    global job = deepcopy(tjob2)#hide
+    pop!(job)#hide
+    pop!(job)#hide
+    job#hide
 end#hide
 # With the `copy=true` flag we let DFControl know that not only to create and set the
 # new directory, but also to copy the previous results and temporary files to the
@@ -34,7 +34,7 @@ end#hide
 
 # Next we would like to plot the projected density of states.
 # For that we create both an nscf calculation to get a uniform k-grid, and projwfc calculation.
-push!(job, gencalc_nscf(job["scf"], (6,6,6)))
+push!(job, gencalc_nscf(job["scf"], (6, 6, 6)))
 
 # The second argument of gencalc_nscf is the kgrid. When passing a 3-Tuple,
 # the code will assume that an explicit k-grid is requested, which can be verified by
@@ -44,13 +44,13 @@ data(job["nscf"], :k_points)
 # energy window.
 # The arguments are structured as (template, Emin, Emax, deltaE) respectively.
 fermi = readfermi(job)
-push!(job, gencalc_projwfc(job["nscf"], fermi-10, fermi+1, 0.1))
+push!(job, gencalc_projwfc(job["nscf"], fermi - 10, fermi + 1, 0.1))
 # Next we disable the bands calculation and run the new ones.
 job["bands"].run = false
 if false#hide
-submit(job)
+    submit(job)
 else#hide
-global job = deepcopy(tjob2)#hide
+    global job = deepcopy(tjob2)#hide
 end#hide
 
 # ## [Plot Results](@id results_plotting)

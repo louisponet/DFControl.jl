@@ -1,21 +1,23 @@
 const RUN_EXECS = ["mpirun", "mpiexec", "srun"]
 
-Base.:(==)(e1::ExecFlag, e2::ExecFlag) =
-    all(x -> getfield(e1, x) == getfield(e2, x), (:symbol, :value))
+function Base.:(==)(e1::ExecFlag, e2::ExecFlag)
+    return all(x -> getfield(e1, x) == getfield(e2, x), (:symbol, :value))
+end
 
 isparseable(exec::Exec) = exec.exec ∈ parseable_execs()
 
-hasflag(exec::Exec, s::Symbol) = findfirst(x->x.symbol == s, exec.flags) != nothing
+hasflag(exec::Exec, s::Symbol) = findfirst(x -> x.symbol == s, exec.flags) != nothing
 
-Base.:(==)(e1::Exec, e2::Exec) =
-    all(x -> getfield(e1, x) == getfield(e2, x), fieldnames(Exec))
+function Base.:(==)(e1::Exec, e2::Exec)
+    return all(x -> getfield(e1, x) == getfield(e2, x), fieldnames(Exec))
+end
 
 allexecs() = vcat(RUN_EXECS, QE_EXECS, WAN_EXECS, ELK_EXECS)
 parseable_execs() = vcat(QE_EXECS, WAN_EXECS, ELK_EXECS)
 has_parseable_exec(l::String) = occursin(">", l) && any(occursin.(parseable_execs(), (l,)))
 
 function calculationparser(exec::Exec)
-    if is_qe_exec(exec) 
+    if is_qe_exec(exec)
         qe_read_calculation
     elseif is_wannier_exec(exec)
         wan_read_calculation
@@ -26,12 +28,14 @@ end
 
 function set_flags!(exec::Exec, flags...)
     for (f, val) in flags
-        flag = isa(f, String) ? getfirst(x -> x.name == f, exec.flags) : getfirst(x -> x.symbol == f, exec.flags)
+        flag = isa(f, String) ? getfirst(x -> x.name == f, exec.flags) :
+               getfirst(x -> x.symbol == f, exec.flags)
         if flag != nothing
             flag.value = convert(flag.typ, val)
         else
             #TODO generalize this
-            for (f1, f2) in zip((is_qe_exec, is_wannier_exec, is_mpi_exec), (qe_execflag, wan_execflag, mpi_flag))
+            for (f1, f2) in zip((is_qe_exec, is_wannier_exec, is_mpi_exec),
+                    (qe_execflag, wan_execflag, mpi_flag))
                 if f1(exec)
                     def_flag = f2(f)
                     if def_flag != nothing
@@ -42,7 +46,7 @@ function set_flags!(exec::Exec, flags...)
             end
         end
     end
-    exec.flags
+    return exec.flags
 end
 
 """
@@ -64,7 +68,6 @@ function set_execflags!(job::DFJob, exec::String, flags::Pair...)
     end
 end
 
-
 function rm_flags!(exec::Exec, flags...)
     for f in flags
         if isa(f, String)
@@ -73,7 +76,7 @@ function rm_flags!(exec::Exec, flags...)
             filter!(x -> x.symbol != f, exec.flags)
         end
     end
-    exec.flags
+    return exec.flags
 end
 
 """
@@ -83,12 +86,13 @@ end
 Goes through the execs in `calculation` or `job` and removes the `flags`
 if the executable name contains `exec`.
 """
-rm_execflags!(calculation::DFCalculation, exec::String, flags...) =
-    rm_flags!.(execs(calculation, exec), flags...)
+function rm_execflags!(calculation::DFCalculation, exec::String, flags...)
+    return rm_flags!.(execs(calculation, exec), flags...)
+end
 
-rm_execflags!(job::DFJob, exec, flags...) =
-    rm_execflags!.(job.calculations, (exec, flags)...)
-
+function rm_execflags!(job::DFJob, exec, flags...)
+    return rm_execflags!.(job.calculations, (exec, flags)...)
+end
 
 set_dir!(exec::Exec, dir) = exec.dir = dir
 
@@ -105,24 +109,24 @@ set_execdir!(calculation, "pw.x", "/path/to/QE/bin")
 set_execdir!(job, "pw.x", "/path/to/QE/bin")
 ```
 """
-set_execdir!(calculation::DFCalculation, exec::String, dir::String) =
-    set_dir!.(execs(calculation, exec), dir)
+function set_execdir!(calculation::DFCalculation, exec::String, dir::String)
+    return set_dir!.(execs(calculation, exec), dir)
+end
 
-set_execdir!(job::DFJob, exec::String, dir::String) =
-    set_execdir!.(job.calculations, exec, dir)
-
+function set_execdir!(job::DFJob, exec::String, dir::String)
+    return set_execdir!.(job.calculations, exec, dir)
+end
 
 include("qe/execs.jl")
 include("wannier90/execs.jl")
 include("elk/execs.jl")
 
-
 #### MPI Exec Functionality ###
 include(joinpath(depsdir, "mpirunflags.jl"))
 const MPI_FLAGS = _MPI_FLAGS()
 
-mpi_flag(flag::AbstractString) = getfirst(x -> x.name==flag, MPI_FLAGS)
-mpi_flag(flag::Symbol) = getfirst(x -> x.symbol==flag, MPI_FLAGS)
+mpi_flag(flag::AbstractString) = getfirst(x -> x.name == flag, MPI_FLAGS)
+mpi_flag(flag::Symbol) = getfirst(x -> x.symbol == flag, MPI_FLAGS)
 
 function mpi_flag_val(::Type{String}, line, i)
     v = line[i+1]
@@ -131,7 +135,7 @@ end
 
 function mpi_flag_val(::Type{Vector{String}}, line, i)
     tval = String[]
-    while i+1 <= length(line) && !occursin('-', line[i+1])
+    while i + 1 <= length(line) && !occursin('-', line[i+1])
         push!(tval, line[i+1])
         i += 1
     end
@@ -139,7 +143,7 @@ function mpi_flag_val(::Type{Vector{String}}, line, i)
 end
 
 function mpi_flag_val(::Type{Int}, line, i)
-    if line[i+1][1] == '\$'
+    if line[i+1][1] == '$'
         tval = line[i+1]
     else
         tval = parse(Int, line[i+1])
@@ -148,9 +152,9 @@ function mpi_flag_val(::Type{Int}, line, i)
 end
 
 function mpi_flag_val(::Type{Vector{Int}}, line, i)
-    tval = Union{Int, String}[]
-    while i+1 <= length(line) && !occursin('-', line[i+1])
-        if line[i+1][1] == '\$'
+    tval = Union{Int,String}[]
+    while i + 1 <= length(line) && !occursin('-', line[i+1])
+        if line[i+1][1] == '$'
             push!(tval, line[i+1])
         else
             push!(tval, parse(Int, line[i+1]))
@@ -160,10 +164,10 @@ function mpi_flag_val(::Type{Vector{Int}}, line, i)
     return tval, i + 1
 end
 
-function mpi_flag_val(::Type{Pair{Int, String}}, line, i)
-    tval = Union{Int, String}[]
-    while i+1<=length(line) && !occursin('-', line[i+1])
-        if line[i+1][1] == '\$'
+function mpi_flag_val(::Type{Pair{Int,String}}, line, i)
+    tval = Union{Int,String}[]
+    while i + 1 <= length(line) && !occursin('-', line[i+1])
+        if line[i+1][1] == '$'
             push!(tval, line[i+1])
         else
             tparse = tryparse(Int, line[i+1])
@@ -195,11 +199,10 @@ function parse_mpi_flags(line::Vector{<:SubString})
         val, i = mpi_flag_val(mflag.typ, line, i)
         push!(eflags, ExecFlag(mflag, val))
     end
-    eflags
+    return eflags
 end
 
 is_mpi_exec(exec::Exec) = occursin("mpi", exec.exec)
-
 
 """
     execs(calculation::DFCalculation, exec::String)
@@ -207,10 +210,12 @@ is_mpi_exec(exec::Exec) = occursin("mpi", exec.exec)
 
 Convenience function to filter all executables in `calculation` or `job` for which `exec` occurs in the executable name.
 """
-execs(calculation::DFCalculation, exec::String) =
-    filter(x -> occursin(exec, x.exec), calculation.execs)
-execs(job::DFJob, exec::String) =
-    filter(x -> occursin(exec, x.exec), execs.(calculations(job)))
+function execs(calculation::DFCalculation, exec::String)
+    return filter(x -> occursin(exec, x.exec), calculation.execs)
+end
+function execs(job::DFJob, exec::String)
+    return filter(x -> occursin(exec, x.exec), execs.(calculations(job)))
+end
 
 """
     exec(calculation::DFCalculation, exec::String)
@@ -219,7 +224,7 @@ execs(job::DFJob, exec::String) =
 Convenience function that returns the first executable in `calculation` or `job`
 for which `exec` occursin the name.
 """
-exec(calculation::DFCalculation, exec::String) =
-    getfirst(x -> occursin(exec, x.exec), calculation.execs)
-exec(job::DFJob, exec::String) =
-    getfirst(x -> occursin(exec, x.exec), execs(job))
+function exec(calculation::DFCalculation, exec::String)
+    return getfirst(x -> occursin(exec, x.exec), calculation.execs)
+end
+exec(job::DFJob, exec::String) = getfirst(x -> occursin(exec, x.exec), execs(job))

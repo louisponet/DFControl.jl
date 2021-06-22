@@ -16,7 +16,8 @@ end
 
 Pulls a file from the default server if the default server is specified.
 """
-function pullfile(server_dir::String, local_dir::String, filename::String; server=getdefault_server())
+function pullfile(server_dir::String, local_dir::String, filename::String;
+                  server = getdefault_server())
     if server != ""
         run(`scp $(server * ":" * server_dir * filename) $local_dir`)
         pulled_files = searchdir(local_dir, filename)
@@ -29,10 +30,11 @@ function pullfile(server_dir::String, local_dir::String, filename::String; serve
     end
 end
 
-function pullfiles(server_dir::String, local_dir::String, filenames::Vector{String}; serv=getdefault_server())
+function pullfiles(server_dir::String, local_dir::String, filenames::Vector{String};
+                   serv = getdefault_server())
     pulled_files = String[]
     for file in filenames
-       push!(pulled_files, pullfile(server_dir, local_dir, file, serv))
+        push!(pulled_files, pullfile(server_dir, local_dir, file, serv))
     end
     return pulled_files
 end
@@ -42,7 +44,8 @@ end
 
 Pulls a file from the default server if the default server is specified.
 """
-function pullfile(filepath::String, local_dir::String; server=getdefault_server(), local_filename=nothing)
+function pullfile(filepath::String, local_dir::String; server = getdefault_server(),
+                  local_filename = nothing)
     local_dir = formdirectory(local_dir)
     if server != ""
         if local_filename != nothing
@@ -58,7 +61,6 @@ function pullfile(filepath::String, local_dir::String; server=getdefault_server(
     end
 end
 
-
 #TODO: doesn't work for abinit
 #TODO: local pulloutputs!
 """
@@ -67,7 +69,9 @@ end
 First pulls the job file (specified by job_fuzzy), reads the possible output files and tries to pull them.
 Extra files to pull can be specified by the `extras` keyword, works with fuzzy filenames.
 """
-function pulloutputs(job::DFJob, server="", server_dir="", local_dir=""; job_fuzzy="*job*", extras=String[], ignore=String[], overwrite=true)
+function pulloutputs(job::DFJob, server = "", server_dir = "", local_dir = "";
+                     job_fuzzy = "*job*", extras = String[], ignore = String[],
+                     overwrite = true)
     if job.server == "" && server == ""
         error("Error: No job server specified. Please specify it first.")
     elseif server != ""
@@ -86,7 +90,9 @@ function pulloutputs(job::DFJob, server="", server_dir="", local_dir=""; job_fuz
     if !ispath(job.local_dir)
         mkpath(job.local_dir)
     end
-    pull_server_file(filename) = pullfile(job.server, job.server_dir, job.local_dir, filename)
+    function pull_server_file(filename)
+        return pullfile(job.server, job.server_dir, job.local_dir, filename)
+    end
 
     # pull_server_file(job_fuzzy)
 
@@ -108,7 +114,7 @@ function pulloutputs(job::DFJob, server="", server_dir="", local_dir=""; job_fuz
 
     for fuzzy in extras
         pull_server_file(fuzzy)
-        push!(pulled_outputs, searchdir(job.local_dir, strip(fuzzy,'*'))...)
+        push!(pulled_outputs, searchdir(job.local_dir, strip(fuzzy, '*'))...)
     end
     return joinpath.(job.local_dir, pulled_outputs)
 end
@@ -131,7 +137,8 @@ function schedule_job(job::DFJob, submit_command)
     outstr = ""
     if !runslocal(job)
         push(job)
-        outstr = read(`ssh -t $(job.server) cd $(job.server_dir) '&&' $submit_command job.tt`, String)
+        outstr = read(`ssh -t $(job.server) cd $(job.server_dir) '&&' $submit_command job.tt`,
+                      String)
     else
         curdir = pwd()
         cd(job.local_dir)
@@ -147,15 +154,15 @@ function schedule_job(job::DFJob, submit_command)
         try
             return parse(Int, chomp(outstr))
         catch
-            return parse(Int, split(chomp(outstr))[end]) 
+            return parse(Int, split(chomp(outstr))[end])
         end
     else
-        return 
+        return
     end
 end
 
-qsub(job::DFJob) = schedule_job(job, "qsub") 
-sbatch(job::DFJob) = schedule_job(job, "sbatch") 
+qsub(job::DFJob) = schedule_job(job, "qsub")
+sbatch(job::DFJob) = schedule_job(job, "sbatch")
 Base.run(job) = schedule_job(job, "bash")
 
 "Tests whether a directory exists on a server and if not, creates it."
@@ -175,7 +182,7 @@ end
 
 Pulls job from server. If no specific calculations are supplied it pulls all .in and .tt files.
 """
-function pulljob(server::String, server_dir::String, local_dir::String; job_fuzzy="*job*")
+function pulljob(server::String, server_dir::String, local_dir::String; job_fuzzy = "*job*")
     server_dir = server_dir
     local_dir  = local_dir
     if !ispath(local_dir)
@@ -207,7 +214,7 @@ function push(job::DFJob)
     for i in calculations(job)
         scp(i.filename)
     end
-    scp("job.tt")
+    return scp("job.tt")
 end
 
 #Gives the reverse (last job is listed first) of the output, omitting the header lines

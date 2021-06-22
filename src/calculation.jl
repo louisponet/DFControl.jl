@@ -1,18 +1,18 @@
 #these are all the control data, they hold the flags that guide the calculation
 name(data::InputData) = data.name
-Base.:(==)(d1::InputData, d2::InputData) =
-    all(x -> getfield(d1, x) == getfield(d2, x), fieldnames(InputData))
+function Base.:(==)(d1::InputData, d2::InputData)
+    return all(x -> getfield(d1, x) == getfield(d2, x), fieldnames(InputData))
+end
 
-name(calculation::DFCalculation)  = calculation.name
-dir(calculation::DFCalculation)   = calculation.dir
+name(calculation::DFCalculation) = calculation.name
+dir(calculation::DFCalculation) = calculation.dir
 flags(calculation::DFCalculation) = calculation.flags
 set_dir!(calculation::DFCalculation, dir) = (calculation.dir = dir)
-name_ext(calculation::DFCalculation, ext)   = name(calculation) * ext
-infilename(calculation::DFCalculation)      = calculation.infile
-outfilename(calculation::DFCalculation)     = calculation.outfile
-inpath(calculation::DFCalculation)          = joinpath(calculation,  infilename(calculation))
-outpath(calculation::DFCalculation)         = joinpath(calculation,  outfilename(calculation))
-
+name_ext(calculation::DFCalculation, ext) = name(calculation) * ext
+infilename(calculation::DFCalculation) = calculation.infile
+outfilename(calculation::DFCalculation) = calculation.outfile
+inpath(calculation::DFCalculation) = joinpath(calculation, infilename(calculation))
+outpath(calculation::DFCalculation) = joinpath(calculation, outfilename(calculation))
 
 """
     joinpath(calc::DFCalculation, path...)
@@ -27,10 +27,10 @@ function flag(calculation::DFCalculation, flag::Symbol)
     end
 end
 
-Base.eltype(::DFCalculation{P}) where P = P
-package(::DFCalculation{P}) where P = P
+Base.eltype(::DFCalculation{P}) where {P} = P
+package(::DFCalculation{P}) where {P} = P
 
-data(calculation::DFCalculation)  = calculation.data
+data(calculation::DFCalculation) = calculation.data
 
 execs(calculation::DFCalculation) = calculation.execs
 hasexec(calculation::DFCalculation, ex::AbstractString) = exec(calculation, ex) != nothing
@@ -72,7 +72,7 @@ flags to the correct types.
 Tries to correct common errors for different calculation types.
 """
 function sanitize_flags!(calculation::DFCalculation, str::AbstractStructure)
-    convert_flags!(calculation)
+    return convert_flags!(calculation)
 end
 
 """
@@ -98,15 +98,18 @@ isprojwfc(calculation::DFCalculation)  = false
 ismagnetic(calculation::DFCalculation) = false
 issoc(calculation::DFCalculation)      = false
 
-
 #TODO review this!
 outdata(calculation::DFCalculation) = calculation.outdata
-hasoutput(calculation::DFCalculation) = !isempty(outdata(calculation)) || hasoutfile(calculation)
+function hasoutput(calculation::DFCalculation)
+    return !isempty(outdata(calculation)) || hasoutfile(calculation)
+end
 
 hasoutfile(calculation::DFCalculation) = ispath(outpath(calculation))
 hasnewout(calculation::DFCalculation, time) = mtime(outpath(calculation)) > time
 
-set_cutoffs!(calculation::DFCalculation, args...) = @warn "Setting cutoffs is not implemented for package $(package(calculation))"
+function set_cutoffs!(calculation::DFCalculation, args...)
+    @warn "Setting cutoffs is not implemented for package $(package(calculation))"
+end
 
 function hasoutput_assert(i::DFCalculation)
     @assert hasoutfile(i) "Please specify an calculation that has an outputfile."
@@ -116,23 +119,24 @@ function hasexec_assert(i::DFCalculation, exec::String)
     @assert hasexec(i, exec) "Please specify an calculation with $exec as it's executable."
 end
 
-Base.:(==)(i1::DFCalculation, i2::DFCalculation) =
-    all(x -> x == :outdata ? true : getfield(i1, x) == getfield(i2, x), fieldnames(DFCalculation))
+function Base.:(==)(i1::DFCalculation, i2::DFCalculation)
+    return all(x -> x == :outdata ? true : getfield(i1, x) == getfield(i2, x),
+               fieldnames(DFCalculation))
+end
 
 searchdir(i::DFCalculation, glob) = joinpath.((i,), searchdir(dir(i), glob))
 
 ψ_cutoff_flag(::DFCalculation{P}) where {P} = ψ_cutoff_flag(P)
 ρ_cutoff_flag(::DFCalculation{P}) where {P} = ρ_cutoff_flag(P)
 
-pdos(calculation::DFCalculation, args...) =
+function pdos(calculation::DFCalculation, args...)
     @error "pdos reading not implemented for package $(package(calculation))."
+end
 
-Emin_from_projwfc(calculation::DFCalculation, args...) =
+function Emin_from_projwfc(calculation::DFCalculation, args...)
     @error "Emin_from_projwfc is not implemented for package $(package(calculation))."
+end
 
 include("qe/calculation.jl")
 include("elk/calculation.jl")
 include("wannier90/calculation.jl")
-
-
-

@@ -5,16 +5,16 @@ using DFControl
 
 server_dir = "Si/"
 local_dir  = "/home/ponet/Documents/Si"
-job = DFJob(server_dir, local_dir)
+job        = DFJob(server_dir, local_dir)
 
 #set flags
 setflags!(job, :ecutwfc => 25.0)  #more `Pair{Symbol, Any}`'s can be given as varargs.
 #setflags! will only go through already set flags to set them,
 #if you want to set new flags simply do (it can also be used to set already set flags):
 
-setflags!(job, :ecut_rho => 80.) #won't work, it goes through the QE documentation to find the allowed flags for the calculation files in the job, and also tries to convert the given value to what it should be.
+setflags!(job, :ecut_rho => 80.0) #won't work, it goes through the QE documentation to find the allowed flags for the calculation files in the job, and also tries to convert the given value to what it should be.
 
-setflags!(job, :ecutrho => 80., :diagonalization => "david")
+setflags!(job, :ecutrho => 80.0, :diagonalization => "david")
 
 #now we might not want to run all the calculations again.
 #one can set the job "flow":

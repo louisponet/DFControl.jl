@@ -6,12 +6,13 @@
 Sets `calculation.name`, and `calculation.infile` and `calculation.outfile` to conform
 with the new `name`.
 """
-function set_name!(calculation::DFCalculation, name::AbstractString; print=true)
+function set_name!(calculation::DFCalculation, name::AbstractString; print = true)
     calculation.name = name
     calculation.infile = name * splitext(infilename(calculation))[2]
     calculation.outfile = name * splitext(outfilename(calculation))[2]
-    print && @info "\ncalculation.name = $name\ncalculation.infile = $(infilename(calculation))\ncalculation.outfile = $(outfilename(calculation))"
-    name
+    print &&
+        @info "\ncalculation.name = $name\ncalculation.infile = $(infilename(calculation))\ncalculation.outfile = $(outfilename(calculation))"
+    return name
 end
 
 """
@@ -73,37 +74,42 @@ This only happens if the specified flags are valid for the names.
 
 The values that are supplied will be checked whether they are valid.
 """
-function set_flags!(calculation::DFCalculation{T}, flags...; print=true) where T
+function set_flags!(calculation::DFCalculation{T}, flags...; print = true) where {T}
     found_keys = Symbol[]
     for (flag, value) in flags
         flag_type = flagtype(calculation, flag)
         if flag_type !== Nothing
             !(flag in found_keys) && push!(found_keys, flag)
             try
-                if isa(value, AbstractVector{<:AbstractVector}) && flag_type <: AbstractVector
+                if isa(value, AbstractVector{<:AbstractVector}) &&
+                   flag_type <: AbstractVector
                     value = [convert.(eltype(flag_type), v) for v in value]
                 else
                     value = convert(flag_type, value)
                 end
             catch
-                print && ( @warn "Filename '$(name(calculation))':\n  Could not convert '$value' into '$flag_type'.\n    Flag '$flag' not set.\n")
+                print &&
+                    (@warn "Filename '$(name(calculation))':\n  Could not convert '$value' into '$flag_type'.\n    Flag '$flag' not set.\n")
                 continue
             end
             old_data = haskey(calculation.flags, flag) ? calculation.flags[flag] : ""
             calculation.flags[flag] = value
-            print && (@info "$(name(calculation)):\n  -> $flag:\n      $old_data set to: $value\n")
+            print &&
+                (@info "$(name(calculation)):\n  -> $flag:\n      $old_data set to: $value\n")
         else
-            print && @warn "Flag $flag was ignored since it could not be found in the allowed flags for calculation $(name(calculation))."
+            print &&
+                @warn "Flag $flag was ignored since it could not be found in the allowed flags for calculation $(name(calculation))."
         end
     end
     return found_keys, calculation
 end
 
-function set_flags!(job::DFJob, calculations::Vector{<:DFCalculation}, flags...; print=true)
+function set_flags!(job::DFJob, calculations::Vector{<:DFCalculation}, flags...;
+                    print = true)
     found_keys = Symbol[]
 
     for calc in calculations
-        t_, = set_flags!(calc, flags..., print=print)
+        t_, = set_flags!(calc, flags...; print = print)
         push!(found_keys, t_...)
     end
     nfound = setdiff([k for (k, v) in flags], found_keys)
@@ -113,10 +119,12 @@ function set_flags!(job::DFJob, calculations::Vector{<:DFCalculation}, flags...;
     end
     return job
 end
-set_flags!(job::DFJob, flags...;kwargs...) =
-    set_flags!(job, calculations(job), flags...;kwargs...)
-set_flags!(job::DFJob, name::String, flags...; fuzzy=true, kwargs...) =
-    set_flags!(job, calculations(job, name, fuzzy), flags...; kwargs...)
+function set_flags!(job::DFJob, flags...; kwargs...)
+    return set_flags!(job, calculations(job), flags...; kwargs...)
+end
+function set_flags!(job::DFJob, name::String, flags...; fuzzy = true, kwargs...)
+    return set_flags!(job, calculations(job, name, fuzzy), flags...; kwargs...)
+end
 
 """
     rm_flags!(calculation::DFCalculation, flags::Symbol...)
@@ -124,7 +132,7 @@ set_flags!(job::DFJob, name::String, flags...; fuzzy=true, kwargs...) =
 
 Remove the specified flags.
 """
-function rm_flags!(calculation::DFCalculation, flags::Symbol...; print=true)
+function rm_flags!(calculation::DFCalculation, flags::Symbol...; print = true)
     for flag in flags
         if haskey(calculation.flags, flag)
             pop!(calculation.flags, flag, false)
@@ -146,7 +154,7 @@ end
 
 The former returns `calculation.data`, the later -- the `InputData` with name `n`.
 """
-data(calculation::DFCalculation, n::Symbol) = getfirst(x-> name(x) == n, data(calculation))
+data(calculation::DFCalculation, n::Symbol) = getfirst(x -> name(x) == n, data(calculation))
 
 """
     set_data!(calculation::DFCalculation, block_name::Symbol, new_block_data; option::Symbol=nothing, print::Bool=true)
@@ -154,14 +162,17 @@ data(calculation::DFCalculation, n::Symbol) = getfirst(x-> name(x) == n, data(ca
 Searches for an `InputData` for which `InputData.name == block_name`, and sets `DFInput.data = new_block_data`.
 If `option` is specified it is set, i.e. `InputData.option = option`.
 """
-function set_data!(calculation::DFCalculation, block_name::Symbol, new_block_data; option::Symbol=nothing, print::Bool=true)
+function set_data!(calculation::DFCalculation, block_name::Symbol, new_block_data;
+                   option::Symbol = nothing, print::Bool = true)
     setd = false
     for data_block in calculation.data
         if data_block.name == block_name
             if typeof(data_block.data) != typeof(new_block_data)
-                if print @warn "Overwritten data of type '$(typeof(data_block.data))' with type '$(typeof(new_block_data))'." end
+                if print
+                    @warn "Overwritten data of type '$(typeof(data_block.data))' with type '$(typeof(new_block_data))'."
+                end
             end
-            old_data        = data_block.data
+            old_data = data_block.data
             data_block.data = new_block_data
             data_block.option = option == nothing ? data_block.option : option
             if print
@@ -182,17 +193,18 @@ end
 
 Searches for an `InputData` for which `InputData.name == block_name`, and sets `InputData.option = option`.
 """
-function set_data_option!(calculation::DFCalculation, name::Symbol, option::Symbol; print=true)
+function set_data_option!(calculation::DFCalculation, name::Symbol, option::Symbol;
+                          print = true)
     for data in calculation.data
         if data.name == name
             old_option  = data.option
             data.option = option
-            print && (@info "Option of InputData '$(data.name)' in calculation '$(name(calculation))' set from '$old_option' to '$option'")
+            print &&
+                (@info "Option of InputData '$(data.name)' in calculation '$(name(calculation))' set from '$old_option' to '$option'")
         end
     end
     return calculation
 end
-
 
 """
     outputdata(calculation::DFCalculation; print=true, overwrite=true)
@@ -201,7 +213,7 @@ If an output file exists for `calculation` this will parse it and return a `Dict
 If `overwrite=false` and `calculation.outputdata` is not empty, this will be returned instead of reparsing the
 output file.
 """
-function outputdata(calculation::DFCalculation; print=true, overwrite=true)
+function outputdata(calculation::DFCalculation; print = true, overwrite = true)
     if hasoutput(calculation)
         if !overwrite && !isempty(outdata(calculation))
             return outdata(calculation)
@@ -210,7 +222,8 @@ function outputdata(calculation::DFCalculation; print=true, overwrite=true)
             return calculation.outdata
         end
     end
-    print && (@warn "No output data or output file found for calculation: $(name(calculation)).")
+    print &&
+        (@warn "No output data or output file found for calculation: $(name(calculation)).")
     return SymAnyDict()
 end
 #---------- Extended Interaction ------------#
@@ -233,7 +246,7 @@ function readbands(calculation::DFCalculation)
     if haskey(to, :bands)
         return to[:bands]
     elseif haskey(to, :bands_up)
-        return (up=to[:bands_up], down=to[:bands_down])
+        return (up = to[:bands_up], down = to[:bands_down])
     else
         error("No bands found in $(name(calculation)).")
     end
@@ -275,36 +288,43 @@ Similar to the `nscf` targeted function in the sense that it will generate
 an explicit list of `k_points`, adhering to the same rules as for the `nscf`.
 The `mp_grid` flag will also automatically be set.
 """
-set_kpoints!(::DFCalculation{P}, args...; kwargs...) where {P} =
+function set_kpoints!(::DFCalculation{P}, args...; kwargs...) where {P}
     @error "set_kpoints! not implemented for package $P."
-    
+end
+
 #-------- Generating new DFCalculations ---------- #
 
 function calculation_from_kpoints(template::DFCalculation, newname, kpoints, newflags...)
     newcalc = DFCalculation(template, newname, newflags...)
     set_name!(newcalc, newname)
-    set_kpoints!(newcalc, kpoints, print=false)
+    set_kpoints!(newcalc, kpoints; print = false)
     return newcalc
 end
 
-gencalc_nscf(::DFCalculation{P}, args...) where {P} =
+function gencalc_nscf(::DFCalculation{P}, args...) where {P}
     @error "gencalc_nscf is not implemented for package $P."
-    
-gencalc_scf(::DFCalculation{P}, args...) where {P} =
+end
+
+function gencalc_scf(::DFCalculation{P}, args...) where {P}
     @error "gencalc_scf is not implemented for package $P."
-    
-gencalc_projwfc(::DFCalculation{P}, args...) where {P} =
+end
+
+function gencalc_projwfc(::DFCalculation{P}, args...) where {P}
     @error "gencalc_projwfc is not implemented for package $P."
-    
-gencalc_wan(::DFCalculation{P}, args...) where {P} =
+end
+
+function gencalc_wan(::DFCalculation{P}, args...) where {P}
     @error "gencalc_wan is not implemented for package $P."
-    
-gencalc_vcrelax(::DFCalculation{P}, args...) where {P} =
+end
+
+function gencalc_vcrelax(::DFCalculation{P}, args...) where {P}
     @error "gencalc_vcrelax is not implemented for package $P."
-    
-gencalc_bands(::DFCalculation{P}, args...) where {P} =
+end
+
+function gencalc_bands(::DFCalculation{P}, args...) where {P}
     @error "gencalc_bands is not implemented for package $P."
+end
 
-isconverged(::DFCalculation{P}) where {P} =
+function isconverged(::DFCalculation{P}) where {P}
     @error "isconverged is not implemented for package $P."
-
+end

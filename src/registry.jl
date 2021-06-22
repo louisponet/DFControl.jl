@@ -1,8 +1,7 @@
 const JOB_REGISTRY = String[]
 
-init_job_registry() =
-    append!(JOB_REGISTRY, readlines(config_path("job_registry.txt")))
-    
+init_job_registry() = append!(JOB_REGISTRY, readlines(config_path("job_registry.txt")))
+
 function write_job_registry()
     open(config_path("job_registry.txt"), "w") do f
         for j in JOB_REGISTRY
@@ -11,10 +10,10 @@ function write_job_registry()
     end
 end
 
-function cleanup_job_registry(;print=true)
+function cleanup_job_registry(; print = true)
     stale_ids = findall(x -> !ispath(x) || !ispath(joinpath(x, "job.tt")), JOB_REGISTRY)
     if stale_ids !== nothing
-        jobs_to_remove = JOB_REGISTRY[stale_ids] 
+        jobs_to_remove = JOB_REGISTRY[stale_ids]
         message = "Removing $(length(jobs_to_remove)) stale jobs (job folder removed) from the registry:\n"
         for j in jobs_to_remove
             message *= "\t$j\n"
@@ -22,7 +21,7 @@ function cleanup_job_registry(;print=true)
         print && @warn message
         deleteat!(JOB_REGISTRY, stale_ids)
     end
-    write_job_registry()
+    return write_job_registry()
 end
 
 function maybe_register_job(abspath::String)
@@ -56,8 +55,10 @@ Loads all the known [`DFJobs`](@ref DFJob) whose `local_dir` contains `fuzzy`.
 load_jobs(fuzzy::AbstractString) = DFJob.(registered_jobs(fuzzy))
 
 function request_job(job_dir::String)
-    cleanup_job_registry(print=false)
-    matching_jobs = sort(registered_jobs(job_dir), by = x -> has_timestamp(x) ? timestamp(x) : zero(DateTime), rev=true)
+    cleanup_job_registry(; print = false)
+    matching_jobs = sort(registered_jobs(job_dir);
+                         by = x -> has_timestamp(x) ? timestamp(x) : zero(DateTime),
+                         rev = true)
     if length(matching_jobs) == 1
         return matching_jobs[1]
     else

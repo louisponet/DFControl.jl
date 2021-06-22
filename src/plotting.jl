@@ -1,31 +1,27 @@
 using Colors
 
-const PLOT_COLORS = Iterators.repeat([colorant"#023EFF",
-                     colorant"#FF7C00",
-                     colorant"#1AC938",
-                     colorant"#E8000B",
-                     colorant"#8B2BE2",
-                     colorant"#9F4800",
-                     colorant"#F14CC1",
-                     colorant"#A3A3A3",
-                     colorant"#FFC400",
-                     colorant"#00D7FF"],4)
+const PLOT_COLORS = Iterators.repeat([colorant"#023EFF", colorant"#FF7C00",
+                                      colorant"#1AC938", colorant"#E8000B",
+                                      colorant"#8B2BE2", colorant"#9F4800",
+                                      colorant"#F14CC1", colorant"#A3A3A3",
+                                      colorant"#FFC400", colorant"#00D7FF"], 4)
 
-Base.:*(f::Number, r::RGB) = RGB(f*r.r, f*r.b, f*r.g)
-Base.:+(r1::RGB, r2::RGB) = RGB(r1.r + r2.r, r1.b + r2.b, r1.g+r2.g)
-
+Base.:*(f::Number, r::RGB) = RGB(f * r.r, f * r.b, f * r.g)
+Base.:+(r1::RGB, r2::RGB) = RGB(r1.r + r2.r, r1.b + r2.b, r1.g + r2.g)
 
 function blend_color(contribs::Vector, at_colors)
     if any(isnan, contribs)
-        return RGB(0.0,0.0,0.0)
+        return RGB(0.0, 0.0, 0.0)
     end
     if length(contribs) == 1
         return at_colors[1]
     end
-    result = weighted_color_mean(normalize([contribs[1], contribs[2]])[1], at_colors[1], at_colors[2])
+    result = weighted_color_mean(normalize([contribs[1], contribs[2]])[1], at_colors[1],
+                                 at_colors[2])
     totcontrib = contribs[1] + contribs[2]
-    for i = 3:length(contribs)
-        result = weighted_color_mean(normalize([totcontrib, contribs[i]])[1], result, at_colors[i])
+    for i in 3:length(contribs)
+        result = weighted_color_mean(normalize([totcontrib, contribs[i]])[1], result,
+                                     at_colors[i])
         totcontrib += contribs[i]
     end
     return result
@@ -40,7 +36,7 @@ end
 # Kwargs:   fermi=0, -> applies fermi level to band eigenvalues before plotting.
 # linewidth=2
 # """
-@recipe function f(band::DFBand, ks=nothing; fermi=0, linewidth=2)
+@recipe function f(band::DFBand, ks = nothing; fermi = 0, linewidth = 2)
     if ks == :relative_cart
         ks = []
         k_m = band.k_points_cart[div(size(band.k_points_cart)[1] + 1, 2)]
@@ -62,14 +58,14 @@ end
         band = apply_fermi_level(band, fermi)
     end
     linewidth --> linewidth
-    title     --> "Eigenvalues"
-    yguide    --> "Energy (eV)"
-    legend    --> false
+    title --> "Eigenvalues"
+    yguide --> "Energy (eV)"
+    legend --> false
     out = band.eigvals
-    ks, out
+    return ks, out
 end
 
-@recipe function f(bands::Vector{<:DFBand}, ks=nothing)
+@recipe function f(bands::Vector{<:DFBand}, ks = nothing)
     for (i, band) in enumerate(bands)
         @series begin
             band, ks
@@ -77,7 +73,7 @@ end
     end
 end
 
-@recipe function f(job::DFJob, ymin, ymax, occupy_ratio=0.2; overlap_spin=false)
+@recipe function f(job::DFJob, ymin, ymax, occupy_ratio = 0.2; overlap_spin = false)
     ylims --> [ymin, ymax]
     if !isQEjob(job)
         error("output plotting only implemented for QE jobs.")
@@ -95,7 +91,7 @@ end
     tick_syms = String[]
     kpoints = bands isa NamedTuple ? bands.up[1].k_points_cryst : bands[1].k_points_cryst
     for (i, k) in enumerate(kpoints)
-        if ks!==nothing
+        if ks !== nothing
             kpath = ks.kpoints
             for (sym, vec) in kpath
                 if vec == k
@@ -110,25 +106,27 @@ end
     end
     if bands isa NamedTuple
         window_ids = map(x -> findall(x) do b
-            min = minimum(b.eigvals) - frmi
-            max = maximum(b.eigvals) - frmi
-            return !((min < ymin && max < ymin) || (min > ymax && max > ymax))
-        end, bands)
+                             min = minimum(b.eigvals) - frmi
+                             max = maximum(b.eigvals) - frmi
+                             return !((min < ymin && max < ymin) ||
+                                      (min > ymax && max > ymax))
+                         end, bands)
     else
         window_ids = (findall(bands) do b
-            min = minimum(b.eigvals) - frmi
-            max = maximum(b.eigvals) - frmi
-            return !((min < ymin && max < ymin) || (min > ymax && max > ymax))
-        end,)
+                          min = minimum(b.eigvals) - frmi
+                          max = maximum(b.eigvals) - frmi
+                          return !((min < ymin && max < ymin) || (min > ymax && max > ymax))
+                      end,)
     end
     window_ids === nothing && error("No bands inside window")
     # We define a single band plotting series here
     function plot_band(band, color, label, subplot)
         @series begin
             xticks --> (tick_vals, tick_syms)
-            title := subplot == 1 ? (length(bands)==2 ? "Spin up" : "Eigenvalues") : "Spin down"
-            yguide := subplot == 1 ? "Energy (eV)" : "" 
-            label := label 
+            title := subplot == 1 ? (length(bands) == 2 ? "Spin up" : "Eigenvalues") :
+                     "Spin down"
+            yguide := subplot == 1 ? "Energy (eV)" : ""
+            label := label
             subplot := subplot
             seriescolor := color
             legend := false
@@ -141,11 +139,11 @@ end
     if projwfc !== nothing
         if bands isa NamedTuple && !overlap_spin
             doswindow = 3
-            layout --> (1,3)
+            layout --> (1, 3)
         else
             doswindow = 2
-            layout --> (1,2)
-        end 
+            layout --> (1, 2)
+        end
         states, projbands = qe_read_projwfc(outpath(projwfc))
         # First we find the amount that all the states appear in the window
         state_occupations = zeros(length(states))
@@ -164,28 +162,34 @@ end
         # sorted_occ = sortperm(state_occupations, rev=true)
         # goodids = findall(i -> state_occupations[sorted_occ][i] > occupy_ratio * max_occ, 1:length(state_occupations))
         # ats_orbs = unique(map(x -> (atoms(job)[x.atom_id].name, orbital(x.l).name), states[sorted_occ][goodids]))
-        goodids = findall(i -> state_occupations[i] > occupy_ratio * max_occ, 1:length(state_occupations))
-        ats_orbs = unique(map(x -> (atoms(job)[x.atom_id].name, orbital(x.l).name), states[goodids]))
+        goodids = findall(i -> state_occupations[i] > occupy_ratio * max_occ,
+                          1:length(state_occupations))
+        ats_orbs = unique(map(x -> (atoms(job)[x.atom_id].name, orbital(x.l).name),
+                              states[goodids]))
         @info "Found $(length(ats_orbs)) atomic orbitals that satisfy the minimum occupation:\n$ats_orbs"
-       
-        atom_colors = bands isa NamedTuple ? [PLOT_COLORS[1:length(ats_orbs)], PLOT_COLORS[length(ats_orbs)+1:2*length(ats_orbs)]] : [PLOT_COLORS[1:length(ats_orbs)]]
+
+        atom_colors = bands isa NamedTuple ?
+                      [PLOT_COLORS[1:length(ats_orbs)],
+                       PLOT_COLORS[length(ats_orbs)+1:2*length(ats_orbs)]] :
+                      [PLOT_COLORS[1:length(ats_orbs)]]
 
         bands = bands isa NamedTuple ? bands : [bands]
-        band_contribs = [[[zeros(length(ats_orbs)) for i = 1:length(kpoints)] for i1 = 1:length(window_ids[d])] for d = 1:length(bands)]
+        band_contribs = [[[zeros(length(ats_orbs)) for i in 1:length(kpoints)]
+                          for i1 in 1:length(window_ids[d])] for d in 1:length(bands)]
 
         @info "Reading pdos files and generating band coloring..."
         for (ia, (atsym, orb)) in enumerate(ats_orbs)
-            energies, pd = pdos(job, atsym, "("*string(orb))
-            
+            energies, pd = pdos(job, atsym, "(" * string(orb))
+
             #Plots PDOS
             if size(pd, 2) == 2
                 @series begin
                     label --> "$(atsym)_$(orb)_up"
                     yguide --> ""
                     subplot := doswindow
-                    seriescolor := atom_colors[1][ia] 
+                    seriescolor := atom_colors[1][ia]
                     title := "DOS"
-                    pd[:,1], energies .- frmi
+                    pd[:, 1], energies .- frmi
                 end
                 @series begin
                     label --> "$(atsym)_$(orb)_down"
@@ -193,7 +197,7 @@ end
                     subplot := doswindow
                     seriescolor := atom_colors[2][ia]
                     title := "DOS"
-                    -1 .* pd[:,2], energies .- frmi
+                    -1 .* pd[:, 2], energies .- frmi
                 end
             else
                 @series begin
@@ -209,18 +213,20 @@ end
             for (iud, (bnds, contribs)) in enumerate(zip(bands, band_contribs))
                 for (ib, b) in enumerate(bnds[window_ids[iud]])
                     for ik in 1:length(kpoints)
-                        ibin = findfirst(x -> energies[x] < b.eigvals[ik] <= energies[x+1], 1:length(energies)-1)
-                       
+                        ibin = findfirst(x -> energies[x] < b.eigvals[ik] <= energies[x+1],
+                                         1:length(energies)-1)
+
                         contribs[ib][ik][ia] += ibin === nothing ? 0.0 : pd[ibin, iud]
                     end
                 end
             end
         end
         for contribs in band_contribs
-            
             contribs .= map(x -> normalize.(x), contribs)
         end
-        band_colors = [[[blend_color(band_contribs[i][ib][ik], atom_colors[i]) for ik = 1:length(kpoints)] for ib = 1:length(window_ids[i])] for i=1:length(band_contribs)]
+        band_colors = [[[blend_color(band_contribs[i][ib][ik], atom_colors[i])
+                         for ik in 1:length(kpoints)] for ib in 1:length(window_ids[i])]
+                       for i in 1:length(band_contribs)]
         @info "Plotting bands..."
         for (iplt, (bnds, colors)) in enumerate(zip(bands, band_colors))
             if length(bands) == 2
@@ -233,13 +239,13 @@ end
             end
         end
 
-    # If no pdos is present
+        # If no pdos is present
     else
         if bands isa NamedTuple && !overlap_spin
-            layout := (1,2)
+            layout := (1, 2)
         else
-            layout := (1,1)
-        end 
+            layout := (1, 1)
+        end
         @info "Plotting bands..."
         if bands isa NamedTuple
             #loop over up down
@@ -253,7 +259,7 @@ end
             end
         else
             for (ib, b) in enumerate(bands[window_ids[1]])
-                plot_band(b, PLOT_COLORS[mod1(ib,length(PLOT_COLORS))], "", 1)
+                plot_band(b, PLOT_COLORS[mod1(ib, length(PLOT_COLORS))], "", 1)
             end
         end
     end

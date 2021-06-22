@@ -363,7 +363,7 @@
 # end
 #
 # #very stupid
-function read_abi_output(filename::String, T=Float64)
+function read_abi_output(filename::String, T = Float64)
     if occursin("FATBANDS", filename)
         return read_abi_fatbands(filename, T)
     elseif occursin("EBANDS.agr", filename)
@@ -399,7 +399,7 @@ end
 # end
 #
 # "Reads an abinit EBANDS.agr output file and returns the found DFBands. K-points only given in crystalline coordinates."
-function read_abi_ebands(filename::String, T=Float64)
+function read_abi_ebands(filename::String, T = Float64)
     bands = DFBand[]
     open(filename, "r") do f
         k_points_cryst = Vector{Vector{T}}()
@@ -408,7 +408,9 @@ function read_abi_ebands(filename::String, T=Float64)
             if occursin("List of k-points", line)
                 line = readline(f)
                 while line[1] != '@'
-                    k_point = parse.(T, replace.(strip.(strip.(strip.(split(line)[4:end], '['), ']'), ','), 'E', 'e'))#ohno the replace here!
+                    k_point = parse.(T,
+                                     replace.(strip.(strip.(strip.(split(line)[4:end], '['),
+                                                            ']'), ','), 'E', 'e'))#ohno the replace here!
                     push!(k_points_cryst, k_point)
                     line = readline(f)
                 end
@@ -421,7 +423,9 @@ function read_abi_ebands(filename::String, T=Float64)
                     push!(eigvals, parse(T, split(line)[2]))
                     line = readline(f)
                 end
-                push!(bands, DFBand([T[0.0, 0.0, 0.0] for i=1:length(eigvals)], k_points_cryst, eigvals))
+                push!(bands,
+                      DFBand([T[0.0, 0.0, 0.0] for i in 1:length(eigvals)], k_points_cryst,
+                             eigvals))
             end
         end
     end

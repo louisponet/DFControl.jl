@@ -10,7 +10,7 @@ returns the flags where the description contains the `searchstring`.
 Returns the documentation for a given flag.
 """
 function documentation(::Type{QE}, searchstring::AbstractString)
-    found = Pair{String, Vector{QEFlagInfo}}[]
+    found = Pair{String,Vector{QEFlagInfo}}[]
     for calculationinfo in QEInputInfos
         foundflags = QEFlagInfo[]
         for fi in allflags(calculationinfo)
@@ -44,7 +44,7 @@ returns the flags where the description contains the `searchstring`.
 Returns the documentation for a given flag.
 """
 function documentation(::Type{Elk}, searchstring::AbstractString)
-    found = Pair{ElkControlBlockInfo, Vector{ElkFlagInfo}}[]
+    found = Pair{ElkControlBlockInfo,Vector{ElkFlagInfo}}[]
     for b in ELK_CONTROLBLOCKS
         found_flags = ElkFlagInfo[]
         for f in b.flags
@@ -62,7 +62,7 @@ end
 function documentation(::Type{Elk}, flagsymbol::Symbol)
     flag = elk_flaginfo(flagsymbol)
     if flag == nothing
-        block = getfirst(x->x.name == flagsymbol, ELK_CONTROLBLOCKS)
+        block = getfirst(x -> x.name == flagsymbol, ELK_CONTROLBLOCKS)
         if block == nothing
             error("No documentation found for flag $flagsymbol, are you sure it is a valid flag for Elk?")
         else

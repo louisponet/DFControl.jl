@@ -8,27 +8,26 @@ include("vasp/fileio.jl")
 
 #--------------------Used by other file processing------------------#
 function parse_k_line(line, T)
-    line = replace(replace(line, ")" => " "), "(" => " ") 
+    line = replace(replace(line, ")" => " "), "(" => " ")
     splt = split(line)
     k1   = parse(T, splt[4])
     k2   = parse(T, splt[5])
     k3   = parse(T, splt[6])
     w    = parse(T, splt[end])
-    return (v=Vec3([k1, k2, k3]),w=w)
+    return (v = Vec3([k1, k2, k3]), w = w)
 end
 
-function write_flag_line(f, flag, data, seperator="=", i="")
+function write_flag_line(f, flag, data, seperator = "=", i = "")
     flagstr = string(flag)
     if flagstr[end-1] == '_' && tryparse(Int, string(flagstr[end])) != nothing
         flagstr = flagstr[1:end-2] * "($(flagstr[end]))"
     end
-    write(f,"  $flagstr$i $seperator ")
+    write(f, "  $flagstr$i $seperator ")
 
     if typeof(data) <: Array
-
-        if length(data)%3 == 0 && eltype(data) != Int
+        if length(data) % 3 == 0 && eltype(data) != Int
             write(f, "\n")
-            for i = 1:3:length(data)
+            for i in 1:3:length(data)
                 write(f, "  $(data[i]) $(data[i + 1]) $(data[i + 2])\n")
             end
         else
@@ -42,10 +41,9 @@ function write_flag_line(f, flag, data, seperator="=", i="")
     else #this should work for anything singular valued data such as bools, ''s and other types
         write(f, "$data\n")
     end
-
 end
 
-function parse_flag_val(val, T=Float64)
+function parse_flag_val(val, T = Float64)
     if T == String
         return val
     end
@@ -60,26 +58,26 @@ function parse_flag_val(val, T=Float64)
         t = t[1:end-1] .* abi_conversions[t[end]]
     end
 
-    length(t) == 1 ? t[1] : typeof(t) <: Vector{Real} ? convert.(T,t) : t
+    return length(t) == 1 ? t[1] : typeof(t) <: Vector{Real} ? convert.(T, t) : t
 end
 
 function write_data(f, data)
-    if typeof(data) <: Vector{Vector{Float64}} || typeof(data) <: Vector{NTuple{4, Float64}} #k_points
+    if typeof(data) <: Vector{Vector{Float64}} || typeof(data) <: Vector{NTuple{4,Float64}} #k_points
         for x in data
             for y in x
                 write(f, " $y")
             end
             write(f, "\n")
         end
-    elseif typeof(data) <: Vector{Int} || typeof(data) <: NTuple{6, Int}
+    elseif typeof(data) <: Vector{Int} || typeof(data) <: NTuple{6,Int}
         for x in data
             write(f, " $x")
         end
         write(f, "\n")
     elseif typeof(data) <: Matrix
         im, jm = size(data)
-        for i = 1:im
-            for j = 1:jm
+        for i in 1:im
+            for j in 1:jm
                 write(f, " $(data[i, j])")
             end
             write(f, "\n")
@@ -89,7 +87,8 @@ end
 
 Base.length(::Type{<:Number}) = 1
 
-function Base.parse(::Type{NamedTuple{names, types}}, spl::Vector{<:AbstractString}) where {names, types}
+function Base.parse(::Type{NamedTuple{names,types}},
+                    spl::Vector{<:AbstractString}) where {names,types}
     @assert sum(length.(types.parameters)) == length(spl)
     tbuf = Vector{Union{types.parameters...}}(undef, length(types.parameters))
     counter = 1
@@ -106,18 +105,18 @@ function Base.parse(::Type{NamedTuple{names, types}}, spl::Vector{<:AbstractStri
     pstring = (tbuf...,)
     return NamedTuple{names}(pstring)
 end
-Base.parse(::Type{T}, s::AbstractString) where {T <: NamedTuple} = parse(T, split(s))
+Base.parse(::Type{T}, s::AbstractString) where {T<:NamedTuple} = parse(T, split(s))
 
-function Base.parse(::Type{Point{N, T}}, spl::Vector{<:AbstractString}) where {N, T}
+function Base.parse(::Type{Point{N,T}}, spl::Vector{<:AbstractString}) where {N,T}
     @assert N == length(spl)
-    return Point{N, T}(parse.(T, spl))
+    return Point{N,T}(parse.(T, spl))
 end
-Base.parse(::Type{T}, s::AbstractString) where {T <: Point} = parse(T, split(s))
+Base.parse(::Type{T}, s::AbstractString) where {T<:Point} = parse(T, split(s))
 
 #---------------------------BEGINNING GENERAL SECTION-------------------#
 #Incomplete: only works with SBATCH right now
 function write_job_name(f, job::DFJob)
-    write(f, "#SBATCH -J $(job.name) \n")
+    return write(f, "#SBATCH -J $(job.name) \n")
 end
 
 function write_job_header(f, job::DFJob)
@@ -132,13 +131,14 @@ function write_job_header(f, job::DFJob)
 end
 
 function writetojob(f, job, calculations::Vector{DFCalculation{Abinit}}; kwargs...)
-    abinit_jobfiles   = write_abi_datasets(calculations, job.local_dir; kwargs...)
+    abinit_jobfiles = write_abi_datasets(calculations, job.local_dir; kwargs...)
     abifiles = String[]
     num_abi = 0
     for (filename, pseudos, runcommand) in abinit_jobfiles
         push!(abifiles, filename)
         file, ext = splitext(filename)
-        write(f, "$runcommand << !EOF\n$filename\n$(file * ".out")\n$(job.name * "_Xi$num_abi")\n$(job.name * "_Xo$num_abi")\n$(job.name * "_Xx$num_abi")\n")
+        write(f,
+              "$runcommand << !EOF\n$filename\n$(file * ".out")\n$(job.name * "_Xi$num_abi")\n$(job.name * "_Xo$num_abi")\n$(job.name * "_Xx$num_abi")\n")
         for pp in pseudos
             write(f, "$pp\n")
         end
@@ -150,7 +150,7 @@ end
 
 function writetojob(f, job, calculations::Vector{DFCalculation{Elk}}; kwargs...)
     save(calculations, job.structure; kwargs...)
-    should_run = any(map(x->x.run, calculations)) 
+    should_run = any(map(x -> x.run, calculations))
     if !should_run
         write(f, "#")
     end
@@ -163,66 +163,66 @@ function writeexec(f, exec::Exec)
     direxec = joinpath(exec.dir, exec.exec)
     write(f, "$direxec")
     for flag in exec.flags
-        
         write(f, " $(join(fill('-', flag.minus_count)))$(flag.symbol)")
         if !isa(flag.value, AbstractString)
             for v in flag.value
-                write(f," $v")
+                write(f, " $v")
             end
         else
             write(f, " $(flag.value)")
         end
     end
-    write(f, " ")
+    return write(f, " ")
 end
 
 function writetojob(f, job, calculation::DFCalculation; kwargs...)
-    filename    = infilename(calculation)
-    should_run  = calculation.run
+    filename   = infilename(calculation)
+    should_run = calculation.run
     save(calculation, job.structure; kwargs...)
     if !should_run
         write(f, "#")
     end
-    writeexec.((f, ), execs(calculation))
+    writeexec.((f,), execs(calculation))
     write(f, "< $filename > $(outfilename(calculation))\n")
     return (calculation,)
 end
 
 function writetojob(f, job, _calculation::DFCalculation{Wannier90}; kwargs...)
-    filename    = infilename(_calculation)
-    should_run  = _calculation.run
-    id = findfirst(isequal(_calculation), job.calculations)
-    seedname = name(_calculation)
+    filename   = infilename(_calculation)
+    should_run = _calculation.run
+    id         = findfirst(isequal(_calculation), job.calculations)
+    seedname   = name(_calculation)
 
-	nscf_calc = getfirst(x -> isnscf(x), job.calculations)
-	if nscf_calc !== nothing
-        runexec   = nscf_calc.execs
+    nscf_calc = getfirst(x -> isnscf(x), job.calculations)
+    if nscf_calc !== nothing
+        runexec = nscf_calc.execs
         # For elk the setup necessary for the wan_calc needs to be done before writing the wan calculation
         # because it's inside elk.in
-    	if package(nscf_calc) == QE
-    	    pw2wancalculation = qe_generate_pw2wancalculation(_calculation, nscf_calc, runexec)
-    	    preprocess  = pop!(flags(_calculation), :preprocess)
-    	    wannier_plot = pop!(flags(_calculation), :wannier_plot, nothing)
+        if package(nscf_calc) == QE
+            pw2wancalculation = qe_generate_pw2wancalculation(_calculation, nscf_calc,
+                                                              runexec)
+            preprocess = pop!(flags(_calculation), :preprocess)
+            wannier_plot = pop!(flags(_calculation), :wannier_plot, nothing)
 
-    	    if !preprocess || !should_run
-    	        write(f, "#")
-    	    end
-    	    writeexec.((f,), execs(_calculation))
-    	    write(f, "-pp $filename > $(outfilename(_calculation))\n")
+            if !preprocess || !should_run
+                write(f, "#")
+            end
+            writeexec.((f,), execs(_calculation))
+            write(f, "-pp $filename > $(outfilename(_calculation))\n")
 
-    	    save(_calculation, job.structure; kwargs...)
-    	    writetojob(f, job, pw2wancalculation; kwargs...)
-    	    flags(_calculation)[:preprocess] = preprocess
-    	    wannier_plot !== nothing && (flags(_calculation)[:wannier_plot] = wannier_plot)
+            save(_calculation, job.structure; kwargs...)
+            writetojob(f, job, pw2wancalculation; kwargs...)
+            flags(_calculation)[:preprocess] = preprocess
+            wannier_plot !== nothing && (flags(_calculation)[:wannier_plot] = wannier_plot)
         elseif package(nscf_calc) == Elk
-    	    pw2wancalculation = job["elk2wannier"]
+            pw2wancalculation = job["elk2wannier"]
         end
     end
 
     if !should_run
         write(f, "#")
     end
-    writeexec.((f, ), execs(_calculation))
+    writeexec.((f,), execs(_calculation))
     write(f, "$filename > $(outfilename(_calculation))\n")
     return (_calculation,)
 end
@@ -257,10 +257,13 @@ function writejobfiles(job::DFJob; kwargs...)
         write_job_header(f, job)
         write_job_preamble(f, job)
         written_calculations = DFCalculation[]
-        abicalculations = Vector{DFCalculation{Abinit}}(filter(x -> package(x) == Abinit, calculations(job)))
+        abicalculations = Vector{DFCalculation{Abinit}}(filter(x -> package(x) == Abinit,
+                                                               calculations(job)))
         !isempty(abicalculations) && writetojob(f, job, abicalculations; kwargs...)
-        elkcalculations = Vector{DFCalculation{Elk}}(filter(x -> package(x) == Elk, calculations(job)))
-        !isempty(elkcalculations) && append!(written_calculations, writetojob(f, job, elkcalculations; kwargs...))
+        elkcalculations = Vector{DFCalculation{Elk}}(filter(x -> package(x) == Elk,
+                                                            calculations(job)))
+        !isempty(elkcalculations) &&
+            append!(written_calculations, writetojob(f, job, elkcalculations; kwargs...))
         # i = length(abicalculations) + 1
         # while i <= length(calculations(job))
         #     i += writetojob(f, job, calculations(job)[i])
@@ -270,7 +273,7 @@ function writejobfiles(job::DFJob; kwargs...)
                 append!(written_calculations, writetojob(f, job, i; kwargs...))
             end
         end
-        write_job_postamble(f, job)
+        return write_job_postamble(f, job)
     end
 end
 
@@ -285,10 +288,10 @@ function read_job_line(line)
     end
     spl = strip_split(line)
 
-    calculation  = spl[end-1]
+    calculation = spl[end-1]
     output = spl[end]
-    spl    = spl[1:end-2]
-    exec_and_flags = Pair{String, Vector{SubString}}[]
+    spl = spl[1:end-2]
+    exec_and_flags = Pair{String,Vector{SubString}}[]
     #TODO This is not really nice, we don't handle execs that are unparseable...
     #     Not sure how we can actually do this
     for s in spl
@@ -296,7 +299,7 @@ function read_job_line(line)
         if e ∈ allexecs()
             push!(exec_and_flags, s => SubString[])
         elseif !isempty(exec_and_flags)
-        # else
+            # else
             push!(last(exec_and_flags[end]), s)
         end
     end
@@ -311,11 +314,11 @@ function read_job_line(line)
             push!(execs, Exec(efile, dir, parse_mpi_flags(flags)))
         elseif efile == "wannier90.x"
             push!(execs, Exec(efile, dir, parse_wan_execflags(flags)))
-        elseif any(occursin.(QE_EXECS, (efile,))) 
+        elseif any(occursin.(QE_EXECS, (efile,)))
             push!(execs, Exec(efile, dir, parse_qe_execflags(flags)))
         elseif any(occursin.(ELK_EXECS, (efile,)))
-	        calculation = "elk.in"
-	        output = "elk.out"
+            calculation = "elk.in"
+            output = "elk.out"
             push!(execs, Exec(efile, dir))
         else
             push!(execs, Exec(efile, dir, parse_generic_flags(flags)))
@@ -369,9 +372,9 @@ end
 
 function read_job_calculations(job_file::String)
     dir = splitdir(job_file)[1]
-    name   = ""
+    name = ""
     header = Vector{String}()
-    calculations     = DFCalculation[]
+    calculations = DFCalculation[]
     structures = AbstractStructure[]
     serverdir = ""
     open(job_file, "r") do f
@@ -388,7 +391,10 @@ function read_job_calculations(job_file::String)
                     calculation = (nothing, nothing)
                 else
                     calccommand = getfirst(isparseable, execs)
-                    calculation = calccommand != nothing ? calculationparser(calccommand)(inpath, execs=execs, run=run) : (nothing, nothing)
+                    calculation = calccommand != nothing ?
+                                  calculationparser(calccommand)(inpath; execs = execs,
+                                                                 run = run) :
+                                  (nothing, nothing)
                 end
                 if calculation[1] !== nothing
                     calculation[1].outfile = output
@@ -401,17 +407,17 @@ function read_job_calculations(job_file::String)
                         calculations[id[1]] = calculation[1]
                         # structures[id[1]] = calculation[2]
                     else
-	                    if isa(calculation[1], Vector)
-	                        append!(calculations, calculation[1])
+                        if isa(calculation[1], Vector)
+                            append!(calculations, calculation[1])
                         else
-	                        push!(calculations, calculation[1])
+                            push!(calculations, calculation[1])
                         end
                         if calculation[2] != nothing
                             push!(structures, calculation[2])
                         end
                     end
                 end
-	        elseif occursin("#SBATCH", line)
+            elseif occursin("#SBATCH", line)
                 if occursin("-J", line)
                     name = split(line)[end]
                     name = name == "-J" ? "noname" : name
@@ -420,16 +426,17 @@ function read_job_calculations(job_file::String)
                 end
             elseif occursin("cp -r", line) && isempty(serverdir)
                 serverdir = split(line)[end]
-	        else
-	            push!(header, line)
-	        end
+            else
+                push!(header, line)
+            end
         end
     end
     if isempty(structures)
-	    error("Something went wrong and no valid structures could be read from calculation files.")
+        error("Something went wrong and no valid structures could be read from calculation files.")
     end
     outstruct = mergestructures(structures)
-    return (name=name, header=header, calculations=calculations, structure=outstruct, server_dir=serverdir)
+    return (name = name, header = header, calculations = calculations,
+            structure = outstruct, server_dir = serverdir)
 end
 
 #---------------------------END GENERAL SECTION-------------------#
@@ -497,7 +504,7 @@ function rm_expr_lhs(filename, lhs)
 
     open(filename, "w") do f
         for line in write_lines
-            write(f,line * "\n")
+            write(f, line * "\n")
         end
     end
 end
@@ -506,14 +513,14 @@ function write_cell(f::IO, cell::AbstractMatrix)
     @assert size(cell) == (3, 3) "writing cell only allows 3x3 matrices!"
     write(f, "$(cell[1, 1]) $(cell[1, 2]) $(cell[1, 3])\n")
     write(f, "$(cell[2, 1]) $(cell[2, 2]) $(cell[2, 3])\n")
-    write(f, "$(cell[3, 1]) $(cell[3, 2]) $(cell[3, 3])\n")
+    return write(f, "$(cell[3, 1]) $(cell[3, 2]) $(cell[3, 3])\n")
 end
 
 "LOL this absolutely is impossible to do for QE"
 function writeabortfile(job::DFJob, calculation::DFCalculation{QE})
     abortpath = joinpath(job.local_dir, TEMP_CALC_DIR, "$(job.name).EXIT")
     open(abortpath, "w") do f
-        write(f, " \n")
+        return write(f, " \n")
     end
     return abortpath
 end

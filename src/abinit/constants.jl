@@ -37,6 +37,6 @@
 #
 
 include(joinpath(depsdir, "abinitflags.jl"))
-const AbinitFlags  = _ABINITFLAGS()
+const AbinitFlags = _ABINITFLAGS()
 #
 # flagtype(calculation::DFCalculation{Abinit}, flag) = haskey(AbinitFlags, flag) ? AbinitFlags[flag] : Nothing

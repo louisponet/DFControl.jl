@@ -12,9 +12,10 @@ for f in (:cp, :mv)
     end
 end
 
-function set_kpoints!(calculation::DFCalculation{Wannier90}, k_grid::NTuple{3, Int}; print=true)
-    set_flags!(calculation, :mp_grid => [k_grid...], print=print)
-    set_data!(calculation, :kpoints, kgrid(k_grid..., :wan), print=print)
+function set_kpoints!(calculation::DFCalculation{Wannier90}, k_grid::NTuple{3,Int};
+                      print = true)
+    set_flags!(calculation, :mp_grid => [k_grid...]; print = print)
+    set_data!(calculation, :kpoints, kgrid(k_grid..., :wan); print = print)
     return calculation
 end
 
@@ -25,7 +26,9 @@ Automatically calculates and sets the wannier energies. This uses the projection
 `Emin` and the output of the nscf calculation to infer the other limits.
 `Epad` allows one to specify the padding around the inner and outer energy windows
 """
-function set_wanenergies!(calculation::DFCalculation{Wannier90}, structure::AbstractStructure, nscf::DFCalculation, Emin::Real; Epad=5.0)
+function set_wanenergies!(calculation::DFCalculation{Wannier90},
+                          structure::AbstractStructure, nscf::DFCalculation, Emin::Real;
+                          Epad = 5.0)
     hasoutput_assert(nscf)
     @assert isnscf(nscf) "Please provide a valid nscf calculation."
     hasprojections_assert(structure)
@@ -39,14 +42,16 @@ function set_wanenergies!(calculation::DFCalculation{Wannier90}, structure::Abst
         if hasflag(calculation, :spin) && calculation[:spin] == "up"
             winmin, frozmin, frozmax, winmax = wanenergyranges(Emin, nwann, bands.up, Epad)
         elseif hasflag(calculation, :spin) && calculation[:spin] == "down"
-            winmin, frozmin, frozmax, winmax = wanenergyranges(Emin, nwann, bands.down, Epad)
+            winmin, frozmin, frozmax, winmax = wanenergyranges(Emin, nwann, bands.down,
+                                                               Epad)
         end
     else
         num_bands = length(bands)
         winmin, frozmin, frozmax, winmax = wanenergyranges(Emin, nwann, bands, Epad)
     end
 
-    set_flags!(calculation, :dis_win_min => winmin, :dis_froz_min => frozmin, :dis_froz_max => frozmax, :dis_win_max => winmax, :num_wann => nwann, :num_bands=>num_bands;print=false)
+    set_flags!(calculation, :dis_win_min => winmin, :dis_froz_min => frozmin,
+               :dis_froz_max => frozmax, :dis_win_max => winmax, :num_wann => nwann,
+               :num_bands => num_bands; print = false)
     return calculation
 end
-

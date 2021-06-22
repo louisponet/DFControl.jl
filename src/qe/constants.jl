@@ -7,7 +7,7 @@ struct QEFlagInfo{T}
     description::String
 end
 QEFlagInfo() = QEFlagInfo{Nothing}(:error, "")
-Base.eltype(x::QEFlagInfo{T}) where T = T
+Base.eltype(x::QEFlagInfo{T}) where {T} = T
 
 abstract type AbstractBlockInfo end
 
@@ -21,7 +21,8 @@ function qe_flaginfo(block::AbstractBlockInfo, variable_name::Symbol)
     varstr1 = string(variable_name)
     for var in block.flags
         varstr2 = string(var.name)
-        if occursin(varstr2, varstr1) && (length(varstr1) == length(varstr2) || length(varstr1) == length(varstr2) + 2)
+        if occursin(varstr2, varstr1) &&
+           (length(varstr1) == length(varstr2) || length(varstr1) == length(varstr2) + 2)
             return var
         end
     end
@@ -29,11 +30,11 @@ function qe_flaginfo(block::AbstractBlockInfo, variable_name::Symbol)
 end
 
 struct QEDataBlockInfo <: AbstractBlockInfo
-    name                ::Symbol
-    description         ::String
-    options             ::Vector{Symbol}
-    options_description ::String
-    flags               ::Vector{<:QEFlagInfo}
+    name                :: Symbol
+    description         :: String
+    options             :: Vector{Symbol}
+    options_description :: String
+    flags               :: Vector{<:QEFlagInfo}
 end
 
 struct QEInputInfo
@@ -42,24 +43,42 @@ struct QEInputInfo
     data::Vector{QEDataBlockInfo}
 end
 
-allflags(info::QEInputInfo) = flatten([[i.flags for i in info.control]; [i.flags for i in info.data]])
+function allflags(info::QEInputInfo)
+    return flatten([[i.flags for i in info.control]; [i.flags for i in info.data]])
+end
 
 include(joinpath(depsdir, "qeflags.jl"))
 const QEInputInfos = _QEINPUTINFOS()
-push!(QEInputInfos, QEInputInfo("pw2wannier90.x", [QEControlBlockInfo(:calculationpp,[QEFlagInfo{String}(:outdir        , "location of temporary output files"),
-                          QEFlagInfo{String}(:prefix        , "pwscf filename prefix"),
-                          QEFlagInfo{String}(:seedname      , "wannier90 calculation/output filename prefix"),
-                          QEFlagInfo{String}(:wan_mode      , "'standalone' or 'library'"),
-                          QEFlagInfo{String}(:spin_component, "'none', 'up' or 'down'"),
-                          QEFlagInfo{Bool}(:write_mmn     , "compute M_mn matrix"),
-                          QEFlagInfo{Bool}(:write_amn     , "compute A_mn matrix"),
-                          QEFlagInfo{Bool}(:write_unk     , "write wavefunctions to file"),
-                          QEFlagInfo{Bool}(:write_uHu     , "write the hamiltonian elements between different k-values"),
-                          QEFlagInfo{Bool}(:wvfn_formatted, "formatted or unformatted output for wavefunctions"),
-                          QEFlagInfo{Bool}(:reduce_unk    , "output wavefunctions on a coarse grid to save memory")])], QEDataBlockInfo[]))
+push!(QEInputInfos,
+      QEInputInfo("pw2wannier90.x",
+                  [QEControlBlockInfo(:calculationpp,
+                                      [QEFlagInfo{String}(:outdir,
+                                                          "location of temporary output files"),
+                                       QEFlagInfo{String}(:prefix, "pwscf filename prefix"),
+                                       QEFlagInfo{String}(:seedname,
+                                                          "wannier90 calculation/output filename prefix"),
+                                       QEFlagInfo{String}(:wan_mode,
+                                                          "'standalone' or 'library'"),
+                                       QEFlagInfo{String}(:spin_component,
+                                                          "'none', 'up' or 'down'"),
+                                       QEFlagInfo{Bool}(:write_mmn, "compute M_mn matrix"),
+                                       QEFlagInfo{Bool}(:write_amn, "compute A_mn matrix"),
+                                       QEFlagInfo{Bool}(:write_unk,
+                                                        "write wavefunctions to file"),
+                                       QEFlagInfo{Bool}(:write_uHu,
+                                                        "write the hamiltonian elements between different k-values"),
+                                       QEFlagInfo{Bool}(:wvfn_formatted,
+                                                        "formatted or unformatted output for wavefunctions"),
+                                       QEFlagInfo{Bool}(:reduce_unk,
+                                                        "output wavefunctions on a coarse grid to save memory")])],
+                  QEDataBlockInfo[]))
 
-qe_calculation_info(calculation::DFCalculation{QE}) = getfirst(x-> occursin(x.exec, calculation.exec), QEInputInfos)
-qe_calculation_info(exec::AbstractString) = getfirst(x-> occursin(x.exec, exec), QEInputInfos)
+function qe_calculation_info(calculation::DFCalculation{QE})
+    return getfirst(x -> occursin(x.exec, calculation.exec), QEInputInfos)
+end
+function qe_calculation_info(exec::AbstractString)
+    return getfirst(x -> occursin(x.exec, exec), QEInputInfos)
+end
 qe_calculation_flags(exec::AbstractString) = allflags(qe_calculation_info(exec))
 
 function qe_flaginfo(calculation_info::QEInputInfo, variable_name::Symbol)
@@ -101,10 +120,9 @@ function qe_flaginfo(exec::Exec, varname)
     return QEFlagInfo()
 end
 
-
 function qe_block_info(block_name::Symbol)
     for calculation_info in QEInputInfos
-        for block in [calculation_info.control;calculation_info.data]
+        for block in [calculation_info.control; calculation_info.data]
             if block.name == block_name
                 return block
             end
@@ -112,9 +130,12 @@ function qe_block_info(block_name::Symbol)
     end
 end
 
-
-qe_all_block_flags(calculation::DFCalculation{QE}, block_name) = getfirst(x -> x.name == block, qe_calculation_info(calculation).control).flags
-qe_all_block_flags(exec::AbstractString, block_name) = getfirst(x -> x.name == block_name, qe_calculation_info(exec).control).flags
+function qe_all_block_flags(calculation::DFCalculation{QE}, block_name)
+    return getfirst(x -> x.name == block, qe_calculation_info(calculation).control).flags
+end
+function qe_all_block_flags(exec::AbstractString, block_name)
+    return getfirst(x -> x.name == block_name, qe_calculation_info(exec).control).flags
+end
 
 function qe_block_variable(exec::AbstractString, flagname)
     for calculation_info in QEInputInfos
@@ -133,12 +154,14 @@ function qe_exec(calculation::DFCalculation{QE})
     return exec
 end
 
-qe_block_variable(calculation::DFCalculation, flagname) = qe_block_variable(qe_exec(calculation).exec, flagname)
+function qe_block_variable(calculation::DFCalculation, flagname)
+    return qe_block_variable(qe_exec(calculation).exec, flagname)
+end
 
-flagtype(calculation::DFCalculation{QE}, flag) = eltype(qe_flaginfo(qe_exec(calculation), flag))
+function flagtype(calculation::DFCalculation{QE}, flag)
+    return eltype(qe_flaginfo(qe_exec(calculation), flag))
+end
 flagtype(::Type{QE}, exec, flag) = eltype(qe_flaginfo(exec, flag))
 
 ψ_cutoff_flag(::Type{QE}) = :ecutwfc
 ρ_cutoff_flag(::Type{QE}) = :ecutrho
-
-

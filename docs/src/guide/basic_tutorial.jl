@@ -12,7 +12,7 @@ using DFControl
 using Downloads
 cif_file = Downloads.download("http://www.crystallography.net/cod/9011998.cif", "Si.cif")
 
-structure = Structure(cif_file, name="Si")
+structure = Structure(cif_file; name = "Si")
 set_pseudos!(structure, :pbesol)
 
 # This assumes that the `:pbesol` pseudopotential set was installed during the
@@ -31,20 +31,18 @@ pw_execs = [Exec("mpirun", "", :np => 4), Exec("pw.x", "/opt/qe/bin/", :nk => 4)
 # Then we create the first calculation for our job, we name it scf, which will be used to reference it later.
 # We also pass the executables to be used and additional flags to be set to the constructor.
 # Afterwards we set the kpoints to be used in the scf calculation.
-scf_calculation = DFCalculation{QE}("scf", :calculation => "scf", execs=pw_execs)
-set_kpoints!(scf_calculation, (6,6,6,1,1,1))
+scf_calculation = DFCalculation{QE}("scf", :calculation => "scf"; execs = pw_execs)
+set_kpoints!(scf_calculation, (6, 6, 6, 1, 1, 1))
 
 # The code recognizes internally that this 6-Tuple corresponds to a
 # `K_POINTS (automatic)` block in QE. Alternatively (leading to an identical final result):
 
-scf_calculation = DFCalculation{QE}("scf", :calculation => "scf",
-                        execs=pw_execs,
-                        data=[InputData(:k_points, :automatic, (6,6,6,1,1,1))])
+scf_calculation = DFCalculation{QE}("scf", :calculation => "scf"; execs = pw_execs,
+                                    data = [InputData(:k_points, :automatic,
+                                                      (6, 6, 6, 1, 1, 1))])
 
 # We can now define our job: 
-job = DFJob("Si", structure, [scf_calculation],
-            :ecutwfc => 20, 
-            :conv_thr => 1e-6,
+job = DFJob("Si", structure, [scf_calculation], :ecutwfc => 20, :conv_thr => 1e-6;
             local_dir = "job")
 
 # Additional calculations would be be added to the list `[scf_calculation]`.
@@ -53,10 +51,10 @@ job = DFJob("Si", structure, [scf_calculation],
 
 # We are now ready to submit the job, which will run in the current working directory
 if false #hide
-submit(job)
+    submit(job)
 else #hide
-global job = DFJob(joinpath(@__DIR__, "../../src/assets/job/"))#hide
-pop!(job); #hide
+    global job = DFJob(joinpath(@__DIR__, "../../src/assets/job/"))#hide
+    pop!(job) #hide
 end #hide
 
 # This will generate and save all calculation files, and the corresponding job script (`job.tt`),
@@ -93,9 +91,10 @@ job
 # Seeing that all is right we submit the job again
 set_localdir!(job, "job"); #hide
 if false #hide
-submit(job)
+    submit(job)
 else #hide
-global job = DFJob(joinpath(pathof(DFControl), "..","..", "docs", "src", "assets", "job"));#hide
+    global job = DFJob(joinpath(pathof(DFControl), "..", "..", "docs", "src", "assets",
+                                "job"))#hide
 end #hide
 
 # We can access the bands through
@@ -106,7 +105,7 @@ bands = outputdata(job["bands"])[:bands];
 # They can be plotted too
 fermi = readfermi(job) # = outputdata(job["scf"])[:fermi]
 using Plots
-plot(bands, fermi=fermi)
+plot(bands; fermi = fermi)
 
 # Since more info (such as the structure) is available in the job,
 # plotting the job leads to a richer plot
