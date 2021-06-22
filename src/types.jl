@@ -371,7 +371,11 @@ function DFJob(job_dir::AbstractString, job_script="job.tt"; version::Union{Noth
         if occursin(VERSION_DIR_NAME, apath)
             @error "It is not allowed to directly load a job version, please use `DFJob(dir, version=$(splitdir(apath)[end]))`"
         end
-        real_path = version === nothing ? apath : joinpath(apath, VERSION_DIR_NAME, "$version")
+        if version === nothing || (ispath(joinpath(apath, ".metadata.jld2")) && load(joinpath(apath, ".metadata.jld2"))["version"]==version)
+            real_path = apath
+        else
+            real_path = joinpath(apath, VERSION_DIR_NAME, "$version")
+        end
     else
         real_path = request_job(job_dir)
         real_path === nothing && return
