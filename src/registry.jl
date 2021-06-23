@@ -64,9 +64,7 @@ function request_job(job_dir::String)
             return DateTime(0)
         end
     end
-    matching_jobs = sort(registered_jobs(job_dir);
-                         by = timestamp,
-                         rev = true)
+    matching_jobs = sort(registered_jobs(job_dir); by = timestamp, rev = true)
     if length(matching_jobs) == 1
         return matching_jobs[1]
     else

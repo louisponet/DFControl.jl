@@ -10,7 +10,7 @@ function show(io::IO, block::InputData)
     """
     dfprintln(io, s)
     dfprintln(io, string(block.data) * "\n\n")
-    return 
+    return
 end
 
 show(io::IO, data::Vector{InputData}) = map(x -> show(io, x), data)
@@ -27,7 +27,7 @@ function show(io::IO, band::DFBand{T}) where {T<:AbstractFloat}
     extra:   $(band.extra)
     """
     dfprintln(io, string)
-    return 
+    return
 end
 
 show(io::IO, bands::Vector{<:DFBand}) = map(x -> show(io, x), bands)
@@ -87,11 +87,13 @@ function show(io::IO, job::DFJob)
         for (si, i) in enumerate(is)
             n = name(i)
             cr = i.run ? crayon"green" : crayon"red"
-            dfprint(io, cr, i == last ? (is_running ? "\t$n <- running\n" : "\t$n <- ran last\n")  : "\t$n\n")
+            dfprint(io, cr,
+                    i == last ? (is_running ? "\t$n <- running\n" : "\t$n <- ran last\n") :
+                    "\t$n\n")
         end
     end
     dfprint(io, reset)
-    return 
+    return
 end
 
 function show(io::IO, in::DFCalculation)
@@ -116,7 +118,7 @@ function show(io::IO, in::DFCalculation)
         end
     end
     dfprint(io, crayon"reset")
-    return 
+    return
 end
 
 function show(io::IO, flag_info::QEFlagInfo{T}) where {T}
@@ -124,7 +126,7 @@ function show(io::IO, flag_info::QEFlagInfo{T}) where {T}
     dfprintln(io, crayon"yellow", "name : $(flag_info.name)")
     dfprintln(io, crayon"cyan", "description:", crayon"reset")
     dfprint(io, "\t" * replace(flag_info.description, "\n" => "\n\t"))
-    return 
+    return
 end
 
 function show(io::IO, flag_info::ElkFlagInfo{T}) where {T}
@@ -138,7 +140,7 @@ function show(io::IO, flag_info::ElkFlagInfo{T}) where {T}
     end
     dfprintln(io, crayon"cyan", "description:", crayon"reset")
     dfprintln(io, "\t" * replace(flag_info.description, "\n" => "\n\t"))
-    return 
+    return
 end
 
 function show(io::IO, info::ElkControlBlockInfo)
@@ -150,14 +152,14 @@ function show(io::IO, info::ElkControlBlockInfo)
     dfprintln(io, crayon"cyan", "description:", crayon"reset")
     dfprintln(io, "\t" * replace(info.description, "\n" => "\n\t"))
     dfprint(io, crayon"reset")
-    return 
+    return
 end
 
 function show(io::IO, el::Element)
     for f in fieldnames(typeof(el))
         dfprintln(io, crayon"red", "$f: ", crayon"reset", "$(getfield(el, f))")
     end
-    dfprint(io, crayon"reset")
+    return dfprint(io, crayon"reset")
 end
 
 function show(io::IO, str::AbstractStructure)
@@ -170,7 +172,7 @@ function show(io::IO, str::AbstractStructure)
     for a in atoms(str)
         show(io, a)
     end
-    dfprintln(io, crayon"reset")
+    return dfprintln(io, crayon"reset")
 end
 
 function show(io::IO, at::AbstractAtom{T,LT}) where {T,LT<:Length{T}}
@@ -193,5 +195,5 @@ function show(io::IO, at::AbstractAtom{T,LT}) where {T,LT<:Length{T}}
         end
     end
     dfprintln(io, crayon"reset")
-    return 
+    return
 end
