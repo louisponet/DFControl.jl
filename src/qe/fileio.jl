@@ -42,6 +42,45 @@ function qe_read_output(calculation::DFCalculation{QE}, args...; kwargs...)
     end
 end
 
+function parse_Hubbard_block(f)
+    # Each of these will have n Hubbard typ elements at the end
+    ids = Int[]
+    traces = NamedTuple{(:up, :down, :total), NTuple{3, Float64}}[] 
+    eigvals = (up = Vector{Float64}[], down = Vector{Float64}[])
+    eigvec = (up = Matrix{Float64}[], down=Matrix{Float64}[])
+    occupations = (up = Matrix{Float64}[], down=Matrix{Float64}[])
+    magmoms = Float64[]
+    line = readline(f)
+    cur_spin = :up
+    while strip(line) != "--- exit write_ns ---"
+        line = readline(f)
+        if line[1:4] == "atom"
+            sline = split(line)
+            push!(ids, parse(Int, sline[2]))
+            push!(traces, NamedTuple{(:up, :down, :total)}(parse.(Float64, (sline[end-2], sline[end-1],  sline[end]))))
+            for spin in (:up, :down)
+                readline(f) #should be spin1
+                readline(f)# should be eigvals
+                push!(eigvals[spin], parse.(Float64, split(readline(f))))
+                dim = length(eigvals[spin][1])
+                readline(f) #eigvectors
+                tmat = zeros(dim, dim)
+                for i = 1:dim
+                    tmat[i, :] = parse.(Float64, split(readline(f)))
+                end
+                push!(eigvec[spin], tmat)
+                readline(f) #occupations
+                for i = 1:dim
+                    tmat[i, :] = parse.(Float64, split(readline(f)))
+                end
+                push!(occupations[spin], tmat)
+            end
+            push!(magmoms, parse(Float64, split(readline(f))[end]))
+        end
+    end
+    return [(id = i, trace = t, eigvals = (up = val_up, down = val_down), eigvecs = (up = vec_up, down=vec_down), occupations = (up=occ_up, down=occ_down), magmom = m) for (i, t, val_up,val_down, vec_up,vec_down, occ_up,occ_down, m) in zip(ids, traces, eigvals.up,eigvals.down, eigvec.up,eigvec.down, occupations.up,occupations.down, magmoms)]
+end
+
 """
     qe_read_pw_output(filename::String, T=Float64)
 
@@ -58,7 +97,10 @@ function qe_read_pw_output(filename::String, T = Float64; cleanup = true)
         atsyms       = Symbol[]
         nat          = 0
         while !eof(f)
-            line = readline(f)
+            line = strip(readline(f))
+            if isempty(line)
+                continue
+            end
             #polarization
             if occursin("C/m^2", line)
                 s_line = split(line)
@@ -211,11 +253,29 @@ function qe_read_pw_output(filename::String, T = Float64; cleanup = true)
                 end
                 out[:atomic_positions] = atoms
             elseif occursin("Total force", line)
-                force = parse(T, split(line)[4])
-                if force <= lowest_force
-                    lowest_force      = force
-                    out[:total_force] = force
+                sline = split(line)
+                force = parse(T, sline[4])
+                scf_contrib = parse(T, sline[end])
+                if !haskey(out, :total_force)
+                    out[:total_force] = [force]
+                else
+                    push!(out[:total_force], force)
                 end
+                if !haskey(out, :scf_correction)
+                    out[:scf_correction] = [scf_contrib]
+                else
+                    push!(out[:scf_correction], scf_contrib)
+                end
+            elseif occursin("iteration #", line)
+                sline = split(line)
+                it = length(sline[2]) == 1 ? parse(Int, sline[3]) : parse(Int, sline[2][2:end])
+                if !haskey(out, :scf_iteration)
+                    out[:scf_iteration] = [it]
+                else
+                    push!(out[:scf_iteration], it)
+                end
+                    
+            
             elseif occursin("Magnetic moment per site", line)
                 key = :colin_mag_moments
                 out[key] = T[]
@@ -241,8 +301,10 @@ function qe_read_pw_output(filename::String, T = Float64; cleanup = true)
                     out[key] = [mag]
                 end
             elseif occursin("convergence NOT achieved", line)
-                out[:converged] = false
+                out[:scf_converged] = false
             elseif occursin("convergence has been achieved", line)
+                out[:scf_converged] = true
+            elseif occursin("Begin final coordinates", line)
                 out[:converged] = true
             elseif occursin("atom number", line)
                 if !haskey(out, :magnetization)
@@ -257,16 +319,12 @@ function qe_read_pw_output(filename::String, T = Float64; cleanup = true)
                     out[:magnetization][atom_number] = parse(Vec3{Float64},
                                                              split(readline(f))[3:5])
                 end
-            elseif occursin("Tr[ns(na)]", line)
-                if !haskey(out, :Hubbard_occupation)
-                    out[:Hubbard_occupation] = Float64[]
-                end
-                sline = split(line)
-                id = parse(Int, split(line)[2])
-                if length(out[:Hubbard_occupation]) < id
-                    push!(out[:Hubbard_occupation], parse(Float64, sline[end]))
+            elseif line == "--- enter write_ns ---"
+                
+                if !haskey(out, :Hubbard)
+                    out[:Hubbard] = [parse_Hubbard_block(f)]
                 else
-                    out[:Hubbard_occupation][id] = parse(Float64, sline[end])
+                    push!(out[:Hubbard], parse_Hubbard_block(f))
                 end
                 # Timing info
             elseif occursin("init_run", line)
@@ -384,7 +442,11 @@ function qe_read_pw_output(filename::String, T = Float64; cleanup = true)
                 pop!(out, f, nothing)
             end
         end
-
+        out[:converged] = out[:converged] ? true : haskey(out, :scf_converged) && out[:scf_converged] && !haskey(out, :total_force)
+        if haskey(out, :scf_iteration)
+            out[:n_scf] = length(findall(i -> out[:scf_iteration][i+1] < out[:scf_iteration][i], 1:length(out[:scf_iteration])-1))
+        end
+        pop!(out, :scf_converged, nothing)
         return out
     end
 end

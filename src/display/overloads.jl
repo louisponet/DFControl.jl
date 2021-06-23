@@ -9,7 +9,8 @@ function show(io::IO, block::InputData)
     Block data:
     """
     dfprintln(io, s)
-    return dfprintln(io, string(block.data) * "\n\n")
+    dfprintln(io, string(block.data) * "\n\n")
+    return 
 end
 
 show(io::IO, data::Vector{InputData}) = map(x -> show(io, x), data)
@@ -25,7 +26,8 @@ function show(io::IO, band::DFBand{T}) where {T<:AbstractFloat}
     string *= """eigvals: $(band.eigvals[1]) -> $(band.eigvals[end])
     extra:   $(band.extra)
     """
-    return dfprintln(io, string)
+    dfprintln(io, string)
+    return 
 end
 
 show(io::IO, bands::Vector{<:DFBand}) = map(x -> show(io, x), bands)
@@ -81,7 +83,6 @@ function show(io::IO, job::DFJob)
         dfprintln(io, crayon"cyan", line, reset)
         dfprintln(io, reset, "(", crayon"green", "scheduled", reset, ", ", crayon"red",
                   "not scheduled", reset, ")")
-        dfprintln(io)
         ln = maximum(length.(string.(name.(is))))
         for (si, i) in enumerate(is)
             n = name(i)
@@ -89,7 +90,8 @@ function show(io::IO, job::DFJob)
             dfprint(io, cr, i == last ? (is_running ? "\t$n <- running\n" : "\t$n <- ran last\n")  : "\t$n\n")
         end
     end
-    return dfprint(io, reset)
+    dfprint(io, reset)
+    return 
 end
 
 function show(io::IO, in::DFCalculation)
@@ -113,14 +115,16 @@ function show(io::IO, in::DFCalculation)
                     "$v\n")
         end
     end
-    return dfprint(io, crayon"reset")
+    dfprint(io, crayon"reset")
+    return 
 end
 
 function show(io::IO, flag_info::QEFlagInfo{T}) where {T}
     df_show_type(io, flag_info)
     dfprintln(io, crayon"yellow", "name : $(flag_info.name)")
     dfprintln(io, crayon"cyan", "description:", crayon"reset")
-    return dfprint(io, "\t" * replace(flag_info.description, "\n" => "\n\t"))
+    dfprint(io, "\t" * replace(flag_info.description, "\n" => "\n\t"))
+    return 
 end
 
 function show(io::IO, flag_info::ElkFlagInfo{T}) where {T}
@@ -133,7 +137,8 @@ function show(io::IO, flag_info::ElkFlagInfo{T}) where {T}
         dfprintln(io, "\t" * "nothing")
     end
     dfprintln(io, crayon"cyan", "description:", crayon"reset")
-    return dfprintln(io, "\t" * replace(flag_info.description, "\n" => "\n\t"))
+    dfprintln(io, "\t" * replace(flag_info.description, "\n" => "\n\t"))
+    return 
 end
 
 function show(io::IO, info::ElkControlBlockInfo)
@@ -143,17 +148,20 @@ function show(io::IO, info::ElkControlBlockInfo)
         dfprintln(io, "\t$(flag.name)")
     end
     dfprintln(io, crayon"cyan", "description:", crayon"reset")
-    return dfprintln(io, "\t" * replace(info.description, "\n" => "\n\t"))
+    dfprintln(io, "\t" * replace(info.description, "\n" => "\n\t"))
+    dfprint(io, crayon"reset")
+    return 
 end
 
 function show(io::IO, el::Element)
     for f in fieldnames(typeof(el))
         dfprintln(io, crayon"red", "$f: ", crayon"reset", "$(getfield(el, f))")
     end
+    dfprint(io, crayon"reset")
 end
 
 function show(io::IO, str::AbstractStructure)
-    dfprintln(io, crayon"cyan", "Structure")
+    dfprintln(io, crayon"cyan", "Structure", crayon"reset")
     dfprintln(io, crayon"red", "    cell parameters:")
     dfprint(io, crayon"reset",
             "\t a = $((str.cell[:,1]...,))\n\t b = $((str.cell[:,2]...,))\n\t c = $((str.cell[:,3]...,))\n")
@@ -162,6 +170,7 @@ function show(io::IO, str::AbstractStructure)
     for a in atoms(str)
         show(io, a)
     end
+    dfprintln(io, crayon"reset")
 end
 
 function show(io::IO, at::AbstractAtom{T,LT}) where {T,LT<:Length{T}}
@@ -183,5 +192,6 @@ function show(io::IO, at::AbstractAtom{T,LT}) where {T,LT<:Length{T}}
             dfprint(io, "$f: $val, ")
         end
     end
-    return dfprintln(io)
+    dfprintln(io, crayon"reset")
+    return 
 end
