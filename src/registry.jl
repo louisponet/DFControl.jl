@@ -56,8 +56,16 @@ load_jobs(fuzzy::AbstractString) = DFJob.(registered_jobs(fuzzy))
 
 function request_job(job_dir::String)
     cleanup_job_registry(; print = false)
+    function timestamp(jobdir)
+        if ispath(joinpath(jobdir, ".metadata.jld2"))
+            md = load(joinpath(jobdir, ".metadata.jld2"))["metadata"]
+            return get(md, :timestamp, DateTime(0))
+        else
+            return DateTime(0)
+        end
+    end
     matching_jobs = sort(registered_jobs(job_dir);
-                         by = x -> has_timestamp(x) ? timestamp(x) : zero(DateTime),
+                         by = timestamp,
                          rev = true)
     if length(matching_jobs) == 1
         return matching_jobs[1]
