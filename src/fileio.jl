@@ -8,7 +8,11 @@ function parse_file(filename::AbstractString, parse_funcs::Vector{Pair{String,Fu
             end
             func = getfirst(x -> occursin(x[1], line), parse_funcs)
             func === nothing && continue
-            func[2](out, line, f)
+            try
+                func[2](out, line, f)
+            catch
+                @warn "File corruption or parsing error detected.\nTrying to continue smoothly."
+            end
         end
     end
     return out

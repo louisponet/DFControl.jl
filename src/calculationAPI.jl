@@ -232,7 +232,7 @@ end
 outputdata(job["scf"], extra_parse_funcs = ["number of atoms/cell" => qe_parse_nat])
 ```
 """
-function outputdata(calculation::DFCalculation; extra_parse_funcs::Pair{String,Function}=Pair{String,Function}[], print = true, overwrite = true)
+function outputdata(calculation::DFCalculation; extra_parse_funcs::Vector{Pair{String,Function}}=Pair{String,Function}[], print = true, overwrite = true)
     if hasoutput(calculation)
         if !overwrite && !isempty(outdata(calculation))
             return outdata(calculation)

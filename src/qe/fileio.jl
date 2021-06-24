@@ -122,11 +122,13 @@ function qe_parse_reciprocal_axes(out, line, f)
     out[:in_recip_cell] = Mat3([cell_1 cell_2 cell_3])
 end
 function qe_parse_atomic_species(out, line, f)
-    line = readline(f)
-    out[:atsyms] = Symbol[]
-    while !isempty(line)
-        push!(out[:atsyms], Symbol(strip_split(line)[1]))
+    if !haskey(out, :atsyms)
         line = readline(f)
+        out[:atsyms] = Symbol[]
+        while !isempty(line)
+            push!(out[:atsyms], Symbol(strip_split(line)[1]))
+            line = readline(f)
+        end
     end
 end
 
@@ -342,7 +344,7 @@ function qe_parse_magnetization(out, line, f)
     end
 end
 
-function qe_parse_Hubbard(out, line, f) 
+function qe_parse_Hubbard(out, line, f)
     if !haskey(out, :Hubbard)
         out[:Hubbard] = [parse_Hubbard_block(f)]
     else
@@ -398,7 +400,7 @@ const QE_PW_PARSE_FUNCTIONS = ["C/m^2"                      => qe_parse_polariza
                                "number of Kohn-Sham states" => qe_parse_n_KS,
                                "crystal axes"               => qe_parse_crystal_axes,
                                "reciprocal axes"            => qe_parse_reciprocal_axes,
-                               "atomic species"             => qe_parse_atomic_species,
+                               "atomic species   valence    mass" => qe_parse_atomic_species,
                                "number of atoms/cell"       => qe_parse_nat,
                                "Crystallographic axes"      => qe_parse_crystal_positions,
                                "PseudoPot"                  => qe_parse_pseudo,
@@ -433,9 +435,6 @@ The additional `parse_funcs` should be of the form:
 `func(out_dict, line, f)` with `f` the file. 
 """
 function qe_read_pw_output(filename::String; parse_funcs::Vector{Pair{String,Function}}=Pair{String,Function}[])
-    out = Dict{Symbol,Any}()
-    prefac_k     = nothing
-    out[:nat]    = 0
     all_funcs = vcat(QE_PW_PARSE_FUNCTIONS, parse_funcs)
     out = parse_file(filename, all_funcs)
     if haskey(out, :in_alat) &&
@@ -475,7 +474,7 @@ function qe_read_pw_output(filename::String; parse_funcs::Vector{Pair{String,Fun
     end
 
     #process bands
-    if !isempty(out[:k_eigvals]) && haskey(out, :k_cart) && haskey(out, :in_recip_cell)
+    if haskey(out, :k_eigvals) && !isempty(out[:k_eigvals]) && haskey(out, :k_cart) && haskey(out, :in_recip_cell)
         if !haskey(out, :k_cryst) && haskey(out, :in_recip_cell) && haskey(out, :k_cart)
             out[:k_cryst] = (v = (out[:in_recip_cell]^-1,) .* out[:k_cart].v,
                              w = out[:k_cart].w)
