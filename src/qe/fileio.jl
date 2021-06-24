@@ -277,6 +277,7 @@ function qe_read_pw_output(filename::String, T = Float64; cleanup = true)
             elseif occursin("iteration #", line)
                 sline = split(line)
                 it = length(sline[2]) == 1 ? parse(Int, sline[3]) :
+                     sline[2][2:end] == "***" ? out[:scf_iteration][end] + 1 :
                      parse(Int, sline[2][2:end])
                 if !haskey(out, :scf_iteration)
                     out[:scf_iteration] = [it]
