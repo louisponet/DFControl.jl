@@ -64,16 +64,27 @@ function request_job(job_dir::String)
             return DateTime(0)
         end
     end
-    matching_jobs = sort(registered_jobs(job_dir); by = timestamp, rev = true)
+    matching_jobs = registered_jobs(job_dir)
+    timestamps = timestamp.(matching_jobs)
+    sort_ids = sortperm(timestamps, rev=true)
+
+    choices = ["$j -- $t" for (j, t) in zip(matching_jobs[sort_ids], timestamps[sort_ids])]
+    
     if length(matching_jobs) == 1
         return matching_jobs[1]
-    else
-        menu = RadioMenu(matching_jobs)
+    elseif isdefined(Base, :active_repl)
+        menu = RadioMenu(choices)
         choice = request("Multiple matching jobs were found, choose one:", menu)
         if choice != -1
-            return matching_jobs[choice]
+            return matching_jobs[sort_ids[choice]]
         else
             return nothing
         end
+    else
+        err_msg = "No concrete job for $job_dir found, closest matches are:"
+        for m in choices
+            err_msg = join(err_msg, m, "\n")
+        end
+        @error err_msg
     end
 end
