@@ -32,13 +32,12 @@ function qe_parse_time(str::AbstractString)
 end
 
 function qe_read_output(calculation::DFCalculation{QE}, args...; kwargs...)
-    out = Dict{Symbol,Any}()
     if isprojwfc(calculation)
         return qe_read_projwfc_output(calculation, args...; kwargs...)
     elseif ishp(calculation)
         return qe_read_hp_output(calculation, args...; kwargs...)
-    else
-        return qe_read_pw_output(outpath(calculation))
+    elseif ispw(calculation)
+        return qe_read_pw_output(outpath(calculation), args...; kwargs...)
     end
 end
 
@@ -89,379 +88,433 @@ function parse_Hubbard_block(f)
                     occupations.up, occupations.down, magmoms)]
 end
 
+function qe_parse_polarization(out, line, f)
+    s_line = split(line)
+    P      = parse(Float64, s_line[3])
+    mod    = parse(Float64, s_line[5][1:end-1])
+    readline(f)
+    s_line             = parse.(Float64, split(readline(f))[6:2:10])
+    out[:polarization] = Point3{Float64}(P * s_line[1], P * s_line[2], P * s_line[3])
+    out[:pol_mod]      = mod
+end
+
+function qe_parse_lattice_parameter(out, line, f)
+    out[:in_alat] = ustrip(uconvert(Ang, parse(Float64, split(line)[5]) * 1a₀))
+    out[:alat] = :crystal
+end
+
+function qe_parse_n_KS(out, line, f)
+    out[:n_KS_states] = parse(Int, split(line)[5])
+end
+
+function qe_parse_crystal_axes(out, line, f)
+    m = Mat3(reshape([parse.(Float64, split(readline(f))[4:6]);
+                       parse.(Float64, split(readline(f))[4:6]);
+                       parse.(Float64, split(readline(f))[4:6])], (3, 3))')
+    out[:cell_parameters] = copy(m)
+    out[:in_cell] = m
+end
+
+function qe_parse_reciprocal_axes(out, line, f)
+    cell_1 = parse.(Float64, split(readline(f))[4:6]) .* 2π / out[:in_alat]
+    cell_2 = parse.(Float64, split(readline(f))[4:6]) .* 2π / out[:in_alat]
+    cell_3 = parse.(Float64, split(readline(f))[4:6]) .* 2π / out[:in_alat]
+    out[:in_recip_cell] = Mat3([cell_1 cell_2 cell_3])
+end
+function qe_parse_atomic_species(out, line, f)
+    line = readline(f)
+    out[:atsyms] = Symbol[]
+    while !isempty(line)
+        push!(out[:atsyms], Symbol(strip_split(line)[1]))
+        line = readline(f)
+    end
+end
+
+function qe_parse_nat(out, line, f)
+    out[:nat] = parse(Int, split(line)[end])
+end
+
+function qe_parse_crystal_positions(out, line, f) 
+    readline(f)
+    readline(f)
+    out[:in_cryst_positions] = Tuple{Symbol,Point3{Float64}}[] # in crystal coord
+    for i in 1:out[:nat]
+        sline = split(readline(f))
+        push!(out[:in_cryst_positions],
+              (Symbol(sline[2]),
+               Point3(parse(Float64, sline[7]), parse(Float64, sline[8]),
+                      parse(Float64, sline[9]))))
+    end
+end
+
+function qe_parse_cart_positions(out, line, f)
+    readline(f)
+    readline(f)
+    out[:in_cart_positions] = Tuple{Symbol,Point3{Float64}}[] # in crystal coord
+    for i in 1:out[:nat]
+        sline = split(readline(f))
+        push!(out[:in_cart_positions],
+              (Symbol(sline[2]),
+               Point3(parse(Float64, sline[7]), parse(Float64, sline[8]),
+                      parse(Float64, sline[9]))))
+    end
+end
+
+function qe_parse_pseudo(out, line, f)
+    !haskey(out, :pseudos) && (out[:pseudos] = Dict{Symbol,Pseudo}())
+    pseudopath = readline(f) |> strip |> splitdir
+    out[:pseudos][Symbol(split(line)[5])] = Pseudo(pseudopath[2], pseudopath[1])
+end
+
+function qe_parse_fermi(out, line, f)
+    sline = split(line)
+    if occursin("energy is", line)
+        out[:fermi] = parse(Float64, sline[5])
+    elseif occursin("up/dw", line)
+        sline            = split(line)
+        out[:fermi_up]   = parse(Float64, sline[7])
+        out[:fermi_down] = parse(Float64, sline[8])
+        out[:fermi]      = min(out[:fermi_down], out[:fermi_up])
+    end
+end
+
+function qe_parse_highest_lowest(out, line, f)
+    sline = split(line)
+    if occursin(line, "lowest")
+        high = parse(Float64, sline[7])
+        low = parse(Float64, sline[8])
+        out[:fermi] = high
+        out[:highest_occupied] = high
+        out[:lowest_unoccupied] = low
+    else
+        out[:fermi] = parse(Float64, sline[5])
+        out[:highest_occupied] = out[:fermi]
+    end
+end
+
+function qe_parse_total_energy(out, line, f)
+    if line[1] == '!'
+        out[:total_energy] = parse(Float64, split(line)[5])
+    end
+end
+
+function qe_parse_k_cryst(out, line, f)
+    if length(split(line)) == 2
+        out[:k_cryst] = (v = Vec3{Float64}[], w = Float64[])
+        line = readline(f)
+        while line != "" && !occursin("--------", line)
+            parsed = parse_k_line(line, Float64)
+            push!(out[:k_cryst].v, parsed.v)
+            push!(out[:k_cryst].w, parsed.w)
+            line = readline(f)
+        end
+    end
+end
+
+function qe_parse_k_cart(out, line, f)
+    if length(split(line)) == 5
+        line = readline(f)
+        alat = out[:in_alat]
+        out[:k_cart] = (v = Vec3{typeof(2π / alat)}[], w = Float64[])
+        while line != "" && !occursin("--------", line)
+            tparse = parse_k_line(line, Float64)
+            push!(out[:k_cart].v, tparse.v .* 2π / alat)
+            push!(out[:k_cart].w, tparse.w)
+            line = readline(f)
+        end
+    end
+end
+
+function qe_parse_k_eigvals(out, line, f)
+    tmp = Float64[]
+    readline(f)
+    line = readline(f)
+    while line != "" && !occursin("--------", line)
+        append!(tmp, parse_line(Float64, line))
+        line = readline(f)
+    end
+    if haskey(out, :k_eigvals)
+        push!(out[:k_eigvals], tmp)
+    else
+        out[:k_eigvals] = [tmp]
+    end
+end
+
+#! format: off
+function qe_parse_cell_parameters(out, line, f)
+    out[:alat]            = occursin("angstrom", line) ? :angstrom : parse(Float64, split(line)[end][1:end-1])
+    out[:cell_parameters] = Mat3(reshape([parse.(Float64, split(readline(f)));
+                                          parse.(Float64, split(readline(f)));
+                                          parse.(Float64, split(readline(f)))], (3, 3))')
+end
+#! format: on
+function qe_parse_atomic_positions(out, line, f)
+    out[:pos_option] = cardoption(line)
+    line = readline(f)
+    atoms = Tuple{Symbol,Point3{Float64}}[]
+    while length(atoms) < out[:nat]
+        s_line = split(line)
+        key    = Symbol(s_line[1])
+        push!(atoms, (key, Point3(parse.(Float64, s_line[2:end])...)))
+        line = readline(f)
+    end
+    out[:atomic_positions] = atoms
+end
+
+function qe_parse_total_force(out, line, f)
+    sline = split(line)
+    force = parse(Float64, sline[4])
+    scf_contrib = parse(Float64, sline[end])
+    if !haskey(out, :total_force)
+        out[:total_force] = [force]
+    else
+        push!(out[:total_force], force)
+    end
+    if !haskey(out, :scf_correction)
+        out[:scf_correction] = [scf_contrib]
+    else
+        push!(out[:scf_correction], scf_contrib)
+    end
+end
+
+function qe_parse_scf_iteration(out, line, f)
+    sline = split(line)
+    it = length(sline[2]) == 1 ? parse(Int, sline[3]) :
+         sline[2][2:end] == "***" ? out[:scf_iteration][end] + 1 :
+         parse(Int, sline[2][2:end])
+    if !haskey(out, :scf_iteration)
+        out[:scf_iteration] = [it]
+    else
+        push!(out[:scf_iteration], it)
+    end
+end
+
+function qe_parse_colin_magmoms(out, line, f)
+    key = :colin_mag_moments
+    out[key] = Float64[]
+    line = readline(f)
+    while !isempty(line)
+        push!(out[key], parse.(Float64, split(line)[end]))
+        line = readline(f)
+    end
+end
+
+function qe_parse_scf_accuracy(out, line, f)
+    key = :accuracy
+    acc = parse(Float64, split(line)[5])
+    if haskey(out, key)
+        push!(out[key], acc)
+    else
+        out[key] = [acc]
+    end
+end
+
+function qe_parse_total_magnetization(out, line, f) 
+    key = :total_magnetization
+    mag = parse(Float64, split(line)[end-2])
+    if haskey(out, key)
+        push!(out[key], mag)
+    else
+        out[key] = [mag]
+    end
+end
+
+function qe_parse_scf_convergence(out, line, f)
+    if occursin("NOT", line)
+        out[:scf_converged] = false
+    elseif occursin("has been", line)
+        out[:scf_converged] = true
+    end 
+end
+
+function qe_parse_magnetization(out, line, f)
+    if !haskey(out, :magnetization)
+        out[:magnetization] = Vec3{Float64}[]
+    end
+    atom_number = parse(Int, split(line)[3])
+    readline(f)
+    if length(out[:magnetization]) < atom_number
+        push!(out[:magnetization],
+              parse(Vec3{Float64}, split(readline(f))[3:5]))
+    else
+        out[:magnetization][atom_number] = parse(Vec3{Float64},
+                                                 split(readline(f))[3:5])
+    end
+end
+
+function qe_parse_Hubbard(out, line, f) 
+    if !haskey(out, :Hubbard)
+        out[:Hubbard] = [parse_Hubbard_block(f)]
+    else
+        push!(out[:Hubbard], parse_Hubbard_block(f))
+    end
+end
+
+function qe_parse_timing(out, line, f)
+    out[:timing] = TimingData[]
+    curparent = ""
+    while !occursin("PWSCF", line)
+        isempty(line) && (line = readline(f); continue)
+        sline = split(line)
+        if line[end] == ':' # descent into call case
+            curparent = String(sline[end][1:end-1])
+        elseif length(sline) == 9 # normal call
+            td = TimingData(String(sline[1]), qe_parse_time(sline[3]),
+                            qe_parse_time(sline[5]), parse(Int, sline[8]),
+                            TimingData[])
+            push!(out[:timing], td)
+            if !isempty(curparent) # Child case
+                if curparent[1] == '*'
+                    if td.name[1] == 'c' || td.name[1] == 'r'
+                        curparent = replace(curparent, '*' => td.name[1])
+                        parent = getfirst(x -> x.name == curparent,
+                                          out[:timing])
+                        curparent = replace(curparent, td.name[1] => '*')
+                    else
+                        parent = getfirst(x -> occursin(curparent[2:end],
+                                                        x.name), out[:timing])
+                    end
+                else
+                    parent = getfirst(x -> x.name == curparent, out[:timing])
+                end
+                push!(parent.children, td)
+            end
+        elseif sline[1] == "PWSCF" # Final PWSCF report
+            push!(out[:timing],
+                  TimingData("PWSCF", qe_parse_time(sline[3]),
+                             qe_parse_time(sline[5]), 1, TimingData[]))
+        end
+        line = strip(readline(f))
+    end
+    # cleanup
+    for td in out[:timing]
+        id = findfirst(x -> x == ':', td.name)
+        td.name = id !== nothing ? td.name[id+1:end] : td.name
+    end
+end
+
+const QE_PW_PARSE_FUNCTIONS = ["C/m^2"                      => qe_parse_polarization,
+                               "lattice parameter"          => qe_parse_lattice_parameter,
+                               "number of Kohn-Sham states" => qe_parse_n_KS,
+                               "crystal axes"               => qe_parse_crystal_axes,
+                               "reciprocal axes"            => qe_parse_reciprocal_axes,
+                               "atomic species"             => qe_parse_atomic_species,
+                               "number of atoms/cell"       => qe_parse_nat,
+                               "Crystallographic axes"      => qe_parse_crystal_positions,
+                               "PseudoPot"                  => qe_parse_pseudo,
+                               "the Fermi energy is"        => qe_parse_fermi,
+                               "highest occupied"           => qe_parse_highest_lowest,
+                               "total energy"               => qe_parse_total_energy,
+                               "SPIN UP"                    => (x,y,z) -> x[:colincalc]   = true,
+                               "cryst."                     => qe_parse_k_cryst,
+                               "cart."                      => qe_parse_k_cart,
+                               "bands (ev)"                 => qe_parse_k_eigvals,
+                               "End of self-consistent"     => (x,y,z) -> haskey(x, :k_eigvals) && empty!(x[:k_eigvals]),
+                               "End of band structure"      => (x,y,z) -> haskey(x, :k_eigvals) && empty!(x[:k_eigvals]),
+                               "CELL_PARAMETERS ("          => qe_parse_cell_parameters,
+                               "ATOMIC_POSITIONS ("         => qe_parse_atomic_positions,
+                               "Total force"                => qe_parse_total_force,
+                               "iteration #"                => qe_parse_scf_iteration,
+                               "Magnetic moment per site"   => qe_parse_colin_magmoms,
+                               "estimated scf accuracy"     => qe_parse_scf_accuracy,
+                               "total magnetization"        => qe_parse_total_magnetization,
+                               "convergence"                => qe_parse_scf_convergence,
+                               "Begin final coordinates"    => (x, y, z) -> x[:converged] = true,
+                               "atom number"                => qe_parse_magnetization,
+                               "--- enter write_ns ---"     => qe_parse_Hubbard,
+                               "init_run"                   => qe_parse_timing
+                               ]
+
 """
-    qe_read_pw_output(filename::String, T=Float64)
+    qe_read_pw_output(filename::String; parse_funcs::Vector{Pair{String,Function}}=Pair{String,Function}[])
 
 Reads a pw quantum espresso calculation, returns a dictionary with all found data in the file.
+The additional `parse_funcs` should be of the form:
+`func(out_dict, line, f)` with `f` the file. 
 """
-function qe_read_pw_output(filename::String, T = Float64; cleanup = true)
+function qe_read_pw_output(filename::String; parse_funcs::Vector{Pair{String,Function}}=Pair{String,Function}[])
     out = Dict{Symbol,Any}()
-    colincalc = false
-    out[:converged] = false
-    open(filename, "r") do f
-        prefac_k     = nothing
-        k_eigvals    = Array{Array{T,1},1}()
-        lowest_force = T(1000000)
-        atsyms       = Symbol[]
-        nat          = 0
-        while !eof(f)
-            line = strip(readline(f))
-            if isempty(line)
-                continue
-            end
-            #polarization
-            if occursin("C/m^2", line)
-                s_line = split(line)
-                P      = parse(T, s_line[3])
-                mod    = parse(T, s_line[5][1:end-1])
-                readline(f)
-                s_line             = parse.(T, split(readline(f))[6:2:10])
-                out[:polarization] = Point3{T}(P * s_line[1], P * s_line[2], P * s_line[3])
-                out[:pol_mod]      = mod
-
-                #calculation structure parameters
-            elseif occursin("lattice parameter", line)
-                out[:in_alat] = ustrip(uconvert(Ang, parse(T, split(line)[5]) * 1a₀))
-                out[:alat] = :crystal
-
-            elseif occursin("number of Kohn-Sham states", line)
-                out[:n_KS_states] = parse(Int, split(line)[5])
-
-            elseif occursin("crystal axes", line)
-                m = Mat3(reshape(T[parse.(T, split(readline(f))[4:6]);
-                                   parse.(T, split(readline(f))[4:6]);
-                                   parse.(T, split(readline(f))[4:6])], (3, 3))')
-                out[:cell_parameters] = copy(m)
-                out[:in_cell] = m
-
-            elseif occursin("reciprocal axes", line)
-                cell_1 = parse.(Float64, split(readline(f))[4:6]) .* 2π / out[:in_alat]
-                cell_2 = parse.(Float64, split(readline(f))[4:6]) .* 2π / out[:in_alat]
-                cell_3 = parse.(Float64, split(readline(f))[4:6]) .* 2π / out[:in_alat]
-                out[:in_recip_cell] = Mat3([cell_1 cell_2 cell_3])
-
-            elseif occursin("atomic species", line)
-                line = readline(f)
-                while !isempty(line)
-                    push!(atsyms, Symbol(strip_split(line)[1]))
-                    line = readline(f)
-                end
-            elseif occursin("number of atoms/cell", line)
-                nat = parse(Int, split(line)[end])
-
-            elseif occursin("Crystallographic axes", line)
-                readline(f)
-                readline(f)
-                out[:in_cryst_positions] = Tuple{Symbol,Point3{Float64}}[] # in crystal coord
-                for i in 1:nat
-                    sline = split(readline(f))
-                    push!(out[:in_cryst_positions],
-                          (Symbol(sline[2]),
-                           Point3(parse(Float64, sline[7]), parse(Float64, sline[8]),
-                                  parse(Float64, sline[9]))))
-                end
-            elseif occursin("Cartesian axes", line)
-                readline(f)
-                readline(f)
-                out[:in_cart_positions] = Tuple{Symbol,Point3{Float64}}[] # in crystal coord
-                for i in 1:nat
-                    sline = split(readline(f))
-                    push!(out[:in_cart_positions],
-                          (Symbol(sline[2]),
-                           Point3(parse(Float64, sline[7]), parse(Float64, sline[8]),
-                                  parse(Float64, sline[9]))))
-                end
-                #PseudoPot
-            elseif occursin("PseudoPot", line)
-                !haskey(out, :pseudos) && (out[:pseudos] = Dict{Symbol,Pseudo}())
-                pseudopath = readline(f) |> strip |> splitdir
-                out[:pseudos][Symbol(split(line)[5])] = Pseudo(pseudopath[2], pseudopath[1])
-                #fermi energy
-            elseif occursin("the Fermi energy is", line)
-                out[:fermi] = parse(T, split(line)[5])
-            elseif occursin("up/dw Fermi energies are", line)
-                sline            = split(line)
-                out[:fermi_up]   = parse(T, sline[7])
-                out[:fermi_down] = parse(T, sline[8])
-                out[:fermi]      = min(out[:fermi_down], out[:fermi_up])
-            elseif occursin("lowest unoccupied", line) && occursin("highest occupied", line)
-                sline = split(line)
-                high = parse(T, sline[7])
-                low = parse(T, sline[8])
-                out[:fermi] = high
-                out[:highest_occupied] = high
-                out[:lowest_unoccupied] = low
-
-            elseif occursin("highest occupied", line)
-                sline = split(line)
-                out[:fermi] = parse(T, sline[5])
-                out[:highest_occupied] = out[:fermi]
-
-            elseif occursin("total energy", line) && line[1] == '!'
-                out[:total_energy] = parse(T, split(line)[5])
-
-            elseif occursin("cryst.", line) && length(split(line)) == 2
-                out[:k_cryst] = (v = Vec3{T}[], w = Float64[])
-                line = readline(f)
-                while line != "" && !occursin("--------", line)
-                    parsed = parse_k_line(line, T)
-                    push!(out[:k_cryst].v, parsed.v)
-                    push!(out[:k_cryst].w, parsed.w)
-                    line = readline(f)
-                end
-
-                #k_cart
-            elseif occursin("cart.", line) && length(split(line)) == 5
-                line = readline(f)
-                alat = out[:in_alat]
-                out[:k_cart] = (v = Vec3{typeof(2π / alat)}[], w = Float64[])
-                while line != "" && !occursin("--------", line)
-                    tparse = parse_k_line(line, T)
-                    push!(out[:k_cart].v, tparse.v .* 2π / alat)
-                    push!(out[:k_cart].w, tparse.w)
-                    line = readline(f)
-                end
-
-                #bands
-            elseif occursin("SPIN UP", line)
-                colincalc = true
-
-            elseif occursin("k", line) && occursin("PWs)", line)
-                tmp = T[]
-                readline(f)
-                line = readline(f)
-                while line != "" && !occursin("--------", line)
-                    append!(tmp, parse_line(T, line))
-                    line = readline(f)
-                end
-                push!(k_eigvals, tmp)
-            elseif occursin("End of self-consistent", line) ||
-                   occursin("End of band structure", line)
-                empty!(k_eigvals)
-
-                #errors
-            elseif occursin("mpirun noticed", line)
-                @warn "File ended unexpectedly, returning what info has been gathered so far."
-                return out
-                break
-                #vcrel outputs
-            elseif occursin("CELL_PARAMETERS", line)
-                out[:alat]            = occursin("angstrom", line) ? :angstrom : parse(T, split(line)[end][1:end-1])
-                out[:cell_parameters] = Mat3(reshape(T[parse.(T, split(readline(f))); parse.(T, split(readline(f))); parse.(T, split(readline(f)))], (3, 3))')
-
-            elseif occursin("ATOMIC_POSITIONS", line)
-                out[:pos_option] = cardoption(line)
-                line = readline(f)
-                atoms = Tuple{Symbol,Point3{Float64}}[]
-                while length(atoms) < nat
-                    s_line = split(line)
-                    key    = Symbol(s_line[1])
-                    push!(atoms, (key, Point3{T}(parse.(T, s_line[2:end])...)))
-                    line = readline(f)
-                end
-                out[:atomic_positions] = atoms
-            elseif occursin("Total force", line)
-                sline = split(line)
-                force = parse(T, sline[4])
-                scf_contrib = parse(T, sline[end])
-                if !haskey(out, :total_force)
-                    out[:total_force] = [force]
-                else
-                    push!(out[:total_force], force)
-                end
-                if !haskey(out, :scf_correction)
-                    out[:scf_correction] = [scf_contrib]
-                else
-                    push!(out[:scf_correction], scf_contrib)
-                end
-            elseif occursin("iteration #", line)
-                sline = split(line)
-                it = length(sline[2]) == 1 ? parse(Int, sline[3]) :
-                     sline[2][2:end] == "***" ? out[:scf_iteration][end] + 1 :
-                     parse(Int, sline[2][2:end])
-                if !haskey(out, :scf_iteration)
-                    out[:scf_iteration] = [it]
-                else
-                    push!(out[:scf_iteration], it)
-                end
-
-            elseif occursin("Magnetic moment per site", line)
-                key = :colin_mag_moments
-                out[key] = T[]
-                line = readline(f)
-                while !isempty(line)
-                    push!(out[key], parse.(Float64, split(line)[end]))
-                    line = readline(f)
-                end
-            elseif occursin("estimated scf accuracy", line)
-                key = :accuracy
-                acc = parse(T, split(line)[5])
-                if haskey(out, key)
-                    push!(out[key], acc)
-                else
-                    out[key] = [acc]
-                end
-            elseif occursin("total magnetization", line)
-                key = :total_magnetization
-                mag = parse(T, split(line)[end-2])
-                if haskey(out, key)
-                    push!(out[key], mag)
-                else
-                    out[key] = [mag]
-                end
-            elseif occursin("convergence NOT achieved", line)
-                out[:scf_converged] = false
-            elseif occursin("convergence has been achieved", line)
-                out[:scf_converged] = true
-            elseif occursin("Begin final coordinates", line)
-                out[:converged] = true
-            elseif occursin("atom number", line)
-                if !haskey(out, :magnetization)
-                    out[:magnetization] = Vec3{Float64}[]
-                end
-                atom_number = parse(Int, split(line)[3])
-                readline(f)
-                if length(out[:magnetization]) < atom_number
-                    push!(out[:magnetization],
-                          parse(Vec3{Float64}, split(readline(f))[3:5]))
-                else
-                    out[:magnetization][atom_number] = parse(Vec3{Float64},
-                                                             split(readline(f))[3:5])
-                end
-            elseif line == "--- enter write_ns ---"
-                if !haskey(out, :Hubbard)
-                    out[:Hubbard] = [parse_Hubbard_block(f)]
-                else
-                    push!(out[:Hubbard], parse_Hubbard_block(f))
-                end
-                # Timing info
-            elseif occursin("init_run", line)
-                out[:timing] = TimingData[]
-                curparent = ""
-                while !occursin("PWSCF", line)
-                    isempty(line) && (line = readline(f); continue)
-                    sline = split(line)
-                    if line[end] == ':' # descent into call case
-                        curparent = String(sline[end][1:end-1])
-                    elseif length(sline) == 9 # normal call
-                        td = TimingData(String(sline[1]), qe_parse_time(sline[3]),
-                                        qe_parse_time(sline[5]), parse(Int, sline[8]),
-                                        TimingData[])
-                        push!(out[:timing], td)
-                        if !isempty(curparent) # Child case
-                            if curparent[1] == '*'
-                                if td.name[1] == 'c' || td.name[1] == 'r'
-                                    curparent = replace(curparent, '*' => td.name[1])
-                                    parent = getfirst(x -> x.name == curparent,
-                                                      out[:timing])
-                                    curparent = replace(curparent, td.name[1] => '*')
-                                else
-                                    parent = getfirst(x -> occursin(curparent[2:end],
-                                                                    x.name), out[:timing])
-                                end
-                            else
-                                parent = getfirst(x -> x.name == curparent, out[:timing])
-                            end
-                            push!(parent.children, td)
-                        end
-                    elseif sline[1] == "PWSCF" # Final PWSCF report
-                        push!(out[:timing],
-                              TimingData("PWSCF", qe_parse_time(sline[3]),
-                                         qe_parse_time(sline[5]), 1, TimingData[]))
-                    end
-                    line = strip(readline(f))
-                end
-                # cleanup
-                for td in out[:timing]
-                    id = findfirst(x -> x == ':', td.name)
-                    td.name = id !== nothing ? td.name[id+1:end] : td.name
-                end
-            end
+    prefac_k     = nothing
+    out[:nat]    = 0
+    all_funcs = vcat(QE_PW_PARSE_FUNCTIONS, parse_funcs)
+    out = parse_file(filename, all_funcs)
+    if haskey(out, :in_alat) &&
+       haskey(out, :in_cell) &&
+       (haskey(out, :in_cart_positions) || haskey(out, :in_cryst_positions))
+        cell_data = InputData(:cell_parameters, :alat, pop!(out, :in_cell))
+        if haskey(out, :in_cryst_positions)
+            atoms_data = InputData(:atomic_positions, :crystal,
+                                   pop!(out, :in_cryst_positions))
+        else
+            atoms_data = InputData(:atomic_positions, :alat,
+                                   pop!(out, :in_cart_positions))
         end
-
-        # Process initial Structure
-        if haskey(out, :in_alat) &&
-           haskey(out, :in_cell) &&
-           (haskey(out, :in_cart_positions) || haskey(out, :in_cryst_positions))
-            cell_data = InputData(:cell_parameters, :alat, pop!(out, :in_cell))
-            if haskey(out, :in_cryst_positions)
-                atoms_data = InputData(:atomic_positions, :crystal,
-                                       pop!(out, :in_cryst_positions))
-            else
-                atoms_data = InputData(:atomic_positions, :alat,
-                                       pop!(out, :in_cart_positions))
-            end
-            pseudo_data = InputData(:atomic_species, :none, out[:pseudos])
-            tmp_flags = Dict{Symbol,Any}(:ibrav => 0)
-            tmp_flags[:A] = out[:in_alat]
-            out[:initial_structure] = extract_structure!("initial", tmp_flags, cell_data,
-                                                         atsyms, atoms_data, pseudo_data)
-        end
-
-        # Process final Structure
-        if haskey(out, :pos_option) && haskey(out, :alat) && haskey(out, :cell_parameters)
-            pseudo_data = InputData(:atomic_species, :none, out[:pseudos])
-            tmp_flags = Dict{Symbol,Any}(:ibrav => 0)
-            if haskey(out, :alat)
-                tmp_flags[:A] = out[:alat] == :angstrom ? 1.0 :
-                                (out[:alat] == :crystal ? out[:in_alat] :
-                                 conversions[:bohr2ang] * out[:alat])
-            else
-                tmp_flags[:A] = 1.0
-            end
-            cell_data = InputData(:cell_parameters, :alat, out[:cell_parameters])
-            atoms_data = InputData(:atomic_positions, out[:pos_option],
-                                   out[:atomic_positions])
-            out[:final_structure] = extract_structure!("final", tmp_flags, cell_data,
-                                                       atsyms, atoms_data, pseudo_data)
-        end
-
-        #process bands
-        if !isempty(k_eigvals) && haskey(out, :k_cart) && haskey(out, :in_recip_cell)
-            if !haskey(out, :k_cryst) && haskey(out, :in_recip_cell) && haskey(out, :k_cart)
-                out[:k_cryst] = (v = (out[:in_recip_cell]^-1,) .* out[:k_cart].v,
-                                 w = out[:k_cart].w)
-            end
-            if colincalc
-                out[:bands_up]   = [DFBand(out[:k_cart].v, out[:k_cryst].v, zeros(length(out[:k_cart].v))) for i in 1:length(k_eigvals[1])]
-                out[:bands_down] = [DFBand(out[:k_cart].v, out[:k_cryst].v, zeros(length(out[:k_cart].v))) for i in 1:length(k_eigvals[1])]
-            else
-                out[:bands] = [DFBand(out[:k_cart].v, out[:k_cryst].v,
-                                      zeros(length(out[:k_cart].v)))
-                               for i in 1:length(k_eigvals[1])]
-            end
-            for i in 1:length(k_eigvals)
-                for i1 in 1:length(k_eigvals[i])
-                    if colincalc
-                        if i <= length(out[:k_cart].v)
-                            out[:bands_up][i1].eigvals[i] = k_eigvals[i][i1]
-                        else
-                            out[:bands_down][i1].eigvals[i-length(out[:k_cart].v)] = k_eigvals[i][i1]
-                        end
-                    else
-                        out[:bands][i1].eigvals[i] = k_eigvals[i][i1]
-                    end
-                end
-            end
-        end
-        if cleanup
-            for f in (:in_cart_positions, :in_alat, :in_cryst_positions, :alat, :pos_option,
-                 :pseudos, :cell_parameters, :in_recip_cell)
-                pop!(out, f, nothing)
-            end
-        end
-        out[:converged] = out[:converged] ? true :
-                          haskey(out, :scf_converged) &&
-                          out[:scf_converged] &&
-                          !haskey(out, :total_force)
-        if haskey(out, :scf_iteration)
-            out[:n_scf] = length(findall(i -> out[:scf_iteration][i+1] <
-                                              out[:scf_iteration][i],
-                                         1:length(out[:scf_iteration])-1))
-        end
-        pop!(out, :scf_converged, nothing)
-        return out
+        pseudo_data = InputData(:atomic_species, :none, out[:pseudos])
+        tmp_flags = Dict{Symbol,Any}(:ibrav => 0)
+        tmp_flags[:A] = out[:in_alat]
+        out[:initial_structure] = extract_structure!("initial", tmp_flags, cell_data,
+                                                     out[:atsyms], atoms_data, pseudo_data)
     end
+
+    # Process final Structure
+    if haskey(out, :pos_option) && haskey(out, :alat) && haskey(out, :cell_parameters)
+        pseudo_data = InputData(:atomic_species, :none, out[:pseudos])
+        tmp_flags = Dict{Symbol,Any}(:ibrav => 0)
+        if haskey(out, :alat)
+            tmp_flags[:A] = out[:alat] == :angstrom ? 1.0 :
+                            (out[:alat] == :crystal ? out[:in_alat] :
+                             conversions[:bohr2ang] * out[:alat])
+        else
+            tmp_flags[:A] = 1.0
+        end
+        cell_data = InputData(:cell_parameters, :alat, out[:cell_parameters])
+        atoms_data = InputData(:atomic_positions, out[:pos_option],
+                               out[:atomic_positions])
+        out[:final_structure] = extract_structure!("final", tmp_flags, cell_data,
+                                                   out[:atsyms], atoms_data, pseudo_data)
+    end
+
+    #process bands
+    if !isempty(out[:k_eigvals]) && haskey(out, :k_cart) && haskey(out, :in_recip_cell)
+        if !haskey(out, :k_cryst) && haskey(out, :in_recip_cell) && haskey(out, :k_cart)
+            out[:k_cryst] = (v = (out[:in_recip_cell]^-1,) .* out[:k_cart].v,
+                             w = out[:k_cart].w)
+        end
+        if get(out, :colincalc, false)
+            out[:bands_up]   = [DFBand(out[:k_cart].v, out[:k_cryst].v, zeros(length(out[:k_cart].v))) for i in 1:length(out[:k_eigvals][1])]
+            out[:bands_down] = [DFBand(out[:k_cart].v, out[:k_cryst].v, zeros(length(out[:k_cart].v))) for i in 1:length(out[:k_eigvals][1])]
+        else
+            out[:bands] = [DFBand(out[:k_cart].v, out[:k_cryst].v,
+                                  zeros(length(out[:k_cart].v)))
+                           for i in 1:length(out[:k_eigvals][1])]
+        end
+        for i in 1:length(out[:k_eigvals])
+            for i1 in 1:length(out[:k_eigvals][i])
+                if get(out, :colincalc, false)
+                    if i <= length(out[:k_cart].v)
+                        out[:bands_up][i1].eigvals[i] = out[:k_eigvals][i][i1]
+                    else
+                        out[:bands_down][i1].eigvals[i-length(out[:k_cart].v)] = out[:k_eigvals][i][i1]
+                    end
+                else
+                    out[:bands][i1].eigvals[i] = out[:k_eigvals][i][i1]
+                end
+            end
+        end
+    end
+    out[:converged] = get(out, :converged, false) ? true :
+                      get(out, :scf_converged, false) &&
+                      !haskey(out, :total_force)
+    if haskey(out, :scf_iteration)
+        out[:n_scf] = length(findall(i -> out[:scf_iteration][i+1] <
+                                          out[:scf_iteration][i],
+                                     1:length(out[:scf_iteration])-1))
+    end
+    for f in (:in_cart_positions, :in_alat, :in_cryst_positions, :alat, :pos_option,
+         :pseudos, :cell_parameters, :in_recip_cell, :scf_converged, :atsyms, :nat, :k_eigvals, :k_cryst, :k_cart)
+        pop!(out, f, nothing)
+    end
+    return out
 end
 
 """
@@ -640,44 +693,43 @@ function qe_read_projwfc(filename::String)
     return states, bands
 end
 
-function qe_read_hp_output(calculation::DFCalculation{QE})
-    out = Dict()
-    open(outpath(calculation), "r") do f
-        while !eof(f)
-            line = readline(f)
-            if occursin("will be perturbed", line)
-                sline = split(line)
-                nat = parse(Int, sline[3])
-                out[:pert_at] = []
-                readline(f)
-                for i in 1:nat
-                    sline = split(readline(f))
-                    push!(out[:pert_at],
-                          (name = Symbol(sline[2]),
-                           position = Point3(parse.(Float64, sline[end-3:end-1])...)))
-                end
-            end
-        end
+function qe_parse_pert_at(out, line, f)
+    sline = split(line)
+    nat = parse(Int, sline[3])
+    out[:pert_at] = []
+    readline(f)
+    for i in 1:nat
+        sline = split(readline(f))
+        push!(out[:pert_at],
+              (name = Symbol(sline[2]),
+               position = Point3(parse.(Float64, sline[end-3:end-1])...)))
     end
+end
+
+function qe_parse_Hubbard_U(out, line, f)
+    out[:Hubbard_U] = []
+    readline(f)
+    readline(f)
+    for i in 1:length(out[:pert_at])
+        sline = split(readline(f))
+        push!(out[:Hubbard_U],
+              (orig_name = Symbol(sline[3]), new_name = Symbol(sline[6]),
+               U = parse(Float64, sline[7])))
+    end
+end
+    
+const QE_HP_PARSE_FUNCS = ["will be perturbed" => qe_parse_pert_at,
+                           "Hubbard U parameters:" => qe_parse_Hubbard_U]
+                           
+function qe_read_hp_output(calculation::DFCalculation{QE}; parse_funcs = Pair{String,Function}[])
+    
+    all_funcs = vcat(QE_HP_PARSE_FUNCS, parse_funcs)
+    out = parse_file(outpath(calculation), all_funcs)
+    
     hubbard_file = joinpath(dir(calculation),
                             "$(calculation[:prefix]).Hubbard_parameters.dat")
     if ispath(hubbard_file)
-        open(hubbard_file, "r") do f
-            while !eof(f)
-                line = strip(readline(f))
-                if line == "Hubbard U parameters:"
-                    out[:Hubbard_U] = []
-                    readline(f)
-                    readline(f)
-                    for i in 1:length(out[:pert_at])
-                        sline = split(readline(f))
-                        push!(out[:Hubbard_U],
-                              (orig_name = Symbol(sline[3]), new_name = Symbol(sline[6]),
-                               U = parse(Float64, sline[7])))
-                    end
-                end
-            end
-        end
+        merge(out, parse_file(hubbard_file, all_funcs))
     end
     return out
 end

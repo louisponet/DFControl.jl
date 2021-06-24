@@ -1,4 +1,18 @@
-# import Base: parse
+function parse_file(filename::AbstractString, parse_funcs::Vector{Pair{String,Function}})
+    out = Dict{Symbol,Any}()
+    open(filename, "r") do f
+        while !eof(f)
+            line = strip(readline(f))
+            if isempty(line)
+                continue
+            end
+            func = getfirst(x -> occursin(x[1], line), parse_funcs)
+            func === nothing && continue
+            func[2](out, line, f)
+        end
+    end
+    return out
+end
 
 include("qe/fileio.jl")
 include("abinit/fileio.jl")

@@ -359,8 +359,46 @@ function save(calculation::DFCalculation{Wannier90}, structure,
     end
 end
 
+function wan_parse_disentanglement(out, line, f)
+    DisTuple = NamedTuple{(:Iter, :Ω_i_1, :Ω_i, :δ, :Time),
+                          Tuple{Int,Float64,Float64,Float64,Float64}}
+    out[:disentanglement] = DisTuple[]
+    for i in 1:4
+        readline(f)
+    end
+    line = strip(readline(f))
+    while !isempty(line)
+        push!(out[:disentanglement], parse(DisTuple, split(line)[1:end-2]))
+        line = strip(readline(f))
+    end
+end
+function wan_parse_wannierise(out, line, f)
+    WanTuple = NamedTuple{(:Iter, :δ_spread, :∇RMS, :Spread, :Time),
+                          Tuple{Int,Float64,Float64,Float64,Float64}}
+    WfcTuple = NamedTuple{(:index, :center, :Spread),Tuple{Int,Point3{Float64},Float64}}
+    out[:wannierise] = WanTuple[]
+    line = strip(readline(f))
+    while !occursin("Final State", line)
+        if occursin("CONV", line)
+            push!(out[:wannierise], parse(WanTuple, split(line)[1:end-2]))
+        end
+        line = strip(readline(f))
+    end
+    out[:final_state] = WfcTuple[]
+    line = strip(readline(f))
+    while !occursin("Sum", line)
+        line = replace(replace(replace(line, "(" => ""), ")" => ""), "," => "")
+        push!(out[:final_state], parse(WfcTuple, split(line)[5:end]))
+        line = strip(readline(f))
+    end
+end
+
+const WAN_PARSE_FUNCS = ["Extraction of optimally-connected subspace" => wan_parse_disentanglement,
+                         "Initial State" => wan_parse_wannierise]
+
+
 """
-    wan_read_output(filename)
+    wan_read_output(filename::AbstractString; parse_funcs::Vector{Pair{String,Function}}=Pair{String,Function}[])
 
 Reads an outputfile for wannier.
 Parsed info:
@@ -368,46 +406,5 @@ Parsed info:
     :wannierise,
     :final_state,
 """
-function wan_read_output(filename)
-    DisTuple = NamedTuple{(:Iter, :Ω_i_1, :Ω_i, :δ, :Time),
-                          Tuple{Int,Float64,Float64,Float64,Float64}}
-    WanTuple = NamedTuple{(:Iter, :δ_spread, :∇RMS, :Spread, :Time),
-                          Tuple{Int,Float64,Float64,Float64,Float64}}
-    WfcTuple = NamedTuple{(:index, :center, :Spread),Tuple{Int,Point3{Float64},Float64}}
-    data = Dict{Symbol,Any}()
-    open(filename, "r") do f
-        sreadline() = readline(f) |> strip
-        line = sreadline()
-        while !eof(f)
-            if line == "Extraction of optimally-connected subspace"
-                data[:disentanglement] = DisTuple[]
-                for i in 1:4
-                    readline(f)
-                end
-                line = sreadline()
-                while !isempty(line)
-                    push!(data[:disentanglement], parse(DisTuple, split(line)[1:end-2]))
-                    line = sreadline()
-                end
-            elseif line == "Initial State"
-                data[:wannierise] = WanTuple[]
-                line = sreadline()
-                while !occursin("Final State", line)
-                    if occursin("CONV", line)
-                        push!(data[:wannierise], parse(WanTuple, split(line)[1:end-2]))
-                    end
-                    line = sreadline()
-                end
-                data[:final_state] = WfcTuple[]
-                line = sreadline()
-                while !occursin("Sum", line)
-                    line = replace(replace(replace(line, "(" => ""), ")" => ""), "," => "")
-                    push!(data[:final_state], parse(WfcTuple, split(line)[5:end]))
-                    line = sreadline()
-                end
-            end
-            line = sreadline()
-        end
-    end
-    return data
-end
+wan_read_output(filename::AbstractString; parse_funcs::Vector{Pair{String,Function}}=Pair{String,Function}[]) =
+    parse_file(filename, vcat(WAN_PARSE_FUNCS, parse_funcs))

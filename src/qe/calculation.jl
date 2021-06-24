@@ -29,6 +29,10 @@ isbands(calculation::DFCalculation{QE})   = flag(calculation, :calculation) == "
 isnscf(calculation::DFCalculation{QE})    = flag(calculation, :calculation) == "nscf"
 isscf(calculation::DFCalculation{QE})     = flag(calculation, :calculation) == "scf"
 isvcrelax(calculation::DFCalculation{QE}) = flag(calculation, :calculation) == "vc-relax"
+isrelax(calculation::DFCalculation{QE}) = flag(calculation, :calculation) == "relax"
+
+ispw(calc::DFCalculation{QE}) = isbands(calc)||isnscf(calc) || isscf(calc) || isvcrelax(calc) || isrelax(calc)
+
 isprojwfc(calculation::DFCalculation{QE}) = hasexec(calculation, "projwfc.x")
 ishp(calculation::DFCalculation{QE})      = hasexec(calculation, "hp.x")
 issoc(calculation::DFCalculation{QE})     = flag(calculation, :lspinorb) == true
@@ -39,7 +43,7 @@ function ismagnetic(calculation::DFCalculation{QE})
             calculation[:total_magnetization] != 0.0)
 end
 
-readoutput(calculation::DFCalculation{QE}) = qe_read_output(calculation)
+readoutput(calculation::DFCalculation{QE}; kwargs...) = qe_read_output(calculation; kwargs...)
 
 pseudodir(calculation::DFCalculation{QE}) = flag(calculation, :pseudo_dir)
 

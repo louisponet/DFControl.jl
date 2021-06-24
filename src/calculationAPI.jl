@@ -207,18 +207,34 @@ function set_data_option!(calculation::DFCalculation, name::Symbol, option::Symb
 end
 
 """
-    outputdata(calculation::DFCalculation; print=true, overwrite=true)
+    outputdata(calculation::DFCalculation; extra_parse_funcs=[], print=true, overwrite=true)
 
 If an output file exists for `calculation` this will parse it and return a `Dict` with the parsed data.
 If `overwrite=false` and `calculation.outputdata` is not empty, this will be returned instead of reparsing the
 output file.
+
+`extra_parse_funcs` should be `Vector{Pair{String,Function}}`, where the string will be used to match `occursin(str, line)`
+for each line of the output file. If this returns `true`, the function will be called as `func(results_dict, line, file)`.
+The purpose is to allow for additional parsing that is not implemented, or for temporary non-standard values that are printed
+while working on the DFT code, e.g. for debugging.
+
+Example (from src/qe/fileio.jl):
+```julia
+
+function qe_parse_nat(results, line, f)
+    results[:nat] = parse(Int, split(line)[end])
+end
+
+outputdata(job["scf"], extra_parse_funcs = ["number of atoms/cell" => qe_parse_nat])
+```
 """
-function outputdata(calculation::DFCalculation; print = true, overwrite = true)
+function outputdata(calculation::DFCalculation; extra_parse_funcs::Pair{String,Function}=Pair{String,Function}[], print = true, overwrite = true)
     if hasoutput(calculation)
         if !overwrite && !isempty(outdata(calculation))
             return outdata(calculation)
         else
-            calculation.outdata = readoutput(calculation)
+            t = readoutput(calculation; parse_funcs=extra_parse_funcs)
+            calculation.outdata = t === nothing ? parse_file(outpath(calculation), extra_parse_funcs) : t
             return calculation.outdata
         end
     end

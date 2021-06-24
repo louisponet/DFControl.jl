@@ -137,6 +137,8 @@ function Emin_from_projwfc(calculation::DFCalculation, args...)
     @error "Emin_from_projwfc is not implemented for package $(package(calculation))."
 end
 
+readoutput(c::DFCalculation, args...; kwargs...) = @error "Output parsing for package $(package(c)) not implemented."
+
 include("qe/calculation.jl")
 include("elk/calculation.jl")
 include("wannier90/calculation.jl")
