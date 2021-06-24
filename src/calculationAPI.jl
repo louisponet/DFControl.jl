@@ -218,6 +218,10 @@ for each line of the output file. If this returns `true`, the function will be c
 The purpose is to allow for additional parsing that is not implemented, or for temporary non-standard values that are printed
 while working on the DFT code, e.g. for debugging.
 
+!!! note
+    This only works for files where not all information is pulled out for yet,
+    e.g. projwfc.x outputs are fully parsed already.
+
 Example (from src/qe/fileio.jl):
 ```julia
 
