@@ -83,7 +83,7 @@ function request_job(job_dir::String)
     else
         err_msg = "No concrete job for $job_dir found, closest matches are:"
         for m in choices
-            err_msg = join(err_msg, m, "\n")
+            err_msg = join([err_msg, m], "\n")
         end
         @error err_msg
     end
