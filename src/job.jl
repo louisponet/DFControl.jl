@@ -186,14 +186,14 @@ end
 for (f, strs) in zip((:cp, :mv), (("copy", "Copies"), ("move", "Moves")))
     @eval begin
         """
-            $($f)(job::DFJob, dest::String; all=false, temp=false, kwargs...)
+            $($f)(job::DFJob, dest::AbstractString; all=false, temp=false, kwargs...)
 
         $($(strs[2])) the contents of `job.local_dir` to `dest`. If `all=true`, it will also $($(strs[1])) the
         `.version` directory with all previous versions. If `temp=true` it will override
         `job.copy_temp_folders` and $($(strs[1])) also the temporary calculation directories.
         The `kwargs...` are passed to `Base.$($f)`.
         """
-        function Base.$f(job::DFJob, dest::String; all = false, temp = false, kwargs...)
+        function Base.$f(job::DFJob, dest::AbstractString; all = false, temp = false, kwargs...)
             if !ispath(dest)
                 mkpath(dest)
             end
@@ -289,12 +289,12 @@ timestamp(job) = job.metadata[:timestamp]
 timestamp!(job, time) = job.metadata[:timestamp] = time
 has_timestamp(job) = haskey(job.metadata, :timestamp)
 
-function clean_local_dir!(job::DFJob)
-    for f in readdir(job.local_dir)
+function clean_local_dir!(dir::AbstractString)
+    for f in readdir(dir)
         if f == TEMP_CALC_DIR || f == VERSION_DIR_NAME || splitext(f)[end] == ".jl"
             continue
         end
-        rm(joinpath(job, f); recursive = true)
+        rm(joinpath(dir, f); recursive = true)
     end
 end
 

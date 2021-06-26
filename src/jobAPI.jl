@@ -22,7 +22,7 @@ function save(job::DFJob; kwargs...)
         # We know for sure it was a previously saved job
         # Now that we have safely stored it we can clean out the directory to then fill
         # it with the files from the job.version
-        clean_local_dir!(tj)
+        clean_local_dir!(local_dir)
         cp(job, local_dir; force = true)
     end
     set_localdir!(job, local_dir) # Needs to be done so the inputs `dir` also changes.

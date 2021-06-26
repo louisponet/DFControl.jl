@@ -428,13 +428,13 @@ const QE_PW_PARSE_FUNCTIONS = ["C/m^2"                      => qe_parse_polariza
                                ]
 
 """
-    qe_read_pw_output(filename::String; parse_funcs::Vector{Pair{String,Function}}=Pair{String,Function}[])
+    qe_read_pw_output(filename::String; parse_funcs::Vector{Pair{String}}=Pair{String,<:Function}[])
 
 Reads a pw quantum espresso calculation, returns a dictionary with all found data in the file.
 The additional `parse_funcs` should be of the form:
 `func(out_dict, line, f)` with `f` the file. 
 """
-function qe_read_pw_output(filename::String; parse_funcs::Vector{Pair{String,Function}}=Pair{String,Function}[])
+function qe_read_pw_output(filename::String; parse_funcs::Vector{<:Pair{String}}=Pair{String}[])
     all_funcs = vcat(QE_PW_PARSE_FUNCTIONS, parse_funcs)
     out = parse_file(filename, all_funcs)
     if haskey(out, :in_alat) &&
@@ -720,7 +720,7 @@ end
 const QE_HP_PARSE_FUNCS = ["will be perturbed" => qe_parse_pert_at,
                            "Hubbard U parameters:" => qe_parse_Hubbard_U]
                            
-function qe_read_hp_output(calculation::DFCalculation{QE}; parse_funcs = Pair{String,Function}[])
+function qe_read_hp_output(calculation::DFCalculation{QE}; parse_funcs = Pair{String,<:Function}[])
     
     all_funcs = vcat(QE_HP_PARSE_FUNCS, parse_funcs)
     out = parse_file(outpath(calculation), all_funcs)

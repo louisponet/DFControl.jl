@@ -406,5 +406,5 @@ Parsed info:
     :wannierise,
     :final_state,
 """
-wan_read_output(filename::AbstractString; parse_funcs::Vector{Pair{String,Function}}=Pair{String,Function}[]) =
+wan_read_output(filename::AbstractString; parse_funcs::Vector{<:Pair{String}}=Pair{String}[]) =
     parse_file(filename, vcat(WAN_PARSE_FUNCS, parse_funcs))

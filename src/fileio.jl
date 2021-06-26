@@ -1,4 +1,4 @@
-function parse_file(filename::AbstractString, parse_funcs::Vector{Pair{String,Function}})
+function parse_file(filename::AbstractString, parse_funcs::Vector{<:Pair{String}})
     out = Dict{Symbol,Any}()
     open(filename, "r") do f
         while !eof(f)
