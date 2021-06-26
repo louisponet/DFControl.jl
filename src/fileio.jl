@@ -1,4 +1,4 @@
-function parse_file(filename::AbstractString, parse_funcs::Vector{<:Pair{String}})
+function parse_file(filename::AbstractString, parse_funcs::Vector{<:Pair{String}}; extra_parse_funcs::Vector{<:Pair}=Pair{String,Function}[])
     out = Dict{Symbol,Any}()
     open(filename, "r") do f
         while !eof(f)
@@ -6,12 +6,14 @@ function parse_file(filename::AbstractString, parse_funcs::Vector{<:Pair{String}
             if isempty(line)
                 continue
             end
-            func = getfirst(x -> occursin(x[1], line), parse_funcs)
-            func === nothing && continue
-            try
-                func[2](out, line, f)
-            catch
-                @warn "File corruption or parsing error detected.\nTrying to continue smoothly."
+            for pf in (parse_funcs, extra_parse_funcs)
+                func = getfirst(x -> occursin(x[1], line), pf)
+                func === nothing && continue
+                try
+                    func[2](out, line, f)
+                catch
+                    @warn "File corruption or parsing error detected.\nTrying to continue smoothly."
+                end
             end
         end
     end

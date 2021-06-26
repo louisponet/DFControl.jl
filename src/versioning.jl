@@ -35,6 +35,12 @@ function last_job_version(dir::AbstractString)
     versions = job_versions(dir)
     return isempty(versions) ? 0 : versions[end]
 end
+
+"""
+    last_version(job::DFJob)
+
+Returns the last version number of `job`.
+"""
 last_version(job::DFJob) = last_job_version(main_job_dir(job))
 
 function version_path(dir::AbstractString, version::Int)

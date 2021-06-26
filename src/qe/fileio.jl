@@ -435,8 +435,7 @@ The additional `parse_funcs` should be of the form:
 `func(out_dict, line, f)` with `f` the file. 
 """
 function qe_read_pw_output(filename::String; parse_funcs::Vector{<:Pair{String}}=Pair{String}[])
-    all_funcs = vcat(QE_PW_PARSE_FUNCTIONS, parse_funcs)
-    out = parse_file(filename, all_funcs)
+    out = parse_file(filename, QE_PW_PARSE_FUNCTIONS; extra_parse_funcs = parse_funcs)
     if haskey(out, :in_alat) &&
        haskey(out, :in_cell) &&
        (haskey(out, :in_cart_positions) || haskey(out, :in_cryst_positions))
@@ -722,13 +721,12 @@ const QE_HP_PARSE_FUNCS = ["will be perturbed" => qe_parse_pert_at,
                            
 function qe_read_hp_output(calculation::DFCalculation{QE}; parse_funcs = Pair{String,<:Function}[])
     
-    all_funcs = vcat(QE_HP_PARSE_FUNCS, parse_funcs)
-    out = parse_file(outpath(calculation), all_funcs)
+    out = parse_file(outpath(calculation), QE_HP_PARSE_FUNCS; extra_parse_funcs = parse_funcs)
     
     hubbard_file = joinpath(dir(calculation),
                             "$(calculation[:prefix]).Hubbard_parameters.dat")
     if ispath(hubbard_file)
-        merge(out, parse_file(hubbard_file, all_funcs))
+        merge(out, parse_file(hubbard_file, QE_HP_PARSE_FUNCS; extra_parse_funcs = parse_funcs))
     end
     return out
 end

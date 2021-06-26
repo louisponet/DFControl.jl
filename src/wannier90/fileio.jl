@@ -407,4 +407,4 @@ Parsed info:
     :final_state,
 """
 wan_read_output(filename::AbstractString; parse_funcs::Vector{<:Pair{String}}=Pair{String}[]) =
-    parse_file(filename, vcat(WAN_PARSE_FUNCS, parse_funcs))
+    parse_file(filename, WAN_PARSE_FUNCS; extra_parse_funcs = parse_funcs)

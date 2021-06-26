@@ -85,6 +85,7 @@ breaking changes, or to pull out previous results after further experimentation 
 
 ```@docs
 versions
+last_version
 switch_version!
 rm_version!
 ```
