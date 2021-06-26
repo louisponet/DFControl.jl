@@ -957,32 +957,36 @@ function qe_read_calculation(filename; execs = [Exec(; exec = "pw.x")], run = tr
 
         #the difficult flags, can only be present if atomic stuff is found
         for (f, v) in difficult_flaglines
-            _s = split(replace(replace(replace(f, "(" => " "), ")" => " "), "," => " "))
+            try 
+                _s = split(replace(replace(replace(f, "(" => " "), ")" => " "), "," => " "))
 
-            sym = Symbol(_s[1])
-            ids = parse.(Int, _s[2:end])
-            typ = flagtype(QE, exec, sym)
-            v = replace(v, "d" => "e")
-            if typ === Nothing
-                @warn "Flag $f in file $filename not found in allowed flags for $(exec.exec)"
-                continue
-            end
-            parsedval = parse.((eltype(typ),), split(v))
-            if !haskey(parsed_flags, sym)
-                if typ <: AbstractMatrix
-                    parsed_flags[sym] = length(parsedval) == 1 ?
-                                        zeros(eltype(typ), ntyp, 10) :
-                                        fill(zeros(eltype(typ), length(parsedval)), ntyp,
-                                             10) #arbitrary limit
-                elseif typ <: AbstractVector
-                    parsed_flags[sym] = length(parsedval) == 1 ? zeros(eltype(typ), ntyp) :
-                                        fill(zeros(eltype(typ), length(parsedval)), ntyp)
-                else
-                    dims = fill(nat, ndims(typ) - 1)
-                    parsed_flags[sym] = zeros(eltype(typ), dims..., 3)
+                sym = Symbol(_s[1])
+                ids = parse.(Int, _s[2:end])
+                typ = flagtype(QE, exec, sym)
+                v = replace(v, "d" => "e")
+                if typ === Nothing
+                    @warn "Flag $f in file $filename not found in allowed flags for $(exec.exec)"
+                    continue
                 end
+                parsedval = parse.((eltype(typ),), split(v))
+                if !haskey(parsed_flags, sym)
+                    if typ <: AbstractMatrix
+                        parsed_flags[sym] = length(parsedval) == 1 ?
+                                            zeros(eltype(typ), ntyp, 10) :
+                                            fill(zeros(eltype(typ), length(parsedval)), ntyp,
+                                                 10) #arbitrary limit
+                    elseif typ <: AbstractVector
+                        parsed_flags[sym] = length(parsedval) == 1 ? zeros(eltype(typ), ntyp) :
+                                            fill(zeros(eltype(typ), length(parsedval)), ntyp)
+                    else
+                        dims = fill(nat, ndims(typ) - 1)
+                        parsed_flags[sym] = zeros(eltype(typ), dims..., 3)
+                    end
+                end
+                parsed_flags[sym][ids...] = length(parsedval) == 1 ? parsedval[1] : parsedval
+            catch e
+                @warn "Parsing error of flag $f in file $filename." exception=(e, catch_backtrace())
             end
-            parsed_flags[sym][ids...] = length(parsedval) == 1 ? parsedval[1] : parsedval
         end
         structure = extract_structure!(structure_name, parsed_flags, cell_block, atsyms,
                                        atom_block, pseudos)
