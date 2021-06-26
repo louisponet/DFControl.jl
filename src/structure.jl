@@ -53,6 +53,7 @@ function update_geometry!(str1::AbstractStructure, str2::AbstractStructure)
         end
         set_position!(at1, tats2[id].position_cryst, cell(str1))
     end
+    return str1
 end
 
 function update_geometry!(job::DFJob, new_str::AbstractStructure)
