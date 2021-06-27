@@ -46,8 +46,8 @@ version = "4.0.4"
 
 [[DFControl]]
 deps = ["BinDeps", "ColorTypes", "Colors", "Crayons", "Dates", "DelimitedFiles", "JLD2", "LinearAlgebra", "Media", "NearestNeighbors", "Parameters", "REPL", "RecipesBase", "Reexport", "Requires", "StaticArrays", "Statistics", "Unitful", "spglib_jll"]
-git-tree-sha1 = "6d55fdb7f93bf67b34bd612461060a782f70f1ad"
-repo-rev = "e75f1b0bbc654af74ec2188cbba260d14b2055c9"
+git-tree-sha1 = "2d8265a98d706f3b6e16deb3776667dc58ff57a4"
+repo-rev = "b89ccce5dd745062d8095399f909666b8fee7a72"
 repo-url = "https://github.com/louisponet/DFControl.jl.git"
 uuid = "1e31e15d-4957-550d-a244-318eced754ae"
 version = "0.3.2"
@@ -98,9 +98,9 @@ uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 
 [[JLD2]]
 deps = ["DataStructures", "FileIO", "MacroTools", "Mmap", "Pkg", "Printf", "Reexport", "TranscodingStreams", "UUIDs"]
-git-tree-sha1 = "a605ca7aac73ccbba3208c49ca4d5eb78c8f4c74"
+git-tree-sha1 = "4813826871754cf52607e76ad37acb36ccf52719"
 uuid = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
-version = "0.4.10"
+version = "0.4.11"
 
 [[JLLWrappers]]
 deps = ["Preferences"]
