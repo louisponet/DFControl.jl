@@ -1,6 +1,8 @@
 issoccalc(calculation::DFCalculation{Wannier90}) = flag(calculation, :spinors) == true
 
-readoutput(calculation::DFCalculation{Wannier90}; kwargs...) = wan_read_output(outpath(calculation); kwargs...)
+function readoutput(calculation::DFCalculation{Wannier90}; kwargs...)
+    return wan_read_output(outpath(calculation); kwargs...)
+end
 
 for f in (:cp, :mv)
     @eval function Base.$f(i::DFCalculation{Wannier90}, dest::String; kwargs...)

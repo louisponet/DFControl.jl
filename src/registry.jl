@@ -66,10 +66,10 @@ function request_job(job_dir::String)
     end
     matching_jobs = registered_jobs(job_dir)
     timestamps = timestamp.(matching_jobs)
-    sort_ids = sortperm(timestamps, rev=true)
+    sort_ids = sortperm(timestamps; rev = true)
 
     choices = ["$j -- $t" for (j, t) in zip(matching_jobs[sort_ids], timestamps[sort_ids])]
-    
+
     if length(matching_jobs) == 1
         return matching_jobs[1]
     elseif isdefined(Base, :active_repl)

@@ -4,18 +4,20 @@ function Base.:(==)(d1::InputData, d2::InputData)
     return all(x -> getfield(d1, x) == getfield(d2, x), fieldnames(InputData))
 end
 
-name(calculation::DFCalculation) = calculation.name
-dir(calculation::DFCalculation) = calculation.dir
-flags(calculation::DFCalculation) = calculation.flags
-set_dir!(calculation::DFCalculation, dir) = (calculation.dir = dir)
-name_ext(calculation::DFCalculation, ext) = name(calculation) * ext
-infilename(calculation::DFCalculation) = calculation.infile
-outfilename(calculation::DFCalculation) = calculation.outfile
-inpath(calculation::DFCalculation) = joinpath(calculation, infilename(calculation))
-outpath(calculation::DFCalculation) = joinpath(calculation, outfilename(calculation))
+name(c::DFCalculation)          = c.name
+dir(c::DFCalculation)           = c.dir
+flags(c::DFCalculation)         = c.flags
+set_dir!(c::DFCalculation, dir) = (c.dir = dir)
+name_ext(c::DFCalculation, ext) = name(c) * ext
+infilename(c::DFCalculation)    = c.infile
+outfilename(c::DFCalculation)   = c.outfile
+inpath(c::DFCalculation)        = joinpath(c, infilename(c))
+outpath(c::DFCalculation)       = joinpath(c, outfilename(c))
+
+outfiles(c::DFCalculation) = filter(ispath, [outpath(c)])
 
 """
-    joinpath(calc::DFCalculation, path...)
+    joinpath(calc::DFCalculation, path...) = joinpath(dir(calc), path...)
 """
 Base.joinpath(c::DFCalculation, path...) = joinpath(dir(c), path...)
 hasflag(c::DFCalculation, s::Symbol) = haskey(flags(c), s)
@@ -137,7 +139,12 @@ function Emin_from_projwfc(calculation::DFCalculation, args...)
     @error "Emin_from_projwfc is not implemented for package $(package(calculation))."
 end
 
-readoutput(c::DFCalculation, args...; kwargs...) = @error "Output parsing for package $(package(c)) not implemented."
+function readoutput(c::DFCalculation, args...; kwargs...)
+    @error "Output parsing for package $(package(c)) not implemented."
+end
+
+rm_outfiles(calc::DFCalculation) = rm.(outfiles(calc))
+
 
 include("qe/calculation.jl")
 include("elk/calculation.jl")

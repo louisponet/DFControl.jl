@@ -1,4 +1,5 @@
-function parse_file(filename::AbstractString, parse_funcs::Vector{<:Pair{String}}; extra_parse_funcs::Vector{<:Pair}=Pair{String,Function}[])
+function parse_file(filename::AbstractString, parse_funcs::Vector{<:Pair{String}};
+                    extra_parse_funcs::Vector{<:Pair} = Pair{String,Function}[])
     out = Dict{Symbol,Any}()
     open(filename, "r") do f
         while !eof(f)
@@ -284,11 +285,11 @@ function writejobfiles(job::DFJob; kwargs...)
                                                             calculations(job)))
         !isempty(elkcalculations) &&
             append!(written_calculations, writetojob(f, job, elkcalculations; kwargs...))
-        # i = length(abicalculations) + 1
-        # while i <= length(calculations(job))
-        #     i += writetojob(f, job, calculations(job)[i])
-        # end
+
         for i in calculations(job)
+            if i.run
+                rm.(outfiles(i))
+            end
             if i ∉ written_calculations
                 append!(written_calculations, writetojob(f, job, i; kwargs...))
             end

@@ -1,6 +1,15 @@
 using DFControl, Test
 
-testjobpath = joinpath(testdir, "testassets", "test_job")
+testassetspath=joinpath(testdir, "testassets")
+testjobpath = joinpath(testassetspath, "test_job")
+
+function copy_outfiles()
+    for f in readdir(joinpath(testassetspath, "outputs"))
+        cp(joinpath(testassetspath, "outputs", f), joinpath(testjobpath,f), force=true)
+    end
+end
+
+copy_outfiles()
 
 job = DFJob(testjobpath);
 job4 = DFJob(testjobpath)
@@ -61,6 +70,7 @@ wancalc = gencalc_wan(job["nscf"], structure(job), fermi - 7.0, wanflags...; Epa
 append!(job, wancalc)
 @test job["wan"][:write_hr] == job["wan"][:wannier_plot] == true
 
+copy_outfiles()
 wanout = outputdata(job, "wan")
 @test length(wanout[:final_state]) == 20
 @test length(wanout[:wannierise]) == 203
@@ -113,7 +123,7 @@ begin
         end
     end
 end
-
+copy_outfiles()
 set_cutoffs!(job)
 @test job["scf"][:ecutwfc] == 32.0
 
@@ -160,6 +170,7 @@ report = progressreport(job; onlynew = false, print = false)
 @test report[:fermi] == 17.4572
 @test length(report[:accuracy]) == 9
 oldat = atoms(job)[1]
+copy_outfiles()
 newatompos = outputdata(job, "vc_relax"; onlynew = false)[:final_structure]
 job.structure = newatompos
 push!(job.structure.atoms, oldat)
@@ -218,7 +229,7 @@ scale_bondlength!(at, at2, 0.5, c)
 
 @test isapprox((position_cart(at) + position_cart(at2)) / 2, mid)
 @test isapprox(distance(at, at2), bondlength / 2)
-
+copy_outfiles()
 @test isapprox(bandgap(job), 2.6701999999999995)
 
 t = job["nscf"]

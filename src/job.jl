@@ -193,7 +193,8 @@ for (f, strs) in zip((:cp, :mv), (("copy", "Copies"), ("move", "Moves")))
         `job.copy_temp_folders` and $($(strs[1])) also the temporary calculation directories.
         The `kwargs...` are passed to `Base.$($f)`.
         """
-        function Base.$f(job::DFJob, dest::AbstractString; all = false, temp = false, kwargs...)
+        function Base.$f(job::DFJob, dest::AbstractString; all = false, temp = false,
+                         kwargs...)
             if !ispath(dest)
                 mkpath(dest)
             end
