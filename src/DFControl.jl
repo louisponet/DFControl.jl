@@ -29,6 +29,7 @@ using NearestNeighbors
 using Crayons
 using REPL: REPL
 using REPL.TerminalMenus
+using CodeTracking
 
 abstract type Package end
 struct Wannier90 <: Package end
