@@ -176,7 +176,17 @@ end
 Lists the pseudosets that have previously been set up.
 """
 function list_pseudosets()
+    sets = Symbol[]
+    for s in values(default_pseudos)
+        for k in keys(s)
+            if !(k ∈ sets)
+                push!(sets, k)
+            end
+        end
+    end
+    return sets 
 end
+
 
 """
     setdefault_jobheader(lines)
