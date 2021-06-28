@@ -82,6 +82,11 @@ export list_pseudosets
 const dfprintln = println
 const dfprint = print
 include("display/overloads.jl")
+
+using DaemonMode, Pkg
+include("daemon.jl")
+
+
 using Requires
 
 function __init__()
