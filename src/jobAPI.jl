@@ -63,6 +63,7 @@ function submit(job::DFJob; server = job.server, server_dir = job.server_dir, kw
             job.metadata[:slurmid] = sbatch(job)
             save_metadata(job)
         catch
+            pop!(job.metadata, :slurmid, nothing)
             run(job)
         end
     end
@@ -170,6 +171,9 @@ If `copy` is set to `true`, all previous calculations and output files of the cu
 function set_localdir!(job::DFJob, dir::AbstractString; copy = false)
     if !isabspath(dir)
         dir = abspath(dir)
+    end
+    if dir[end] == '/'
+        dir = dir[1:end-1]
     end
     if copy
         verify_or_create(dir)

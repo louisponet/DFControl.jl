@@ -203,3 +203,5 @@ end
 yesterday() = today() - Day(1)
 lastweek()  = today() - Week(1)
 lastmonth() = today() - Month(1)
+
+username() = read(`whoami`, String)

@@ -148,7 +148,6 @@ end
 
 rm_outfiles(calc::DFCalculation) = rm.(outfiles(calc))
 
-
 include("qe/calculation.jl")
 include("elk/calculation.jl")
 include("wannier90/calculation.jl")

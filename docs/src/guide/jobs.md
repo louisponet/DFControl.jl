@@ -66,6 +66,7 @@ Loading all [`DFJobs`](@ref DFJob) that contain a given `fuzzy` can be done thro
 ```@docs
 registered_jobs
 load_jobs
+running_jobs
 ```
 ### Versioning
 

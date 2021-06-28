@@ -228,3 +228,24 @@ function exec(calculation::DFCalculation, exec::String)
     return getfirst(x -> occursin(exec, x.exec), calculation.execs)
 end
 exec(job::DFJob, exec::String) = getfirst(x -> occursin(exec, x.exec), execs(job))
+
+
+function Base.string(e::Exec)
+    direxec = joinpath(e.dir, e.exec)
+    str = "$direxec"
+    for flag in e.flags
+        str *= " $(join(fill('-', flag.minus_count)))$(flag.symbol)"
+        if !isa(flag.value, AbstractString)
+            for v in flag.value
+                str *= " $v"
+            end
+        else
+            str *= " $(flag.value)"
+        end
+    end
+    return str
+end
+    
+
+
+

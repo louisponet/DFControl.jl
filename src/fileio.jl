@@ -180,21 +180,8 @@ function writetojob(f, job, calculations::Vector{DFCalculation{Elk}}; kwargs...)
     return calculations
 end
 
-function writeexec(f, exec::Exec)
-    direxec = joinpath(exec.dir, exec.exec)
-    write(f, "$direxec")
-    for flag in exec.flags
-        write(f, " $(join(fill('-', flag.minus_count)))$(flag.symbol)")
-        if !isa(flag.value, AbstractString)
-            for v in flag.value
-                write(f, " $v")
-            end
-        else
-            write(f, " $(flag.value)")
-        end
-    end
-    return write(f, " ")
-end
+writeexec(f, exec::Exec) = 
+    write(f, string(exec) * " ")
 
 function writetojob(f, job, calculation::DFCalculation; kwargs...)
     filename   = infilename(calculation)

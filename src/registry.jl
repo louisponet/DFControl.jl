@@ -36,16 +36,16 @@ end
 maybe_register_job(job::DFJob) = maybe_register_job(job.local_dir)
 
 """
-    registered_jobs(fuzzy::AbstractString)
+    registered_jobs(fuzzy::AbstractString = "")
 
-Lists all the known [`DFJob](@ref) directories that contain `fuzzy`.
+Lists all the known [`DFJobs`](@ref DFJob) directories that contain `fuzzy`.
 Intended to be used as:
 ```julia
 job_dirs = registered_jobs("NiO")
 job = DFJob(job_dirs[1])
 ```
 """
-registered_jobs(fuzzy::AbstractString) = filter(x -> occursin(fuzzy, x), JOB_REGISTRY)
+registered_jobs(fuzzy::AbstractString = "") = (cleanup_job_registry(; print=false); filter(x -> occursin(fuzzy, x), JOB_REGISTRY))
 
 """
     load_jobs(fuzzy::AbstractString)
@@ -55,7 +55,6 @@ Loads all the known [`DFJobs`](@ref DFJob) whose `local_dir` contains `fuzzy`.
 load_jobs(fuzzy::AbstractString) = DFJob.(registered_jobs(fuzzy))
 
 function request_job(job_dir::String)
-    cleanup_job_registry(; print = false)
     function timestamp(jobdir)
         if ispath(joinpath(jobdir, ".metadata.jld2"))
             md = load(joinpath(jobdir, ".metadata.jld2"))["metadata"]
@@ -87,4 +86,14 @@ function request_job(job_dir::String)
         end
         @error err_msg
     end
+end
+
+"""
+    running_jobs(fuzzy::AbstractString = "")
+
+Loads all [`DFJobs`](@ref DFJob) that are currently running.
+"""
+function running_jobs(fuzzy::AbstractString = "")
+    jobs = load_jobs(fuzzy)
+    return filter(isrunning, jobs)
 end

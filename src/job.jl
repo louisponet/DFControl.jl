@@ -220,17 +220,33 @@ is_slurm_job(job::DFJob) = haskey(job.metadata, :slurmid)
 """
     isrunning(job::DFJob; print=true)
 
-If the job was submitted through a scheduler like `slurm`,
-this will return whether the job is queued or running.
+Returns whether a job is running or not. If the job was
+submitted using `slurm`, a `QUEUED` status also counts as
+running.
 
-**Note:**
-For now only `slurm` is supported as scheduler.
+!!! note:
+    For now only `slurm` is supported as scheduler.
 """
 function isrunning(job::DFJob; print = true)
+    n = now()
     if is_slurm_job(job)
         return slurm_isrunning(job)
+    else
+        u = username()
+        l = last_running_calculation(job)
+        l === nothing && return false
+        codeexec = execs(l)[end].exec
+        try 
+            pids = parse.(Int, split(read(`pgrep $codeexec`, String)))
+            if isempty(pids)
+                return false
+            end
+            pwd = split(strip(read(`pwdx $(pids[end])`, String)))[end]
+            return abspath(pwd) == job.local_dir
+        catch
+            return false
+        end
     end
-    print && @warn "Job scheduler unknown."
     return false
 end
 
