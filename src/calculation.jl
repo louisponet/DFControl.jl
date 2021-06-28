@@ -1,9 +1,5 @@
 #these are all the control data, they hold the flags that guide the calculation
 name(data::InputData) = data.name
-function Base.:(==)(d1::InputData, d2::InputData)
-    return all(x -> getfield(d1, x) == getfield(d2, x), fieldnames(InputData))
-end
-
 name(c::DFCalculation)          = c.name
 dir(c::DFCalculation)           = c.dir
 flags(c::DFCalculation)         = c.flags
@@ -28,6 +24,13 @@ function flag(calculation::DFCalculation, flag::Symbol)
         return calculation.flags[flag]
     end
 end
+
+function Base.:(==)(d1::InputData, d2::InputData)
+    return all(x -> getfield(d1, x) == getfield(d2, x), fieldnames(InputData))
+end
+
+Base.get(c::DFCalculation, args...) = get(flags(c), args...)
+
 
 Base.eltype(::DFCalculation{P}) where {P} = P
 package(::DFCalculation{P}) where {P} = P

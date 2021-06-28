@@ -456,3 +456,13 @@ function pdos(job::DFJob, atoms::Vector{AbstractAtom} = atoms(job), args...)
     end
     return (energies = t_energies, pdos = t_pdos)
 end
+
+"""
+    last_submission(job::DFJob)
+
+If a job was ever submitted, the last submission date is returned.
+Otherwise 0 date is returned.
+"""
+function last_submission(job::DFJob)
+    return get(job.metadata, :timestap, DateTime(0))
+end

@@ -39,6 +39,7 @@ set_flow!
 save(::DFJob)
 submit
 isrunning
+last_submission
 last_running_calculation
 abort
 ```
