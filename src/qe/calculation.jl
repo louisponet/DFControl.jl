@@ -145,7 +145,7 @@ function set_hubbard_flags!(c::DFCalculation{QE},
         isnc && set_flags!(c, :lda_plus_u_kind => 1; print = false)
     else
         rm_flags!(c, :lda_plus_u, :lda_plus_u_kind, :Hubbard_U, :Hubbard_alpha,
-                  :Hubbard_beta, :Hubbard_J, :Hubbard_J0, :U_projection_typel;
+                  :Hubbard_beta, :Hubbard_J, :Hubbard_J0, :U_projection_type;
                   print = false)
     end
 end
