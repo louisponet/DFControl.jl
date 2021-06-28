@@ -77,6 +77,7 @@ export getdefault_server
 export getdefault_jobheader
 export getdefault_pseudodir
 export getdefault_pseudodirs
+export list_pseudosets
 
 const dfprintln = println
 const dfprint = print

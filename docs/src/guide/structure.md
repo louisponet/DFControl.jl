@@ -58,6 +58,7 @@ element
 Pseudo
 set_pseudo!
 set_pseudos!
+list_pseudosets
 ```
 !!! note
 If pseudopotentials from different sets/directories are specified for the atoms, they will be 

@@ -171,6 +171,14 @@ function getdefault_pseudo(atom::Symbol, set::Symbol; specifier = "")
 end
 
 """
+    list_pseudosets()
+
+Lists the pseudosets that have previously been set up.
+"""
+function list_pseudosets()
+end
+
+"""
     setdefault_jobheader(lines)
 
 Sets the header that will get added to each job.tt file, if no other header was specified.
