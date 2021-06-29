@@ -83,7 +83,7 @@ const dfprintln = println
 const dfprint = print
 include("display/overloads.jl")
 
-using DaemonMode, Pkg
+using DaemonMode, Pkg, LoggingExtras
 include("daemon.jl")
 
 

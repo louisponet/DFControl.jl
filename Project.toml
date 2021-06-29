@@ -42,6 +42,10 @@ Requires = "^1"
 StaticArrays = "^1"
 Unitful = "^1"
 julia = "^1"
+LoggingExtras = "^0.4"
+CodeTracking = "^1"
+DaemonMode = "^0.1"
+
 
 [extras]
 BinDeps = "9e28174c-4ba2-5203-b857-d8d62c4213ee"
