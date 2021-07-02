@@ -96,6 +96,19 @@ function show(io::IO, job::DFJob)
     return
 end
 
+function write_flags(io, fls, prestr = "")
+    fl = maximum(length.(string.(keys(fls))))
+    for (f, v) in fls
+        fs = string(f)
+        l = length(fs)
+        for i in 1:fl-l
+            fs *= " "
+        end
+        dfprintln(io, crayon"cyan", prestr*"\t$fs", crayon"yellow", " => ", crayon"magenta",
+                "$v")
+    end
+end
+
 function show(io::IO, c::DFCalculation)
     df_show_type(io, c)
     s = """name  = $(c.name)
@@ -106,18 +119,6 @@ function show(io::IO, c::DFCalculation)
     flags:"""
     dfprintln(io, s)
 
-    function write_flags(fls, prestr = "")
-        fl = maximum(length.(string.(keys(fls))))
-        for (f, v) in fls
-            fs = string(f)
-            l = length(fs)
-            for i in 1:fl-l
-                fs *= " "
-            end
-            dfprint(io, crayon"cyan", prestr*"\t$fs", crayon"yellow", " => ", crayon"magenta",
-                    "$v\n")
-        end
-    end
     if !isempty(flags(c))
         if package(c) == QE
             namelist_flags = Dict{Symbol, Dict{Symbol, Any}}()
@@ -138,13 +139,13 @@ function show(io::IO, c::DFCalculation)
                 end
                 for (inf, flgs) in namelist_flags
                     dfprintln(io, crayon"green", "\t&$inf", crayon"reset")
-                    write_flags(flgs, "\t\t")
+                    write_flags(io, flgs, "\t\t")
                 end
             else
-                write_flags(flags(c))
+                write_flags(io, flags(c))
             end
         else
-            write_flags(flags(c))
+            write_flags(io, flags(c))
         end
     end
     dfprint(io, crayon"reset")
