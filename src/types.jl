@@ -382,21 +382,24 @@ end
 function DFJob(job_dir::AbstractString, job_script = "job.tt";
                version::Union{Nothing,Int} = nothing, kwargs...)
     apath = abspath(job_dir)
-    if !isempty(job_dir) && ispath(apath) && !isempty(searchdir(apath, job_script))
+    if ispath(apath)
         if occursin(VERSION_DIR_NAME, apath)
             @error "It is not allowed to directly load a job version, please use `DFJob(dir, version=$(splitdir(apath)[end]))`"
         end
-        if version === nothing || (ispath(joinpath(apath, ".metadata.jld2")) &&
-            load(joinpath(apath, ".metadata.jld2"))["version"] == version)
+        if version !== nothing
+            real_path = version_dir(apath, version)
+            real_version = version
+        elseif ispath(joinpath(apath, job_script))
             real_path = apath
+            real_version = main_job_version(apath)
         else
-            real_path = joinpath(apath, VERSION_DIR_NAME, "$version")
+            @error "No valid job found in $apath."
         end
     else
         real_path = request_job(job_dir)
         real_path === nothing && return
+        real_version = main_job_version(real_path)
     end
-    real_version = version === nothing ? last_job_version(real_path) : version
     return DFJob(;
                  merge(merge((local_dir = real_path, version = real_version),
                              read_job_calculations(joinpath(real_path, job_script))),

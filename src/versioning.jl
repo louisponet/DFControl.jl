@@ -2,7 +2,8 @@ const VERSION_DIR_NAME = ".versions"
 # 0 Job version means that no jobs have ran yet.
 "Returns the version found in the .metadata.jld2 if it exists. Otherwise 0."
 function main_job_version(dir::AbstractString)
-    mdatapath = joinpath(dir, ".metadata.jld2")
+    maindir = main_job_dir(dir)
+    mdatapath = joinpath(maindir, ".metadata.jld2")
     if ispath(mdatapath)
         metadata = load(mdatapath)
         if haskey(metadata, "version")
@@ -11,6 +12,7 @@ function main_job_version(dir::AbstractString)
     end
     return 0
 end
+main_job_version(job::DFJob) = main_job_version(job.local_dir)
 
 function job_versions(dir::AbstractString)
     versions = Int[]
@@ -43,26 +45,32 @@ Returns the last version number of `job`.
 """
 last_version(job::DFJob) = last_job_version(main_job_dir(job))
 
-function version_path(dir::AbstractString, version::Int)
-    return joinpath(dir, VERSION_DIR_NAME, "$version")
+function version_dir(dir::AbstractString, version::Int)
+    tpath = joinpath(dir, VERSION_DIR_NAME, "$version")
+    ispath(tpath) && return tpath
+
+    if main_job_version(dir) == version
+        return dir
+    end
+    error("Version $version not found.") 
 end
-version_path(job::DFJob) = version_path(main_job_dir(job), job.version)
-version_path(job::DFJob, version::Int) = version_path(main_job_dir(job), version)
+version_dir(job::DFJob) = version_dir(main_job_dir(job), job.version)
+version_dir(job::DFJob, version::Int) = version_dir(main_job_dir(job), version)
 
 exists_version(dir::AbstractString, version::Int) = version ∈ job_versions(dir)
 exists_version(job::DFJob, version::Int) = exists_version(main_job_dir(job), version)
 
 """
-    maybe_cp_prev_version(job::DFJob)
+    maybe_cp_main_version(job::DFJob)
 
-Looks in the `job.local_dir` for a previous version of the job, and copies it to the
+Looks in the `job.local_dir` for the version of the job in the main directory, and copies it to the
 respective directory in the `.versions`.
 """
-function maybe_cp_prev_version(job::DFJob)
+function maybe_cp_main_version(job::DFJob)
     maindir = main_job_dir(job)
     if ispath(joinpath(maindir, "job.tt"))
         tjob = DFJob(maindir)
-        cp(tjob, version_path(tjob); force = true)
+        cp(tjob, joinpath(tjob, VERSION_DIR_NAME, "$(job.version)"); force = true)
     end
 end
 
@@ -88,7 +96,7 @@ function switch_version!(job::DFJob)
     vs = versions(job)
     timestamps = []
     for v in vs
-        mdatapath = joinpath(version_path(job, v), ".metadata.jld2")
+        mdatapath = joinpath(version_dir(job, v), ".metadata.jld2")
         if ispath(mdatapath) &&
            haskey(load(mdatapath), "metadata") &&
            haskey(load(mdatapath)["metadata"], :timestamp)
@@ -119,6 +127,27 @@ Removes the specified `versions` from the `job` if they exist.
 """
 function rm_version!(job::DFJob, version::Int)
     version_assert(job, version)
+    if version == main_job_version(job)
+        for f in readdir(job.local_dir)
+            if occursin(".workflow", f) || f == VERSION_DIR_NAME || splitext(f)[2] == ".jl"
+                continue
+            else
+                rm(joinpath(job, f))
+            end
+        end
+        md = main_job_dir(job)
+        lv = last_version(job)
+        if lv == version
+            lv = versions(job)[end-1]
+        end
+        if lv != 0
+            tj = DFJob(md, version=lv)
+            cp(tj, md, force=true)
+        end
+            
+    else
+        rm(version_dir(job, version); recursive = true)
+    end
     if version == job.version
         @warn "Job version is the same as the one to be removed, switching to last known version."
         lv = last_version(job)
@@ -127,7 +156,6 @@ function rm_version!(job::DFJob, version::Int)
         end
         switch_version!(job, lv)
     end
-    return rm(version_path(job, version); recursive = true)
 end
 
 function rm_versions!(job::DFJob, versions::Int...)
@@ -140,6 +168,6 @@ end
 function rm_tmp_dirs!(job, vers = versions(job)...)
     for v in vers
         version_assert(job, v)
-        rm(joinpath(version_path(job, v), TEMP_CALC_DIR); recursive = true)
+        rm(joinpath(version_dir(job, v), TEMP_CALC_DIR); recursive = true)
     end
 end

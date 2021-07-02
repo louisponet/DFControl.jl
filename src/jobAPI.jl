@@ -16,7 +16,7 @@ function save(job::DFJob; kwargs...)
         tj = DFJob(local_dir)
         @assert !isrunning(tj) "Can't save a job in a directory where another is running."
         # We want to first make sure that the previous job in the main directory is safely stored
-        cp(tj, version_path(tj); force = true)
+        cp(tj, joinpath(tj, VERSION_DIR_NAME, "$(tj.version)"); force = true)
     end
     if local_dir != job.local_dir
         # We know for sure it was a previously saved job

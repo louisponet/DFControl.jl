@@ -289,6 +289,10 @@ function qe_parse_scf_iteration(out, line, f)
     else
         push!(out[:scf_iteration], it)
     end
+    if it == 1
+        out[:scf_converged] = false
+        haskey(out, :scf_steps) ? out[:scf_steps] += 1 : out[:scf_steps] = 1
+    end
 end
 
 function qe_parse_colin_magmoms(out, line, f)
@@ -318,14 +322,6 @@ function qe_parse_total_magnetization(out, line, f)
         push!(out[key], mag)
     else
         out[key] = [mag]
-    end
-end
-
-function qe_parse_scf_convergence(out, line, f)
-    if occursin("NOT", line)
-        out[:scf_converged] = false
-    elseif occursin("has been", line)
-        out[:scf_converged] = true
     end
 end
 
@@ -419,7 +415,7 @@ const QE_PW_PARSE_FUNCTIONS = ["C/m^2" => qe_parse_polarization,
                                "Magnetic moment per site" => qe_parse_colin_magmoms,
                                "estimated scf accuracy" => qe_parse_scf_accuracy,
                                "total magnetization" => qe_parse_total_magnetization,
-                               "convergence" => qe_parse_scf_convergence,
+                               "convergence has been" => (x, y, z) -> x[:scf_converged] = true,
                                "Begin final coordinates" => (x, y, z) -> x[:converged] = true,
                                "atom number" => qe_parse_magnetization,
                                "--- enter write_ns ---" => qe_parse_Hubbard,
@@ -988,8 +984,7 @@ function qe_read_calculation(filename; execs = [Exec(; exec = "pw.x")], run = tr
                 parsed_flags[sym][ids...] = length(parsedval) == 1 ? parsedval[1] :
                                             parsedval
             catch e
-                @warn "Parsing error of flag $f in file $filename." exception = (e,
-                                                                                 catch_backtrace())
+                @warn "Parsing error of flag $f in file $filename." exception = e
             end
         end
         structure = extract_structure!(structure_name, parsed_flags, cell_block, atsyms,

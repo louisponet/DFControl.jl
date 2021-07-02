@@ -242,6 +242,7 @@ function isrunning(job::DFJob; print = true)
                 return false
             end
             pwd = split(strip(read(`pwdx $(pids[end])`, String)))[end]
+            @show pwd
             return abspath(pwd) == job.local_dir
         catch
             return false
@@ -276,7 +277,7 @@ function cleanup(job::DFJob)
     labels = String[]
     paths = String[]
     for v in versions(job)
-        vpath = version_path(job, v)
+        vpath = version_dir(job, v)
         s = round(dirsize(vpath) / 1e6; digits = 3)
         push!(labels, "Version $v:  $s Mb")
         push!(paths, vpath)
@@ -315,4 +316,12 @@ function clean_local_dir!(dir::AbstractString)
     end
 end
 
-main_job_dir(job::DFJob) = split(job.local_dir, VERSION_DIR_NAME)[1]
+"""
+    main_job_dir(dir::AbstractString)
+    main_job_dir(job::DFJob)
+
+Returns the main directory of the job, also when the job's version is not the one
+in the main directory.
+"""
+main_job_dir(dir::AbstractString) = split(dir, VERSION_DIR_NAME)[1]
+main_job_dir(job::DFJob) = main_job_dir(job.local_dir)
