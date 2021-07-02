@@ -1,6 +1,6 @@
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.8.0-DEV.89"
+julia_version = "1.8.0-DEV.119"
 manifest_format = "2.0"
 
 [[deps.ArgTools]]
@@ -50,8 +50,8 @@ version = "4.0.4"
 
 [[deps.DFControl]]
 deps = ["BinDeps", "ColorTypes", "Colors", "Crayons", "Dates", "DelimitedFiles", "JLD2", "LinearAlgebra", "Media", "NearestNeighbors", "Parameters", "REPL", "RecipesBase", "Reexport", "Requires", "StaticArrays", "Statistics", "Unitful", "spglib_jll"]
-git-tree-sha1 = "ffe5d6e94d3f9b0fe0cf773604311b8b53b12afd"
-repo-rev = "c27d369688c9ec41b90d48883545b4db14b0708f"
+git-tree-sha1 = "3368f95baf24560254a411bff99f5df68c146a89"
+repo-rev = "11a6195bb5e66cfdee83632a5779237d9e46cd8c"
 repo-url = "https://github.com/louisponet/DFControl.jl.git"
 uuid = "1e31e15d-4957-550d-a244-318eced754ae"
 version = "0.3.3"
