@@ -15,6 +15,8 @@ struct QEControlBlockInfo <: AbstractBlockInfo
     name::Symbol
     flags::Vector{<:QEFlagInfo}
 end
+Base.in(f::Symbol, i::QEControlBlockInfo) = findfirst(x->x.name == f, i.flags) !== nothing
+flags(i::QEControlBlockInfo) = i.flags
 
 #TODO rewrite this this is garbage
 function qe_flaginfo(block::AbstractBlockInfo, variable_name::Symbol)
@@ -37,20 +39,20 @@ struct QEDataBlockInfo <: AbstractBlockInfo
     flags               :: Vector{<:QEFlagInfo}
 end
 
-struct QEInputInfo
+struct QECalculationInfo
     exec::String
     control::Vector{QEControlBlockInfo}
     data::Vector{QEDataBlockInfo}
 end
 
-function allflags(info::QEInputInfo)
+function allflags(info::QECalculationInfo)
     return flatten([[i.flags for i in info.control]; [i.flags for i in info.data]])
 end
 
 include(joinpath(depsdir, "qeflags.jl"))
-const QEInputInfos = _QEINPUTINFOS()
-push!(QEInputInfos,
-      QEInputInfo("pw2wannier90.x",
+const QECalculationInfos = _QEINPUTINFOS()
+push!(QECalculationInfos,
+      QECalculationInfo("pw2wannier90.x",
                   [QEControlBlockInfo(:calculationpp,
                                       [QEFlagInfo{String}(:outdir,
                                                           "location of temporary output files"),
@@ -74,14 +76,14 @@ push!(QEInputInfos,
                   QEDataBlockInfo[]))
 
 function qe_calculation_info(calculation::DFCalculation{QE})
-    return getfirst(x -> occursin(x.exec, calculation.exec), QEInputInfos)
+    return getfirst(x -> occursin(x.exec, calculation.execs[end].exec), QECalculationInfos)
 end
 function qe_calculation_info(exec::AbstractString)
-    return getfirst(x -> occursin(x.exec, exec), QEInputInfos)
+    return getfirst(x -> occursin(x.exec, exec), QECalculationInfos)
 end
 qe_calculation_flags(exec::AbstractString) = allflags(qe_calculation_info(exec))
 
-function qe_flaginfo(calculation_info::QEInputInfo, variable_name::Symbol)
+function qe_flaginfo(calculation_info::QECalculationInfo, variable_name::Symbol)
     for block in vcat(calculation_info.control, calculation_info.data)
         var = qe_flaginfo(block, variable_name)
         if eltype(var) != Nothing
@@ -92,7 +94,7 @@ function qe_flaginfo(calculation_info::QEInputInfo, variable_name::Symbol)
 end
 
 function qe_flaginfo(variable_name::Symbol)
-    for info in QEInputInfos
+    for info in QECalculationInfos
         var = qe_flaginfo(info, variable_name)
         if eltype(var) != Nothing
             return var
@@ -101,7 +103,7 @@ function qe_flaginfo(variable_name::Symbol)
     return QEFlagInfo()
 end
 
-function qe_block_variable(calculation_info::QEInputInfo, variable_name)
+function qe_block_variable(calculation_info::QECalculationInfo, variable_name)
     for block in vcat(calculation_info.control, calculation_info.data)
         var = qe_flaginfo(block, variable_name)
         if eltype(var) != Nothing
@@ -112,7 +114,7 @@ function qe_block_variable(calculation_info::QEInputInfo, variable_name)
 end
 
 function qe_flaginfo(exec::Exec, varname)
-    for calculation_info in QEInputInfos
+    for calculation_info in QECalculationInfos
         if occursin(calculation_info.exec, exec.exec)
             return qe_flaginfo(calculation_info, varname)
         end
@@ -121,7 +123,7 @@ function qe_flaginfo(exec::Exec, varname)
 end
 
 function qe_block_info(block_name::Symbol)
-    for calculation_info in QEInputInfos
+    for calculation_info in QECalculationInfos
         for block in [calculation_info.control; calculation_info.data]
             if block.name == block_name
                 return block
@@ -138,7 +140,7 @@ function qe_all_block_flags(exec::AbstractString, block_name)
 end
 
 function qe_block_variable(exec::AbstractString, flagname)
-    for calculation_info in QEInputInfos
+    for calculation_info in QECalculationInfos
         if occursin(calculation_info.exec, exec)
             return qe_block_variable(calculation_info, flagname)
         end
@@ -149,7 +151,7 @@ end
 function qe_exec(calculation::DFCalculation{QE})
     exec = getfirst(x -> x.exec ∈ QE_EXECS, execs(calculation))
     if exec === nothing
-        error("Input $calculation does not have a valid QE executable, please set it first.")
+        error("Calculation $calculation does not have a valid QE executable, please set it first.")
     end
     return exec
 end

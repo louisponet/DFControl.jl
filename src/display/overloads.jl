@@ -96,25 +96,55 @@ function show(io::IO, job::DFJob)
     return
 end
 
-function show(io::IO, in::DFCalculation)
-    df_show_type(io, in)
-    s = """name  = $(in.name)
-    dir   = $(in.dir)
-    execs = $(join([e.exec for e in in.execs],", "))
-    run   = $(in.run)
-    data  = $([e.name for e in data(in)])
-    $(crayon"cyan")flags$(crayon"reset"):"""
+function show(io::IO, c::DFCalculation)
+    df_show_type(io, c)
+    s = """name  = $(c.name)
+    dir   = $(c.dir)
+    execs = $(join([e.exec for e in c.execs],", "))
+    run   = $(c.run)
+    data  = $([e.name for e in data(c)])
+    flags:"""
     dfprintln(io, s)
-    if !isempty(flags(in))
-        fl = maximum(length.(string.(keys(flags(in)))))
-        for (f, v) in flags(in)
+
+    function write_flags(fls, prestr = "")
+        fl = maximum(length.(string.(keys(fls))))
+        for (f, v) in fls
             fs = string(f)
             l = length(fs)
             for i in 1:fl-l
                 fs *= " "
             end
-            dfprint(io, crayon"cyan", "\t$fs", crayon"yellow", " => ", crayon"magenta",
+            dfprint(io, crayon"cyan", prestr*"\t$fs", crayon"yellow", " => ", crayon"magenta",
                     "$v\n")
+        end
+    end
+    if !isempty(flags(c))
+        if package(c) == QE
+            namelist_flags = Dict{Symbol, Dict{Symbol, Any}}()
+            info = qe_calculation_info(c)
+            if info !== nothing
+                flag_keys = keys(flags(c))
+                for i in info.control
+                    for f in flags(i)
+                        if f.name ∈ flag_keys
+                            if haskey(namelist_flags, i.name)
+                                namelist_flags[i.name][f.name] = c[f.name]
+                            else
+                                namelist_flags[i.name] = Dict{Symbol, Any}()
+                                namelist_flags[i.name][f.name] = c[f.name]
+                            end
+                        end
+                    end
+                end
+                for (inf, flgs) in namelist_flags
+                    dfprintln(io, crayon"green", "\t&$inf", crayon"reset")
+                    write_flags(flgs, "\t\t")
+                end
+            else
+                write_flags(flags(c))
+            end
+        else
+            write_flags(flags(c))
         end
     end
     dfprint(io, crayon"reset")

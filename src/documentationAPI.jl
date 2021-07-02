@@ -11,7 +11,7 @@ Returns the documentation for a given flag.
 """
 function documentation(::Type{QE}, searchstring::AbstractString)
     found = Pair{String,Vector{QEFlagInfo}}[]
-    for calculationinfo in QEInputInfos
+    for calculationinfo in QECalculationInfos
         foundflags = QEFlagInfo[]
         for fi in allflags(calculationinfo)
             if occursin(searchstring, fi.description)

@@ -252,8 +252,8 @@ function write_QEDataBlockInfo(wf, indent, lines)
     end
     return writefbodyline(wf, indent + 1, "]),")
 end
-function write_QEInputInfo(wf, filename, indent, exec)
-    writefbodyline(wf, indent, """QEInputInfo("$exec", [""")
+function write_QECalculationInfo(wf, filename, indent, exec)
+    writefbodyline(wf, indent, """QECalculationInfo("$exec", [""")
     allcontrolwritten = false
     anydatawritten = false
     open(filename, "r") do f
@@ -286,14 +286,14 @@ end
 
 searchdir(path::String, key) = filter(x -> occursin(key, x), readdir(path))
 open(joinpath(@__DIR__, "qeflags.jl"), "w") do wf
-    write(wf, "_QEINPUTINFOS() = QEInputInfo[\n")
+    write(wf, "_QEINPUTINFOS() = QECalculationInfo[\n")
     calculation_files = searchdir(joinpath(@__DIR__, "..", "assets", "calculations", "qe"),
                                   "INPUT")
     filepaths = joinpath.(Ref(joinpath(@__DIR__, "..", "assets", "calculations", "qe")),
                           calculation_files)
     for _f in filepaths
         exec_name = join([lowercase(splitext(split(_f, "_")[end])[1]), ".x"], "")
-        write_QEInputInfo(wf, _f, 1, exec_name)
+        write_QECalculationInfo(wf, _f, 1, exec_name)
     end
     return write(wf, "]")
 end
