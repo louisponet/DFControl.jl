@@ -104,8 +104,8 @@ function write_flags(io, fls, prestr = "")
         for i in 1:fl-l
             fs *= " "
         end
-        dfprintln(io, crayon"cyan", prestr*"\t$fs", crayon"yellow", " => ", crayon"magenta",
-                "$v")
+        dfprintln(io, crayon"cyan", prestr * "\t$fs", crayon"yellow", " => ",
+                  crayon"magenta", "$v")
     end
 end
 
@@ -121,7 +121,7 @@ function show(io::IO, c::DFCalculation)
 
     if !isempty(flags(c))
         if package(c) == QE
-            namelist_flags = Dict{Symbol, Dict{Symbol, Any}}()
+            namelist_flags = Dict{Symbol,Dict{Symbol,Any}}()
             info = qe_calculation_info(c)
             if info !== nothing
                 flag_keys = keys(flags(c))
@@ -131,7 +131,7 @@ function show(io::IO, c::DFCalculation)
                             if haskey(namelist_flags, i.name)
                                 namelist_flags[i.name][f.name] = c[f.name]
                             else
-                                namelist_flags[i.name] = Dict{Symbol, Any}()
+                                namelist_flags[i.name] = Dict{Symbol,Any}()
                                 namelist_flags[i.name][f.name] = c[f.name]
                             end
                         end

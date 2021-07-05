@@ -1,15 +1,23 @@
 const RUN_EXECS = ["mpirun", "mpiexec", "srun"]
 
-function Base.:(==)(e1::ExecFlag, e2::ExecFlag)
-    return all(x -> getfield(e1, x) == getfield(e2, x), (:symbol, :value))
-end
-
 isparseable(exec::Exec) = exec.exec ∈ parseable_execs()
 
 hasflag(exec::Exec, s::Symbol) = findfirst(x -> x.symbol == s, exec.flags) != nothing
 
+Base.hash(e::ExecFlag, h::UInt) = hash(e.symbol, hash(e.value, h))
+Base.:(==)(e1::ExecFlag, e2::ExecFlag) = e1.symbol == e2.symbol && e1.value == e2.value
+
 function Base.:(==)(e1::Exec, e2::Exec)
-    return all(x -> getfield(e1, x) == getfield(e2, x), fieldnames(Exec))
+    if e1.exec != e2.exec || e1.dir != e2.dir
+        return false
+    else
+        for f in e1.flags
+            f2 = getfirst(isequal(f), e2.flags)
+            f2 === nothing && return false
+            f == f2 && return true
+        end
+        return true
+    end
 end
 
 allexecs() = vcat(RUN_EXECS, QE_EXECS, WAN_EXECS, ELK_EXECS)
@@ -229,7 +237,6 @@ function exec(calculation::DFCalculation, exec::String)
 end
 exec(job::DFJob, exec::String) = getfirst(x -> occursin(exec, x.exec), execs(job))
 
-
 function Base.string(e::Exec)
     direxec = joinpath(e.dir, e.exec)
     str = "$direxec"
@@ -245,7 +252,3 @@ function Base.string(e::Exec)
     end
     return str
 end
-    
-
-
-

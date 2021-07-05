@@ -236,13 +236,12 @@ function isrunning(job::DFJob; print = true)
         l = last_running_calculation(job)
         l === nothing && return false
         codeexec = execs(l)[end].exec
-        try 
+        try
             pids = parse.(Int, split(read(`pgrep $codeexec`, String)))
             if isempty(pids)
                 return false
             end
             pwd = split(strip(read(`pwdx $(pids[end])`, String)))[end]
-            @show pwd
             return abspath(pwd) == job.local_dir
         catch
             return false

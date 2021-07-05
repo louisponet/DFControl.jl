@@ -184,9 +184,8 @@ function list_pseudosets()
             end
         end
     end
-    return sets 
+    return sets
 end
-
 
 """
     setdefault_jobheader(lines)

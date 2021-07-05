@@ -1,5 +1,6 @@
 #these are all the control data, they hold the flags that guide the calculation
 name(data::InputData) = data.name
+
 name(c::DFCalculation)          = c.name
 dir(c::DFCalculation)           = c.dir
 flags(c::DFCalculation)         = c.flags
@@ -30,7 +31,6 @@ function Base.:(==)(d1::InputData, d2::InputData)
 end
 
 Base.get(c::DFCalculation, args...) = get(flags(c), args...)
-
 
 Base.eltype(::DFCalculation{P}) where {P} = P
 package(::DFCalculation{P}) where {P} = P

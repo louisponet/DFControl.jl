@@ -180,8 +180,7 @@ function writetojob(f, job, calculations::Vector{DFCalculation{Elk}}; kwargs...)
     return calculations
 end
 
-writeexec(f, exec::Exec) = 
-    write(f, string(exec) * " ")
+writeexec(f, exec::Exec) = write(f, string(exec) * " ")
 
 function writetojob(f, job, calculation::DFCalculation; kwargs...)
     filename   = infilename(calculation)
@@ -275,7 +274,7 @@ function writejobfiles(job::DFJob; kwargs...)
 
         for i in calculations(job)
             if i.run
-                rm.(outfiles(i))
+                rm_outfiles(i)
             end
             if i ∉ written_calculations
                 append!(written_calculations, writetojob(f, job, i; kwargs...))

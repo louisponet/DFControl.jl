@@ -561,8 +561,7 @@ function qe_read_projwfc_output(c::DFCalculation{QE}, args...; kwargs...)
         out[:ytickvals] = Vector{Vector{Float64}}()
         out[:yticks]    = Vector{Vector{Float64}}()
         for f in pdos_files
-            th, vals, ticks = qe_read_kpdos(f, args...;
-                                            kwargs...)
+            th, vals, ticks = qe_read_kpdos(f, args...)
             push!(out[:heatmaps], th)
             push!(out[:ytickvals], vals)
             push!(out[:yticks], ticks)
@@ -571,7 +570,7 @@ function qe_read_projwfc_output(c::DFCalculation{QE}, args...; kwargs...)
         out[:pdos] = NamedTuple{(:energies, :values),
                                 Tuple{Vector{Float64},Matrix{Float64}}}[]
         for f in pdos_files
-            energs, vals = qe_read_pdos(f, args...; kwargs...)
+            energs, vals = qe_read_pdos(f, args...)
             push!(out[:pdos], (energies = energs, values = vals))
         end
     end
@@ -715,13 +714,10 @@ end
 const QE_HP_PARSE_FUNCS = ["will be perturbed" => qe_parse_pert_at,
                            "Hubbard U parameters:" => qe_parse_Hubbard_U]
 
-function qe_read_hp_output(c::DFCalculation{QE};
-                           parse_funcs = Pair{String,<:Function}[])
-    out = parse_file(outpath(c), QE_HP_PARSE_FUNCS;
-                     extra_parse_funcs = parse_funcs)
+function qe_read_hp_output(c::DFCalculation{QE}; parse_funcs = Pair{String,<:Function}[])
+    out = parse_file(outpath(c), QE_HP_PARSE_FUNCS; extra_parse_funcs = parse_funcs)
 
-    hubbard_file = joinpath(dir(c),
-                            "$(c[:prefix]).Hubbard_parameters.dat")
+    hubbard_file = joinpath(dir(c), "$(c[:prefix]).Hubbard_parameters.dat")
     if ispath(hubbard_file)
         merge(out,
               parse_file(hubbard_file, QE_HP_PARSE_FUNCS; extra_parse_funcs = parse_funcs))

@@ -1,11 +1,11 @@
 using DFControl, Test
 
-testassetspath=joinpath(testdir, "testassets")
+testassetspath = joinpath(testdir, "testassets")
 testjobpath = joinpath(testassetspath, "test_job")
 
 function copy_outfiles()
     for f in readdir(joinpath(testassetspath, "outputs"))
-        cp(joinpath(testassetspath, "outputs", f), joinpath(testjobpath,f), force=true)
+        cp(joinpath(testassetspath, "outputs", f), joinpath(testjobpath, f); force = true)
     end
 end
 

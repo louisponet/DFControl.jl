@@ -412,9 +412,9 @@ end
 
 function outfiles(c::DFCalculation{Wannier90})
     files = [outpath(c)]
-    append!(files, filter(x->x != inpath(c), searchdir(c, name(c))))
+    append!(files, filter(x -> x != inpath(c), searchdir(c, name(c)))) #should include pw2wannier
     if get(c, :wannier_plot, false)
         append!(files, searchdir(c, "UNK"))
     end
-    return filter(ispath, files)
+    return filter(ispath, unique(files))
 end

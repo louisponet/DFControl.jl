@@ -22,6 +22,8 @@ struct Projection
     last  :: Int
 end
 Projection() = Projection(Orbital(), 0, 0)
+Projection(o::Orbital, start::Int) = Projection(o, start, start + o.size - 1)
+Projection(ostr::String, start::Int) = (o = orbital(ostr); Projection(o, start))
 
 """
     DFTU(;l ::Int = -1,
@@ -461,4 +463,11 @@ mutable struct TimingData
     wall::Dates.AbstractTime
     calls::Int
     children::Vector{TimingData}
+end
+
+function Base.hash(data::T, h::UInt) where {T<:Union{InputData,Projection,Exec}}
+    for f in fieldnames(T)
+        h = hash(getfield(data, f), h)
+    end
+    return h
 end

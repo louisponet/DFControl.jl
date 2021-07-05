@@ -29,6 +29,9 @@ function Base.show(io::IO, proj::Projection)
     return dfprintln(io, crayon"red", "last index: ", crayon"reset", "$(proj.last)")
 end
 
+Base.hash(orb::Orbital, h::UInt) = hash(orb.mr, hash(orb.l, h))
+Base.:(==)(o1::Orbital, o2::Orbital) = o1.l == o2.l && o1.mr == o2.mr
+
 """
 Adds projections to atoms.
 """

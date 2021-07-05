@@ -15,7 +15,7 @@ struct QEControlBlockInfo <: AbstractBlockInfo
     name::Symbol
     flags::Vector{<:QEFlagInfo}
 end
-Base.in(f::Symbol, i::QEControlBlockInfo) = findfirst(x->x.name == f, i.flags) !== nothing
+Base.in(f::Symbol, i::QEControlBlockInfo) = findfirst(x -> x.name == f, i.flags) !== nothing
 flags(i::QEControlBlockInfo) = i.flags
 
 #TODO rewrite this this is garbage
@@ -53,27 +53,30 @@ include(joinpath(depsdir, "qeflags.jl"))
 const QECalculationInfos = _QEINPUTINFOS()
 push!(QECalculationInfos,
       QECalculationInfo("pw2wannier90.x",
-                  [QEControlBlockInfo(:calculationpp,
-                                      [QEFlagInfo{String}(:outdir,
-                                                          "location of temporary output files"),
-                                       QEFlagInfo{String}(:prefix, "pwscf filename prefix"),
-                                       QEFlagInfo{String}(:seedname,
-                                                          "wannier90 calculation/output filename prefix"),
-                                       QEFlagInfo{String}(:wan_mode,
-                                                          "'standalone' or 'library'"),
-                                       QEFlagInfo{String}(:spin_component,
-                                                          "'none', 'up' or 'down'"),
-                                       QEFlagInfo{Bool}(:write_mmn, "compute M_mn matrix"),
-                                       QEFlagInfo{Bool}(:write_amn, "compute A_mn matrix"),
-                                       QEFlagInfo{Bool}(:write_unk,
-                                                        "write wavefunctions to file"),
-                                       QEFlagInfo{Bool}(:write_uHu,
-                                                        "write the hamiltonian elements between different k-values"),
-                                       QEFlagInfo{Bool}(:wvfn_formatted,
-                                                        "formatted or unformatted output for wavefunctions"),
-                                       QEFlagInfo{Bool}(:reduce_unk,
-                                                        "output wavefunctions on a coarse grid to save memory")])],
-                  QEDataBlockInfo[]))
+                        [QEControlBlockInfo(:inputpp,
+                                            [QEFlagInfo{String}(:outdir,
+                                                                "location of temporary output files"),
+                                             QEFlagInfo{String}(:prefix,
+                                                                "pwscf filename prefix"),
+                                             QEFlagInfo{String}(:seedname,
+                                                                "wannier90 calculation/output filename prefix"),
+                                             QEFlagInfo{String}(:wan_mode,
+                                                                "'standalone' or 'library'"),
+                                             QEFlagInfo{String}(:spin_component,
+                                                                "'none', 'up' or 'down'"),
+                                             QEFlagInfo{Bool}(:write_mmn,
+                                                              "compute M_mn matrix"),
+                                             QEFlagInfo{Bool}(:write_amn,
+                                                              "compute A_mn matrix"),
+                                             QEFlagInfo{Bool}(:write_unk,
+                                                              "write wavefunctions to file"),
+                                             QEFlagInfo{Bool}(:write_uHu,
+                                                              "write the hamiltonian elements between different k-values"),
+                                             QEFlagInfo{Bool}(:wvfn_formatted,
+                                                              "formatted or unformatted output for wavefunctions"),
+                                             QEFlagInfo{Bool}(:reduce_unk,
+                                                              "output wavefunctions on a coarse grid to save memory")])],
+                        QEDataBlockInfo[]))
 
 function qe_calculation_info(calculation::DFCalculation{QE})
     return getfirst(x -> occursin(x.exec, calculation.execs[end].exec), QECalculationInfos)

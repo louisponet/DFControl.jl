@@ -45,7 +45,9 @@ job_dirs = registered_jobs("NiO")
 job = DFJob(job_dirs[1])
 ```
 """
-registered_jobs(fuzzy::AbstractString = "") = (cleanup_job_registry(; print=false); filter(x -> occursin(fuzzy, x), JOB_REGISTRY))
+function registered_jobs(fuzzy::AbstractString = "")
+(cleanup_job_registry(; print = false); filter(x -> occursin(fuzzy, x), JOB_REGISTRY))
+end
 
 """
     load_jobs(fuzzy::AbstractString)

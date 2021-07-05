@@ -5,8 +5,7 @@ end
 function sanitize_flags!(c::DFCalculation{QE}, structure::AbstractStructure)
     if isvcrelax(c)
         #this is to make sure &ions and &cell are there in the calculation 
-        !hasflag(c, :ion_dynamics) &&
-            set_flags!(c, :ion_dynamics => "bfgs"; print = false)
+        !hasflag(c, :ion_dynamics) && set_flags!(c, :ion_dynamics => "bfgs"; print = false)
         !hasflag(c, :cell_dynamics) &&
             set_flags!(c, :cell_dynamics => "bfgs"; print = false)
     end
@@ -41,8 +40,7 @@ issoc(c::DFCalculation{QE})     = flag(c, :lspinorb) == true
 
 function ismagnetic(c::DFCalculation{QE})
     return (hasflag(c, :nspin) && c[:nspin] > 0.0) ||
-           (hasflag(c, :total_magnetization) &&
-            c[:total_magnetization] != 0.0)
+           (hasflag(c, :total_magnetization) && c[:total_magnetization] != 0.0)
 end
 
 function readoutput(c::DFCalculation{QE}; kwargs...)
@@ -60,7 +58,7 @@ function outfiles(c::DFCalculation{QE})
             end
         end
     end
-    return filter(ispath, files)
+    return filter(ispath, unique(files))
 end
 
 function set_cutoffs!(c::DFCalculation{QE}, ecutwfc, ecutrho)
@@ -115,14 +113,12 @@ function iscalc_assert(i::DFCalculation{QE}, calc)
     @assert flag(i, :calculation) == calc "Please provide a valid '$calc' calculation."
 end
 
-function set_hubbard_flags!(c::DFCalculation{QE},
-                            str::AbstractStructure{T}) where {T}
+function set_hubbard_flags!(c::DFCalculation{QE}, str::AbstractStructure{T}) where {T}
     u_ats = unique(atoms(str))
     isdftucalc = any(x -> dftu(x).U != 0 ||
                               dftu(x).J0 != 0.0 ||
                               sum(dftu(x).J) != 0 ||
-                              sum(dftu(x).α) != 0, u_ats) ||
-                 hasflag(c, :Hubbard_parameters)
+                              sum(dftu(x).α) != 0, u_ats) || hasflag(c, :Hubbard_parameters)
     isnc = isnoncolin(str)
     if isdftucalc
         Jmap = map(x -> copy(dftu(x).J), u_ats)
@@ -137,16 +133,14 @@ function set_hubbard_flags!(c::DFCalculation{QE},
             end
             Jarr[:, i] .= J
         end
-        set_flags!(c, :lda_plus_u    => true,
-                   :Hubbard_U     => map(x -> dftu(x).U, u_ats),
+        set_flags!(c, :lda_plus_u    => true, :Hubbard_U     => map(x -> dftu(x).U, u_ats),
                    :Hubbard_alpha => map(x -> dftu(x).α, u_ats),
                    :Hubbard_beta  => map(x -> dftu(x).β, u_ats), :Hubbard_J     => Jarr,
                    :Hubbard_J0    => map(x -> dftu(x).J0, u_ats); print = false)
         isnc && set_flags!(c, :lda_plus_u_kind => 1; print = false)
     else
         rm_flags!(c, :lda_plus_u, :lda_plus_u_kind, :Hubbard_U, :Hubbard_alpha,
-                  :Hubbard_beta, :Hubbard_J, :Hubbard_J0, :U_projection_type;
-                  print = false)
+                  :Hubbard_beta, :Hubbard_J, :Hubbard_J0, :U_projection_type; print = false)
     end
 end
 
@@ -159,8 +153,7 @@ function set_starting_magnetization_flags!(c::DFCalculation{QE},
     ϕs = T[]
     ismagcalc = ismagnetic(str)
     isnc = isnoncolin(str)
-    if (ismagcalc && isnc) ||
-       (flag(c, :noncolin) !== nothing && flag(c, :noncolin))
+    if (ismagcalc && isnc) || (flag(c, :noncolin) !== nothing && flag(c, :noncolin))
         for m in mags
             tm = normalize(m)
             if norm(m) == 0
@@ -187,8 +180,8 @@ function set_starting_magnetization_flags!(c::DFCalculation{QE},
         end
         set_flags!(c, :nspin => 2; print = false)
     end
-    return set_flags!(c, :starting_magnetization => starts, :angle1 => θs,
-                      :angle2 => ϕs; print = false)
+    return set_flags!(c, :starting_magnetization => starts, :angle1 => θs, :angle2 => ϕs;
+                      print = false)
 end
 
 for f in (:cp, :mv)
@@ -250,8 +243,7 @@ end
 function set_kpoints!(c::DFCalculation{QE}, k_grid::NTuple{3,Int}; print = true) #nscf
     calc = flag(c, :calculation)
     print && calc != "nscf" && (@warn "Expected calculation to be 'nscf'.\nGot $calc.")
-    set_data!(c, :k_points, kgrid(k_grid..., :nscf); option = :crystal,
-              print = print)
+    set_data!(c, :k_points, kgrid(k_grid..., :nscf); option = :crystal, print = print)
     prod(k_grid) > 100 && set_flags!(c, :verbosity => "high"; print = print)
     return c
 end
@@ -267,9 +259,11 @@ function set_kpoints!(c::DFCalculation{QE}, k_grid::NTuple{6,Int}; print = true)
     return calculation
 end
 
-function set_kpoints!(c::DFCalculation{QE}, k_grid::Vector{<:NTuple{4}};
-                      print = true, k_option = :crystal_b)
-    print && isbands(c) != "bands" && (@warn "Expected calculation to be bands, got $(c[:calculation]).")
+function set_kpoints!(c::DFCalculation{QE}, k_grid::Vector{<:NTuple{4}}; print = true,
+                      k_option = :crystal_b)
+    print &&
+        isbands(c) != "bands" &&
+        (@warn "Expected calculation to be bands, got $(c[:calculation]).")
     @assert in(k_option, [:tpiba_b, :crystal_b, :tpiba_c, :crystal_c]) error("Only $([:tpiba_b, :crystal_b, :tpiba_c, :crystal_c]...) are allowed as a k_option, got $k_option.")
     if k_option in [:tpiba_c, :crystal_c]
         @assert length(k_grid) == 3 error("If $([:tpiba_c, :crystal_c]...) is selected the length of the k_points needs to be 3, got length: $(length(k_grid)).")

@@ -52,7 +52,7 @@ function version_dir(dir::AbstractString, version::Int)
     if main_job_version(dir) == version
         return dir
     end
-    error("Version $version not found.") 
+    return error("Version $version not found.")
 end
 version_dir(job::DFJob) = version_dir(main_job_dir(job), job.version)
 version_dir(job::DFJob, version::Int) = version_dir(main_job_dir(job), version)
@@ -141,10 +141,10 @@ function rm_version!(job::DFJob, version::Int)
             lv = versions(job)[end-1]
         end
         if lv != 0
-            tj = DFJob(md, version=lv)
-            cp(tj, md, force=true)
+            tj = DFJob(md; version = lv)
+            cp(tj, md; force = true)
         end
-            
+
     else
         rm(version_dir(job, version); recursive = true)
     end
