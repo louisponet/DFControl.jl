@@ -1,3 +1,4 @@
+Base.:(==)(str1::AbstractStructure, str2::AbstractStructure) = cell(str1) == cell(str2) && atoms(str1) == atoms(str2)
 
 "Uses cif2cell to Meta.parse a cif file, then returns the parsed structure."
 function cif2structure(cif_file::String; structure_name = "NoName")
@@ -158,7 +159,9 @@ function create_supercell(structure::AbstractStructure, na::UnitRange, nb::UnitR
             end
         end
     end
-    return Structure(name(structure), Mat3(new_cell), new_atoms, data(structure))
+    out = Structure(name(structure), Mat3(new_cell), new_atoms, data(structure))
+    sanitize_magnetization!(out)
+    return out 
 end
 
 function create_supercell(structure::AbstractStructure, na::Int, nb::Int, nc::Int;

@@ -360,7 +360,7 @@ function gencalc_projwfc(template::DFCalculation{QE}, Emin, Emax, DeltaE, extraf
         excs = [Exec(; exec = "projwfc.x", dir = execs(template)[end].dir)]
     end
 
-    out = DFCalculation(template, name; excs = excs)
+    out = DFCalculation(deepcopy(template); name=name,  execs = excs, data=InputData[])
     set_name!(out, "projwfc")
     empty!(out.flags)
     set_flags!(out, :Emin => Emin, :Emax => Emax, :DeltaE => DeltaE, :ngauss => ngauss,
@@ -413,8 +413,8 @@ function gencalc_wan(nscf::DFCalculation{QE}, structure::AbstractStructure, Emin
     wancalculations = DFCalculation{Wannier90}[]
     for wanfil in wannames
         push!(wancalculations,
-              DFCalculation{Wannier90}(wanfil, dir(nscf), copy(wanflags), [kdata],
-                                       [Exec(), wanexec], true))
+              DFCalculation{Wannier90}(name = wanfil, dir = dir(nscf), flags = copy(wanflags), data = [kdata],
+                                       execs = [wanexec], run = true))
     end
 
     if length(wancalculations) > 1

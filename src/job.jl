@@ -55,6 +55,11 @@ function sanitize_flags!(job::DFJob)
     return sanitize_flags!.(calculations(job), (job.structure,))
 end
 
+function rm_tmp_flags!(job::DFJob)
+    rm_flags!(job, :prefix, :outdir; print=false)
+    rm_flags!(job, :nspin; print=false)
+end
+
 function sanitize_cutoffs!(job)
     # the assumption is that the most important cutoff calculation is the scf/vcrelax that is ran first 
     ψ_cut_calc = getfirst(x -> hasflag(x, ψ_cutoff_flag(x)), calculations(job))

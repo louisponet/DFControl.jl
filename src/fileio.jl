@@ -314,6 +314,7 @@ function read_job_line(line)
     execs = Exec[]
     for (e, flags) in exec_and_flags
         dir, efile = splitdir(e)
+        dir = replace(dir, "~" => homedir())
         if occursin("pw2wannier90", efile)
             continue
         end

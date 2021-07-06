@@ -187,7 +187,7 @@ function calculation_from_task(task, blocknames_flaglines, dir, execs, run)
     elseif task ∈ ["20", "21"]
         data = find_data((:plot1d, :plot2d, :plot3d), blocknames_flaglines)
     end
-    return DFCalculation{Elk}(task, dir, SymAnyDict(), data, execs, run)
+    return DFCalculation{Elk}(name = task, dir = dir, data = data, execs = execs, run = run)
 end
 
 function parse(::Type{UnitRange{Int}}, l::AbstractString)

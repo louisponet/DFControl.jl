@@ -59,8 +59,20 @@ job = DFJob(job_dirs[1])
 ```
 """
 function registered_jobs(fuzzy::AbstractString = "")
-    cleanup_job_registry!(; print = false)
-    return filter(x -> occursin(fuzzy, x), all_known_jobs())
+    cleanup_job_registry(; print = false)
+    choices = filter(x -> occursin(fuzzy, x), JOB_REGISTRY) 
+    timestamps = timestamp.(choices)
+    sort_ids = sortperm(timestamps)
+    return choices[sort_ids]
+end
+
+function timestamp(jobdir)
+    if ispath(joinpath(jobdir, ".metadata.jld2"))
+        md = load(joinpath(jobdir, ".metadata.jld2"))["metadata"]
+        return get(md, :timestamp, DateTime(0))
+    else
+        return DateTime(0)
+    end
 end
 
 """
@@ -82,19 +94,8 @@ Loads all the known [`DFJobs`](@ref DFJob) whose `local_dir` contains `fuzzy`.
 load_jobs(fuzzy::AbstractString) = DFJob.(registered_jobs(fuzzy))
 
 function request_job(job_dir::String)
-    function timestamp(jobdir)
-        if ispath(joinpath(jobdir, ".metadata.jld2"))
-            md = load(joinpath(jobdir, ".metadata.jld2"))["metadata"]
-            return get(md, :timestamp, DateTime(0))
-        else
-            return DateTime(0)
-        end
-    end
-    matching_jobs = registered_jobs(job_dir)
-    timestamps = timestamp.(matching_jobs)
-    sort_ids = sortperm(timestamps; rev = true)
-
-    choices = ["$j -- $t" for (j, t) in zip(matching_jobs[sort_ids], timestamps[sort_ids])]
+    matching_jobs = reverse(registered_jobs(job_dir))
+    choices = ["$j -- $t" for (j, t) in zip(matching_jobs, timestamp.(matching_jobs))]
 
     if length(matching_jobs) == 1
         return matching_jobs[1]
@@ -102,7 +103,7 @@ function request_job(job_dir::String)
         menu = RadioMenu(choices)
         choice = request("Multiple matching jobs were found, choose one:", menu)
         if choice != -1
-            return matching_jobs[sort_ids[choice]]
+            return matching_jobs[choice]
         else
             return nothing
         end

@@ -181,13 +181,13 @@ function wan_read_calculation(::Type{T}, f::IO) where {T}
 
             elseif block_name == :kpoints
                 line     = readline(f)
-                k_points = Array{Array{T,1},1}()
+                k_points = Array{NTuple{3, T},1}()
                 while !occursin("end", lowercase(line))
                     if line == ""
                         line = readline(f)
                         continue
                     end
-                    push!(k_points, parse_line(T, line))
+                    push!(k_points, (parse_line(T, line)...,))
                     line = readline(f)
                 end
                 push!(data, InputData(:kpoints, :none, k_points))
@@ -230,7 +230,7 @@ function wan_read_calculation(filename::String, T = Float64;
     dir, file = splitdir(filename)
     flags[:preprocess] = hasflag(getfirst(x -> x.exec == "wannier90.x", execs), :pp) ?
                          true : false
-    return DFCalculation{Wannier90}(splitext(file)[1], dir, flags, data, execs, run),
+    return DFCalculation{Wannier90}(name = splitext(file)[1], dir = dir, flags = flags, data = data, execs = execs, run = run),
            structure
 end
 

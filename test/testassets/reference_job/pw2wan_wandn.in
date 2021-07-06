@@ -1,0 +1,11 @@
+&inputpp
+  spin_component = 'down'
+  prefix = 'Ni'
+  write_amn = true
+  wan_mode = 'standalone'
+  write_unk = true
+  outdir = '/home/ponet/.julia/environments/DFControlDEV/Demo/Ni/outputs'
+  write_mmn = true
+  seedname = 'wandn'
+/
+

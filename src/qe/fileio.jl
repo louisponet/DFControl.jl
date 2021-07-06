@@ -1044,7 +1044,7 @@ function qe_read_calculation(filename; execs = [Exec(; exec = "pw.x")], run = tr
         delete!.((parsed_flags,), [:ibrav, :nat, :ntyp, :A, :celldm_1, :celldm])
         delete!.((parsed_flags,),
                  [:Hubbard_U, :Hubbard_J0, :Hubbard_alpha, :Hubbard_beta, :Hubbard_J])
-        delete!.((parsed_flags,), [:starting_magnetization, :angle1, :angle2]) #hubbard and magnetization flags
+        delete!.((parsed_flags,), [:starting_magnetization, :angle1, :angle2, :nspin]) #hubbard and magnetization flags
 
     else
         structure = nothing
@@ -1060,10 +1060,10 @@ function qe_read_calculation(filename; execs = [Exec(; exec = "pw.x")], run = tr
             k_data = parse.(Int, s_line)
         else
             nks    = parse(Int, lines[i+1])
-            k_data = Vector{Vector{Float64}}(undef, nks)
+            k_data = Vector{NTuple{4,Float64}}(undef, nks)
             for k in 1:nks
                 push!(used_lineids, i + 1 + k)
-                k_data[k] = parse.(Float64, split(lines[i+1+k]))
+                k_data[k] = (parse.(Float64, split(lines[i+1+k]))...,)
             end
         end
         push!(datablocks, InputData(:k_points, k_option, k_data))
@@ -1081,8 +1081,9 @@ function qe_read_calculation(filename; execs = [Exec(; exec = "pw.x")], run = tr
     end
     !isempty(remlines) && push!(datablocks, InputData(:noname, :nooption, remlines))
 
+    pop!.((parsed_flags,), [:prefix, :outdir], nothing)
     dir, file = splitdir(filename)
-    return DFCalculation{QE}(splitext(file)[1], dir, parsed_flags, datablocks, execs, run),
+    return DFCalculation{QE}(name = splitext(file)[1], dir = dir, flags = parsed_flags, data = datablocks, execs = execs, run = run),
            structure
 end
 
@@ -1250,6 +1251,6 @@ function qe_generate_pw2wancalculation(calculation::DFCalculation{Wannier90},
     end
     pw2wanexec = Exec("pw2wannier90.x", runexecs[2].dir)
     run = get(calculation.flags, :preprocess, false) && calculation.run
-    return DFCalculation{QE}("pw2wan_$(flags[:seedname])", dir(calculation), flags,
-                             InputData[], [runexecs[1], pw2wanexec], run)
+    return DFCalculation{QE}(name = "pw2wan_$(flags[:seedname])", dir = dir(calculation), flags = flags,
+                             data = InputData[], execs = [runexecs[1], pw2wanexec], run = run)
 end
