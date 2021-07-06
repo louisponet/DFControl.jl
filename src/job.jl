@@ -312,4 +312,3 @@ isarchived(job::DFJob) = occursin(".archived", job.local_dir)
 
 
 exists_job(d::AbstractString) = ispath(d) && ispath(joinpath(d, "job.tt"))
-     
