@@ -1182,6 +1182,7 @@ function qe_generate_pw2wancalculation(calculation::DFCalculation{Wannier90},
     flags[:write_amn] = true
     if flag(calculation, :spin) !== nothing
         flags[:spin_component] = flag(calculation, :spin)
+        flags[:write_spn] = true
     end
     if flag(calculation, :wannier_plot) !== nothing
         flags[:write_unk] = flag(calculation, :wannier_plot)
