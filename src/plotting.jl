@@ -121,10 +121,15 @@ end
     window_ids === nothing && error("No bands inside window")
     # We define a single band plotting series here
     function plot_band(band, color, label, subplot)
+        if overlap_spin
+            tit = ""
+        else
+            tit = subplot == 1 ? (length(bands) == 2 ? "Spin up" : "Eigenvalues") :
+                     "Spin down"
+        end
         @series begin
             xticks --> (tick_vals, tick_syms)
-            title := subplot == 1 ? (length(bands) == 2 ? "Spin up" : "Eigenvalues") :
-                     "Spin down"
+            title := tit
             yguide := subplot == 1 ? "Energy (eV)" : ""
             label := label
             subplot := subplot
@@ -215,8 +220,7 @@ end
                     for ik in 1:length(kpoints)
                         ibin = findfirst(x -> energies[x] < b.eigvals[ik] <= energies[x+1],
                                          1:length(energies)-1)
-
-                        contribs[ib][ik][ia] += ibin === nothing ? 0.0 : pd[ibin, iud]
+                        contribs[ib][ik][ia] += ibin === nothing ? 0.0 : abs(pd[ibin, iud])
                     end
                 end
             end

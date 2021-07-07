@@ -159,7 +159,7 @@ data(calculation::DFCalculation, n::Symbol) = getfirst(x -> name(x) == n, data(c
 """
     set_data!(calculation::DFCalculation, block_name::Symbol, new_block_data; option::Symbol=nothing, print::Bool=true)
 
-Searches for an `InputData` for which `InputData.name == block_name`, and sets `DFInput.data = new_block_data`.
+Searches for an `InputData` for which `InputData.name == block_name`, and sets `DFCalculation.data = new_block_data`.
 If `option` is specified it is set, i.e. `InputData.option = option`.
 """
 function set_data!(calculation::DFCalculation, block_name::Symbol, new_block_data;
