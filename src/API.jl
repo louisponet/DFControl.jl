@@ -22,7 +22,7 @@ export save, submit, abort, set_flow!, set_headerword!, isrunning, last_running_
        last_submission, progressreport, set_serverdir!, set_localdir!, structure,
        scale_cell!, volume, switch_version!, version, versions, registered_jobs,
        rm_version!, rm_versions!, rm_tmp_dirs!, cleanup, load_jobs, last_version,
-       running_jobs
+       load_running_jobs, set_present!, @present, archived_jobs, archive
 
 #Basic Interaction with DFCalculations inside DFJob
 export set_cutoffs!

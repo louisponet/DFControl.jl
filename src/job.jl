@@ -324,3 +324,5 @@ in the main directory.
 """
 main_job_dir(dir::AbstractString) = split(dir, VERSION_DIR_NAME)[1]
 main_job_dir(job::DFJob) = main_job_dir(job.local_dir)
+
+isarchived(job::DFJob) = occursin(".archived", job.local_dir)

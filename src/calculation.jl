@@ -148,22 +148,6 @@ end
 
 rm_outfiles(calc::DFCalculation) = rm.(outfiles(calc))
 
-function set_present!(job::DFJob, func)
-    open(joinpath(job, ".present.jl"), "w") do f
-        write(f, @code_string func(job))
-    end
-end
-
-macro present(job)
-    return esc(quote
-        if ispath(joinpath(job, ".present.jl"))
-            t = include(joinpath(job, ".present.jl"))
-            t(job)
-        else
-            @error "No presentation function defined.\n Please set it with `set_presentation`."
-        end
-    end)
-end
 include("qe/calculation.jl")
 include("elk/calculation.jl")
 include("wannier90/calculation.jl")

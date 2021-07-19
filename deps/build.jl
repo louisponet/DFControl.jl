@@ -8,8 +8,11 @@ if !ispath(abspath(first(DEPOT_PATH), "config", "DFControl", "user_defaults.jl")
     end
 end
 
-if !ispath(abspath(first(DEPOT_PATH), "config", "DFControl", "job_registry.txt"))
-    touch(abspath(first(DEPOT_PATH), "config", "DFControl", "job_registry.txt"))
+if !ispath(abspath(first(DEPOT_PATH), "config", "DFControl", "in_progress_jobs.txt"))
+    touch(abspath(first(DEPOT_PATH), "config", "DFControl", "in_progress_jobs.txt"))
+end
+if !ispath(abspath(first(DEPOT_PATH), "config", "DFControl", "archived_jobs.txt"))
+    touch(abspath(first(DEPOT_PATH), "config", "DFControl", "archived_jobs.txt"))
 end
 
 relpath = x -> joinpath(@__DIR__, x)

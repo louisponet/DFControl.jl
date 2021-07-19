@@ -11,6 +11,11 @@ it will be copied to the `.versions` sub directory as the previous version of `j
 and the version of `job` will be incremented. 
 """
 function save(job::DFJob; kwargs...)
+    # First we check whether the job is trying to be saved in a archived directory, absolutely not allowed
+    @assert !isarchived(job)
+        "Not allowed to save a job in a archived directory, please specify a different directory with `set_localdir!"
+
+    # Here we find the main directory, needed for if a job's local dir is a .versions one
     local_dir = main_job_dir(job)
     if ispath(joinpath(local_dir, "job.tt"))
         tj = DFJob(local_dir)
@@ -25,12 +30,13 @@ function save(job::DFJob; kwargs...)
         clean_local_dir!(local_dir)
         cp(job, local_dir; force = true)
     end
-    set_localdir!(job, local_dir) # Needs to be done so the inputs `dir` also changes.
-    verify_or_create(local_dir)
     if isempty(job.name)
         @warn "Job had no name, changed it to: noname"
         job.name = "noname"
     end
+    
+    set_localdir!(job, local_dir) # Needs to be done so the inputs `dir` also changes.
+    verify_or_create(local_dir)
     maybe_register_job(job)
 
     curver = job.version
@@ -469,4 +475,54 @@ Otherwise 0 date is returned.
 """
 function last_submission(job::DFJob)
     return get(job.metadata, :timestap, DateTime(0))
+end
+
+"""
+    set_present!(job::DFJob, func)
+
+Sets a function with the call signature `func(job)` which can be later called using the [`@present`](@ref) macro.
+"""
+function set_present!(job::DFJob, func)
+    open(joinpath(job, ".present.jl"), "w") do f
+        write(f, @code_string func(job))
+    end
+end
+
+"""
+    present(job)
+
+Calls a present function if it was previously saved using [`set_present!`](@ref) or [`archive`](@ref). 
+"""
+macro present(job)
+    return esc(quote
+        if ispath(joinpath(job, ".present.jl"))
+            t = include(joinpath(job, ".present.jl"))
+            t(job)
+        else
+            @error "No presentation function defined.\n Please set it with `set_present!`."
+        end
+    end)
+end
+
+"""
+    archive(job::DFJob, archive_directory::AbstractString, description::String=""; present = nothing, version=job.version)
+
+Archives `job` by copying it's contents to `archive_directory` alongside a `results.jld2` file with all the parseable results as a Dict. `description` will be saved in a `description.txt` file in the `archive_directory`. A different job version can be copied using the `version` kwarg, and with the `present` kwarg a function can be specified that can be later called with the [`@present`](@ref) macro.
+"""
+function archive(job::DFJob, archive_directory::AbstractString, description::String=""; present = nothing, version=job.version)
+    @assert !isarchived(job) "Job was already archived"
+    final_dir = config_path(".archived", archive_directory)
+    @assert !ispath(final_dir) "A archived job already exists in $archive_directory"
+    mkpath(final_dir)
+
+    out = outputdata(job)
+    tj = deepcopy(job)
+    switch_version!(tj, version)
+    cp(tj, final_dir)
+    set_localdir!(tj, final_dir)
+
+    JLD2.save(joinpath(final_dir, "results.jld2"), "outputdata", out)
+    
+    present !== nothing && set_present!(tj, present)
+    !isempty(description) && write(joinpath(final_dir, "description.txt"), description)
 end
