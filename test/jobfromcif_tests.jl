@@ -1,4 +1,4 @@
-using DFControl, Test
+using DFControl, Test, LinearAlgebra
 
 testdir = joinpath(dirname(dirname(pathof(DFControl))), "test")
 testjobpath = joinpath(testdir, "testassets", "test_job")
@@ -39,7 +39,7 @@ testjobpath = joinpath(testdir, "testassets", "test_job")
     set_magnetization!(atoms(job, element(:Ni))[1], [0,0, 0.1])
     set_Hubbard_U!(job, element(:Ni) => 4.0)
 
-    push!(job, gencalc_bands(job["scf"], high_symmetry_kpath(job.structure, 20)))
+    push!(job, gencalc_bands(job["scf"], high_symmetry_kpath(job, 20)))
     push!(job, gencalc_nscf(job["scf"], (5,5,5)))
 
     push!(job, gencalc_projwfc(job["nscf"], 2.0, 20.0, 0.1))
@@ -60,14 +60,12 @@ testjobpath = joinpath(testdir, "testassets", "test_job")
     @test all(values(job[:ecutwfc]) .== 40.0)
 end
 
-refjobpath =joinpath(testdir, "testassets", "reference_job") 
+refjobpath =joinpath(testdir, "testassets", "reference_job")
+
 @testset "reference comparison" begin
     job = DFJob(testjobpath)
-    job.structure = create_supercell(job.structure, 1, 0, 0, make_afm = true)
+    job.structure = create_supercell(job, 1, 0, 0, make_afm = true)
     
-    @test isapprox(magnetization(atoms(job, :Ni1)[1]), [0,0,-0.1])
-    @test isapprox(magnetization(atoms(job, :Ni)[1]), [0,0,0.1])
-    @test isapprox(magnetization.(atoms(job, element(:Ni))), [[0,0,0.1], [0,0,-0.1]])
     job2 = DFJob(refjobpath)
     @test job2.structure == job.structure
 

@@ -169,7 +169,7 @@ function create_supercell(structure::AbstractStructure, na::Int, nb::Int, nc::In
     return create_supercell(structure, 0:na, 0:nb, 0:nc; make_afm = make_afm)
 end
 
-create_supercell(job::DFJob, args...) = create_supercell(structure(job), args...)
+create_supercell(job::DFJob, args...; kwargs...) = create_supercell(structure(job), args...; kwargs...)
 
 """
     scale_cell!(structure::Structure, scalemat::Matrix)
@@ -250,10 +250,6 @@ function sanitize_magnetization!(str::Structure)
             end
         end
     end
-end
-
-function NearestNeighbors.KDTree(str::AbstractStructure, args...; kwargs...)
-    return NearestNeighbors.KDTree(position_cryst.(atoms(str)), args...; kwargs...)
 end
 
 """
@@ -470,7 +466,7 @@ function high_symmetry_kpoints(s::Structure; tolerance = DEFAULT_TOLERANCE)
 
     primcell = ustrip.(cell(primitive))
 
-    a, b, c, α, β, γ = cell_parameters(ustrip.(cell(s)))
+    a, b, c, α, β, γ = cell_parameters(s)
 
     symerror = () -> error("Unexpected value for international symbol: $sym")
     if kind == :cubic

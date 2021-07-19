@@ -3,6 +3,31 @@ using DFControl, Test
 testassetspath = joinpath(testdir, "testassets")
 testjobpath = joinpath(testassetspath, "test_job")
 
+@testset "Structure manipulation" begin
+    job = DFJob(testjobpath)
+
+    @test length(symmetry_operators(job)[1]) == 48
+    
+    job.structure = create_supercell(job, 1, 0, 0, make_afm = true)
+    @test length(symmetry_operators(job)[1]) == 12
+    @test length(job.structure) == 2 
+    @test isapprox(magnetization(atoms(job, :Ni1)[1]), [0,0,-0.1])
+    @test isapprox(magnetization(atoms(job, :Ni)[1]), [0,0,0.1])
+    @test isapprox(magnetization.(atoms(job, element(:Ni))), [[0,0,0.1], [0,0,-0.1]])
+    ngl = niggli_reduce(job.structure)
+    @test volume(job.structure) == volume(ngl)
+    @test cell(job.structure) != cell(ngl)
+    prev = atoms(job, element(:Ni))[1].position_cryst[1]
+    prev_vol = volume(job.structure)
+    scale_cell!(job, diagm(0=>[2,1,1]))
+    @test atoms(job, element(:Ni))[1].position_cryst[1] == 0.5prev
+    @test 2*prev_vol == volume(job)
+
+    out_str = outputdata(job["scf"])[:initial_structure]
+    update_geometry!(job, out_str)
+    @test out_str == job.structure
+end
+
 @testset "supercell" begin
     job = DFJob(testjobpath)
     struct2 = DFControl.create_supercell(job.structure, 1, 2, 1)
