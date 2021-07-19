@@ -172,10 +172,10 @@ function set_magnetization!(at::AbstractAtom, mag; print = true)
     return print && @info "Magnetization of at $(name(at)) was set to $(magnetization(at))"
 end
 
-function set_magnetization!(str::Structure, atsym_mag::Pair{Symbol,<:AbstractVector}...)
+function set_magnetization!(str::Structure, atsym_mag::Pair{Symbol,<:AbstractVector}...; kwargs...)
     for (atsym, mag) in atsym_mag
         for at in str[atsym]
-            set_magnetization!(at, mag)
+            set_magnetization!(at, mag; kwargs...)
         end
     end
 end

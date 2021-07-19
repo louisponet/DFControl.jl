@@ -387,6 +387,34 @@ function qe_parse_timing(out, line, f)
     end
 end
 
+function qe_parse_starting_magnetization(out, line, f)
+    readline(f)
+    out[:starting_magnetization] = Dict{Symbol, Vec3}()
+    line = readline(f)
+    while !isempty(line)
+        sline = split(line)
+        atsym = Symbol(sline[1])
+        mag = parse.(Float64, sline[2:end])
+        out[:starting_magnetization][atsym] = length(mag) == 1 ?  Vec3(0.0, 0.0, mag[1]) : Vec3(mag...)
+        line = readline(f)
+    end
+end
+
+function qe_parse_starting_simplified_dftu(out, line, f)
+    readline(f)
+    out[:starting_simplified_dftu] = Dict{Symbol, DFTU}()
+    line = readline(f)
+    while !isempty(line)
+        sline = split(line)
+        atsym = Symbol(sline[1])
+        L = parse(Int, sline[2])
+        vals = parse.(Float64, sline[3:end])
+        out[:starting_simplified_dftu][atsym] = DFTU{Float64}(l = L, U = vals[1], α=vals[2], J0=vals[3], β=vals[4])
+        line = readline(f)
+    end
+end
+
+
 const QE_PW_PARSE_FUNCTIONS = ["C/m^2" => qe_parse_polarization,
                                "lattice parameter" => qe_parse_lattice_parameter,
                                "number of Kohn-Sham states" => qe_parse_n_KS,
@@ -419,7 +447,10 @@ const QE_PW_PARSE_FUNCTIONS = ["C/m^2" => qe_parse_polarization,
                                "Begin final coordinates" => (x, y, z) -> x[:converged] = true,
                                "atom number" => qe_parse_magnetization,
                                "--- enter write_ns ---" => qe_parse_Hubbard,
-                               "init_run" => qe_parse_timing]
+                               "init_run" => qe_parse_timing,
+                               "Starting magnetic structure" => qe_parse_starting_magnetization,
+                               "Simplified LDA+U calculation" => qe_parse_starting_simplified_dftu,
+                               ]
 
 """
     qe_read_pw_output(filename::String; parse_funcs::Vector{Pair{String}}=Pair{String,<:Function}[])
@@ -446,6 +477,19 @@ function qe_read_pw_output(filename::String;
         tmp_flags[:A] = out[:in_alat]
         out[:initial_structure] = extract_structure!("initial", tmp_flags, cell_data,
                                                      out[:atsyms], atoms_data, pseudo_data)
+        # Add starting mag and DFTU
+        if haskey(out, :starting_magnetization)
+            set_magnetization!(out[:initial_structure], pairs(out[:starting_magnetization])...; print=false)
+        end
+        if haskey(out, :starting_simplified_dftu)
+            dftus = out[:starting_simplified_dftu]
+            for (atsym, dftu) in dftus
+                for a in out[:initial_structure][atsym]
+                    a.dftu = dftu
+                end
+            end
+        end
+            
     end
 
     # Process final Structure
@@ -463,6 +507,18 @@ function qe_read_pw_output(filename::String;
         atoms_data = InputData(:atomic_positions, out[:pos_option], out[:atomic_positions])
         out[:final_structure] = extract_structure!("final", tmp_flags, cell_data,
                                                    out[:atsyms], atoms_data, pseudo_data)
+        # Add starting mag and DFTU
+        if haskey(out, :starting_magnetization)
+            set_magnetization!(out[:initial_structure], pairs(out[:starting_magnetization])...; print=false)
+        end
+        if haskey(out, :starting_simplified_dftu)
+            dftus = out[:starting_simplified_dftu]
+            for (atsym, dftu) in dftus
+                for a in out[:initial_structure][atsym]
+                    a.dftu = dftu
+                end
+            end
+        end
     end
 
     #process bands
@@ -505,7 +561,7 @@ function qe_read_pw_output(filename::String;
     for f in
         (:in_cart_positions, :in_alat, :in_cryst_positions, :alat, :pos_option, :pseudos,
          :cell_parameters, :in_recip_cell, :scf_converged, :atsyms, :nat, :k_eigvals,
-         :k_cryst, :k_cart)
+         :k_cryst, :k_cart, :starting_simplified_dftu, :starting_magnetization)
         pop!(out, f, nothing)
     end
     return out
