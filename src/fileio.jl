@@ -550,3 +550,26 @@ function read_cutoffs_from_pseudofile(file::AbstractString)
     end
     return ecutwfc, ecutrho
 end
+
+function write_xsf(filename::AbstractString, structure::AbstractStructure)
+    open(filename,"w") do f
+        write(f, "CRYSTAL\n")
+        c = ustrip.(cell(structure)')
+        write(f, "PRIMVEC\n")
+        write(f, "$(c[1,1]) $(c[1,2]) $(c[1,3])\n")
+        write(f, "$(c[2,1]) $(c[2,2]) $(c[2,3])\n")
+        write(f, "$(c[3,1]) $(c[3,2]) $(c[3,3])\n")
+        write(f, "CONVVEC\n")
+        write(f, "$(c[1,1]) $(c[1,2]) $(c[1,3])\n")
+        write(f, "$(c[2,1]) $(c[2,2]) $(c[2,3])\n")
+        write(f, "$(c[3,1]) $(c[3,2]) $(c[3,3])\n")
+        write(f, "PRIMCOORD\n")
+        write(f, "$(length(atoms(structure))) 1\n")
+        for at in atoms(structure)
+            n = element(at).symbol
+            p = ustrip.(position_cart(at))
+            write(f, "$n $(p[1]) $(p[2]) $(p[3])\n")
+        end
+    end
+end
+    

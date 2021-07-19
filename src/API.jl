@@ -1,5 +1,6 @@
 #Units exported
 export Ang, e₀, kₑ, a₀, Eₕ, Ry
+export write_xsf
 
 include("calculationAPI.jl")
 export DFCalculation
