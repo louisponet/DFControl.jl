@@ -122,9 +122,6 @@ end
 function set_flags!(job::DFJob, flags...; kwargs...)
     return set_flags!(job, calculations(job), flags...; kwargs...)
 end
-function set_flags!(job::DFJob, name::String, flags...; fuzzy = true, kwargs...)
-    return set_flags!(job, calculations(job, name, fuzzy), flags...; kwargs...)
-end
 
 """
     rm_flags!(calculation::DFCalculation, flags::Symbol...)

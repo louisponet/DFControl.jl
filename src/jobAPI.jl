@@ -118,7 +118,7 @@ would un-schedule all calculations in the job, and schedule the "scf" and "nscf"
 """
 function set_flow!(job::DFJob, should_runs...)
     for (name, run) in should_runs
-        for calculation in calculations(job, name)
+        for calculation in filter(x -> occursin(name, x.name), calculations(job))
             calculation.run = run
         end
     end
@@ -258,7 +258,7 @@ DOS, and what the size of the frozen window needs to be to fit enough bands insi
 depending on the projections.
 """
 function set_wanenergies!(job::DFJob, nscf::DFCalculation, Emin::Real; Epad = 5.0)
-    wancalcs = calculations(job, Wannier90)
+    wancalcs = filter(x->package(x) == Wannier90, calculations(job))
     @assert length(wancalcs) != 0 "Job ($(job.name)) has no Wannier90 calculations, nothing to do."
     map(x -> set_wanenergies!(x, structure(job), nscf, Emin; Epad = Epad), wancalcs)
     return job
