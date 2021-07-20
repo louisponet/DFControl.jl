@@ -79,14 +79,23 @@ end
     save(job)
 end
 
-@testset "calculations" begin
+@testset "calculation management" begin
     job = DFJob(testjobpath)
     ncalcs = length(job.calculations)
     t = pop!(job, "scf")
     @test length(job.calculations) == ncalcs - 1
-    @test job.calculations[2].name == "bands"
+    @test job[2].name == "bands"
     insert!(job, 2, t)
     @test job.calculations[2].name == "scf"
+
+    set_flow!(job, "" => false, "scf" => true)
+    @test job["scf"].run == true
+    @test job["nscf"].run == true
+    @test job["bands"].run == false
+    push!(job.header, "module load testmod")
+    set_headerword!(job, "testmod" => "testmod2")
+    @test job.header[end] == "module load testmod2"
+    
 end
 
 rm(testjobpath, recursive=true)

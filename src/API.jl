@@ -19,7 +19,7 @@ export gencalc_scf, gencalc_vcrelax, gencalc_nscf, gencalc_bands, gencalc_projwf
 include("jobAPI.jl")
 #Basic Job Control Functionality
 export save, submit, abort, set_flow!, set_headerword!, isrunning, last_running_calculation,
-       last_submission, progressreport, set_serverdir!, set_localdir!, structure,
+       last_submission, set_serverdir!, set_localdir!, structure,
        scale_cell!, volume, switch_version!, version, versions, registered_jobs,
        rm_version!, rm_versions!, rm_tmp_dirs!, cleanup, load_jobs, last_version,
        load_running_jobs, set_present!, @present, archived_jobs, archive

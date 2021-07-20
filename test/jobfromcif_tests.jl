@@ -46,7 +46,7 @@ testjobpath = joinpath(testdir, "testassets", "test_job")
 
     save(job)
     @test job.version == 1
-    @test length(job.calculations) == 5
+    @test length(job) == 5
     @test data(job["scf"], :k_points).data == [6,6,6,1,1,1]
     @test job["nscf"].execs == pw_excs
     @test job["projwfc"].execs == [pw_excs[1], Exec("projwfc.x", pw_excs[2].dir)]
