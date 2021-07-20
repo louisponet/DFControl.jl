@@ -11,33 +11,14 @@ iswannierjob(job::DFJob) = any(x -> package(x) == Wannier90, calculations(job)) 
 getnscfcalc(job::DFJob)  = getfirst(x -> isnscf(x), calculations(job))
 cell(job::DFJob)         = cell(structure(job))
 
-calculation(job::DFJob, n::String) = getfirst(x -> occursin(n, name(x)), calculations(job))
-calculations(job::DFJob)           = job.calculations
-
-"""
-    calculations(job::DFJob, names::Vector)
-
-Returns an array of the calculations that match the names.
-"""
-function calculations(job::DFJob, names::Vector, fuzzy = true)
-    return fuzzy ? filter(x -> any(occursin.(names, name(x))), calculations(job)) :
-           calculation.(job, names)
-end
-calculations(job::DFJob, n::String, fuzzy = true) = calculations(job, [n], fuzzy)
-function calculations(job::DFJob, ::Type{P}) where {P<:Package}
-    return filter(x -> package(x) == P, calculations(job))
-end
-inpath(job::DFJob, n) = inpath(calculation(job, n))
-outpath(job::DFJob, n) = outpath(calculation(job, n))
+calculations(job::DFJob) = job.calculations
 
 "Runs some checks on the set flags for the calculations in the job, and sets metadata (:prefix, :outdir etc) related flags to the correct ones. It also checks whether flags in the various calculations are allowed and set to the correct types."
 function sanitize_flags!(job::DFJob)
     set_flags!(job, :prefix => "$(job.name)"; print = false)
     if iswannierjob(job)
         nscfcalc = getnscfcalc(job)
-        if package(nscfcalc) == QE && hasflag(nscfcalc, :nbnd)
-            set_flags!(job, :num_bands => nscfcalc[:nbnd]; print = false)
-        elseif package(nscfcalc) == Elk
+        if package(nscfcalc) == Elk
             setflags!(job, :num_bands => length(nscfcalc[:wann_bands]))
             nscfcalc[:wann_projections] = projections_string.(unique(filter(x -> !isempty(projections(x)), atoms(job))))
             nscfcalc[:elk2wan_tasks]    = ["602", "604"]
@@ -159,9 +140,6 @@ function last_running_calculation(job::DFJob)
         end
     end
 end
-
-"Finds the calculation corresponding to the name and returns the full output path."
-outpath(job::DFJob, n::String) = outpath(calculation(job, n))
 
 """
     joinpath(job::DFJob, args...)

@@ -79,7 +79,15 @@ end
     save(job)
 end
 
-
+@testset "calculations" begin
+    job = DFJob(testjobpath)
+    ncalcs = length(job.calculations)
+    t = pop!(job, "scf")
+    @test length(job.calculations) == ncalcs - 1
+    @test job.calculations[2].name == "bands"
+    insert!(job, 2, t)
+    @test job.calculations[2].name == "scf"
+end
 
 rm(testjobpath, recursive=true)
 # function copy_outfiles()

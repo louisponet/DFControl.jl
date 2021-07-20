@@ -58,27 +58,44 @@ testjobpath = joinpath(testdir, "testassets", "test_job")
     end
     @test job2.structure == job.structure
     @test all(values(job[:ecutwfc]) .== 40.0)
+    @test DFControl.find_cutoffs(job) == (41.0, 236.0)
 end
 
 refjobpath =joinpath(testdir, "testassets", "reference_job")
 
 @testset "reference comparison" begin
     job = DFJob(testjobpath)
+    orig_job = deepcopy(job)
     job.structure = create_supercell(job, 1, 0, 0, make_afm = true)
     
     job2 = DFJob(refjobpath)
     @test job2.structure == job.structure
-
+    
     for f in DFControl.searchdir(job2, ".out")
         cp(f, joinpath(job, splitdir(f)[2]), force=true)
     end
     for f in DFControl.searchdir(job2, "dos")
         cp(f, joinpath(job, splitdir(f)[2]), force=true)
     end
+
     set_projections!(job, element(:Ni) => ["s", "p", "d"])
     wanexec = Exec("wannier90.x", joinpath(homedir(), "Software/wannier90"))
     append!(job, gencalc_wan(job, 0.000011, wanexec = wanexec))
     for (c1, c2) in zip(job2.calculations, job.calculations)
         @test c2 == c1
+    end
+    save(job)
+    @test !ispath(joinpath(job, "scf.out"))
+    job = DFJob(testjobpath)
+    
+    for (c1, c2) in zip(job2.calculations, job.calculations)
+        @test c2 == c1
+    end
+    save(orig_job)
+    for f in DFControl.searchdir(job2, ".out")
+        cp(f, joinpath(job, splitdir(f)[2]), force=true)
+    end
+    for f in DFControl.searchdir(job2, "dos")
+        cp(f, joinpath(job, splitdir(f)[2]), force=true)
     end
 end

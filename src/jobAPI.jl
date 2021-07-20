@@ -49,8 +49,9 @@ function save(job::DFJob; kwargs...)
     sanitize_flags!(job)
     timestamp!(job, now())
     save_metadata(job)
+    writejobfiles(job; kwargs...)
     rm_tmp_flags!(job)
-    return writejobfiles(job; kwargs...)
+    return 
 end
 
 """

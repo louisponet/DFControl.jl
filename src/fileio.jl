@@ -332,7 +332,6 @@ function read_job_line(line)
             push!(execs, Exec(efile, dir, parse_generic_flags(flags)))
         end
     end
-    @show execs
     return execs, calculation, output, run
 end
 

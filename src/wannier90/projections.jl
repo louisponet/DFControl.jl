@@ -97,7 +97,7 @@ end
 function set_projections!(str::Structure, projs::Pair...; soc = false, kwargs...)
     projdict = Dict{Symbol, typeof(projs[1][2])}()
     for (sym, proj) in projs
-        ats = atoms(str, sym)
+        ats = str[sym]
         for a in ats
             projdict[name(a)] = proj
         end

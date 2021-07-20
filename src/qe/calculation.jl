@@ -256,7 +256,7 @@ function set_kpoints!(c::DFCalculation{QE}, k_grid::NTuple{6,Int}; print = true)
         (@warn "Expected calculation to be scf, vc-relax, relax.\nGot $calc.")
     set_data!(c, :k_points, [k_grid...]; option = :automatic, print = print)
     prod(k_grid[1:3]) > 100 && set_flags!(c, :verbosity => "high"; print = print)
-    return calculation
+    return c
 end
 
 function set_kpoints!(c::DFCalculation{QE}, k_grid::Vector{<:NTuple{4}}; print = true,
@@ -280,7 +280,7 @@ function set_kpoints!(c::DFCalculation{QE}, k_grid::Vector{<:NTuple{4}}; print =
         end
     end
     set_data!(c, :k_points, k_grid; option = k_option, print = print)
-    return calculation
+    return c
 end
 
 """
