@@ -1028,9 +1028,12 @@ function qe_read_calculation(filename; execs = [Exec(; exec = "pw.x")], run = tr
                                             zeros(eltype(typ), ntyp) :
                                             fill(zeros(eltype(typ), length(parsedval)),
                                                  ntyp)
-                    else
-                        dims = fill(nat, ndims(typ) - 1)
-                        parsed_flags[sym] = zeros(eltype(typ), dims..., 3)
+                    elseif sym == :Hubbard_J
+                        parsed_flags[sym] = zeros(eltype(typ), 3, nat)
+                    elseif sym == :starting_ns_eigenvalue
+                        #7 and 4 are the largest possible, and in the end if they are not filled
+                        #they won't be written in the new input anyway
+                        parsed_flags[sym] = zeros(eltype(typ), 7, 4, nat) 
                     end
                 end
                 parsed_flags[sym][ids...] = length(parsedval) == 1 ? parsedval[1] :

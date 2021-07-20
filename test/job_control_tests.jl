@@ -53,6 +53,34 @@ end
     @test registered_jobs()[end] == job.local_dir
 end
 
+@testset "execs" begin
+    job = DFJob(testjobpath)
+    set_execdir!(job, "pw.x", "test/test")
+    @test job.calculations[1].execs[2].dir == "test/test"
+    set_execflags!(job, "pw.x", :nk => 4)
+    set_execflags!(job, "mpirun", :np => 4)
+    @test exec(job, "pw.x").flags[1].symbol == :nk
+    @test exec(job, "pw.x").flags[1].value == 4
+    @test exec(job, "mpirun").flags[1].symbol == :np
+    @test exec(job, "mpirun").flags[1].value == 4
+    @test_throws ErrorException  set_execflags!(job, "mpirun", :nasdf => 4)
+
+    save(job)
+    job = DFJob(testjobpath)
+    @test exec(job, "pw.x").flags[1].symbol == :nk
+    @test exec(job, "pw.x").flags[1].value == 4
+    @test exec(job, "mpirun").flags[1].symbol == :np
+    @test exec(job, "mpirun").flags[1].value == 4
+    
+    rm_execflags!(job, "pw.x", :nk)
+    rm_execflags!(job, "mpirun", :np)
+    @test isempty(exec(job, "pw.x").flags)
+    @test isempty(exec(job, "mpirun").flags)
+    save(job)
+end
+
+
+
 rm(testjobpath, recursive=true)
 # function copy_outfiles()
 #     for f in readdir(joinpath(testassetspath, "outputs"))

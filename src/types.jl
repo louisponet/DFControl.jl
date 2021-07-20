@@ -186,18 +186,10 @@ Parameters.@with_kw mutable struct Exec
     flags::Vector{ExecFlag} = ExecFlag[]
 end
 
-Exec(exec::String, dir::String, flags::Pair{Symbol}...) = Exec(exec, dir, SymAnyDict(flags))
-
-function Exec(exec::String, dir::String, flags::SymAnyDict)
-    _flags = ExecFlag[]
-    for (f, v) in flags
-        if occursin("mpi", exec)
-            mflag = mpi_flag(f)
-            @assert mflag !== nothing "$f is not a recognized mpirun flag."
-        end
-        push!(_flags, ExecFlag(f => v))
-    end
-    return Exec(exec, dir, _flags)
+function Exec(exec::String, dir::String, flags::Pair{Symbol}...)
+    out = Exec(exec=exec, dir=dir)
+    set_flags!(out, flags...)
+    return out
 end
 
 """

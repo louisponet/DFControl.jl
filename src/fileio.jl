@@ -327,11 +327,12 @@ function read_job_line(line)
         elseif any(occursin.(ELK_EXECS, (efile,)))
             calculation = "elk.in"
             output = "elk.out"
-            push!(execs, Exec(efile, dir))
+            push!(execs, Exec(exec=efile, dir=dir))
         else
             push!(execs, Exec(efile, dir, parse_generic_flags(flags)))
         end
     end
+    @show execs
     return execs, calculation, output, run
 end
 

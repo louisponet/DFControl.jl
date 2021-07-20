@@ -41,16 +41,21 @@ function set_flags!(exec::Exec, flags...)
         if flag != nothing
             flag.value = convert(flag.typ, val)
         else
+            found = false
             #TODO generalize this
             for (f1, f2) in zip((is_qe_exec, is_wannier_exec, is_mpi_exec),
                     (qe_execflag, wan_execflag, mpi_flag))
                 if f1(exec)
                     def_flag = f2(f)
-                    if def_flag != nothing
+                    if def_flag !== nothing
                         push!(exec.flags, ExecFlag(def_flag, val))
+                        found = true
                         break
                     end
                 end
+            end
+            if !found
+                error("Flag $f was not found in allowed executable flags.")
             end
         end
     end
@@ -213,16 +218,16 @@ end
 is_mpi_exec(exec::Exec) = occursin("mpi", exec.exec)
 
 """
-    execs(calculation::DFCalculation, exec::String)
-    execs(job::DFJob, exec::String)
+    execs(calculation::DFCalculation, exec::String="")
+    execs(job::DFJob, exec::String="")
 
 Convenience function to filter all executables in `calculation` or `job` for which `exec` occurs in the executable name.
 """
-function execs(calculation::DFCalculation, exec::String)
+function execs(calculation::DFCalculation, exec::String="")
     return filter(x -> occursin(exec, x.exec), calculation.execs)
 end
-function execs(job::DFJob, exec::String)
-    return filter(x -> occursin(exec, x.exec), execs.(calculations(job)))
+function execs(job::DFJob, exec::String="")
+    return filter(x -> occursin(exec, x.exec), vcat(execs.(calculations(job))...))
 end
 
 """
@@ -232,10 +237,8 @@ end
 Convenience function that returns the first executable in `calculation` or `job`
 for which `exec` occursin the name.
 """
-function exec(calculation::DFCalculation, exec::String)
-    return getfirst(x -> occursin(exec, x.exec), calculation.execs)
-end
-exec(job::DFJob, exec::String) = getfirst(x -> occursin(exec, x.exec), execs(job))
+exec(calculation::DFCalculation, exec::String) = (es = execs(calculation, exec); isempty(es) ? nothing : es[1])
+exec(job::DFJob, exec::String) = (es = execs(job, exec); isempty(es) ? nothing : es[1])
 
 function Base.string(e::Exec)
     direxec = joinpath(e.dir, e.exec)
