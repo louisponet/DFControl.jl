@@ -314,6 +314,7 @@ function read_job_line(line)
     execs = Exec[]
     for (e, flags) in exec_and_flags
         dir, efile = splitdir(e)
+        dir = replace(dir, "~" => homedir())
         if occursin("pw2wannier90", efile)
             continue
         end
@@ -326,7 +327,7 @@ function read_job_line(line)
         elseif any(occursin.(ELK_EXECS, (efile,)))
             calculation = "elk.in"
             output = "elk.out"
-            push!(execs, Exec(efile, dir))
+            push!(execs, Exec(exec=efile, dir=dir))
         else
             push!(execs, Exec(efile, dir, parse_generic_flags(flags)))
         end

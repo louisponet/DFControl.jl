@@ -82,9 +82,6 @@ Sets the projections of the atom.
 Sets the projections of the specified atoms. `projs` has to be of form `:atsym => [:proj]`,
 where `proj = "s", "p", "d", "f"`, see [Orbital](@ref Orbitals) to see which projections are allowed. 
 If `soc` is set to `true` both up and down projections will be taken into account.
-
-!!! note
-    The previously existing projections will be overwritten when using the last two functions.
 """
 function set_projections!(at::AbstractAtom, projections::Vector{Projection}; print = true)
     print && @info "Setting projections for atom $(name(at)) to $projections"
@@ -98,7 +95,13 @@ function set_projections!(job::DFJob, projections...; kwargs...)
 end
 
 function set_projections!(str::Structure, projs::Pair...; soc = false, kwargs...)
-    projdict = Dict(projs)
+    projdict = Dict{Symbol, typeof(projs[1][2])}()
+    for (sym, proj) in projs
+        ats = str[sym]
+        for a in ats
+            projdict[name(a)] = proj
+        end
+    end
     for at in unique(str.atoms)
         if !haskey(projdict, name(at))
             projdict[name(at)] = [proj.orb for proj in projections(at)]

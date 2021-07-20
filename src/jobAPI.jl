@@ -11,6 +11,11 @@ it will be copied to the `.versions` sub directory as the previous version of `j
 and the version of `job` will be incremented. 
 """
 function save(job::DFJob; kwargs...)
+    # First we check whether the job is trying to be saved in a archived directory, absolutely not allowed
+    @assert !isarchived(job)
+        "Not allowed to save a job in a archived directory, please specify a different directory with `set_localdir!"
+
+    # Here we find the main directory, needed for if a job's local dir is a .versions one
     local_dir = main_job_dir(job)
     if ispath(joinpath(local_dir, "job.tt"))
         tj = DFJob(local_dir)
@@ -25,12 +30,13 @@ function save(job::DFJob; kwargs...)
         clean_local_dir!(local_dir)
         cp(job, local_dir; force = true)
     end
-    set_localdir!(job, local_dir) # Needs to be done so the inputs `dir` also changes.
-    verify_or_create(local_dir)
     if isempty(job.name)
         @warn "Job had no name, changed it to: noname"
         job.name = "noname"
     end
+    
+    set_localdir!(job, local_dir) # Needs to be done so the inputs `dir` also changes.
+    verify_or_create(local_dir)
     maybe_register_job(job)
 
     curver = job.version
@@ -43,7 +49,9 @@ function save(job::DFJob; kwargs...)
     sanitize_flags!(job)
     timestamp!(job, now())
     save_metadata(job)
-    return writejobfiles(job; kwargs...)
+    writejobfiles(job; kwargs...)
+    rm_tmp_flags!(job)
+    return 
 end
 
 """
@@ -137,21 +145,6 @@ function set_headerword!(job::DFJob, old_new::Pair{String,String}; print = true)
     return job
 end
 
-function progressreport(job::DFJob; kwargs...)
-    dat = outputdata(job; kwargs...)
-    plotdat = SymAnyDict(:fermi => 0.0)
-    for (n, d) in dat
-        i = calculation(job, n)
-        if isbands(i) && haskey(d, :bands)
-            plotdat[:bands] = d[:bands]
-        elseif isscf(i) || isnscf(i)
-            haskey(d, :fermi) && (plotdat[:fermi] = d[:fermi])
-            haskey(d, :accuracy) && (plotdat[:accuracy] = d[:accuracy])
-        end
-    end
-    return plotdat
-end
-
 """
 Sets the server dir of the job.
 """
@@ -233,45 +226,6 @@ end
 
 Base.getindex(job::DFJob, el::Element) = job.structure[el]
 
-"""
-    set_data!(job::DFJob, calculations::Vector{<:DFCalculation}, dataname::Symbol, data; option=nothing)
-
-Looks through the calculation filenames and sets the data of the datablock with `data_block_name` to `new_block_data`.
-if option is specified it will set the block option to it.
-"""
-function set_data!(job::DFJob, calculations::Vector{<:DFCalculation}, dataname::Symbol,
-                   data; kwargs...)
-    set_data!.(calculations, dataname, data; kwargs...)
-    return job
-end
-function set_data!(job::DFJob, name::String, dataname::Symbol, data; fuzzy = true,
-                   kwargs...)
-    return set_data!(job, calculations(job, name, fuzzy), dataname, data; kwargs...)
-end
-
-"""
-    set_data_option!(job::DFJob, names::Vector{String}, dataname::Symbol, option::Symbol)
-
-sets the option of specified data in the specified calculations.
-"""
-function set_data_option!(job::DFJob, names::Vector{String}, dataname::Symbol,
-                          option::Symbol; kwargs...)
-    set_data_option!.(calculations(job, names), dataname, option; kwargs...)
-    return job
-end
-function set_data_option!(job::DFJob, n::String, name::Symbol, option::Symbol; kw...)
-    return set_data_option!(job, [n], name, option; kw...)
-end
-
-"""
-    set_data_option!(job::DFJob, name::Symbol, option::Symbol)
-
-sets the option of specified data block in all calculations that have the block.
-"""
-function set_data_option!(job::DFJob, n::Symbol, option::Symbol; kw...)
-    return set_data_option!(job, name.(calculations(job)), n, option; kw...)
-end
-
 "Finds the output files for each of the calculations of a job, and groups all found data into a dictionary."
 function outputdata(job::DFJob, calculations::Vector{DFCalculation}; print = true,
                     onlynew = false)
@@ -290,15 +244,6 @@ function outputdata(job::DFJob, calculations::Vector{DFCalculation}; print = tru
     return datadict
 end
 outputdata(job::DFJob; kwargs...) = outputdata(job, calculations(job); kwargs...)
-function outputdata(job::DFJob, names::String...; kwargs...)
-    return outputdata(job, calculations(job, names); kwargs...)
-end
-function outputdata(job::DFJob, n::String; fuzzy = true, kwargs...)
-    dat = outputdata(job, calculations(job, n, fuzzy); kwargs...)
-    if dat != nothing && haskey(dat, name(calculation(job, n)))
-        return dat[name(calculation(job, n))]
-    end
-end
 
 #------------ Specialized Interaction with DFCalculations inside DFJob --------------#
 "Reads throught the pseudo files and tries to figure out the correct cutoffs"
@@ -469,4 +414,54 @@ Otherwise 0 date is returned.
 """
 function last_submission(job::DFJob)
     return get(job.metadata, :timestap, DateTime(0))
+end
+
+"""
+    set_present!(job::DFJob, func)
+
+Sets a function with the call signature `func(job)` which can be later called using the [`@present`](@ref) macro.
+"""
+function set_present!(job::DFJob, func)
+    open(joinpath(job, ".present.jl"), "w") do f
+        write(f, @code_string func(job))
+    end
+end
+
+"""
+    present(job)
+
+Calls a present function if it was previously saved using [`set_present!`](@ref) or [`archive`](@ref). 
+"""
+macro present(job)
+    return esc(quote
+        if ispath(joinpath(job, ".present.jl"))
+            t = include(joinpath(job, ".present.jl"))
+            t(job)
+        else
+            @error "No presentation function defined.\n Please set it with `set_present!`."
+        end
+    end)
+end
+
+"""
+    archive(job::DFJob, archive_directory::AbstractString, description::String=""; present = nothing, version=job.version)
+
+Archives `job` by copying it's contents to `archive_directory` alongside a `results.jld2` file with all the parseable results as a Dict. `description` will be saved in a `description.txt` file in the `archive_directory`. A different job version can be copied using the `version` kwarg, and with the `present` kwarg a function can be specified that can be later called with the [`@present`](@ref) macro.
+"""
+function archive(job::DFJob, archive_directory::AbstractString, description::String=""; present = nothing, version=job.version)
+    @assert !isarchived(job) "Job was already archived"
+    final_dir = config_path(".archived", archive_directory)
+    @assert !ispath(final_dir) "A archived job already exists in $archive_directory"
+    mkpath(final_dir)
+
+    out = outputdata(job)
+    tj = deepcopy(job)
+    switch_version!(tj, version)
+    cp(tj, final_dir)
+    set_localdir!(tj, final_dir)
+
+    JLD2.save(joinpath(final_dir, "results.jld2"), "outputdata", out)
+    
+    present !== nothing && set_present!(tj, present)
+    !isempty(description) && write(joinpath(final_dir, "description.txt"), description)
 end

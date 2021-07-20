@@ -318,7 +318,8 @@ end
 #-------- Generating new DFCalculations ---------- #
 
 function calculation_from_kpoints(template::DFCalculation, newname, kpoints, newflags...)
-    newcalc = DFCalculation(template, newname, newflags...)
+    newcalc = DFCalculation(deepcopy(template); name = newname)
+    set_flags!(newcalc, newflags...; print=false)
     set_name!(newcalc, newname)
     set_kpoints!(newcalc, kpoints; print = false)
     return newcalc

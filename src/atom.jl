@@ -105,6 +105,7 @@ Returns `structure.atoms` or `filter(f, structure.atoms)` if `f` is specified.
 """
 atoms(str::AbstractStructure) = structure(str).atoms
 atoms(f::Function, str::AbstractStructure) = filter(f, atoms(str))
+atoms(str::AbstractStructure, el::Element) = str[el]
 
 """job.structure.atoms = atoms"""
 set_atoms!(job::DFJob, atoms::Vector{<:AbstractAtom}) = job.structure.atoms = atoms
@@ -154,8 +155,8 @@ end
 
 Sets the magnetization of the [`Atom`](@ref Atom).
 
-    set_magnetization!(str::Structure, atsym_mag::Pair{Symbol,<:AbstractVector}...)
-    set_magnetization!(job::DFJob, atsym_mag::Pair{Symbol,<:AbstractVector}...)
+    set_magnetization!(str::Structure, atsym_mag::Pair{Union{Symbol,Element},<:AbstractVector}...)
+    set_magnetization!(job::DFJob, atsym_mag::Pair{Union{Symbol,Element},<:AbstractVector}...)
 
 Each of the names in `atsym_mag` will be matched with the [`Atoms`](@ref Atom) and their magnetization
 will be set to the specified ones.
@@ -163,9 +164,12 @@ will be set to the specified ones.
 Example:
 ```
 set_magnetization!(job, :Ni1 => [0.0, 0.0, -1.0], :Ni2 => [0.0, 0.0, 1.0])
+set_magnetization!(job, element(:Ni) => [0.0, 0.0, -1.0])
 ```
-will set all the moments of [`Atoms`](@ref Atom) with name `Ni1` to `[0.0, 0.0, -1.0]` and `Ni2` to `[0.0, 0.0, 1.0]`.
-Since the moments are aligned with the z-direction this will signal that colinear calculations should be ran.
+The former will set all the moments of [`Atoms`](@ref Atom) with name `Ni1` to `[0.0, 0.0, -1.0]` and `Ni2` to `[0.0, 0.0, 1.0]`.
+The latter will result in all aligned ferromagnetic moments for the same calculation.
+Since the moments are aligned with the z-direction this will signal that colinear calculations should be ran, which will
+be used when generating the input files.
 """
 function set_magnetization!(at::AbstractAtom, mag; print = true)
     at.magnetization = convert(Vec3, mag)
@@ -323,23 +327,24 @@ for hub_param in (:U, :J0, :α, :β)
     str = "$hub_param"
     @eval begin
         """
-   $($(f))(at::AbstractAtom, v::AbstractFloat; print=true)
-            $($(f))(job::DFJob, ats_$($(str))s::Pair{Symbol, <:AbstractFloat}...; print=true)
+            $($(f))(at::AbstractAtom, v::AbstractFloat; print=true)
+            $($(f))(str::Structure, ats_$($(str))::Pair{<:Union{Symbol,Element}, <:AbstractFloat}...; print=true)
+            $($(f))(job::DFJob, ats_$($(str))::Pair{<:Union{Symbol,Element}, <:AbstractFloat}...; print=true)
 
         Set the Hubbard $($(str)) parameter for the specified [Atoms](@ref Atom).
         The latter function allows for conveniently setting the parameter for all
         [Atoms](@ref Atom) with the specified `name`.
 
         Example:
-            `$($(f))(job, :Ir => 2.1, :Ni => 1.0, :O => 0.0)`
+            `$($(f))(job, :Ir => 2.1, element(:Ni) => 1.0, :O => 0.0)`
         """
         function $f(at::AbstractAtom{T}, v::AbstractFloat; print = true) where {T}
             dftu(at).$(hub_param) = convert(T, v)
             return print && @info "Hubbard $($(str)) of atom $(at.name) set to $v"
         end
-        function $f(job::DFJob, $(hub_param)::Pair{Symbol,<:AbstractFloat}...; print = true)
+        function $f(str::Union{DFJob, Structure}, $(hub_param)::Pair{<:Union{Symbol,Element},<:AbstractFloat}...; print = true)
             for (atsym, val) in $(hub_param)
-                $f.(atoms(job, atsym), val; print = print)
+                $f.(atoms(str, atsym), val; print = print)
             end
         end
         export $f
@@ -348,7 +353,7 @@ end
 
 """
 	set_Hubbard_J!(at::AbstractAtom, v::Vector{<:AbstractFloat}; print=true)
-    set_Hubbard_J!(job::DFJob, ats_Js::Pair{Symbol, Vector{<:AbstractFloat}}...; print=true)
+    set_Hubbard_J!(job::DFJob, ats_Js::Pair{<:Union{Symbol,Element}, Vector{<:AbstractFloat}}...; print=true)
     
 Set the Hubbard J parameter for the specified atom.
 The latter function allows for conveniently setting the `Hubbard_J` for all
@@ -362,6 +367,12 @@ function set_Hubbard_J!(at::AbstractAtom{T}, v::Vector{<:AbstractFloat};
                         print = true) where {T}
     dftu(at).J = convert.(T, v)
     return print && @info "Hubbard J of atom $(at.name) set to $v"
+end
+function set_Hubbard_J!(str::Union{DFJob, Structure}, ats_Js::Pair{<:Union{Symbol,Element}, Vector{<:AbstractFloat}}...;
+                        print = true)
+    for (atsym, val) in ats_Js
+        set_Hubbard_J!.(atoms(str, atsym), val; print = print)
+    end
 end
 
 export set_Hubbard_J!

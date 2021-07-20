@@ -1,71 +1,101 @@
-using DFControl, Test
+using DFControl, Test, LinearAlgebra
 
 testdir = joinpath(dirname(dirname(pathof(DFControl))), "test")
 testjobpath = joinpath(testdir, "testassets", "test_job")
+@testset "initial creation" begin
+    if ispath(testjobpath)
+        rm(testjobpath, recursive=true)
+    end
 
-name = "Pt"
-local_dir = testjobpath
-server_dir = ""
-bin_dir = joinpath(homedir(), "bin")
-excs = [Exec("mpirun", bin_dir, :np => 24), Exec("pw.x", bin_dir, :nk => 2)]
+    name = "Ni"
+    local_dir = testjobpath
+    server_dir = ""
+    bin_dir = joinpath(homedir(), "Software/qe/bin")
+    pw_excs = [Exec("mpirun", "", :np => 4), Exec("pw.x", bin_dir, :nk => 4)]
 
-pseudoset = :test
+    pseudoset = :test
 
-header = ["#SBATCH -N 1", "#SBATCH --ntasks-per-node=24", "#SBATCH --time=24:00:00",
-          "#SBATCH -p defpart", "module load open-mpi/gcc/1.10.4-hfi",
-          "module load mkl/2016.1.056"]
+    header = ["#SBATCH -N 1"]
 
-calculations = [DFCalculation{QE}(; name = "vc_relax", execs = excs,
-                                  flags = Dict(:calculation => "vc-relax",
-                                               :verbosity => "low"),
-                                  data = [InputData(:k_points, :automatic,
-                                                    [6, 6, 6, 1, 1, 1])]),
-                DFCalculation{QE}(; name = "scf", execs = excs,
-                                  flags = Dict(:calculation => "scf", :verbosity => "low"),
-                                  data = [InputData(:k_points, :automatic,
-                                                    [6, 6, 6, 1, 1, 1])]),
-                DFCalculation{QE}(; name = "bands", execs = excs,
-                                  flags = Dict(:calculation => "bands",
-                                               :verbosity => "high", :nbnd => 8),
-                                  data = [InputData(:k_points, :crystal_b,
-                                                    [[0.5, 0.5, 0.5, 100.0],
-                                                     [0.0, 0.0, 0.0, 100.0],
-                                                     [0.0, 0.5, 0.0, 1.0]])]),
-                DFCalculation{QE}(; name = "nscf", execs = excs,
-                                  flags = Dict(:calculation => "nscf", :verbosity => "low"))]
-str = Structure(joinpath(testjobpath, "Pt.cif"); name = "Pt")
-set_pseudos!(str, :test)
-job = DFJob(name, str, calculations, :prefix       => "$name",
-            :restart_mode => "from_scratch", :mixing_mode  => "plain", :mixing_beta  => 0.7,
-            :conv_thr     => 1.0e-8;
-            #kwargs
-            header = header, local_dir = local_dir)
-set_kpoints!(job["nscf"], (10, 10, 10))
-save(job)
-show(job)
+    str = Structure(joinpath(testdir, "testassets/Ni.cif"); name = "Ni")
 
-@test data(job["scf"], :k_points).data == [6, 6, 6, 1, 1, 1]
-@test data(job["nscf"], :k_points).data == DFControl.kgrid(10, 10, 10, :nscf)
-@test all(values(job[:ecutwfc]) .== 32.0)
-@test job["scf"][:prefix] == job["nscf"][:prefix] == "$name"
-@test job["bands"][:verbosity] == "high"
+    calculations = [DFCalculation{QE}("vcrelax", :calculation => "vc-relax", :verbosity => "high", :ion_dynamics => "bfgs", :cell_dynamics => "bfgs";
+                                      execs = pw_excs,
+                                      data = [InputData(:k_points, :automatic,
+                                                        [6, 6, 6, 1, 1, 1])]),
+                    DFCalculation{QE}(; name = "scf", execs = pw_excs,
+                                      flags = Dict(:calculation => "scf", :verbosity => "high"),
+                                      data = [InputData(:k_points, :automatic,
+                                                        [4, 4, 4, 1, 1, 1])])]
+    job = DFJob(name, str, calculations, :ecutwfc => 40.0, :occupations => "smearing", :degauss=>0.01, :conv_thr => 1e-6, :nbnd => 18;
+                #kwargs
+                header = header, local_dir = local_dir)
 
-set_flags!(job, :prefix => "blabla"; print = false)
-@test job["scf"][:prefix] == job["nscf"][:prefix] == "blabla"
-set_flags!(job, :Hubbard_U => [4]; print = false)
-set_flags!(job, :Hubbard_J => [4 4 5]; print = false)
-@test job["scf"][:Hubbard_U] == job["nscf"][:Hubbard_U] == [4.0]
-@test job["scf"][:Hubbard_J] == job["nscf"][:Hubbard_J] == [4.0 4.0 5.0]
+    set_pseudos!(job, :test)
 
-struct2 = DFControl.create_supercell(job.structure, 1, 2, 1)
-newpositions = [DFControl.position_cart(at) for at in atoms(struct2)]
-oldposition = atoms(job.structure)[1].position_cart
-cell_ = DFControl.cell(job.structure)
 
-@test atoms(job.structure)[1].position_cart ==
-      job.structure.cell' * atoms(job.structure)[1].position_cryst
-@test oldposition == newpositions[1]
-@test oldposition + cell_[:, 1] ∈ newpositions
-@test oldposition + 2 * cell_[:, 2] ∈ newpositions
-@test oldposition + 1 * cell_[:, 3] ∈ newpositions
-@test oldposition + (1 * cell_[:, 3] + 1 * cell_[:, 2]) ∈ newpositions
+    set_kpoints!(job["scf"], (6, 6, 6, 1, 1, 1))
+
+    set_magnetization!(atoms(job, element(:Ni))[1], [0,0, 0.1])
+    set_Hubbard_U!(job, element(:Ni) => 4.0)
+
+    push!(job, gencalc_bands(job["scf"], high_symmetry_kpath(job, 20)))
+    push!(job, gencalc_nscf(job["scf"], (5,5,5)))
+
+    push!(job, gencalc_projwfc(job["nscf"], 2.0, 20.0, 0.1))
+
+    save(job)
+    @test job.version == 1
+    @test length(job) == 5
+    @test data(job["scf"], :k_points).data == [6,6,6,1,1,1]
+    @test job["nscf"].execs == pw_excs
+    @test job["projwfc"].execs == [pw_excs[1], Exec("projwfc.x", pw_excs[2].dir)]
+    @test show(job) == nothing
+
+    job2 = DFJob(job.local_dir)
+    for (c1, c2) in zip(job2.calculations, job.calculations)
+        @test c2 == c1
+    end
+    @test job2.structure == job.structure
+    @test all(values(job[:ecutwfc]) .== 40.0)
+    @test DFControl.find_cutoffs(job) == (41.0, 236.0)
+end
+
+refjobpath =joinpath(testdir, "testassets", "reference_job")
+
+@testset "reference comparison" begin
+    job = DFJob(testjobpath)
+    orig_job = deepcopy(job)
+    job.structure = create_supercell(job, 1, 0, 0, make_afm = true)
+    
+    job2 = DFJob(refjobpath)
+    @test job2.structure == job.structure
+    
+    for f in DFControl.searchdir(job2, ".out")
+        cp(f, joinpath(job, splitdir(f)[2]), force=true)
+    end
+    for f in DFControl.searchdir(job2, "dos")
+        cp(f, joinpath(job, splitdir(f)[2]), force=true)
+    end
+
+    set_projections!(job, element(:Ni) => ["s", "p", "d"])
+    wanexec = Exec("wannier90.x", joinpath(homedir(), "Software/wannier90"))
+    append!(job, gencalc_wan(job, 0.000011, wanexec = wanexec))
+    for (c1, c2) in zip(job2.calculations, job.calculations)
+        @test c2 == c1
+    end
+    save(job)
+    @test !ispath(joinpath(job, "scf.out"))
+    job = DFJob(testjobpath)
+    
+    for (c1, c2) in zip(job2.calculations, job.calculations)
+        @test c2 == c1
+    end
+    save(orig_job)
+    for f in DFControl.searchdir(job2, ".out")
+        cp(f, joinpath(job, splitdir(f)[2]), force=true)
+    end
+    for f in DFControl.searchdir(job2, "dos")
+        cp(f, joinpath(job, splitdir(f)[2]), force=true)
+    end
+end

@@ -125,7 +125,7 @@ function hasexec_assert(i::DFCalculation, exec::String)
 end
 
 function Base.:(==)(i1::DFCalculation, i2::DFCalculation)
-    return all(x -> x == :outdata ? true : getfield(i1, x) == getfield(i2, x),
+    return all(x -> x in (:outdata, :dir, :run) ? true : getfield(i1, x) == getfield(i2, x),
                fieldnames(DFCalculation))
 end
 

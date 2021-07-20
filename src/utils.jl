@@ -97,14 +97,14 @@ end
 Returns an array of k-grid points that are equally spaced, calculation can be either `:wan` or `:nscf`, the returned grids are appropriate as calculations for wannier90 or an nscf calculation respectively.
 """
 function kgrid(na, nb, nc, ::Type{QE})
-    return reshape([[a, b, c, 1 / (na * nb * nc)]
+    return reshape([(a, b, c, 1 / (na * nb * nc))
                     for a in collect(range(0; stop = 1, length = na + 1))[1:end-1],
                         b in collect(range(0; stop = 1, length = nb + 1))[1:end-1],
                         c in collect(range(0; stop = 1, length = nc + 1))[1:end-1]],
                    (na * nb * nc))
 end
 function kgrid(na, nb, nc, ::Type{Wannier90})
-    return reshape([[a, b, c]
+    return reshape([(a, b, c)
                     for a in collect(range(0; stop = 1, length = na + 1))[1:end-1],
                         b in collect(range(0; stop = 1, length = nb + 1))[1:end-1],
                         c in collect(range(0; stop = 1, length = nc + 1))[1:end-1]],

@@ -186,18 +186,10 @@ Parameters.@with_kw mutable struct Exec
     flags::Vector{ExecFlag} = ExecFlag[]
 end
 
-Exec(exec::String, dir::String, flags::Pair{Symbol}...) = Exec(exec, dir, SymAnyDict(flags))
-
-function Exec(exec::String, dir::String, flags::SymAnyDict)
-    _flags = ExecFlag[]
-    for (f, v) in flags
-        if occursin("mpi", exec)
-            mflag = mpi_flag(f)
-            @assert mflag !== nothing "$f is not a recognized mpirun flag."
-        end
-        push!(_flags, ExecFlag(f => v))
-    end
-    return Exec(exec, dir, _flags)
+function Exec(exec::String, dir::String, flags::Pair{Symbol}...)
+    out = Exec(exec=exec, dir=dir)
+    set_flags!(out, flags...)
+    return out
 end
 
 """
@@ -253,7 +245,7 @@ Creates a new [`DFCalculation`](@ref) from the `template`, setting the `flags` o
     run::Bool = true
     outdata::SymAnyDict = SymAnyDict()
     infile::String = P == Wannier90 ? name * ".win" : name * ".in"
-    outfile::String = name * ".out"
+    outfile::String = P == Wannier90 ? name * ".wout" : name * ".out"
     function DFCalculation{P}(name, dir, flags, data, execs, run, outdata, infile,
                               outfile) where {P<:Package}
         out = new{P}(name, dir, SymAnyDict(), data, execs, run, outdata, infile, outfile)
@@ -266,34 +258,8 @@ Creates a new [`DFCalculation`](@ref) from the `template`, setting the `flags` o
         return out
     end
 end
-function DFCalculation{P}(name, dir, flags, data, execs, run) where {P<:Package}
-    return DFCalculation{P}(name, abspath(dir), flags, data, execs, run, SymAnyDict(),
-                            P == Wannier90 ? name * ".win" : name * ".in",
-                            P == Wannier90 ? name * ".wout" : name * ".out")
-end
-
 function DFCalculation{P}(name, flags...; kwargs...) where {P<:Package}
     return DFCalculation{P}(; name = name, flags = flags, kwargs...)
-end
-
-function DFCalculation(template::DFCalculation, name, newflags...;
-                       excs = deepcopy(execs(template)), run  = true, data = nothing,
-                       dir  = deepcopy(template.dir))
-    newflags = Dict(newflags...)
-
-    calculation       = deepcopy(template)
-    calculation.name  = name
-    calculation.execs = excs
-    calculation.run   = run
-    calculation.dir   = dir
-    set_flags!(calculation, newflags...; print = false)
-
-    if data != nothing
-        for (name, (option, data)) in data
-            set_data!(calculation, name, data; option = option, print = false)
-        end
-    end
-    return calculation
 end
 
 #TODO should we also create a config file for each job with stuff like server etc? and other config things,

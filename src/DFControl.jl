@@ -25,10 +25,10 @@ const SPGLIB = spglib_jll.libsymspg
 import Unitful: Length, @unit, FreeUnits, unit, 𝐋, FreeUnits
 include("units.jl")
 
-using NearestNeighbors
 using Crayons
 using REPL: REPL
 using REPL.TerminalMenus
+using CodeTracking
 
 abstract type Package end
 struct Wannier90 <: Package end

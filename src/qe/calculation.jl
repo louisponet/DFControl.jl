@@ -256,7 +256,7 @@ function set_kpoints!(c::DFCalculation{QE}, k_grid::NTuple{6,Int}; print = true)
         (@warn "Expected calculation to be scf, vc-relax, relax.\nGot $calc.")
     set_data!(c, :k_points, [k_grid...]; option = :automatic, print = print)
     prod(k_grid[1:3]) > 100 && set_flags!(c, :verbosity => "high"; print = print)
-    return calculation
+    return c
 end
 
 function set_kpoints!(c::DFCalculation{QE}, k_grid::Vector{<:NTuple{4}}; print = true,
@@ -280,7 +280,7 @@ function set_kpoints!(c::DFCalculation{QE}, k_grid::Vector{<:NTuple{4}}; print =
         end
     end
     set_data!(c, :k_points, k_grid; option = k_option, print = print)
-    return calculation
+    return c
 end
 
 """
@@ -360,7 +360,7 @@ function gencalc_projwfc(template::DFCalculation{QE}, Emin, Emax, DeltaE, extraf
         excs = [Exec(; exec = "projwfc.x", dir = execs(template)[end].dir)]
     end
 
-    out = DFCalculation(template, name; excs = excs)
+    out = DFCalculation(deepcopy(template); name=name,  execs = excs, data=InputData[])
     set_name!(out, "projwfc")
     empty!(out.flags)
     set_flags!(out, :Emin => Emin, :Emax => Emax, :DeltaE => DeltaE, :ngauss => ngauss,
@@ -413,8 +413,8 @@ function gencalc_wan(nscf::DFCalculation{QE}, structure::AbstractStructure, Emin
     wancalculations = DFCalculation{Wannier90}[]
     for wanfil in wannames
         push!(wancalculations,
-              DFCalculation{Wannier90}(wanfil, dir(nscf), copy(wanflags), [kdata],
-                                       [Exec(), wanexec], true))
+              DFCalculation{Wannier90}(name = wanfil, dir = dir(nscf), flags = copy(wanflags), data = [kdata],
+                                       execs = [wanexec], run = true))
     end
 
     if length(wancalculations) > 1

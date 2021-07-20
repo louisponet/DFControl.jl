@@ -1,0 +1,56 @@
+&control
+  prefix = 'Ni'
+  verbosity = 'high'
+  calculation = 'bands'
+  outdir = '/home/ponet/.julia/environments/DFControlDEV/Demo/Ni/outputs'
+  pseudo_dir = '/home/ponet/Documents/pseudos/pslibrary_pbesol/PSEUDOPOTENTIALS'
+/
+
+&system
+  ibrav = 0
+  nat = 2
+  ntyp = 2
+  Hubbard_U(1) = 4.0
+  Hubbard_U(2) = 4.0
+  starting_magnetization(1) = 0.1
+  starting_magnetization(2) = -0.1
+  ecutwfc = 40.0
+  occupations = 'smearing'
+  nbnd = 18
+  nspin = 2
+  lda_plus_u = true
+  degauss = 0.01
+/
+
+&electrons
+  conv_thr = 1.0e-6
+/
+
+ATOMIC_SPECIES
+Ni 58.6934   Ni.pbesol-n-kjpaw_psl.0.1.UPF
+Ni1 58.6934   Ni.pbesol-n-kjpaw_psl.0.1.UPF
+
+CELL_PARAMETERS (angstrom)
+4.957940101623535 0.0 0.0
+1.2394850254058838 2.1468510392237925 0.0
+1.2394850254058838 0.7156170130745974 2.0240705707100397
+
+ATOMIC_POSITIONS (crystal) 
+Ni  0.0 0.0 0.0
+Ni1  0.5 0.0 0.0
+
+K_POINTS (crystal_b)
+12
+ 0.0 0.0 0.0 20.0
+ 0.5 0.0 0.5 20.0
+ 0.5 0.25 0.75 20.0
+ 0.375 0.375 0.75 20.0
+ 0.0 0.0 0.0 20.0
+ 0.5 0.5 0.5 20.0
+ 0.625 0.25 0.625 20.0
+ 0.5 0.25 0.75 20.0
+ 0.5 0.5 0.5 20.0
+ 0.375 0.375 0.75 20.0
+ 0.625 0.25 0.625 20.0
+ 0.5 0.0 0.5 1.0
+

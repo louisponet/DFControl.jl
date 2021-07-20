@@ -1,0 +1,9 @@
+&projwfc
+  prefix = 'Ni'
+  Emin = 2.0
+  Emax = 20.0
+  DeltaE = 0.1
+  ngauss = 0
+  outdir = '/home/ponet/.julia/environments/DFControlDEV/Demo/Ni/outputs'
+  degauss = 0.01
+/
