@@ -285,7 +285,7 @@ function save_metadata(job)
                    version = job.version)
 end
 
-timestamp(job) = job.metadata[:timestamp]
+timestamp(job::DFJob) = job.metadata[:timestamp]
 timestamp!(job, time) = job.metadata[:timestamp] = time
 has_timestamp(job) = haskey(job.metadata, :timestamp)
 

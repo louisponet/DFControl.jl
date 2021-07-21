@@ -66,7 +66,7 @@ function registered_jobs(fuzzy::AbstractString = "")
     return choices[sort_ids]
 end
 
-function timestamp(jobdir)
+function timestamp(jobdir::AbstractString)
     if ispath(joinpath(jobdir, ".metadata.jld2"))
         md = load(joinpath(jobdir, ".metadata.jld2"))["metadata"]
         return get(md, :timestamp, DateTime(0))

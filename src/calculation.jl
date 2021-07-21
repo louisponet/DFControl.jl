@@ -37,7 +37,6 @@ package(::DFCalculation{P}) where {P} = P
 
 data(calculation::DFCalculation) = calculation.data
 
-execs(calculation::DFCalculation) = calculation.execs
 hasexec(calculation::DFCalculation, ex::AbstractString) = exec(calculation, ex) != nothing
 set_flow!(calculation::DFCalculation, run) = calculation.run = run
 
