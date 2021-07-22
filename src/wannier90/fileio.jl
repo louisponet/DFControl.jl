@@ -223,7 +223,7 @@ function wan_read_calculation(filename::String, T = Float64;
     cell_block  = nothing
     proj_block  = nothing
     open(filename, "r") do f
-        return flags, data, atoms_block, cell_block, proj_block = wan_read_calculation(T, f)
+        flags, data, atoms_block, cell_block, proj_block = wan_read_calculation(T, f)
     end
     structure = extract_structure(structure_name, cell_block, atoms_block, proj_block,
                                   get(flags, :spinors, false))
