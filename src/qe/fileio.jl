@@ -773,7 +773,7 @@ const QE_HP_PARSE_FUNCS = ["will be perturbed" => qe_parse_pert_at,
 function qe_read_hp_output(c::DFCalculation{QE}; parse_funcs = Pair{String,<:Function}[])
     out = parse_file(outpath(c), QE_HP_PARSE_FUNCS; extra_parse_funcs = parse_funcs)
 
-    hubbard_file = joinpath(dir(c), "$(c[:prefix]).Hubbard_parameters.dat")
+    hubbard_file = joinpath(dir(c), """$(get(c, :prefix, "pwscf")).Hubbard_parameters.dat""")
     if ispath(hubbard_file)
         merge(out,
               parse_file(hubbard_file, QE_HP_PARSE_FUNCS; extra_parse_funcs = parse_funcs))
@@ -1195,9 +1195,10 @@ function save(calculation::DFCalculation{QE}, structure,
         end
     end
     #TODO handle writing hubbard and magnetization better
-    return delete!.((calculation.flags,),
+    delete!.((calculation.flags,),
                     (:Hubbard_U, :Hubbard_J0, :Hubbard_J, :Hubbard_alpha, :Hubbard_beta,
                      :starting_magnetization, :angle1, :angle2, :pseudo_dir))
+    return
 end
 
 function write_structure(f, calculation::DFCalculation{QE}, structure;
@@ -1228,7 +1229,8 @@ function write_structure(f, calculation::DFCalculation{QE}, structure;
         write(f, "ATOMIC_POSITIONS (angstrom) \n")
     end
     write.((f,), atom_lines)
-    return write(f, "\n")
+    write(f, "\n")
+    return 
 end
 
 function qe_generate_pw2wancalculation(calculation::DFCalculation{Wannier90},

@@ -186,10 +186,18 @@ Parameters.@with_kw mutable struct Exec
     flags::Vector{ExecFlag} = ExecFlag[]
 end
 
-function Exec(exec::String, dir::String, flags::Pair{Symbol}...)
-    out = Exec(exec=exec, dir=dir)
-    set_flags!(out, flags...)
-    return out
+Exec(exec::String, dir::String, flags::Pair{Symbol}...) = Exec(exec, dir, SymAnyDict(flags))
+
+function Exec(exec::String, dir::String, flags::SymAnyDict)
+    _flags = ExecFlag[]
+    for (f, v) in flags
+        if occursin("mpi", exec)
+            mflag = mpi_flag(f)
+            @assert mflag !== nothing "$f is not a recognized mpirun flag."
+        end
+        push!(_flags, ExecFlag(f => v))
+    end
+    return Exec(exec, dir, _flags)
 end
 
 """
@@ -245,7 +253,7 @@ Creates a new [`DFCalculation`](@ref) from the `template`, setting the `flags` o
     run::Bool = true
     outdata::SymAnyDict = SymAnyDict()
     infile::String = P == Wannier90 ? name * ".win" : name * ".in"
-    outfile::String = P == Wannier90 ? name * ".wout" : name * ".out"
+    outfile::String = name * ".out"
     function DFCalculation{P}(name, dir, flags, data, execs, run, outdata, infile,
                               outfile) where {P<:Package}
         out = new{P}(name, dir, SymAnyDict(), data, execs, run, outdata, infile, outfile)
@@ -258,8 +266,34 @@ Creates a new [`DFCalculation`](@ref) from the `template`, setting the `flags` o
         return out
     end
 end
+function DFCalculation{P}(name, dir, flags, data, execs, run) where {P<:Package}
+    return DFCalculation{P}(name, abspath(dir), flags, data, execs, run, SymAnyDict(),
+                            P == Wannier90 ? name * ".win" : name * ".in",
+                            P == Wannier90 ? name * ".wout" : name * ".out")
+end
+
 function DFCalculation{P}(name, flags...; kwargs...) where {P<:Package}
     return DFCalculation{P}(; name = name, flags = flags, kwargs...)
+end
+
+function DFCalculation(template::DFCalculation, name, newflags...;
+                       excs = deepcopy(execs(template)), run  = true, data = nothing,
+                       dir  = deepcopy(template.dir))
+    newflags = Dict(newflags...)
+
+    calculation       = deepcopy(template)
+    calculation.name  = name
+    calculation.execs = excs
+    calculation.run   = run
+    calculation.dir   = dir
+    set_flags!(calculation, newflags...; print = false)
+
+    if data != nothing
+        for (name, (option, data)) in data
+            set_data!(calculation, name, data; option = option, print = false)
+        end
+    end
+    return calculation
 end
 
 #TODO should we also create a config file for each job with stuff like server etc? and other config things,
@@ -350,9 +384,9 @@ end
 function DFJob(job_dir::AbstractString, job_script = "job.tt";
                version::Union{Nothing,Int} = nothing, kwargs...)
     apath = abspath(job_dir)
-    if ispath(apath)
+    if ispath(job_dir)
         if occursin(VERSION_DIR_NAME, apath)
-            @error "It is not allowed to directly load a job version, please use `DFJob(dir, version=$(splitdir(apath)[end]))`"
+            error("It is not allowed to directly load a job version, please use `DFJob(dir, version=$(splitdir(apath)[end]))`")
         end
         if version !== nothing
             real_path = version_dir(apath, version)
@@ -361,7 +395,7 @@ function DFJob(job_dir::AbstractString, job_script = "job.tt";
             real_path = apath
             real_version = main_job_version(apath)
         else
-            @error "No valid job found in $apath."
+            error("No valid job found in $apath.")
         end
     else
         real_path = request_job(job_dir)

@@ -464,4 +464,7 @@ function archive(job::DFJob, archive_directory::AbstractString, description::Str
     
     present !== nothing && set_present!(tj, present)
     !isempty(description) && write(joinpath(final_dir, "description.txt"), description)
+    push!(JOB_REGISTRY.archived, tj.local_dir)
+    @info "Archived job at $(tj.local_dir). If you're done with this one, it is safe to delete the directory at $(job.local_dir)."
+    return nothing
 end
