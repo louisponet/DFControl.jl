@@ -205,3 +205,17 @@ lastweek()  = today() - Week(1)
 lastmonth() = today() - Month(1)
 
 username() = read(`whoami`, String)
+
+
+function loaded_modules_string()
+    all = string.(values(Base.loaded_modules))
+    valid = String[]
+    ks = keys(Pkg.project().dependencies)
+    for p in all
+        if p ∈ ks
+            push!(valid, p)
+        end
+    end
+    return """using $(join(valid, ", "))\n"""
+end
+    

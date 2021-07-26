@@ -417,14 +417,32 @@ function last_submission(job::DFJob)
 end
 
 """
-    set_present!(job::DFJob, func)
+    set_present!(job::DFJob, func::Function)
+    set_present!(job::DFJob, func::String)
+    set_present!(job::DFJob, func::Expr)
 
 Sets a function with the call signature `func(job)` which can be later called using the [`@present`](@ref) macro.
 """
-function set_present!(job::DFJob, func)
-    open(joinpath(job, ".present.jl"), "w") do f
-        write(f, @code_string func(job))
+function set_present!(job::DFJob, func::Function)
+    try 
+        str = loaded_modules_string() * @code_string func(job)
+        set_present!(job, str)
+    catch
+        error("Could not generate the source string for the supplied function.\nIf you are running in a Jupyter notebook, please supply the source code as a string, or expression to set_present!.\nDon't forget to include the right using statements.")
     end
+        
+end
+function set_present!(job::DFJob, func::AbstractString) 
+    open(joinpath(job, ".present.jl"), "w") do f
+        write(f, func)
+    end
+end
+function set_present!(job::DFJob, func::Expr)
+    funcstr = string(func)
+    if funcstr[1:5] == "begin"
+        funcstr = funcstr[findfirst(isequal('\n'), funcstr)+1:findlast(isequal('\n'), funcstr)-1]
+    end
+    set_present!(job, funcstr)
 end
 
 """
@@ -466,5 +484,6 @@ function archive(job::DFJob, archive_directory::AbstractString, description::Str
     !isempty(description) && write(joinpath(final_dir, "description.txt"), description)
     push!(JOB_REGISTRY.archived, tj.local_dir)
     @info "Archived job at $(tj.local_dir). If you're done with this one, it is safe to delete the directory at $(job.local_dir)."
+    write_job_registry()
     return nothing
 end

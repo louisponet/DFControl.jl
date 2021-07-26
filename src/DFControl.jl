@@ -17,7 +17,6 @@ using RecipesBase
 @reexport using StaticArrays
 using Parameters
 using JLD2
-
 using spglib_jll
 const SPGLIB = spglib_jll.libsymspg
 
@@ -29,6 +28,7 @@ using Crayons
 using REPL: REPL
 using REPL.TerminalMenus
 using CodeTracking
+using Pkg
 
 abstract type Package end
 struct Wannier90 <: Package end
