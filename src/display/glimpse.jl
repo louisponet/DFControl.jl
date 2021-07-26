@@ -1,4 +1,4 @@
-@reexport using Glimpse
+using ..Glimpse
 const Gl = Glimpse
 
 function Gl.Diorama(str::AbstractStructure)

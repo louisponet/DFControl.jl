@@ -29,6 +29,7 @@ using REPL: REPL
 using REPL.TerminalMenus
 using CodeTracking
 using Pkg
+using LoggingExtras
 
 abstract type Package end
 struct Wannier90 <: Package end
@@ -63,7 +64,6 @@ include("API.jl")
 include("constants.jl")
 
 include("fileio.jl")
-include("plotting.jl")
 
 include("defaults.jl")
 export setdefault_pseudodir
@@ -87,6 +87,7 @@ using Requires
 function __init__()
     @require Juno = "e5e0dc1b-0480-54bc-9374-aad01c23163d" include("display/printing_juno.jl")
     @require Glimpse = "f6e19d58-12a4-5927-8606-ac30a9ce9b69" include("display/glimpse.jl")
+    @require Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80" include("plotting.jl")
     merge!(Unitful.basefactors, localunits)
     Unitful.register(@__MODULE__)
     return init_job_registry()

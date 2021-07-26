@@ -229,6 +229,9 @@ Base.getindex(job::DFJob, el::Element) = job.structure[el]
 "Finds the output files for each of the calculations of a job, and groups all found data into a dictionary."
 function outputdata(job::DFJob, calculations::Vector{DFCalculation}; print = true,
                     onlynew = false)
+    if isarchived(job)
+        return JLD2.load(joinpath(job, "results.jld2"))["outputdata"]
+    end
     datadict = Dict()
     stime = starttime(job)
     for calculation in calculations
@@ -452,9 +455,11 @@ Calls a present function if it was previously saved using [`set_present!`](@ref)
 """
 macro present(job)
     return esc(quote
-        if ispath(joinpath(job, ".present.jl"))
-            t = include(joinpath(job, ".present.jl"))
-            t(job)
+        if ispath(joinpath($job, ".present.jl"))
+            t = include(joinpath($job, ".present.jl"))
+            DFControl.with_logger(DFControl.MinLevelLogger(DFControl.current_logger(), DFControl.Logging.Error)) do 
+                t($job)
+            end
         else
             @error "No presentation function defined.\n Please set it with `set_present!`."
         end
@@ -472,6 +477,7 @@ function archive(job::DFJob, archive_directory::AbstractString, description::Str
     @assert !ispath(final_dir) "A archived job already exists in $archive_directory"
     mkpath(final_dir)
 
+    present !== nothing && set_present!(job, present)
     out = outputdata(job)
     tj = deepcopy(job)
     switch_version!(tj, version)
@@ -480,7 +486,6 @@ function archive(job::DFJob, archive_directory::AbstractString, description::Str
 
     JLD2.save(joinpath(final_dir, "results.jld2"), "outputdata", out)
     
-    present !== nothing && set_present!(tj, present)
     !isempty(description) && write(joinpath(final_dir, "description.txt"), description)
     push!(JOB_REGISTRY.archived, tj.local_dir)
     @info "Archived job at $(tj.local_dir). If you're done with this one, it is safe to delete the directory at $(job.local_dir)."

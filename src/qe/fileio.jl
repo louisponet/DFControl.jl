@@ -195,8 +195,10 @@ function qe_parse_highest_lowest(out, line, f)
 end
 
 function qe_parse_total_energy(out, line, f)
-    if line[1] == '!'
-        out[:total_energy] = parse(Float64, split(line)[5])
+    if haskey(out, :total_energy)
+        push!(out[:total_energy], parse(Float64, split(line)[end-1]))
+    else
+        out[:total_energy] = [parse(Float64, split(line)[end-1])]
     end
 end
 
@@ -426,7 +428,7 @@ const QE_PW_PARSE_FUNCTIONS = ["C/m^2" => qe_parse_polarization,
                                "PseudoPot" => qe_parse_pseudo,
                                "the Fermi energy is" => qe_parse_fermi,
                                "highest occupied" => qe_parse_highest_lowest,
-                               "total energy" => qe_parse_total_energy,
+                               "  total energy" => qe_parse_total_energy,
                                "SPIN UP" => (x, y, z) -> x[:colincalc] = true,
                                "cryst." => qe_parse_k_cryst, "cart." => qe_parse_k_cart,
                                "bands (ev)" => qe_parse_k_eigvals,

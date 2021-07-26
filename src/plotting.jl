@@ -1,10 +1,5 @@
 using Colors
-
-const PLOT_COLORS = Iterators.repeat([colorant"#023EFF", colorant"#FF7C00",
-                                      colorant"#1AC938", colorant"#E8000B",
-                                      colorant"#8B2BE2", colorant"#9F4800",
-                                      colorant"#F14CC1", colorant"#A3A3A3",
-                                      colorant"#FFC400", colorant"#00D7FF"], 4)
+using ..Plots
 
 Base.:*(f::Number, r::RGB) = RGB(f * r.r, f * r.b, f * r.g)
 Base.:+(r1::RGB, r2::RGB) = RGB(r1.r + r2.r, r1.b + r2.b, r1.g + r2.g)
@@ -74,7 +69,10 @@ end
 end
 
 @recipe function f(job::DFJob, ymin, ymax, occupy_ratio = 0.2; overlap_spin = false)
+    palette_ = ismissing(Plots.default(:palette)) ? :default : Plots.default(:palette)
+    plt_colors = repeat(Plots.plot_color(pop!(plotattributes, :seriescolor, RGB.(Plots.color_list(Plots.palette(palette_))))),4)
     ylims --> [ymin, ymax]
+    gridalpha --> 0.9 
     if !isQEjob(job)
         error("output plotting only implemented for QE jobs.")
     end
@@ -174,9 +172,9 @@ end
         @info "Found $(length(ats_orbs)) atomic orbitals that satisfy the minimum occupation:\n$ats_orbs"
 
         atom_colors = bands isa NamedTuple ?
-                      [PLOT_COLORS[1:length(ats_orbs)],
-                       PLOT_COLORS[length(ats_orbs)+1:2*length(ats_orbs)]] :
-                      [PLOT_COLORS[1:length(ats_orbs)]]
+                      [plt_colors[1:2:2*length(ats_orbs)],
+                       plt_colors[2:2:2*length(ats_orbs)]] :
+                      [plt_colors[1:length(ats_orbs)]]
 
         bands = bands isa NamedTuple ? bands : [bands]
         band_contribs = [[[zeros(length(ats_orbs)) for i in 1:length(kpoints)]

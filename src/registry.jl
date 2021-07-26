@@ -8,14 +8,13 @@ function init_job_registry()
 end
 
 function write_job_registry()
-    open(config_path("in_progress_jobs.txt"), "w") do f
-        for j in JOB_REGISTRY.in_progress
-            write(f, "$j\n")
-        end
-    end
-    open(config_path("archived_jobs.txt"), "w") do f
-        for j in JOB_REGISTRY.archived
-            write(f, "$j\n")
+    init_job_registry() # Needs to be done to not overwrite other DFControl instances
+    cleanup_job_registry!(; print=false)
+    for (f, REG) in zip(("in_progress_jobs.txt", "archived_jobs.txt"), JOB_REGISTRY)
+        open(config_path(f), "w") do f
+            for j in REG
+                write(f, "$j\n")
+            end
         end
     end
 end
@@ -31,9 +30,9 @@ function cleanup_job_registry!(; print = true)
             end
             print && @warn message
             deleteat!(REG, stale_ids)
+            unique!(REG)
         end
     end
-    return write_job_registry()
 end
 
 function maybe_register_job(abspath::String)
@@ -83,7 +82,7 @@ Returns a `Vector` of pairs with all archived [`DFJobs`](@ref DFJob) whose direc
 function archived_jobs(fuzzy::AbstractString = "")
     cleanup_job_registry!(; print = false)
     jobs = filter(x -> occursin(fuzzy, x), JOB_REGISTRY.archived)
-    return Dict([j => ispath(joinpath(j, "description.txt")) ? read(joinpath(j, "description.txt")) : "" for j in jobs])
+    return [j => ispath(joinpath(j, "description.txt")) ? read(joinpath(j, "description.txt"), String) : "" for j in jobs]
 end
 
 """
