@@ -28,9 +28,9 @@ end
 function start(d::Daemon)
     julia_exec   = joinpath(Sys.BINDIR, "julia")
     project_path = Pkg.project().path
-    p            = run(Cmd(`$julia_exec -t auto --project=$project_path -e "using DFControl; DAEMON = DFControl.server_start($(d.port)); using DFControl.DaemonMode; serve($(d.port), true)"`; detach = true); wait = false)
+    p            = run(Cmd(`$julia_exec -t auto --project=$project_path -e "using DFControl; DAEMON = DFControl.server_start($(d.port)); using DFControl.DaemonMode; serve($(d.port), true)"`))#; detach = true); wait = false)
     d.pid        = getpid(p)
-    @info "Daemon started, listening on port $(d.port), with PID $(d.pid)."
+    @info "Daemon started, listening on port $(d.port), with PID $(d.pid).#"
     d.started = false
     save(d)
     return d
