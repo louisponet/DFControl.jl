@@ -94,7 +94,9 @@ function __init__()
     @require Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80" include("plotting.jl")
     merge!(Unitful.basefactors, localunits)
     Unitful.register(@__MODULE__)
-    return init_job_registry()
+    init_job_registry()
+    init_daemon()
+    return 
 end
 
 const pythonpath = Sys.iswindows() ? joinpath(depsdir, "python2", "python") :

@@ -25,12 +25,6 @@ function save(d::Daemon)
                      d.query_time, "job_dirs_procs", d.job_dirs_procs, "started", d.started)
 end
 
-function Daemon(config_dir::String)
-    data = JLD2.load(DAEMON_CONFIG_PATH)
-    return Daemon(; port = data["port"], pid = data["pid"], query_time = data["query_time"],
-                  job_dirs_procs = data["job_dirs_procs"], started = data["started"])
-end
-
 function start(d::Daemon)
     julia_exec   = joinpath(Sys.BINDIR, "julia")
     project_path = Pkg.project().path
@@ -103,11 +97,14 @@ end
 
 function init_daemon()
     if ispath(DAEMON_CONFIG_PATH)
-        d = Daemon(DAEMON_CONFIG_PATH)
+        data = JLD2.load(DAEMON_CONFIG_PATH)
+        d = Daemon(; port = data["port"], pid = data["pid"], query_time = data["query_time"],
+                  job_dirs_procs = data["job_dirs_procs"], started = data["started"])
     else
         d = Daemon()
     end
     if isalive(d)
+        @info "Daemon found running at port $(d.port)."
         return d
     else
         return start(d)
