@@ -69,7 +69,7 @@ function submit(job::DFJob; server = job.server, server_dir = job.server_dir, kw
         for p in unique(map(x->x.pseudo, atoms(job)))
             push!(files, p.name => read(joinpath(p.dir, p.name), String))
         end
-        JD2.save(joinpath(job.local_dir, "job.jld2"), "job", job, "files", files)
+        JLD2.save(joinpath(job.local_dir, "job.jld2"), "job", job, "files", files)
         push(job)
     else
         save(job; kwargs...)

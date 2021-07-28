@@ -209,7 +209,7 @@ pulljob(args...; kwargs...) = pulljob(getdefault_server(), args..., kwargs...)
 Pushes a DFJob from it's local directory to its server side directory.
 """
 function push(job::DFJob)
-    run(`scp $(joinpath(job, "job.jld2")) $(job.server * ":" * ".julia/config/DFControl/pending_jobs/" * replace(job.server_dir, "/" => "_"))`)
+    run(`scp $(joinpath(job, "job.jld2")) $(job.server * ":" * ".julia/config/DFControl/pending_jobs/" * replace(job.server_dir, "/" => "_")*".jld2")`)
 end
 
 #Gives the reverse (last job is listed first) of the output, omitting the header lines
