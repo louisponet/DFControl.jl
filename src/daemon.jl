@@ -28,7 +28,7 @@ end
 function start(d::Daemon)
     julia_exec   = joinpath(Sys.BINDIR, "julia")
     project_path = Pkg.project().path
-    p            = run(Cmd(`$julia_exec -t auto -e "using DFControl; DAEMON = DFControl.server_start($(d.port)); using DaemonMode; serve($(d.port), true)"`; detach = true); wait = false)
+    p            = run(Cmd(`$julia_exec -t auto -p $project_path -e "using DFControl; DAEMON = DFControl.server_start($(d.port)); using DaemonMode; serve($(d.port), true)"`; detach = true); wait = false)
     d.pid        = getpid(p)
     @info "Daemon started, listening on port $(d.port), with PID $(d.pid)."
     d.started = false
@@ -68,33 +68,6 @@ function workflow_logger(job::DFJob)
                                                append = true), Logging.Error))
 end
 
-function main_loop(d::Daemon)
-    while true
-        to_rm = String[]
-        for (k, t) in d.job_dirs_procs
-            if isready(t[2])
-                try
-                    t_ = fetch(t[2])
-                    @info """Workflow for job directory $(k) done."""
-                    push!(to_rm, k)
-                catch e
-                    @warn """Workflow in job directory $(k) failed.
-                    See $(joinpath(k, ".workflow/error.log")) for more info."""
-                    push!(to_rm, k)
-                end
-            end
-        end
-        if !isempty(to_rm)
-            for r in to_rm
-                rmprocs(d.job_dirs_procs[r][1])
-            end
-            pop!.((d.job_dirs_procs,), to_rm)
-            save(d)
-        end
-        sleep(d.query_time)
-    end
-end
-
 function init_daemon()
     if ispath(DAEMON_CONFIG_PATH)
         data = JLD2.load(DAEMON_CONFIG_PATH)
@@ -103,6 +76,8 @@ function init_daemon()
     else
         d = Daemon()
     end
+    # create necessary daemon dirs (if they didn't exist yet)
+    mkpath(config_path("pending_jobs"))
     if isalive(d)
         @info "Daemon found running at port $(d.port)."
         return d
@@ -112,6 +87,61 @@ function init_daemon()
 end
 
 kill_daemon(d::Daemon) = run(`kill $(d.pid)`)
+
+function main_loop(d::Daemon)
+    while true
+        handle_workflow_runners!(d)
+        handle_job_submission(d)
+        sleep(d.query_time)
+    end
+end
+
+function handle_workflow_runners!(d::Daemon)
+    to_rm = String[]
+    for (k, t) in d.job_dirs_procs
+        if isready(t[2])
+            try
+                t_ = fetch(t[2])
+                @info """Workflow for job directory $(k) done."""
+                push!(to_rm, k)
+            catch e
+                @warn """Workflow in job directory $(k) failed.
+                See $(joinpath(k, ".workflow/error.log")) for more info."""
+                push!(to_rm, k)
+            end
+        end
+    end
+    if !isempty(to_rm)
+        for r in to_rm
+            rmprocs(d.job_dirs_procs[r][1])
+        end
+        pop!.((d.job_dirs_procs,), to_rm)
+        save(d)
+    end
+end 
+
+# Jobs are submitted by the daemon, using supplied job jld2 from the caller (i.e. another machine)
+# This means we need to turn job.server_dir into job.local_dir
+# Additional files are packaged with the job
+function handle_job_submission(d::Daemon)
+    pending_job_submissions = readdir(config_dir("pending_jobs")) 
+    for j in pending_job_submissions
+        dat = JLD2.load(j)
+        job = dat["job"]
+        set_localdir!(job, job.server_dir)
+        job.server_dir = ""
+        job.server = "localhost"
+        for (fname, contents) in dat["files"]
+            write(fname, contents)
+        end
+        for a in atoms(job)
+            a.pseudo.dir = ""
+        end
+        # TODO For now just submit
+        submit(job)
+    end
+end
+        
 
 function run_queue(job::DFJob, ctx::Dict; sleep_time = 10)
     logger = workflow_logger(job)

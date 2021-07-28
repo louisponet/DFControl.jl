@@ -61,18 +61,29 @@ First saves the job, then tries to submit the job script through `sbatch job.tt`
 `kwargs...` get passed to `save(job; kwargs...)`.
 """
 function submit(job::DFJob; server = job.server, server_dir = job.server_dir, kwargs...)
-    save(job; kwargs...)
-    job.server = server
-    try
-        job.metadata[:slurmid] = qsub(job)
-        save_metadata(job)
-    catch
+    if job.server != "localhost" && !isempty(job.server_dir)
+        if !ispath(job.local_dir)
+            mkpath(job.local_dir)
+        end
+        files = Pair{String, String}[]
+        for p in unique(map(x->x.pseudo, atoms(job)))
+            push!(files, p.name => read(joinpath(p.dir, p.name), String))
+        end
+        JD2.save(joinpath(job.local_dir, "job.jld2"), "job", job, "files", files)
+        push(job)
+    else
+        save(job; kwargs...)
         try
-            job.metadata[:slurmid] = sbatch(job)
+            job.metadata[:slurmid] = qsub(job)
             save_metadata(job)
         catch
-            pop!(job.metadata, :slurmid, nothing)
-            run(job)
+            try
+                job.metadata[:slurmid] = sbatch(job)
+                save_metadata(job)
+            catch
+                pop!(job.metadata, :slurmid, nothing)
+                run(job)
+            end
         end
     end
 end
