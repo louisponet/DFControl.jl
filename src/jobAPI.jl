@@ -37,7 +37,6 @@ function save(job::DFJob; kwargs...)
     
     set_localdir!(job, local_dir) # Needs to be done so the inputs `dir` also changes.
     verify_or_create(local_dir)
-    maybe_register_job(job)
 
     curver = job.version
     job.version = last_version(job) + 1
@@ -50,6 +49,7 @@ function save(job::DFJob; kwargs...)
     timestamp!(job, now())
     save_metadata(job)
     writejobfiles(job; kwargs...)
+    maybe_register_job(job)
     rm_tmp_flags!(job)
     return 
 end
@@ -229,7 +229,7 @@ Base.getindex(job::DFJob, el::Element) = job.structure[el]
 "Finds the output files for each of the calculations of a job, and groups all found data into a dictionary."
 function outputdata(job::DFJob, calculations::Vector{DFCalculation}; print = true,
                     onlynew = false)
-    if isarchived(job)
+    if isarchived(job) && ispath(joinpath(job, "results.jld2"))
         return JLD2.load(joinpath(job, "results.jld2"))["outputdata"]
     end
     datadict = Dict()

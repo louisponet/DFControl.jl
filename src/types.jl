@@ -253,7 +253,7 @@ Creates a new [`DFCalculation`](@ref) from the `template`, setting the `flags` o
     run::Bool = true
     outdata::SymAnyDict = SymAnyDict()
     infile::String = P == Wannier90 ? name * ".win" : name * ".in"
-    outfile::String = name * ".out"
+    outfile::String = P == Wannier90 ? name * ".wout" : name * ".out"
     function DFCalculation{P}(name, dir, flags, data, execs, run, outdata, infile,
                               outfile) where {P<:Package}
         out = new{P}(name, dir, SymAnyDict(), data, execs, run, outdata, infile, outfile)
