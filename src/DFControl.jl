@@ -97,6 +97,8 @@ function __init__()
     init_job_registry()
     if !haskey(ENV, "IS_DAEMON")
         init_daemon()
+    else
+        global_logger(DFControl.daemon_logger())
     end
     return 
 end

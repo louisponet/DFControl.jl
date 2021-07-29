@@ -131,7 +131,6 @@ end
 Returns the last `DFCalculation` for which an output file was created.
 """
 function last_running_calculation(job::DFJob)
-    @assert job.server == "localhost" "Intended use for now is locally."
     t = mtime(scriptpath(job))
     for i in reverse(calculations(job))
         p = outpath(i)

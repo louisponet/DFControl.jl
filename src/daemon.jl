@@ -44,23 +44,21 @@ end
 is_started(d::Daemon) = JLD2.load(DAEMON_CONFIG_PATH)["started"]
 
 function server_start(port::Int)
-    with_logger(daemon_logger()) do
-        d = Daemon(; port = port, pid = getpid())
-        if ispath(DAEMON_CONFIG_PATH)
-            prev_daemon = load_daemon()
-            d.query_time = prev_daemon.query_time
-            for j in keys(prev_daemon.job_dirs_procs)
-                if exists_job(j)
-                    tjob = DFJob(j)
-                    spawn_worker(d, tjob)
-                end
+    d = Daemon(; port = port, pid = getpid())
+    if ispath(DAEMON_CONFIG_PATH)
+        prev_daemon = load_daemon()
+        d.query_time = prev_daemon.query_time
+        for j in keys(prev_daemon.job_dirs_procs)
+            if exists_job(j)
+                tjob = DFJob(j)
+                spawn_worker(d, tjob)
             end
         end
-        d.main_loop = @async main_loop(d)
-        d.started = true
-        save(d)
-        return d
     end
+    d.main_loop = @async main_loop(d)
+    d.started = true
+    save(d)
+    return d
 end
 
 daemon_logger() = FileLogger(config_path("daemon.log"); append = true)
@@ -92,12 +90,10 @@ end
 kill_daemon(d::Daemon) = run(`kill $(d.pid)`)
 
 function main_loop(d::Daemon)
-    with_logger(daemon_logger()) do 
-        while true
-            handle_workflow_runners!(d)
-            handle_job_submission(d)
-            sleep(d.query_time)
-        end
+    while true
+        handle_workflow_runners!(d)
+        handle_job_submission(d)
+        sleep(d.query_time)
     end
 end
 
@@ -129,21 +125,24 @@ end
 # This means we need to turn job.server_dir into job.local_dir
 # Additional files are packaged with the job
 function handle_job_submission(d::Daemon)
-    pending_job_submissions = readdir(config_dir("pending_jobs")) 
+    pending_job_submissions = readdir(config_path("pending_jobs"))
+    @show pending_job_submissions
     for j in pending_job_submissions
-        dat = JLD2.load(j)
+        dat = JLD2.load(config_path("pending_jobs", j))
         job = dat["job"]
         set_localdir!(job, job.server_dir)
+        mkpath(job.local_dir)
         job.server_dir = ""
         job.server = "localhost"
         for (fname, contents) in dat["files"]
-            write(fname, contents)
+            write(joinpath(job, fname), contents)
         end
         for a in atoms(job)
-            a.pseudo.dir = ""
+            a.pseudo.dir = job.local_dir
         end
         # TODO For now just submit
-        submit(job)
+        spawn_worker(d, job)
+        rm(config_path("pending_jobs", j))
     end
 end
         
@@ -210,14 +209,21 @@ function write_workflow_files(job::DFJob)
 end
 
 function spawn_worker(d::Daemon, job::DFJob)
-    env_dat = JLD2.load(joinpath(job, ".workflow/environment.jld2"))
-    proc = addprocs(1; exeflags = "--project=$(env_dat["project"])")[1]
-    using_expr = Base.Meta.parse("""using $(join(env_dat["modules"], ", "))""")
-    ctx_path = joinpath(job, ".workflow/ctx.jld2")
+    if ispath(joinpath(job, ".workflow/environment.jld2"))
+        env_dat = JLD2.load(joinpath(job, ".workflow/environment.jld2"))
+        proc = addprocs(1; exeflags = "--project=$(env_dat["project"])")[1]
+        using_expr = Base.Meta.parse("""using $(join(env_dat["modules"], ", "))""")
+        ctx_path = joinpath(job, ".workflow/ctx.jld2")
 
-    Distributed.remotecall_eval(Distributed.Main, proc, using_expr)
-    f = remotecall(DFControl.run_queue, proc, job, DFControl.JLD2.load(ctx_path)["ctx"];
-                   sleep_time = d.query_time)
+        Distributed.remotecall_eval(Distributed.Main, proc, using_expr)
+        f = remotecall(DFControl.run_queue, proc, job, DFControl.JLD2.load(ctx_path)["ctx"];
+                       sleep_time = d.query_time)
+    else
+        proc = addprocs(1; exeflags = "--project=$(Base.current_project())")[1]
+        Distributed.remotecall_eval(Distributed.Main, proc, :(using DFControl))
+        Distributed.remotecall_eval(Distributed.Main, proc, :(DFControl.global_logger(DFControl.FileLogger(joinpath($(job.local_dir), "submission.log"); append = true))))
+        f = Distributed.remotecall(DFControl.submit, proc, job)
+    end
     d.job_dirs_procs[job.local_dir] = (proc, f)
     return save(d)
 end
