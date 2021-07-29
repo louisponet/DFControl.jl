@@ -89,10 +89,12 @@ end
 kill_daemon(d::Daemon) = run(`kill $(d.pid)`)
 
 function main_loop(d::Daemon)
-    while true
-        handle_workflow_runners!(d)
-        handle_job_submission(d)
-        sleep(d.query_time)
+    with_logger(daemon_logger()) do 
+        while true
+            handle_workflow_runners!(d)
+            handle_job_submission(d)
+            sleep(d.query_time)
+        end
     end
 end
 
