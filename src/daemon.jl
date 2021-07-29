@@ -10,6 +10,11 @@ delete_daemon_config!() = rm(DAEMON_CONFIG_PATH)
     main_loop = nothing
 end
 
+function load_daemon()
+    data = JLD2.load(DAEMON_CONFIG_PATH)
+    return Daemon(; port = data["port"], pid = data["pid"], query_time = data["query_time"],
+              job_dirs_procs = data["job_dirs_procs"], started = data["started"])
+end
 function isalive(d::Daemon)
     d.pid == -1 && return false
     try
@@ -28,7 +33,7 @@ end
 function start(d::Daemon)
     julia_exec   = joinpath(Sys.BINDIR, "julia")
     project_path = Pkg.project().path
-    p            = run(Cmd(`$julia_exec -t auto --project=$project_path -e """ENV["IS_DAEMON"] = true; using DFControl; DAEMON = DFControl.server_start($(d.port)); using DFControl.DaemonMode; serve($(d.port), true)"""`))#; detach = true); wait = false)
+    p            = run(Cmd(`$julia_exec -t auto --project=$project_path -e "ENV[\"IS_DAEMON\"] = true; using DFControl; DAEMON = DFControl.server_start($(d.port)); using DFControl.DaemonMode; serve($(d.port), true)"`; detach = true); wait = false)
     d.pid        = getpid(p)
     @info "Daemon started, listening on port $(d.port), with PID $(d.pid).#"
     d.started = false
@@ -42,7 +47,7 @@ function server_start(port::Int)
     with_logger(daemon_logger()) do
         d = Daemon(; port = port, pid = getpid())
         if ispath(DAEMON_CONFIG_PATH)
-            prev_daemon = Daemon(DAEMON_CONFIG_PATH)
+            prev_daemon = load_daemon()
             d.query_time = prev_daemon.query_time
             for j in keys(prev_daemon.job_dirs_procs)
                 if exists_job(j)
@@ -70,9 +75,7 @@ end
 
 function init_daemon()
     if ispath(DAEMON_CONFIG_PATH)
-        data = JLD2.load(DAEMON_CONFIG_PATH)
-        d = Daemon(; port = data["port"], pid = data["pid"], query_time = data["query_time"],
-                  job_dirs_procs = data["job_dirs_procs"], started = data["started"])
+        d = load_daemon()
     else
         d = Daemon()
     end
