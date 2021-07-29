@@ -95,7 +95,9 @@ function __init__()
     merge!(Unitful.basefactors, localunits)
     Unitful.register(@__MODULE__)
     init_job_registry()
-    init_daemon()
+    if !haskey(ENV, "IS_DAEMON")
+        init_daemon()
+    end
     return 
 end
 
