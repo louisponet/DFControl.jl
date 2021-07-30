@@ -471,3 +471,62 @@ function Base.hash(data::T, h::UInt) where {T<:Union{InputData,Projection,Exec}}
     end
     return h
 end
+
+@enum Scheduler slurm bash
+
+@with_kw mutable struct Server
+    name::String
+    username::String
+    domain::String
+    scheduler::Scheduler
+    mountpoint::String = ""
+end
+
+function Server(s::String)
+    server = load_server(s) #First check if previous server exists
+    if server !== nothing
+        return server
+    end
+    # Create new server 
+    if occursin("@", s)
+        username, domain = split(s, "@")
+        name = ""
+    else
+        @info "Server with name $name not found."
+        name = s
+        username, domain = "", ""
+    end
+    @info "Creating new Server configuration..."
+    while isempty(name)
+        print("Please specify the Server's identifying name:")
+        name = readline()
+    end
+    if load_server(name) !== nothing
+        @warn "A server with $name was already configured and will be overwritten."
+    end
+    while isempty(username)
+        print("Username:")
+        username = readline()
+    end
+    while isempty(domain)
+        print("Domain:")
+        domain = readline()
+    end
+    
+    scheduler_choice = request("Please select scheduler:", RadioMenu([string.(instances(Scheduler))...]))
+    scheduler_choice == -1 && return 
+    scheduler = Scheduler(scheduler_choice)
+    mounted_choice = request("Has the server been mounted?", RadioMenu(["yes", "no"]))
+    mounted_choice == -1 && return
+    if mounted_choice == 1
+        print("Please specify mounting point:")
+        mountpoint = readline()
+    else
+        mountpoint = ""
+    end
+    server = Server(name, username, domain, scheduler, mountpoint)
+    println("Server configured as:")
+    println(server)
+    save_server(server)
+    return server
+end

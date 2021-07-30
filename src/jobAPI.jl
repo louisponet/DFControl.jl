@@ -62,6 +62,11 @@ First saves the job, then tries to submit the job script through `sbatch job.tt`
 """
 function submit(job::DFJob; server = job.server, server_dir = job.server_dir, kwargs...)
     if job.server != "localhost" && !isempty(job.server_dir)
+        server = Server(job.server)
+        server === nothing && return
+
+        verify_execs(job, server)
+        
         if !ispath(job.local_dir)
             mkpath(job.local_dir)
         end
@@ -70,7 +75,7 @@ function submit(job::DFJob; server = job.server, server_dir = job.server_dir, kw
             push!(files, p.name => read(joinpath(p.dir, p.name), String))
         end
         JLD2.save(joinpath(job.local_dir, "job.jld2"), "job", job, "files", files)
-        push(job)
+        push(job, server)
     else
         save(job; kwargs...)
         try

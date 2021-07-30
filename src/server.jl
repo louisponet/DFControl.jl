@@ -1,3 +1,41 @@
+const SERVER_DIR = config_path("servers")
+function known_servers(fuzzy="")
+    if ispath(SERVER_DIR)
+        servers = [JLD2.load(joinpath(SERVER_DIR, s))["server"] for s in filter(x -> occursin(fuzzy, x), readdir(SERVER_DIR))]
+    else
+        servers = Server[]
+    end
+    return servers
+end
+
+function load_server(name::String)
+    if occursin("@", name)
+        return getfirst(x -> x.name == name, known_servers())
+    else
+        all = known_servers(name)
+        if length(all) > 0 
+            return all[1]
+        else
+            return nothing
+        end
+    end
+end
+
+function save_server(s::Server)
+    mkpath(SERVER_DIR)
+    if ispath(joinpath(SERVER_DIR, s.name))
+        @info "Updating previously existing configuration for server $s."
+    else
+        JLD2.save(joinpath(SERVER_DIR, s.name * ".jld2"), "server", s)
+    end
+end
+
+ssh_string(s::Server) = s.username * "@" * s.domain
+
+function establish_connection(server::Server)
+    proc = Distributed.addprocs([(ssh_string(server), 1)])[1]
+end
+
 """
     pullfile(server::String, server_dir::String, local_dir::String, filename::String)
 
@@ -203,14 +241,10 @@ end
 
 pulljob(args...; kwargs...) = pulljob(getdefault_server(), args..., kwargs...)
 
-"""
-    push(job::DFJob)
-
-Pushes a DFJob from it's local directory to its server side directory.
-"""
-function push(job::DFJob)
-    run(`scp $(joinpath(job, "job.jld2")) $(job.server * ":" * ".julia/config/DFControl/pending_jobs/" * replace(job.server_dir, "/" => "_")*".jld2")`)
+function push(job::DFJob, s::Server)
+    run(`scp $(joinpath(job, "job.jld2")) $(ssh_string(s) * ":" * ".julia/config/DFControl/pending_jobs/" * replace(job.server_dir, "/" => "_")*".jld2")`)
 end
 
 #Gives the reverse (last job is listed first) of the output, omitting the header lines
 slurm_process_command(cmd) = strip.(reverse(readlines(cmd)))[1:end-2]
+
