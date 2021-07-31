@@ -1,4 +1,7 @@
 module DFControl
+const DFC = DFControl
+export DFC
+
 const CONFIG_DIR = occursin("cache", first(Base.DEPOT_PATH)) ?
                    abspath(Base.DEPOT_PATH[2], "config", "DFControl") :
                    abspath(Base.DEPOT_PATH[1], "config", "DFControl")
@@ -44,20 +47,16 @@ include("atom.jl")
 include("structure.jl")
 
 include("execs.jl")
-include("calculation.jl")
 include("utils.jl")
 export yesterday, lastweek, lastmonth
 
+include("calculation.jl")
 include("job.jl")
-include("versioning.jl")
-include("registry.jl")
-
 include("server.jl")
 include("API.jl")
 
 include("constants.jl")
 
-include("fileio.jl")
 
 include("defaults.jl")
 export setdefault_pseudodir
@@ -78,10 +77,9 @@ const dfprint = print
 include("display/overloads.jl")
 
 using Pkg, LoggingExtras, Distributed
-include("microservice/Mapper.jl")
-include("microservice/Service.jl")
-include("microservice/Resource.jl")
-include("microservice/Client.jl")
+include("Service/Service.jl")
+include("Resource/Resource.jl")
+include("Client/Client.jl")
 
 using Requires
 
@@ -91,7 +89,8 @@ function __init__()
     @require Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80" include("plotting.jl")
     merge!(Unitful.basefactors, localunits)
     Unitful.register(@__MODULE__)
-    init_job_registry()
+    Service.init_job_registry()
+    maybe_create_localhost()
     # if !haskey(ENV, "IS_DAEMON")
     #     init_daemon()
     # else
@@ -104,5 +103,6 @@ const pythonpath = Sys.iswindows() ? joinpath(depsdir, "python2", "python") :
                    joinpath(dirname(@__DIR__), "deps", "python2", "bin", "python")
 const cif2cellpath = Sys.iswindows() ? joinpath(depsdir, "python2", "Scripts", "cif2cell") :
                      joinpath(dirname(@__DIR__), "deps", "python2", "bin", "cif2cell")
+
 
 end

@@ -1,4 +1,3 @@
-#these are all the control data, they hold the flags that guide the calculation
 name(data::InputData) = data.name
 
 name(c::DFCalculation)          = c.name
@@ -11,7 +10,15 @@ outfilename(c::DFCalculation)   = c.outfile
 inpath(c::DFCalculation)        = joinpath(c, infilename(c))
 outpath(c::DFCalculation)       = joinpath(c, outfilename(c))
 
-outfiles(c::DFCalculation) = filter(ispath, [outpath(c)])
+isbands(calculation::DFCalculation)    = false
+isnscf(calculation::DFCalculation)     = false
+isscf(calculation::DFCalculation)      = false
+isvcrelax(calculation::DFCalculation)  = false
+isprojwfc(calculation::DFCalculation)  = false
+ismagnetic(calculation::DFCalculation) = false
+issoc(calculation::DFCalculation)      = false
+
+searchdir(i::DFCalculation, glob) = joinpath.((i,), searchdir(dir(i), glob))
 
 """
     joinpath(calc::DFCalculation, path...) = joinpath(dir(calc), path...)
@@ -39,67 +46,6 @@ data(calculation::DFCalculation) = calculation.data
 hasexec(calculation::DFCalculation, ex::AbstractString) = exec(calculation, ex) != nothing
 set_flow!(calculation::DFCalculation, run) = calculation.run = run
 
-"Runs through all the set flags and checks if they are allowed and set to the correct value"
-function convert_flags!(calculation::DFCalculation)
-    for (flag, value) in flags(calculation)
-        flagtype_ = flagtype(calculation, flag)
-        if flagtype_ == Nothing
-            @warn "Flag $flag was not found in allowed flags for exec $(execs(calculation)[2]). Removing flag."
-            rm_flags!(calculation, flag)
-            continue
-        end
-        if !(isa(value, flagtype_) || eltype(value) <: flagtype_)
-            try
-                if isbitstype(eltype(value))
-                    if length(value) > 1
-                        flags(calculation)[flag] = convert(flagtype_, value)
-                    else
-                        flags(calculation)[flag] = convert(eltype(flagtype_), value)
-                    end
-                else
-                    flags(calculation)[flag] = convert.(flagtype_, value)
-                end
-            catch
-                error("Input $(name(calculation)): Could not convert :$flag of value $value to the correct type ($flagtype_), please set it to the correct type.")
-            end
-        end
-    end
-end
-
-#TODO implement abinit and wannier90
-"""
-    sanitize_flags!(calculation::DFCalculation, str::AbstractStructure)
-
-Cleans up flags, i.e. remove flags that are not allowed and convert all
-flags to the correct types.
-Tries to correct common errors for different calculation types.
-"""
-function sanitize_flags!(calculation::DFCalculation, str::AbstractStructure)
-    return convert_flags!(calculation)
-end
-
-"""
-    set_data!(calculation::DFCalculation, data::InputData)
-
-If an `InputData` with the same name as `data` is already in `calculation`, it will be overwritten. Otherwise `data` gets pushed to the list of `InputData` blocks.
-"""
-function set_data!(calculation::DFCalculation, data::InputData)
-    id = findfirst(x -> x.name == data.name, calculation.data)
-    if id === nothing
-        push!(calculation.data, data)
-    else
-        calculation.data[id] = data
-    end
-    return calculation
-end
-
-isbands(calculation::DFCalculation)    = false
-isnscf(calculation::DFCalculation)     = false
-isscf(calculation::DFCalculation)      = false
-isvcrelax(calculation::DFCalculation)  = false
-isprojwfc(calculation::DFCalculation)  = false
-ismagnetic(calculation::DFCalculation) = false
-issoc(calculation::DFCalculation)      = false
 
 #TODO review this!
 outdata(calculation::DFCalculation) = calculation.outdata
@@ -127,25 +73,7 @@ function Base.:(==)(i1::DFCalculation, i2::DFCalculation)
                fieldnames(DFCalculation))
 end
 
-searchdir(i::DFCalculation, glob) = joinpath.((i,), searchdir(dir(i), glob))
-
-ψ_cutoff_flag(c::DFCalculation) = ψ_cutoff_flag(package(c))
-ρ_cutoff_flag(c::DFCalculation) = ρ_cutoff_flag(package(c))
-
-function pdos(calculation::DFCalculation, args...)
-    @error "pdos reading not implemented for package $(package(calculation))."
-end
-
-function Emin_from_projwfc(calculation::DFCalculation, args...)
-    @error "Emin_from_projwfc is not implemented for package $(package(calculation))."
-end
-
-function readoutput(c::DFCalculation, args...; kwargs...)
-    @error "Output parsing for package $(package(c)) not implemented."
-end
-
-rm_outfiles(calc::DFCalculation) = rm.(outfiles(calc))
 
 include("qe/calculation.jl")
-include("elk/calculation.jl")
 include("wannier90/calculation.jl")
+include("elk/calculation.jl")

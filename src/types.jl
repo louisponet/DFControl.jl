@@ -574,6 +574,6 @@ function Server(s::String)
     server = Server(name, username, domain, port, scheduler, mountpoint, julia_str)
     println("Server configured as:")
     println(server)
-    save_server(server)
+    save(server)
     return server
 end

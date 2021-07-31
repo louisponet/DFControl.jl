@@ -152,7 +152,7 @@ function elk_read_calculation(fn::String; execs = [Exec(; exec = "elk")], run = 
 
     #elk2wannier
 
-    flags = SymAnyDict()
+    flags = DFC.SymAnyDict()
 
     if haskey(blocknames_flaglines, Symbol("dft+u"))
         flags[:dftu], flags[:inpdftu] = elk_parse_DFTU(structure.atoms,
@@ -199,7 +199,7 @@ function parse(::Type{UnitRange{Int}}, l::AbstractString)
 end
 
 function parse_block_flags(blockname::Symbol, lines::Vector{<:AbstractString})
-    flags = SymAnyDict()
+    flags = DFC.SymAnyDict()
     i = 1
     totlen = length(lines)
     for flaginfo in elk_block_info(blockname).flags
@@ -273,14 +273,14 @@ function elk_write_structure(f, structure)
 end
 
 function construct_flag_blocks(calculations::Vector{DFCalculation{Elk}})
-    all_flags = SymAnyDict()
+    all_flags = DFC.SymAnyDict()
     for i in calculations
         merge!(all_flags, i.flags)
         for d in data(i)
             merge!(all_flags, d.data)
         end
     end
-    block_flags = SymAnyDict()
+    block_flags = DFC.SymAnyDict()
 
     for b in ELK_CONTROLBLOCKS
         bvals = Any[]
@@ -314,7 +314,7 @@ function elk_write_flag_val(f, val)
     return write(f, "\n")
 end
 
-function elk_write_DFTU(f::IO, structure::AbstractStructure, dftu_vals::Vector)
+function elk_write_DFTU(f::IO, structure::DFC.AbstractStructure, dftu_vals::Vector)
     write(f, "dft+u\n")
     for v in dftu_vals
         elk_write_flag_val(f, v)

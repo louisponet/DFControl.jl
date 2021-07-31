@@ -383,7 +383,7 @@ function read_job_calculations(job_file::String)
     name = ""
     header = Vector{String}()
     calculations = DFCalculation[]
-    structures = AbstractStructure[]
+    structures = DFC.AbstractStructure[]
     serverdir = ""
     open(job_file, "r") do f
         readline(f)
@@ -552,7 +552,7 @@ function read_cutoffs_from_pseudofile(file::AbstractString)
     return ecutwfc, ecutrho
 end
 
-function write_xsf(filename::AbstractString, structure::AbstractStructure)
+function write_xsf(filename::AbstractString, structure::DFC.AbstractStructure)
     open(filename,"w") do f
         write(f, "CRYSTAL\n")
         c = ustrip.(cell(structure)')

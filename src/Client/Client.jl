@@ -3,6 +3,12 @@ module Client
     using ..DFControl
     using ..DFControl: Server
 
+    @inline function JSON3.read(::StructTypes.Mutable, buf, pos, len, b, ::Type{DFCalculation}; kw...)
+        x = DFCalculation{DFControl.NoPackage}("", execs=Exec[])
+        pos, x = JSON3.read!(StructTypes.Mutable(), buf, pos, len, b, DFCalculation, x; kw...)
+        return pos, x
+    end
+    
     http_string(s::Server) = "http://$(s.domain):$(s.port)"
 
     HTTP.request(method::String, s::Server, url, args...) =
@@ -19,4 +25,9 @@ module Client
         job.server_dir = job.local_dir
         return job
     end
+
+    kill_server(s::Server) = HTTP.put(s, "/kill_server")
+
+        
+        
 end

@@ -21,7 +21,7 @@ function load_server(name::String)
     end
 end
 
-function save_server(s::Server)
+function save(s::Server)
     mkpath(SERVER_DIR)
     if ispath(joinpath(SERVER_DIR, s.name * ".jld2"))
         @info "Updating previously existing configuration for server $s."
@@ -37,6 +37,40 @@ function establish_connection(server::Server)
 end
 
 remove_server!(name::String) = ispath(joinpath(SERVER_DIR, name * ".jld2")) && rm(joinpath(SERVER_DIR, name * ".jld2"))
+
+function start(s::Server)
+    cmd = Cmd(`$(s.julia_exec) --startup-file=no -t auto -e "using DFControl; DFControl.Resource.run($(s.port))"`; detach = true)
+    proc = DFControl.establish_connection(s)
+    
+    p   = remotecall(run, proc, cmd; wait = false)
+    @show fetch(p)
+    @info "Daemon on Server $(s.name) started, listening on port $(s.port)."
+end
+
+kill_server(s) = Client.kill_server(s)
+
+function restart_server(s::Server)
+    kill_server(s)
+    start(s)
+end
+
+function maybe_create_localhost()
+    t = load_server("localhost")
+    if t === nothing
+        scheduler = Sys.which("sbatch") === nothing ? bash : slurm
+        if !haskey(ENV, "DFCONTROL_PORT")
+            port = 8080
+        else
+            port = parse(Int, ENV["DFCONTROL_PORT"])
+        end
+        julia_exec = joinpath(Sys.BINDIR, "julia")
+        out = Server("localhost", ENV["USER"], "localhost", port, scheduler, "", julia_exec)
+        save(out)
+        return out
+    else
+        return t
+    end
+end
 
 """
     pullfile(server::String, server_dir::String, local_dir::String, filename::String)

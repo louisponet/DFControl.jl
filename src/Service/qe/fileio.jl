@@ -816,7 +816,7 @@ function extract_cell!(flags, cell_block)
     end
 end
 
-function qe_DFTU(speciesid::Int, parsed_flags::SymAnyDict)
+function qe_DFTU(speciesid::Int, parsed_flags::DFC.SymAnyDict)
     U  = 0.0
     J0 = 0.0
     J  = [0.0]
@@ -844,7 +844,7 @@ end
 
 degree2π(ang) = ang / 180 * π
 
-function qe_magnetization(atid::Int, parsed_flags::SymAnyDict)
+function qe_magnetization(atid::Int, parsed_flags::DFC.SymAnyDict)
     θ = haskey(parsed_flags, :angle1) && length(parsed_flags[:angle1]) >= atid ?
         parsed_flags[:angle1][atid] : 0.0
     θ = degree2π(θ)
@@ -948,7 +948,7 @@ function qe_read_calculation(filename; execs = [Exec(; exec = "pw.x")], run = tr
     flaglines, lines = separate(x -> occursin("=", x), lines)
     flaglines = strip_split.(flaglines, "=")
     easy_flaglines, difficult_flaglines = separate(x -> !occursin("(", x[1]), flaglines)
-    parsed_flags = SymAnyDict()
+    parsed_flags = DFC.SymAnyDict()
     #easy flags
     for (f, v) in easy_flaglines
         sym = Symbol(f)

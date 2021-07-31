@@ -154,6 +154,21 @@ The former returns `calculation.data`, the later -- the `InputData` with name `n
 data(calculation::DFCalculation, n::Symbol) = getfirst(x -> name(x) == n, data(calculation))
 
 """
+    set_data!(calculation::DFCalculation, data::InputData)
+
+If an `InputData` with the same name as `data` is already in `calculation`, it will be overwritten. Otherwise `data` gets pushed to the list of `InputData` blocks.
+"""
+function set_data!(calculation::DFCalculation, data::InputData)
+    id = findfirst(x -> x.name == data.name, calculation.data)
+    if id === nothing
+        push!(calculation.data, data)
+    else
+        calculation.data[id] = data
+    end
+    return calculation
+end
+
+"""
     set_data!(calculation::DFCalculation, block_name::Symbol, new_block_data; option::Symbol=nothing, print::Bool=true)
 
 Searches for an `InputData` for which `InputData.name == block_name`, and sets `DFCalculation.data = new_block_data`.
