@@ -11,10 +11,11 @@ module Service
     const SLEEP_TIME = 10.0
     
     function launch_service(s::DFControl.Server)
-        cmd = Cmd(`$(s.julia_exec) -t auto -e "using DFControl; DFControl.Resource.run($s.port)"`; detach = true)
+        cmd = Cmd(`$(s.julia_exec) --startup-file=no -t auto -e "using DFControl; DFControl.Resource.run($(s.port))"`; detach = true)
         proc = DFControl.establish_connection(s)
         
-        p   = remotecall(run, cmd; wait = false)
+        p   = remotecall(run, proc, cmd; wait = false)
+        @show fetch(p)
         @info "Daemon on Server $(s.name) started, listening on port $(s.port)."
     end
 

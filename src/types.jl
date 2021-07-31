@@ -510,7 +510,7 @@ function Base.hash(data::T, h::UInt) where {T<:Union{InputData,Projection,Exec}}
     return h
 end
 
-@enum Scheduler slurm bash
+@enum Scheduler slurm=1 bash=2
 
 @with_kw mutable struct Server
     name::String
@@ -532,7 +532,7 @@ function Server(s::String)
         username, domain = split(s, "@")
         name = ""
     else
-        @info "Server with name $name not found."
+        @info "Server with name $s not found."
         name = s
         username, domain = "", ""
     end
@@ -558,7 +558,7 @@ function Server(s::String)
     
     print("Julia Exec (default: julia):")
     julia_str = readline()
-    port = isempty(port_str) ? 8080 : parse(Int, port_str)
+    julia = isempty(julia_str) ? "julia" : julia_str
     
     scheduler_choice = request("Please select scheduler:", RadioMenu([string.(instances(Scheduler))...]))
     scheduler_choice == -1 && return 

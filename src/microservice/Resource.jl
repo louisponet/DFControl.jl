@@ -1,6 +1,7 @@
 module Resource
     using HTTP, JSON3, StructTypes
     using ..DFControl, ..Service
+    
     @inline function JSON3.read(::StructTypes.Mutable, buf, pos, len, b, ::Type{DFCalculation}; kw...)
         x = DFCalculation{DFControl.NoPackage}("", execs=Exec[])
         pos, x = JSON3.read!(StructTypes.Mutable(), buf, pos, len, b, DFCalculation, x; kw...)
@@ -23,6 +24,6 @@ module Resource
     function run(port)
         @async HTTP.serve(requestHandler, "0.0.0.0", port)
         # Service.start()
-        @async Service.main_loop()
+        Service.main_loop()
     end    
 end

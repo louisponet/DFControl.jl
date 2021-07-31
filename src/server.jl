@@ -23,7 +23,7 @@ end
 
 function save_server(s::Server)
     mkpath(SERVER_DIR)
-    if ispath(joinpath(SERVER_DIR, s.name))
+    if ispath(joinpath(SERVER_DIR, s.name * ".jld2"))
         @info "Updating previously existing configuration for server $s."
     else
         JLD2.save(joinpath(SERVER_DIR, s.name * ".jld2"), "server", s)
@@ -35,6 +35,8 @@ ssh_string(s::Server) = s.username * "@" * s.domain
 function establish_connection(server::Server)
     proc = Distributed.addprocs([(ssh_string(server), 1)])[1]
 end
+
+remove_server!(name::String) = ispath(joinpath(SERVER_DIR, name * ".jld2")) && rm(joinpath(SERVER_DIR, name * ".jld2"))
 
 """
     pullfile(server::String, server_dir::String, local_dir::String, filename::String)

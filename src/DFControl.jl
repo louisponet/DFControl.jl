@@ -81,6 +81,7 @@ using Pkg, LoggingExtras, Distributed
 include("microservice/Mapper.jl")
 include("microservice/Service.jl")
 include("microservice/Resource.jl")
+include("microservice/Client.jl")
 
 using Requires
 
