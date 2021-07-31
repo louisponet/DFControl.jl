@@ -1,3 +1,5 @@
+StructTypes.StructType(::Type{<:Quantity}) = StructTypes.Struct() 
+
 """
     Orbital(name::String, size::Int, l::Int, mr::Int)
 
@@ -10,6 +12,7 @@ struct Orbital
     mr   :: Int
 end
 Orbital() = Orbital("none", 0, 0, 0)
+StructTypes.StructType(::Type{Orbital}) = StructTypes.Struct()
 
 """
     Projection(orb::Orbital, start::Int, last::Int)
@@ -24,6 +27,7 @@ end
 Projection() = Projection(Orbital(), 0, 0)
 Projection(o::Orbital, start::Int) = Projection(o, start, start + o.size - 1)
 Projection(ostr::String, start::Int) = (o = orbital(ostr); Projection(o, start))
+StructTypes.StructType(::Type{Projection}) = StructTypes.Struct()
 
 """
     DFTU(;l ::Int = -1,
@@ -35,15 +39,16 @@ Projection(ostr::String, start::Int) = (o = orbital(ostr); Projection(o, start))
 
 DFT+U parameters for a given [`Atom`](@ref).
 """
-@with_kw mutable struct DFTU{T}
+Base.@kwdef mutable struct DFTU{T}
     l::Int = -1
-    U::T   = zero(T)
-    J0::T  = zero(T)
+    U::T   = 0.0
+    J0::T  = 0.0
     #QE params
-    α::T = zero(T)
-    β::T = zero(T)
-    J::Vector{T} = T[zero(T)]
+    α::T = 0.0
+    β::T = 0.0
+    J::Vector{T} = [0.0]
 end
+StructTypes.StructType(::Type{<:DFTU}) = StructTypes.Mutable()
 
 """
     Pseudo(name::String, dir::String)
@@ -57,6 +62,8 @@ mutable struct Pseudo
     Pseudo(name::AbstractString, dir::AbstractString) = new(name, abspath(dir))
 end
 
+StructTypes.StructType(::Type{Pseudo}) = StructTypes.Mutable()
+
 """
     Element(symbol::Symbol, Z::Int, name::String, atomic_weight::Float64, color::NTuple{3, Float64})
     
@@ -69,6 +76,8 @@ struct Element
     atomic_weight :: Float64
     color         :: NTuple{3,Float64}
 end
+Element() = Element(:nothing, -1, "", -1, (0.0,0.0,0.0))
+StructTypes.StructType(::Type{Element}) = StructTypes.Struct()
 
 abstract type AbstractAtom{T,LT<:Length{T}} end
 # TODO Multiple l per atom in Elk??
@@ -89,10 +98,10 @@ The `name` of the `atom` is used as an identifier for the `atom` type, in the se
 See documentation for [`Element`](@ref) and [`Pseudo`](@ref) for further information on these attributes.
 """
 @with_kw_noshow mutable struct Atom{T<:AbstractFloat,LT<:Length{T}} <: AbstractAtom{T,LT}
-    name::Symbol
-    element::Element
-    position_cart::Point3{LT}
-    position_cryst::Point3{T}
+    name::Symbol = :nothing
+    element::Element = Element()
+    position_cart::Point3{LT} = Point3(0.0Ang, 0.0Ang, 0.0Ang)
+    position_cryst::Point3{T} = Point3(0.0,0.0,0.0)
     pseudo::Pseudo = Pseudo()
     projections::Vector{Projection} = Projection[]
     magnetization::Vec3{T} = zero(Vec3{T})
@@ -113,6 +122,8 @@ function Atom(orig_at::Atom, new_pos_cart::Point3, new_pos_cryst::Point3)
                 pseudo(orig_at), projections(orig_at), magnetization(orig_at),
                 dftu(orig_at))
 end
+# Atom() where {T, LT}= Atom{T, LT}(name=:nothing, element=Element(), position_cart = zero(Point3{LT}), position_cryst = zero(Point3{T}))
+StructTypes.StructType(::Type{<:Atom}) = StructTypes.Mutable()
 
 abstract type AbstractStructure{T,LT} end
 """
@@ -131,6 +142,7 @@ mutable struct Structure{T<:AbstractFloat,AA<:AbstractAtom{T},LT<:Length{T}} <:
     atoms :: Vector{AA}
     data  :: Dict{Symbol,Any}
 end
+Structure() = Structure("", Mat3(fill(1.0Ang,3,3)), Atom{Float64, typeof(1.0Ang)}[], SymAnyDict())
 
 function Structure(name, cell::Mat3{LT},
                    atoms::Vector{<:Atom{T,LT}}) where {T<:AbstractFloat,LT<:Length{T}}
@@ -153,22 +165,27 @@ function Structure(cif_file::String; name = "NoName")
     return str
 end
 
-mutable struct ExecFlag
+StructTypes.StructType(::Type{<:AbstractStructure}) = StructTypes.Mutable()
+AbstractStructure() = Structure()
+
+mutable struct ExecFlag{T}
     symbol      :: Symbol
     name        :: String
-    typ         :: Type
     description :: String
-    value       :: Any
+    value       :: T
     minus_count :: Int
 end
+ExecFlag() = ExecFlag(:nothing, "", "", 0, 1)
 
-ExecFlag(e::ExecFlag, value) = ExecFlag(e.symbol, e.name, e.typ, e.description, value, 1)
-function ExecFlag(p::Pair{Symbol,T}) where {T}
-    return ExecFlag(first(p), String(first(p)), T, "", last(p), 1)
+ExecFlag(e::ExecFlag, value) = ExecFlag(e.symbol, e.name, e.description, value, e.minus_count)
+function ExecFlag(p::Pair)
+    return ExecFlag(first(p), String(first(p)), "", last(p), 1)
 end
-function ExecFlag(p::Pair{Symbol,T}, count::Int) where {T}
-    return ExecFlag(first(p), String(first(p)), T, "", last(p), count)
+function ExecFlag(p::Pair, count::Int)
+    return ExecFlag(first(p), String(first(p)), "", last(p), count)
 end
+
+StructTypes.StructType(::Type{<:ExecFlag}) = StructTypes.Mutable()
 
 """
     Exec(;exec::String = "", dir::String = "", flags::Vector{ExecFlag} = ExecFlag[])
@@ -200,6 +217,8 @@ function Exec(exec::String, dir::String, flags::SymAnyDict)
     return Exec(exec, dir, _flags)
 end
 
+StructTypes.StructType(::Type{Exec}) = StructTypes.Mutable()
+
 """
     InputData(name::Symbol, option::Symbol, data::Any)
 
@@ -216,6 +235,20 @@ mutable struct InputData
     option :: Symbol
     data   :: Any
 end
+
+InputData() = InputData(:noting, :nothing, nothing)
+StructTypes.StructType(::Type{InputData}) = StructTypes.Mutable()
+
+
+abstract type Package end
+struct NoPackage <: Package end
+struct Wannier90 <: Package end
+struct QE <: Package end
+struct Abinit <: Package end
+struct Elk <: Package end
+StructTypes.StructType(::Type{<:Package}) = StructTypes.Struct()
+export Wannier90, QE, Abinit, Elk
+
 
 """
     DFCalculation{P<:Package}(name    ::String;
@@ -247,7 +280,7 @@ Creates a new [`DFCalculation`](@ref) from the `template`, setting the `flags` o
 @with_kw_noshow mutable struct DFCalculation{P<:Package}
     name::String
     dir::String = ""
-    flags::AbstractDict = SymAnyDict()
+    flags::SymAnyDict = SymAnyDict()
     data::Vector{InputData} = InputData[]
     execs::Vector{Exec}
     run::Bool = true
@@ -296,6 +329,10 @@ function DFCalculation(template::DFCalculation, name, newflags...;
     return calculation
 end
 
+# DFCalculation() = DFCalculation{NoPackage}(package=NoPackage())
+StructTypes.StructType(::Type{<:DFCalculation}) = StructTypes.Mutable()
+StructTypes.StructType(::Type{<:Type}) = StructTypes.Struct()
+
 #TODO should we also create a config file for each job with stuff like server etc? and other config things,
 #      which if not supplied could contain the default stuff?
 """
@@ -331,8 +368,8 @@ partly includes `job_dir`. If `version` is specified the corresponding job versi
 The `kwargs...` will be passed to the [`DFJob`](@ref) constructor.
 """
 @with_kw_noshow mutable struct DFJob
-    name::String
-    structure::AbstractStructure
+    name::String = ""
+    structure::AbstractStructure = Structure()
     calculations::Vector{DFCalculation} = DFCalculation[]
     local_dir::String = pwd()
     header::Vector{String} = getdefault_jobheader()
@@ -407,6 +444,7 @@ function DFJob(job_dir::AbstractString, job_script = "job.tt";
                              read_job_calculations(joinpath(real_path, job_script))),
                        kwargs)...)
 end
+StructTypes.StructType(::Type{DFJob}) = StructTypes.Mutable()
 
 abstract type Band end
 

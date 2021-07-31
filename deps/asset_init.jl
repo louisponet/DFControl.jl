@@ -73,9 +73,18 @@ open(joinpath(@__DIR__, "mpirunflags.jl"), "w") do wf
                 if name != "" && isempty(symbols)
                     symbols = [Symbol(name)]
                 end
+                if type <: Number
+                    val = zero(type)
+                elseif type <: Pair
+                    val = 0 => ""
+                elseif type === Nothing
+                    val = nothing
+                else
+                    val = "\"\""
+                end
                 for symbol in symbols
                     writefbodyline(wf, 1,
-                                   """ExecFlag(Symbol("$symbol"), "$name", $type, "$description", nothing, 1),""")
+                                   """ExecFlag(Symbol("$symbol"), "$name", "$description", $val, 1),""")
                 end
             end
         end

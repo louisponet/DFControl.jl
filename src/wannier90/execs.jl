@@ -1,8 +1,8 @@
 const WAN_EXECS = ["wannier90.x"]
 
-const WAN_EXECFLAGS = ExecFlag[ExecFlag(:pp, "preprocess", Nothing,
+const WAN_EXECFLAGS = ExecFlag[ExecFlag(:pp, "preprocess",
                                         "Whether or not to preprocess the wannier calculation",
-                                        nothing, 1),]
+                                        false, 1),]
 
 wan_execflag(flag::AbstractString) = getfirst(x -> x.name == flag, WAN_EXECFLAGS)
 wan_execflag(flag::Symbol) = getfirst(x -> x.symbol == flag, WAN_EXECFLAGS)

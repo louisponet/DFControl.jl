@@ -6,6 +6,7 @@ hasflag(exec::Exec, s::Symbol) = findfirst(x -> x.symbol == s, exec.flags) != no
 
 Base.hash(e::ExecFlag, h::UInt) = hash(e.symbol, hash(e.value, h))
 Base.:(==)(e1::ExecFlag, e2::ExecFlag) = e1.symbol == e2.symbol && e1.value == e2.value
+Base.eltype(::ExecFlag{T}) where {T} = T
 
 function Base.:(==)(e1::Exec, e2::Exec)
     if e1.exec != e2.exec || e1.dir != e2.dir
@@ -39,7 +40,7 @@ function set_flags!(exec::Exec, flags...)
         flag = isa(f, String) ? getfirst(x -> x.name == f, exec.flags) :
                getfirst(x -> x.symbol == f, exec.flags)
         if flag != nothing
-            flag.value = convert(flag.typ, val)
+            flag.value = convert(eltype(flag), val)
         else
             found = false
             #TODO generalize this
@@ -207,9 +208,8 @@ function parse_mpi_flags(line::Vector{<:SubString})
         else
             mflag = mpi_flag(Symbol(strip(s, '-')))
         end
-
-        @assert mflag != nothing "$(strip(s, '-')) is not a recognized mpi_flag"
-        val, i = mpi_flag_val(mflag.typ, line, i)
+        @assert mflag !== nothing "$(strip(s, '-')) is not a recognized mpi_flag"
+        val, i = mpi_flag_val(eltype(mflag), line, i)
         push!(eflags, ExecFlag(mflag, val))
     end
     return eflags

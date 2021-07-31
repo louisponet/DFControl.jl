@@ -32,8 +32,7 @@ end
 
 Base.get(c::DFCalculation, args...) = get(flags(c), args...)
 
-Base.eltype(::DFCalculation{P}) where {P} = P
-package(::DFCalculation{P}) where {P} = P
+package(::DFCalculation{T}) where {T} = T
 
 data(calculation::DFCalculation) = calculation.data
 
@@ -130,8 +129,8 @@ end
 
 searchdir(i::DFCalculation, glob) = joinpath.((i,), searchdir(dir(i), glob))
 
-ψ_cutoff_flag(::DFCalculation{P}) where {P} = ψ_cutoff_flag(P)
-ρ_cutoff_flag(::DFCalculation{P}) where {P} = ρ_cutoff_flag(P)
+ψ_cutoff_flag(c::DFCalculation) = ψ_cutoff_flag(package(c))
+ρ_cutoff_flag(c::DFCalculation) = ρ_cutoff_flag(package(c))
 
 function pdos(calculation::DFCalculation, args...)
     @error "pdos reading not implemented for package $(package(calculation))."

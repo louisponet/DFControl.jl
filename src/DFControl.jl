@@ -30,13 +30,7 @@ using REPL.TerminalMenus
 using CodeTracking
 using Pkg
 using LoggingExtras
-
-abstract type Package end
-struct Wannier90 <: Package end
-struct QE <: Package end
-struct Abinit <: Package end
-struct Elk <: Package end
-export Wannier90, QE, Abinit, Elk
+using StructTypes
 
 const depsdir = joinpath(dirname(@__DIR__), "deps")
 
@@ -84,6 +78,9 @@ const dfprint = print
 include("display/overloads.jl")
 
 using DaemonMode, Pkg, LoggingExtras, Distributed
+include("microservice/Mapper.jl")
+include("microservice/Service.jl")
+include("microservice/Resource.jl")
 include("daemon.jl")
 
 using Requires

@@ -1,12 +1,12 @@
 const QE_EXECS = ["pw.x", "projwfc.x", "pp.x", "ld1.x", "ph.x", "pw2wannier90.x", "hp.x"]
 
-const QE_EXECFLAGS = ExecFlag[ExecFlag(:nk, "kpoint-pools", Int,
+const QE_EXECFLAGS = ExecFlag[ExecFlag(:nk, "kpoint-pools", 
                                        "groups k-point parallelization into nk processor pools",
                                        0, 1),
-                              ExecFlag(:ntg, "task-groups", Int, "FFT task groups", 0, 1),
-                              ExecFlag(:ndiag, "diag", Int,
+                              ExecFlag(:ntg, "task-groups",  "FFT task groups", 0, 1),
+                              ExecFlag(:ndiag, "diag", 
                                        "Number of processes for linear algebra", 0, 1),
-                              ExecFlag(:ni, "images", Int,
+                              ExecFlag(:ni, "images", 
                                        "Number of processes used for the images", 0, 1)]
 
 qe_execflag(flag::AbstractString) = getfirst(x -> x.name == flag, QE_EXECFLAGS)
