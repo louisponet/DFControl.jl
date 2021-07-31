@@ -11,9 +11,7 @@ module Service
     const SLEEP_TIME = 10.0
     
     function launch_service(s::DFControl.Server)
-        julia_exec   = joinpath(Sys.BINDIR, "julia")
-        project_path = Pkg.project().path
-        cmd = Cmd(`$julia_exec -t auto --project=$project_path -e "using DFControl; DFControl.Resource.run($s.port)"`; detach = true)
+        cmd = Cmd(`$(s.julia_exec) -t auto -e "using DFControl; DFControl.Resource.run($s.port)"`; detach = true)
         proc = DFControl.establish_connection(s)
         
         p   = remotecall(run, cmd; wait = false)

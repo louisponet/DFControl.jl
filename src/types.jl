@@ -519,6 +519,7 @@ end
     port::Int = 8080
     scheduler::Scheduler
     mountpoint::String = ""
+    julia_exec::String = "julia"
 end
 
 function Server(s::String)
@@ -551,8 +552,12 @@ function Server(s::String)
         print("Domain:")
         domain = readline()
     end
-    print("Port:")
+    print("Port (default: 8080):")
     port_str = readline()
+    port = isempty(port_str) ? 8080 : parse(Int, port_str)
+    
+    print("Julia Exec (default: julia):")
+    julia_str = readline()
     port = isempty(port_str) ? 8080 : parse(Int, port_str)
     
     scheduler_choice = request("Please select scheduler:", RadioMenu([string.(instances(Scheduler))...]))
@@ -566,7 +571,7 @@ function Server(s::String)
     else
         mountpoint = ""
     end
-    server = Server(name, username, domain, port, scheduler, mountpoint)
+    server = Server(name, username, domain, port, scheduler, mountpoint, julia_str)
     println("Server configured as:")
     println(server)
     save_server(server)

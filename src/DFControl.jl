@@ -77,11 +77,10 @@ const dfprintln = println
 const dfprint = print
 include("display/overloads.jl")
 
-using DaemonMode, Pkg, LoggingExtras, Distributed
+using Pkg, LoggingExtras, Distributed
 include("microservice/Mapper.jl")
 include("microservice/Service.jl")
 include("microservice/Resource.jl")
-include("daemon.jl")
 
 using Requires
 
