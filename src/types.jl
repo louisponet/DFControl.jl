@@ -516,6 +516,7 @@ end
     name::String
     username::String
     domain::String
+    port::Int = 8080
     scheduler::Scheduler
     mountpoint::String = ""
 end
@@ -550,6 +551,9 @@ function Server(s::String)
         print("Domain:")
         domain = readline()
     end
+    print("Port:")
+    port_str = readline()
+    port = isempty(port_str) ? 8080 : parse(Int, port_str)
     
     scheduler_choice = request("Please select scheduler:", RadioMenu([string.(instances(Scheduler))...]))
     scheduler_choice == -1 && return 
@@ -562,7 +566,7 @@ function Server(s::String)
     else
         mountpoint = ""
     end
-    server = Server(name, username, domain, scheduler, mountpoint)
+    server = Server(name, username, domain, port, scheduler, mountpoint)
     println("Server configured as:")
     println(server)
     save_server(server)

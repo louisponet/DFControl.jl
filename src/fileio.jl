@@ -573,4 +573,12 @@ function write_xsf(filename::AbstractString, structure::AbstractStructure)
         end
     end
 end
-    
+
+function writelines(file, lines)
+    open(file, "w") do f
+        for l in lines
+            write(f, l)
+            write(f, "\n")
+        end
+    end
+end

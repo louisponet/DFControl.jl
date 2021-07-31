@@ -20,7 +20,9 @@ module Resource
         return HTTP.Response(200, JSON3.write(obj))
     end
 
-    function run()
-        HTTP.serve(requestHandler, "0.0.0.0", 8080)
+    function run(port)
+        @async HTTP.serve(requestHandler, "0.0.0.0", port)
+        # Service.start()
+        @async Service.main_loop()
     end    
 end

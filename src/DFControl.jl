@@ -92,11 +92,11 @@ function __init__()
     merge!(Unitful.basefactors, localunits)
     Unitful.register(@__MODULE__)
     init_job_registry()
-    if !haskey(ENV, "IS_DAEMON")
-        init_daemon()
-    else
-        global_logger(DFControl.daemon_logger())
-    end
+    # if !haskey(ENV, "IS_DAEMON")
+    #     init_daemon()
+    # else
+    #     global_logger(DFControl.daemon_logger())
+    # end
     return 
 end
 
