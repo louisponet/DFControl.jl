@@ -37,7 +37,7 @@ function show(io::IO, job::DFJob)
     fieldns = [:name, :version]
     fs = string.(filter(x -> !isempty(x), getfield.((job,), fieldns)))
     fns = string.(fieldns)
-    insert!(fns, 2, "local_dir")
+    insert!(fns, 2, "dir")
     insert!(fs, 2, main_job_dir(job))
     push!(fns, "versions")
     push!(fs, join(string.(Client.versions(job)), ", "))

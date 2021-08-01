@@ -66,6 +66,7 @@ function start(s::Server)
     while !isalive()
         sleep(1)
     end
+    rmprocs(p)
 end
 
 function maybe_start_server(s::Server)
@@ -95,8 +96,13 @@ function maybe_create_localhost()
         else
             port = parse(Int, ENV["DFCONTROL_PORT"])
         end
+        if !haskey(ENV, "DFCONTROL_JOBDIR")
+            dir = homedir()
+        else
+            dir = ENV["DFCONTROL_PORT"]
+        end
         julia_exec = joinpath(Sys.BINDIR, "julia")
-        out = Server("localhost", ENV["USER"], "localhost", port, scheduler, "", julia_exec)
+        out = Server("localhost", ENV["USER"], "localhost", port, scheduler, "", julia_exec, dir)
         save(out)
         return out
     else

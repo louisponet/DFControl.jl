@@ -45,7 +45,7 @@ function maybe_register_job(abspath::String)
         end
     end
 end
-maybe_register_job(job::DFJob) = maybe_register_job(job.local_dir)
+maybe_register_job(job::DFJob) = maybe_register_job(job.dir)
 
 """
     registered_jobs(fuzzy::AbstractString = "")
@@ -63,7 +63,7 @@ function registered_jobs(fuzzy::AbstractString = "")
     choices = filter(x -> occursin(fuzzy, x), all_known_jobs()) 
     timestamps = timestamp.(choices)
     sort_ids = sortperm(timestamps)
-    return choices[sort_ids]
+    return [(choices[i], timestamps[i]) for i in sort_ids]
 end
 
 function timestamp(jobdir::AbstractString)
@@ -89,7 +89,7 @@ end
 """
     load_jobs(fuzzy::AbstractString)
 
-Loads all the known [`DFJobs`](@ref DFJob) whose `local_dir` contains `fuzzy`.
+Loads all the known [`DFJobs`](@ref DFJob) whose `dir` contains `fuzzy`.
 """
 load_jobs(fuzzy::AbstractString) = DFJob.(registered_jobs(fuzzy))
 

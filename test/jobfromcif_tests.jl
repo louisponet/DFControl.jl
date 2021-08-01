@@ -8,8 +8,7 @@ testjobpath = joinpath(testdir, "testassets", "test_job")
     end
 
     name = "Ni"
-    local_dir = testjobpath
-    server_dir = ""
+    dir = testjobpath
     bin_dir = joinpath(homedir(), "Software/qe/bin")
     pw_excs = [Exec("mpirun", "", :np => 4), Exec("pw.x", bin_dir, :nk => 4)]
 
@@ -29,7 +28,7 @@ testjobpath = joinpath(testdir, "testassets", "test_job")
                                                         [4, 4, 4, 1, 1, 1])])]
     job = DFJob(name, str, calculations, :ecutwfc => 40.0, :occupations => "smearing", :degauss=>0.01, :conv_thr => 1e-6, :nbnd => 18;
                 #kwargs
-                header = header, local_dir = local_dir)
+                header = header, dir = dir)
 
     set_pseudos!(job, :test)
 
@@ -52,7 +51,7 @@ testjobpath = joinpath(testdir, "testassets", "test_job")
     @test job["projwfc"].execs == [pw_excs[1], Exec("projwfc.x", pw_excs[2].dir)]
     @test show(job) == nothing
 
-    job2 = DFJob(job.local_dir)
+    job2 = DFJob(job.dir)
     for (c1, c2) in zip(job2.calculations, job.calculations)
         @test c2 == c1
     end

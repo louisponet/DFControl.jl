@@ -1,21 +1,20 @@
 const TEMP_CALC_DIR = "outputs"
 
 function load_job(job_dir::AbstractString, version::Int)
-    apath = abspath(job_dir)
     if ispath(job_dir)
-        if occursin(VERSION_DIR_NAME, apath)
-            error("It is not allowed to directly load a job version, please use `DFJob(dir, version=$(splitdir(apath)[end]))`")
+        if occursin(VERSION_DIR_NAME, job_dir)
+            error("It is not allowed to directly load a job version, please use `DFJob(dir, version=$(splitdir(job_dir)[end]))`")
         end
         if version != -1
-            real_path = version_dir(apath, version)
+            real_path = version_dir(job_dir, version)
             real_version = version
-        elseif ispath(joinpath(apath, "job.tt"))
-            real_path = apath
-            real_version = main_job_version(apath)
+        elseif ispath(joinpath(job_dir, "job.tt"))
+            real_path = job_dir
+            real_version = main_job_version(job_dir)
         else
-            error("No valid job found in $apath.")
+            error("No valid job found in $job_dir.")
         end
-        job = DFJob(; merge((local_dir = real_path, version = real_version),
+        job = DFJob(; merge((dir = real_path, version = real_version),
                     read_job_calculations(joinpath(real_path, "job.tt")))...)
         maybe_register_job(job)
         return job
@@ -29,7 +28,7 @@ end
 
 name(job) = job.name
 #-------------------BEGINNING GENERAL SECTION-------------#
-scriptpath(job::DFJob) = joinpath(job.local_dir, "job.tt")
+scriptpath(job::DFJob) = joinpath(job.dir, "job.tt")
 starttime(job::DFJob)  = mtime(scriptpath(job))
 
 runslocal(job::DFJob)    = job.server == "localhost"
@@ -97,7 +96,7 @@ finished(job::DFJob) = readdir(finished_dir(job))
 #         sleep(1)
 #     end
 #     return runexpr("""
-#                DFControl.spawn_worker(DAEMON, DFJob("$(job.local_dir)"))
+#                DFControl.spawn_worker(DAEMON, DFJob("$(job.dir)"))
 #                DFControl.save(DAEMON)
 #                """; port = d.port)
 # end
@@ -107,7 +106,7 @@ mods_test() = Base.loaded_modules
 """
     save(job::DFJob)
 
-Saves the job's calculations and `job.tt` submission script in `job.local_dir`.
+Saves the job's calculations and `job.tt` submission script in `job.dir`.
 Some sanity checks will be performed on the validity of flags, execs, pseudopotentials, etc.
 The job will also be registered for easy retrieval at a later stage.
 
@@ -120,21 +119,21 @@ function save(job::DFJob; kwargs...)
     #Since at this stage we know the job will belong to the current localhost we change the server
     job.server = "localhost"
     # Here we find the main directory, needed for if a job's local dir is a .versions one
-    local_dir = main_job_dir(job)
-    if local_dir != job.local_dir
+    dir = main_job_dir(job)
+    if dir != job.dir
         # We know for sure it was a previously saved job
         # Now that we have safely stored it we can clean out the directory to then fill
         # it with the files from the job.version
-        clean_local_dir!(local_dir)
-        cp(job, local_dir; force = true)
+        clean_dir!(dir)
+        cp(job, dir; force = true)
     end
-    if ispath(joinpath(local_dir, "job.tt"))
-        tj = DFJob(local_dir)
+    if ispath(joinpath(dir, "job.tt"))
+        tj = DFJob(dir)
         cp(tj, joinpath(tj, VERSION_DIR_NAME, "$(tj.version)"); force = true)
     end
     
-    set_localdir!(job, local_dir) # Needs to be done so the inputs `dir` also changes.
-    mkpath(local_dir)
+    set_dir!(job, dir) # Needs to be done so the inputs `dir` also changes.
+    mkpath(dir)
 
     job.version = last_version(job) + 1
     sanitize_cutoffs!(job)
@@ -166,8 +165,7 @@ function sanitize_flags!(job::DFJob)
         end
     end
     for i in filter(x -> package(x) == QE, job.calculations)
-        outdir = isempty(job.server_dir) ? joinpath(job, TEMP_CALC_DIR) :
-                 joinpath(job.server_dir, splitdir(job.local_dir)[end], TEMP_CALC_DIR)
+        outdir = joinpath(job, TEMP_CALC_DIR)
         set_flags!(i, :outdir => "$outdir"; print = false)
     end
     return sanitize_flags!.(job.calculations, (job.structure,))
@@ -211,11 +209,11 @@ function sanitize_pseudos!(job::DFJob)
     if !all(ispath.(DFC.path.(uni_pseudos)))
         @warn "Some Pseudos could not be located on disk."
     end
-    pseudo_dir = length(uni_dirs) == 1 ? uni_dirs[1] : job.local_dir
+    pseudo_dir = length(uni_dirs) == 1 ? uni_dirs[1] : job.dir
     if length(uni_dirs) > 1
         @info "Found pseudos in multiple directories, copying them to job directory"
         for pseudo in uni_pseudos
-            cp(DFC.path(pseudo), joinpath(job.local_dir, pseudo.name); force = true)
+            cp(DFC.path(pseudo), joinpath(job.dir, pseudo.name); force = true)
         end
     end
     for p in all_pseudos
@@ -268,7 +266,6 @@ end
 Returns the last `DFCalculation` for which an output file was created.
 """
 function last_running_calculation(job::DFJob)
-    @assert job.server == "localhost" "Intended use for now is locally."
     t = mtime(scriptpath(job))
     for (i, c) in enumerate(reverse(job.calculations))
         p = outpath(c)
@@ -283,7 +280,7 @@ for (f, strs) in zip((:cp, :mv), (("copy", "Copies"), ("move", "Moves")))
         """
             $($f)(job::DFJob, dest::AbstractString; all=false, temp=false, kwargs...)
 
-        $($(strs[2])) the contents of `job.local_dir` to `dest`. If `all=true`, it will also $($(strs[1])) the
+        $($(strs[2])) the contents of `job.dir` to `dest`. If `all=true`, it will also $($(strs[1])) the
         `.version` directory with all previous versions. If `temp=true` it will override
         `job.copy_temp_folders` and $($(strs[1])) also the temporary calculation directories.
         The `kwargs...` are passed to `Base.$($f)`.
@@ -293,7 +290,7 @@ for (f, strs) in zip((:cp, :mv), (("copy", "Copies"), ("move", "Moves")))
             if !ispath(dest)
                 mkpath(dest)
             end
-            for file in readdir(job.local_dir)
+            for file in readdir(job.dir)
                 if !all
                     if file == VERSION_DIR_NAME
                         continue
@@ -338,7 +335,7 @@ function isrunning(job_dir::String)
                 return false
             end
             pwd = split(strip(read(`pwdx $(pids[end])`, String)))[end]
-            return abspath(pwd) == job.local_dir
+            return abspath(pwd) == job.dir
         catch
             return false
         end
@@ -361,12 +358,12 @@ end
 
 Total filesize on disk for a job and all its versions.
 """
-Base.filesize(job::DFJob) = dirsize(job.local_dir)
+Base.filesize(job::DFJob) = dirsize(job.dir)
 
 """
     cleanup(job::DFJob)
     
-Cleanup `job.local_dir` interactively.
+Cleanup `job.dir` interactively.
 """
 function cleanup(job::DFJob)
     labels = String[]
@@ -402,7 +399,7 @@ timestamp(job::DFJob) = job.metadata[:timestamp]
 timestamp!(job, time) = job.metadata[:timestamp] = time
 has_timestamp(job) = haskey(job.metadata, :timestamp)
 
-function clean_local_dir!(dir::AbstractString)
+function clean_dir!(dir::AbstractString)
     for f in readdir(dir)
         if f == TEMP_CALC_DIR || f == VERSION_DIR_NAME || splitext(f)[end] == ".jl"
             continue
@@ -410,8 +407,6 @@ function clean_local_dir!(dir::AbstractString)
         rm(joinpath(dir, f); recursive = true)
     end
 end
-
-
 
 exists_job(d::AbstractString) = ispath(d) && ispath(joinpath(d, "job.tt"))
 
@@ -423,7 +418,7 @@ function schedule_job(job::DFJob, submit_command)
                       String)
     else
         curdir = pwd()
-        cd(job.local_dir)
+        cd(job.dir)
         try
             outstr = read(`$submit_command job.tt`, String)
             cd(curdir)

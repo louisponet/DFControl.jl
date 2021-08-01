@@ -14,7 +14,7 @@ module Resource
     HTTP.@register(ROUTER, "GET", "/server_config", get_server_config)
 
     function requestHandler(req)
-        @show req
+        @info req
         obj = HTTP.handle(ROUTER, req)
         if obj === nothing
             return HTTP.Response(204)
@@ -24,6 +24,7 @@ module Resource
     end
 
     function run(port)
+        Service.global_logger(Service.daemon_logger()) 
         @async HTTP.serve(requestHandler, "0.0.0.0", port)
         # Service.start()
         Service.main_loop()

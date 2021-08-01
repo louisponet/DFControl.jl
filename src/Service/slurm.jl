@@ -30,13 +30,13 @@ function slurm_jobid(job::DFJob, startdate = yesterday())
                     split.(slurm_process_command(`sacct --starttime $startdate --format=JobID,Workdir%100`)))
     id_ = -1
     for (id, dir) in id_dir
-        if dir == job.local_dir[1:end-1]
+        if dir == job.dir[1:end-1]
             id_ = parse(Int, id)
             break
         end
     end
     if id_ == -1
-        @info "Job in directory $(job.local_dir) was not found in the slurm jobs since
+        @info "Job in directory $(job.dir) was not found in the slurm jobs since
         $startdate"
     else
         job.metadata[:slurmid] = id_

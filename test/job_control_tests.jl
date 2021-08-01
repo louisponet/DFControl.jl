@@ -50,7 +50,7 @@ end
     prevlen = length(registered_jobs())
     save(job)
     @test length(registered_jobs()) == prevlen + 1
-    @test registered_jobs()[end] == job.local_dir
+    @test registered_jobs()[end] == job.dir
 end
 
 @testset "execs" begin
@@ -202,7 +202,7 @@ rm(testjobpath, recursive=true)
 # @test job.calculations[3].run
 
 # save(job)
-# job2 = DFJob(local_dir)
+# job2 = DFJob(dir)
 # begin
 #     for (calc, calc2) in zip(job.calculations, job2.calculations)
 #         for (f, v) in calc.flags
@@ -253,7 +253,7 @@ rm(testjobpath, recursive=true)
 # @test execs(job["nscf"])[2].dir == joinpath(homedir(), "bin")
 
 # set_name!(job["nscf"], "test")
-# @test DFControl.inpath(job, "test") == joinpath(job.local_dir, "test.in")
+# @test DFControl.inpath(job, "test") == joinpath(job.dir, "test.in")
 # set_name!(job["test"], "nscf")
 
 # set_serverdir!(job, "localhost")
@@ -275,8 +275,8 @@ rm(testjobpath, recursive=true)
 #    joinpath(testdir, "testassets", "pseudos_copy"); force = true)
 # set_pseudos!(job, :Si => Pseudo("Si.UPF", joinpath(testdir, "testassets", "pseudos_copy")))
 # save(job)
-# @test ispath(joinpath(job.local_dir, "Si.UPF"))
-# @test atoms(job, :Si)[1].pseudo == Pseudo("Si.UPF", job.local_dir)
+# @test ispath(joinpath(job.dir, "Si.UPF"))
+# @test atoms(job, :Si)[1].pseudo == Pseudo("Si.UPF", job.dir)
 # rm(joinpath(testdir, "testassets", "pseudos_copy"); recursive = true)
 
 # job["nscf"][:occupations] = "smearing"
@@ -388,7 +388,7 @@ rm(testjobpath, recursive=true)
 
 # # job4.server_dir = "/tmp"
 # # save(job4)
-# # job3 = DFJob(job4.local_dir)
+# # job3 = DFJob(job4.dir)
 
 # # @test job3.server_dir == "/tmp"
 # set_data_option!(job["scf"], :k_points, :blabla; print = false)
@@ -425,11 +425,11 @@ rm(testjobpath, recursive=true)
 # end
 
 # rm(joinpath(DFControl.main_job_dir(job), DFControl.VERSION_DIR_NAME); recursive = true)
-# set_localdir!(job, DFControl.main_job_dir(job))
+# set_dir!(job, DFControl.main_job_dir(job))
 # rm.(DFControl.inpath.(job.calculations))
 
 # rm(joinpath(job, "job.tt"))
 # rm(joinpath(job, ".metadata.jld2"))
 # rm(joinpath(job, "pw2wan_wandn.in"))
 # rm(joinpath(job, "pw2wan_wanup.in"))
-# rm.(joinpath.((job.local_dir,), filter(x -> occursin("UPF", x), readdir(job.local_dir))))
+# rm.(joinpath.((job.dir,), filter(x -> occursin("UPF", x), readdir(job.dir))))

@@ -14,7 +14,6 @@ function DFControl.DFJob(dir::String, s="localhost"; version::Int = -1)
     
     job = JSON3.read(resp.body, DFJob)
     job.server = server.name
-    job.server_dir = job.local_dir
     return job
 end
 
@@ -22,7 +21,7 @@ function request_job_dir(dir::String, server::Server)
     resp = HTTP.get(server, "/registered_jobs/" *  dir)
     matching_jobs = reverse(JSON3.read(resp.body, Vector{Tuple{String, DateTime}}))
     if length(matching_jobs) == 1
-        return matching_jobs[1]
+        return matching_jobs[1][1]
     elseif length(matching_jobs) == 0
         error("No jobs found matching $dir")
     elseif isdefined(Base, :active_repl)
@@ -46,13 +45,8 @@ end
 function save(job::DFJob)
     # First we check whether the job is trying to be saved in a archived directory, absolutely not allowed
     @assert !DFC.isarchived(job)
-        "Not allowed to save a job in a archived directory, please specify a different directory with `set_localdir!"
+        "Not allowed to save a job in a archived directory, please specify a different directory with `set_dir!"
     server = maybe_start_server(job)
-    if isempty(job.server_dir)
-        @info "Server dir was not set, setting it to the same as local_dir."
-        job.server_dir = job.local_dir
-    end
-
     @assert !isrunning(job) "Can't save a job in a directory where another is running."
 
     if isempty(job.name)
@@ -61,7 +55,7 @@ function save(job::DFJob)
     end
     
     curver = job.version
-    resp_job = JSON3.read(HTTP.post(server, joinpath("/jobs", job.server_dir), [], JSON3.write(job)).body, DFJob)
+    resp_job = JSON3.read(HTTP.post(server, joinpath("/jobs", job.dir), [], JSON3.write(job)).body, DFJob)
     @info "Job version: $(curver) => $(resp_job.version)."
     return resp_job
 end
@@ -75,7 +69,7 @@ running.
 """
 function isrunning(job::DFJob)
     server = maybe_start_server(job)
-    return JSON3.read(HTTP.get(server, "/job_isrunning/" * job.server_dir).body, Bool)
+    return JSON3.read(HTTP.get(server, "/job_isrunning/" * job.dir).body, Bool)
 end
 
 """
@@ -85,7 +79,7 @@ Returs the valid versions of `job`.
 """
 function versions(job::DFJob)
     server = maybe_start_server(job)
-    return JSON3.read(HTTP.get(server, "/job_versions/" * job.server_dir).body, Vector{Int})
+    return JSON3.read(HTTP.get(server, "/job_versions/" * job.dir).body, Vector{Int})
 end
 
 """
@@ -95,7 +89,7 @@ Returns the last version number of `job`.
 """
 function last_version(job::DFJob)
     server = maybe_start_server(job)
-    return JSON3.read(HTTP.get(server, "/job_versions/" * job.server_dir).body, Vector{Int})[end]
+    return JSON3.read(HTTP.get(server, "/job_versions/" * job.dir).body, Vector{Int})[end]
 end
 
 """

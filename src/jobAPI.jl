@@ -5,21 +5,21 @@
 First saves the job, then tries to submit the job script through `sbatch job.tt` or `bash job.tt` if the former command fails.
 `kwargs...` get passed to `save(job; kwargs...)`.
 """
-function submit(job::DFJob; server = job.server, server_dir = job.server_dir, kwargs...)
+function submit(job::DFJob; server = job.server, kwargs...)
     if job.server != "localhost" && !isempty(job.server_dir)
         server = Server(job.server)
         server === nothing && return
 
         verify_execs(job, server)
         
-        if !ispath(job.local_dir)
-            mkpath(job.local_dir)
+        if !ispath(job.dir)
+            mkpath(job.dir)
         end
         files = Pair{String, String}[]
         for p in unique(map(x->x.pseudo, atoms(job)))
             push!(files, p.name => read(joinpath(p.dir, p.name), String))
         end
-        JLD2.save(joinpath(job.local_dir, "job.jld2"), "job", job, "files", files)
+        JLD2.save(joinpath(job.dir, "job.jld2"), "job", job, "files", files)
         push(job, server)
     else
         save(job; kwargs...)
@@ -107,33 +107,26 @@ function set_headerword!(job::DFJob, old_new::Pair{String,String}; print = true)
 end
 
 """
-Sets the server dir of the job.
-"""
-function set_serverdir!(job, dir)
-    job.server_dir = dir
-    return job
-end
-
-"""
-    set_localdir!(job::DFJob, dir::AbstractString; copy=false)
+    set_dir!(job::DFJob, dir::AbstractString; copy=false)
     
-Sets `job.local_dir` to `dir`. If necessary the directory will be created.
+Sets `job.dir` to `dir`. If necessary the directory will be created upon saving the job.
 If `copy` is set to `true`, all previous calculations and output files of the current job version
 (i.e. those in the main job directory) will be copied to the new directory, including the
 `outputs` directory with temporary files created during jobs runs.
 """
-function set_localdir!(job::DFJob, dir::AbstractString; copy = false)
+function set_dir!(job::DFJob, dir::AbstractString; copy = false)
     if !isabspath(dir)
-        dir = abspath(dir)
+        dir = joinpath(Server(job).dir, dir)
     end
     if dir[end] == '/'
         dir = dir[1:end-1]
     end
     if copy
-        mkpath(dir)
-        cp(job, dir; temp = true)
+        error("TODO: Implement for server side copying")
+        # mkpath(dir)
+        # cp(job, dir; temp = true)
     end
-    job.local_dir = dir
+    job.dir = dir
     for i in calculations(job)
         set_dir!(i, dir)
     end
@@ -270,7 +263,7 @@ end
 
 #--------------- Interacting with the Structure inside the DFJob ---------------#
 #automatically sets the cell parameters for the entire job, implement others
-Base.joinpath(job::DFJob, p) = joinpath(job.local_dir, p)
+Base.joinpath(job::DFJob, p) = joinpath(job.dir, p)
 
 """
     bandgap(job::DFJob, fermi=nothing)
@@ -443,13 +436,13 @@ function archive(job::DFJob, archive_directory::AbstractString, description::Str
     tj = deepcopy(job)
     switch_version!(tj, version)
     cp(tj, final_dir)
-    set_localdir!(tj, final_dir)
+    set_dir!(tj, final_dir)
 
     JLD2.save(joinpath(final_dir, "results.jld2"), "outputdata", out)
     
     !isempty(description) && write(joinpath(final_dir, "description.txt"), description)
-    push!(JOB_REGISTRY.archived, tj.local_dir)
-    @info "Archived job at $(tj.local_dir). If you're done with this one, it is safe to delete the directory at $(job.local_dir)."
+    push!(JOB_REGISTRY.archived, tj.dir)
+    @info "Archived job at $(tj.dir). If you're done with this one, it is safe to delete the directory at $(job.dir)."
     write_job_registry()
     return nothing
 end

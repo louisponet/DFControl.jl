@@ -2,7 +2,7 @@ const VERSION_DIR_NAME = ".versions"
 
 cell(job::DFJob)         = cell(structure(job))
 calculations(job::DFJob) = job.calculations
-isarchived(job::DFJob) = occursin(".archived", job.local_dir)
+isarchived(job::DFJob) = occursin(".archived", job.dir)
 
 """
     main_job_dir(dir::AbstractString)
@@ -12,14 +12,14 @@ Returns the main directory of the job, also when the job's version is not the on
 in the main directory.
 """
 main_job_dir(dir::AbstractString) = split(dir, VERSION_DIR_NAME)[1]
-main_job_dir(job::DFJob) = main_job_dir(job.local_dir)
+main_job_dir(job::DFJob) = main_job_dir(job.dir)
 
 """
     joinpath(job::DFJob, args...)
 
-`joinpath(job.local_dir, args...)`.
+`joinpath(job.dir, args...)`.
 """
-Base.joinpath(job::DFJob, args...) = joinpath(job.local_dir, args...)
+Base.joinpath(job::DFJob, args...) = joinpath(job.dir, args...)
 
 function Base.pop!(job::DFJob, name::String)
     i = findfirst(x -> x.name == name, job.calculations)
@@ -32,6 +32,6 @@ function Base.pop!(job::DFJob, name::String)
 end
 
 function searchdir(job::DFJob, str::AbstractString)
-    return joinpath.((job,), searchdir(job.local_dir, str))
+    return joinpath.((job,), searchdir(job.dir, str))
 end
 

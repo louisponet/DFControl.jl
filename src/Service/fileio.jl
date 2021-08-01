@@ -152,7 +152,7 @@ function write_job_header(f, job::DFJob)
 end
 
 function writetojob(f, job, calculations::Vector{DFCalculation{Abinit}}; kwargs...)
-    abinit_jobfiles = write_abi_datasets(calculations, job.local_dir; kwargs...)
+    abinit_jobfiles = write_abi_datasets(calculations, job.dir; kwargs...)
     abifiles = String[]
     num_abi = 0
     for (filename, pseudos, runcommand) in abinit_jobfiles
@@ -234,21 +234,27 @@ function writetojob(f, job, _calculation::DFCalculation{Wannier90}; kwargs...)
     return (_calculation,)
 end
 
-function write_job_preamble(f, job::DFJob)
-    if !isempty(job.server_dir)
-        dir = splitpath(job.local_dir)[end]
-        write(f, "cp -r $(job.local_dir) $(job.server_dir) \n")
-        write(f, "cd $(joinpath(job.server_dir, dir)) \n")
-    end
-end
+#TODO: This should take scratch dir of server
 
-function write_job_postamble(f, job::DFJob)
-    if !isempty(job.server_dir)
-        dir = splitpath(job.local_dir)[end]
-        write(f, "cp -r $(joinpath(job.server_dir, dir)) $(splitdir(job.local_dir)[1])\n")
-        write(f, "rm -r $(joinpath(job.server_dir, dir))\n")
-    end
+function write_job_preamble(f, job::DFJob)
 end
+function write_job_postamble(f, job::DFJob)
+end
+# function write_job_preamble(f, job::DFJob)
+#     if !isempty(job.server_dir)
+#         dir = splitpath(job.dir)[end]
+#         write(f, "cp -r $(job.dir) $(job.server_dir) \n")
+#         write(f, "cd $(joinpath(job.server_dir, dir)) \n")
+#     end
+# end
+
+# function write_job_postamble(f, job::DFJob)
+#     if !isempty(job.server_dir)
+#         dir = splitpath(job.dir)[end]
+#         write(f, "cp -r $(joinpath(job.server_dir, dir)) $(splitdir(job.dir)[1])\n")
+#         write(f, "rm -r $(joinpath(job.server_dir, dir))\n")
+#     end
+# end
 
 """
     writejobfiles(job::DFJob; kwargs...)
@@ -257,8 +263,8 @@ Writes all the calculation files and job file that are linked to a DFJob.
 Kwargs will be passed down to various writetojob functions.
 """
 function writejobfiles(job::DFJob; kwargs...)
-    # rm.(joinpath.(Ref(job.local_dir), searchdir(job.local_dir, ".in")))
-    open(joinpath(job.local_dir, "job.tt"), "w") do f
+    # rm.(joinpath.(Ref(job.dir), searchdir(job.dir, ".in")))
+    open(joinpath(job.dir, "job.tt"), "w") do f
         write(f, "#!/bin/bash\n")
         write_job_name(f, job)
         write_job_header(f, job)
@@ -384,7 +390,7 @@ function read_job_calculations(job_file::String)
     header = Vector{String}()
     calculations = DFCalculation[]
     structures = DFC.AbstractStructure[]
-    serverdir = ""
+    scratch_dir = ""
     open(job_file, "r") do f
         readline(f)
         while !eof(f)
@@ -432,8 +438,8 @@ function read_job_calculations(job_file::String)
                 else
                     push!(header, line)
                 end
-            elseif occursin("cp -r", line) && isempty(serverdir)
-                serverdir = split(line)[end]
+            elseif occursin("cp -r", line) && isempty(scratch_dir)
+                scratch_dir = split(line)[end]
             else
                 push!(header, line)
             end
@@ -442,9 +448,8 @@ function read_job_calculations(job_file::String)
     if isempty(structures)
         error("Something went wrong and no valid structures could be read from calculation files.")
     end
-    outstruct = DFC.mergestructures(structures)
-    return (name = name, header = header, calculations = calculations,
-            structure = outstruct, server_dir = serverdir)
+    structure = DFC.mergestructures(structures)
+    return (;name, header, calculations, structure)
 end
 
 #---------------------------END GENERAL SECTION-------------------#
@@ -526,7 +531,7 @@ end
 
 "LOL this absolutely is impossible to do for QE"
 function writeabortfile(job::DFJob, calculation::DFCalculation{QE})
-    abortpath = joinpath(job.local_dir, TEMP_CALC_DIR, "$(job.name).EXIT")
+    abortpath = joinpath(job.dir, TEMP_CALC_DIR, "$(job.name).EXIT")
     open(abortpath, "w") do f
         return write(f, " \n")
     end

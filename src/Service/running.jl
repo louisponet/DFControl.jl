@@ -28,7 +28,7 @@ function spawn_worker(job::DFJob)
     else
         proc = addprocs(1; exeflags = "--project=$(Base.current_project())")[1]
         Distributed.remotecall_eval(Distributed.Main, proc, :(using DFControl))
-        Distributed.remotecall_eval(Distributed.Main, proc, :(DFControl.global_logger(DFControl.FileLogger(joinpath($(job.local_dir), "submission.log"); append = true))))
+        Distributed.remotecall_eval(Distributed.Main, proc, :(DFControl.global_logger(DFControl.FileLogger(joinpath($(job.dir), "submission.log"); append = true))))
         f = Distributed.remotecall(DFControl.submit, proc, job)
     end
     return proc, f
@@ -61,24 +61,21 @@ end
 save_running_jobs(job_dirs_procs) = DFControl.writelines(RUNNING_JOBS_FILE, keys(job_dirs_procs))
 
 # Jobs are submitted by the daemon, using supplied job jld2 from the caller (i.e. another machine)
-# This means we need to turn job.server_dir into job.local_dir
 # Additional files are packaged with the job
 function handle_job_submission!(job_dirs_procs)
     pending_job_submissions = readdir(PENDING_JOBS_DIR)
     for j in pending_job_submissions
         dat = DFControl.JLD2.load(joinpath(PENDING_JOBS_DIR, j))
         job = dat["job"]
-        set_localdir!(job, job.server_dir)
-        mkpath(job.local_dir)
-        job.server_dir = ""
+        mkpath(job.dir)
         job.server = "localhost"
         for (fname, contents) in dat["files"]
             write(joinpath(job, fname), contents)
         end
         for a in atoms(job)
-            a.pseudo.dir = job.local_dir
+            a.pseudo.dir = job.dir
         end
-        job_dirs_procs[job.local_dir] = spawn_worker(job)
+        job_dirs_procs[job.dir] = spawn_worker(job)
         rm(joinpath(PENDING_JOBS_DIR, j))
     end
 end

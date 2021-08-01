@@ -338,23 +338,22 @@ StructTypes.StructType(::Type{<:Type}) = StructTypes.Struct()
 """
     DFJob(name::String, structure::AbstractStructure;
           calculations      ::Vector{DFCalculation} = DFCalculation[],
-          local_dir         ::String = pwd(),
+          dir               ::String = pwd(),
           header            ::Vector{String} = getdefault_jobheader(),
           metadata          ::Dict = Dict(),
-          version           ::Int = last_job_version(local_dir),
+          version           ::Int = last_job_version(dir),
           copy_temp_folders ::Bool = false, 
-          server            ::String = getdefault_server(),
-          server_dir        ::String = "")
+          server            ::String = getdefault_server())
 
-A [`DFJob`](@ref) embodies a set of [`DFCalculations`](@ref DFCalculation) to be ran in directory `local_dir`, with the [`Structure`](@ref) as the subject.
+A [`DFJob`](@ref) embodies a set of [`DFCalculations`](@ref DFCalculation) to be ran in directory `dir`, with the [`Structure`](@ref) as the subject.
 ## Keywords/further attributes
 - `calculations`: calculations to calculations that will be run sequentially.
-- `local_dir`: the directory where the calculations will be run.
+- `dir`: the directory where the calculations will be run.
 - `header`: lines that will be pasted at the head of the job script, e.g. exports `export OMP_NUM_THREADS=1`, slurm settings`#SBATCH`, etc.
-- `metadata`: various additional information, will be saved in `.metadata.jld2` in the `local_dir`.
+- `metadata`: various additional information, will be saved in `.metadata.jld2` in the `dir`.
 - `version`: the current version of the job.
 - `copy_temp_folders`: whether or not the temporary directory associated with intermediate calculation results should be copied when storing a job version. *CAUTION* These can be quite large.
-- The `server` and `server_dir` keywords should be avoided for the time being, as this functionality is not well tested.
+- `server`: [`Server`](@ref) where to run the [`DFJob`](@ref).
  
     DFJob(job_name::String, structure::AbstractStructure, calculations::Vector{<:DFCalculation}, common_flags::Pair{Symbol, <:Any}...; kwargs...)
 
@@ -362,8 +361,8 @@ Creates a new job. The common flags will be attempted to be set in each of the `
 
     DFJob(job_dir::String, job_script="job.tt"; version=nothing, kwargs...)
 
-Loads the job in the `local_dir`.
-If `job_dir` is not a valid job path, the previously saved jobs will be scanned for a job with a `local_dir` that
+Loads the job in the `dir`.
+If `job_dir` is not a valid job path, the previously saved jobs will be scanned for a job with a `dir` that
 partly includes `job_dir`. If `version` is specified the corresponding job version will be returned if it exists. 
 The `kwargs...` will be passed to the [`DFJob`](@ref) constructor.
 """
@@ -371,26 +370,25 @@ The `kwargs...` will be passed to the [`DFJob`](@ref) constructor.
     name::String = ""
     structure::AbstractStructure = Structure()
     calculations::Vector{DFCalculation} = DFCalculation[]
-    local_dir::String = pwd()
+    dir::String = pwd()
     header::Vector{String} = getdefault_jobheader()
     metadata::Dict = Dict()
     version::Int = -1
     copy_temp_folders::Bool = false
     server::String = getdefault_server()
-    server_dir::String = ""
-    function DFJob(name, structure, calculations, local_dir, header, metadata, version,
-                   copy_temp_folders, server, server_dir)
-        if local_dir[end] == '/'
-            local_dir = local_dir[1:end-1]
+    function DFJob(name, structure, calculations, dir, header, metadata, version,
+                   copy_temp_folders, server)
+        if dir[end] == '/'
+            dir = dir[1:end-1]
         end
-        if !isabspath(local_dir)
-            local_dir = abspath(local_dir)
+        if !isabspath(dir)
+            dir = abspath(dir)
         end
         if isempty(structure.name)
             structure.name = split(name, "_")[1]
         end
         if isempty(metadata)
-            mpath = joinpath(local_dir, ".metadata.jld2")
+            mpath = joinpath(dir, ".metadata.jld2")
             if ispath(mpath)
                 stored_data = load(mpath)
                 metadata = haskey(stored_data, "metadata") ? stored_data["metadata"] :
@@ -398,8 +396,8 @@ The `kwargs...` will be passed to the [`DFJob`](@ref) constructor.
                 version = haskey(stored_data, "version") ? stored_data["version"] : version
             end
         end
-        out = new(name, structure, calculations, local_dir, header, metadata, version,
-                  copy_temp_folders, server, server_dir)
+        out = new(name, structure, calculations, dir, header, metadata, version,
+                  copy_temp_folders, server)
         return out
     end
 end
@@ -493,6 +491,7 @@ end
     scheduler::Scheduler = Bash
     mountpoint::String = ""
     julia_exec::String = "julia"
+    default_jobdir::String = homedir()
 end
 
 function Server(s::String)
@@ -500,6 +499,7 @@ function Server(s::String)
     if server !== nothing
         return server
     end
+    #TODO load existing config 
     # Create new server 
     if occursin("@", s)
         username, domain = split(s, "@")
@@ -532,6 +532,10 @@ function Server(s::String)
     print("Julia Exec (default: julia):")
     julia_str = readline()
     julia = isempty(julia_str) ? "julia" : julia_str
+
+    dir = remotecall_fetch(homedir, Distributed.addprocs([("$username"*"@"*"$domain", 1)])[1])
+    print("Jobs top dir (default: $dir):")
+    dir = abspath(readline())
     
     scheduler_choice = request("Please select scheduler:", RadioMenu([string.(instances(Scheduler))...]))
     scheduler_choice == -1 && return 
@@ -544,7 +548,7 @@ function Server(s::String)
     else
         mountpoint = ""
     end
-    server = Server(name, username, domain, port, scheduler, mountpoint, julia_str)
+    server = Server(name, username, domain, port, scheduler, mountpoint, julia_str, dir)
     println("Server configured as:")
     println(server)
     save(server)

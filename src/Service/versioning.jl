@@ -12,7 +12,7 @@ function main_job_version(dir::AbstractString)
     end
     return 0
 end
-main_job_version(job::DFJob) = main_job_version(job.local_dir)
+main_job_version(job::DFJob) = main_job_version(job.dir)
 
 function job_versions(dir::AbstractString)
     versions = Int[]
@@ -63,7 +63,7 @@ exists_version(job::DFJob, version::Int) = exists_version(main_job_dir(job), ver
 """
     maybe_cp_main_version(job::DFJob)
 
-Looks in the `job.local_dir` for the version of the job in the main directory, and copies it to the
+Looks in the `job.dir` for the version of the job in the main directory, and copies it to the
 respective directory in the `.versions`.
 """
 function maybe_cp_main_version(job::DFJob)
@@ -128,7 +128,7 @@ Removes the specified `versions` from the `job` if they exist.
 function rm_version!(job::DFJob, version::Int)
     version_assert(job, version)
     if version == main_job_version(job)
-        for f in readdir(job.local_dir)
+        for f in readdir(job.dir)
             if occursin(".workflow", f) || f == VERSION_DIR_NAME || splitext(f)[2] == ".jl"
                 continue
             else
