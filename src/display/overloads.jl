@@ -39,14 +39,14 @@ function show(io::IO, job::DFJob)
     fns = string.(fieldns)
     insert!(fns, 2, "local_dir")
     insert!(fs, 2, main_job_dir(job))
-    push!(fns, "available versions")
-    push!(fs, join(string.(versions(job)), ", "))
+    push!(fns, "versions")
+    push!(fs, join(string.(Client.versions(job)), ", "))
     if haskey(job.metadata, :timestamp)
         push!(fns, "last submission")
         push!(fs, string(round(job.metadata[:timestamp], Dates.Second)))
     end
     push!(fns, "running")
-    is_running = isrunning(job)
+    is_running = Client.isrunning(job)
     push!(fs, string(is_running))
     lfns = maximum(length.(fns)) + maximum(length.(fs)) + 4
     line = "+"
@@ -78,7 +78,7 @@ function show(io::IO, job::DFJob)
         dfprintln(io, crayon"cyan", "|", reset)
     end
     is = calculations(job)
-    last = last_running_calculation(job)
+    last = Client.last_running_calculation(job)
     if !isempty(is)
         dfprintln(io, crayon"cyan", line, reset)
         dfprintln(io, reset, "(", crayon"green", "scheduled", reset, ", ", crayon"red",

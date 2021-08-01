@@ -15,9 +15,10 @@ function load_job(job_dir::AbstractString, version::Int)
         else
             error("No valid job found in $apath.")
         end
-        return DFJob(;
-                     merge((local_dir = real_path, version = real_version),
-                                 read_job_calculations(joinpath(real_path, "job.tt")))...)
+        job = DFJob(; merge((local_dir = real_path, version = real_version),
+                    read_job_calculations(joinpath(real_path, "job.tt")))...)
+        maybe_register_job(job)
+        return job
     else
         return nothing
     end
@@ -269,33 +270,12 @@ Returns the last `DFCalculation` for which an output file was created.
 function last_running_calculation(job::DFJob)
     @assert job.server == "localhost" "Intended use for now is locally."
     t = mtime(scriptpath(job))
-    for i in reverse(job.calculations)
-        p = outpath(i)
+    for (i, c) in enumerate(reverse(job.calculations))
+        p = outpath(c)
         if ispath(p) && mtime(p) > t
             return i
         end
     end
-end
-
-"""
-    joinpath(job::DFJob, args...)
-
-`joinpath(job.local_dir, args...)`.
-"""
-Base.joinpath(job::DFJob, args...) = joinpath(job.local_dir, args...)
-
-function Base.pop!(job::DFJob, name::String)
-    i = findfirst(x -> x.name == name, job.calculations)
-    if i === nothing
-        error("No calculation with name $name found.")
-    end
-    out = job.calculations[i]
-    deleteat!(job.calculations, i)
-    return out
-end
-
-function searchdir(job::DFJob, str::AbstractString)
-    return joinpath.((job,), searchdir(job.local_dir, str))
 end
 
 for (f, strs) in zip((:cp, :mv), (("copy", "Copies"), ("move", "Moves")))
@@ -342,14 +322,15 @@ running.
 function isrunning(job_dir::String)
     !ispath(joinpath(job_dir, "job.tt")) && return false
     job = DFJob(job_dir)
-    server = Server(job)
+    server = DFC.Server(job)
     n = now()
-    if server.scheduler == slurm
+    if server.scheduler == DFC.Slurm
         return slurm_isrunning(job)
     else
         u = username()
-        l = last_running_calculation(job)
-        l === nothing && return false
+        i = last_running_calculation(job)
+        i === nothing && return false
+        l = job[i] 
         codeexec = execs(l)[end].exec
         try
             pids = parse.(Int, split(read(`pgrep $codeexec`, String)))
@@ -430,15 +411,6 @@ function clean_local_dir!(dir::AbstractString)
     end
 end
 
-"""
-    main_job_dir(dir::AbstractString)
-    main_job_dir(job::DFJob)
-
-Returns the main directory of the job, also when the job's version is not the one
-in the main directory.
-"""
-main_job_dir(dir::AbstractString) = split(dir, VERSION_DIR_NAME)[1]
-main_job_dir(job::DFJob) = main_job_dir(job.local_dir)
 
 
 exists_job(d::AbstractString) = ispath(d) && ispath(joinpath(d, "job.tt"))

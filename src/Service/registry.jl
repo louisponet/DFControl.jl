@@ -58,6 +58,7 @@ job = DFJob(job_dirs[1])
 ```
 """
 function registered_jobs(fuzzy::AbstractString = "")
+    init_job_registry()
     cleanup_job_registry!(; print = false)
     choices = filter(x -> occursin(fuzzy, x), all_known_jobs()) 
     timestamps = timestamp.(choices)

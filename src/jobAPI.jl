@@ -46,7 +46,7 @@ If the last running calculation happened to be a `DFCalculation{QE}`, the correc
 For other codes the process is not smooth, and restarting is not guaranteed.
 """
 function abort(job::DFJob)
-    lastrunning = last_running_calculation(job)
+    lastrunning = job.calculations[last_running_calculation(job)]
     if lastrunning == nothing
         error("Is this job running?")
     end

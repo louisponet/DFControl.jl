@@ -1,5 +1,6 @@
 function DFControl.DFJob(dir::String, s="localhost"; version::Int = -1)
     server = maybe_start_server(s)
+    # server = Server(s)
     # dir = dir[1] == '/' ? dir[2:end] : dir
     resp = HTTP.get(server, "/jobs/" * dir, [], JSON3.write(version))
     # Supplied dir was not a valid path, so we ask
@@ -53,7 +54,6 @@ function save(job::DFJob)
     end
 
     @assert !isrunning(job) "Can't save a job in a directory where another is running."
-    @show "ping" 
 
     if isempty(job.name)
         @warn "Job had no name, changed it to: noname"
@@ -61,7 +61,7 @@ function save(job::DFJob)
     end
     
     curver = job.version
-    resp_job = JSON3.read(HTTP.post(server, joinpath("/jobs", job.server_dir), [], JSON3.write(job)), DFJob)
+    resp_job = JSON3.read(HTTP.post(server, joinpath("/jobs", job.server_dir), [], JSON3.write(job)).body, DFJob)
     @info "Job version: $(curver) => $(resp_job.version)."
     return resp_job
 end
@@ -75,5 +75,35 @@ running.
 """
 function isrunning(job::DFJob)
     server = maybe_start_server(job)
-    return JSON3.read(HTTP.get(server, joinpath("/isrunning", job.server_dir)), Bool)
+    return JSON3.read(HTTP.get(server, "/job_isrunning/" * job.server_dir).body, Bool)
+end
+
+"""
+    versions(job::DFJob)
+
+Returs the valid versions of `job`.
+"""
+function versions(job::DFJob)
+    server = maybe_start_server(job)
+    return JSON3.read(HTTP.get(server, "/job_versions/" * job.server_dir).body, Vector{Int})
+end
+
+"""
+    last_version(job::DFJob)
+
+Returns the last version number of `job`.
+"""
+function last_version(job::DFJob)
+    server = maybe_start_server(job)
+    return JSON3.read(HTTP.get(server, "/job_versions/" * job.server_dir).body, Vector{Int})[end]
+end
+
+"""
+    last_running_calculation(job::DFJob)
+
+Returns the last `DFCalculation` for which an output file was created.
+"""
+function last_running_calculation(job::DFJob)
+    server = maybe_start_server(job)
+    return job[JSON3.read(HTTP.get(server, "/last_running_calculation", [], JSON3.write(job)).body, Int)]
 end

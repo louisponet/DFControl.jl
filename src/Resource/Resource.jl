@@ -14,6 +14,7 @@ module Resource
     HTTP.@register(ROUTER, "GET", "/server_config", get_server_config)
 
     function requestHandler(req)
+        @show req
         obj = HTTP.handle(ROUTER, req)
         if obj === nothing
             return HTTP.Response(204)
