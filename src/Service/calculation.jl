@@ -41,9 +41,6 @@ function sanitize_flags!(calculation::DFCalculation, str::DFC.AbstractStructure)
     return convert_flags!(calculation)
 end
 
-ψ_cutoff_flag(c::DFCalculation) = ψ_cutoff_flag(package(c))
-ρ_cutoff_flag(c::DFCalculation) = ρ_cutoff_flag(package(c))
-
 function pdos(calculation::DFCalculation, args...)
     @error "pdos reading not implemented for package $(package(calculation))."
 end

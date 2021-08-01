@@ -55,7 +55,7 @@ function save(job::DFJob)
     end
     
     curver = job.version
-    resp_job = JSON3.read(HTTP.post(server, joinpath("/jobs", job.dir), [], JSON3.write(job)).body, DFJob)
+    resp_job = JSON3.read(HTTP.post(server, "/jobs/" * job.dir, [], JSON3.write(job)).body, DFJob)
     @info "Job version: $(curver) => $(resp_job.version)."
     return resp_job
 end

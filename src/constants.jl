@@ -5,5 +5,3 @@ conversions[:ang2bohr] = 1 / conversions[:bohr2ang]
 include("qe/constants.jl")
 include("wannier90/constants.jl")
 include("elk/constants.jl")
-ψ_cutoff_flag(::Type{<:Package}) = nothing
-ρ_cutoff_flag(::Type{<:Package}) = nothing

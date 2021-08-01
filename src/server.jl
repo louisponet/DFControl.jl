@@ -180,5 +180,6 @@ function push(job::DFJob, s::Server)
     run(`scp $(joinpath(job, "job.jld2")) $(ssh_string(s) * ":" * ".julia/config/DFControl/pending_jobs/" * replace(job.server_dir, "/" => "_")*".jld2")`)
 end
 
+Base.joinpath(s::Server, p...) = joinpath(s.default_jobdir, p...)
 #Gives the reverse (last job is listed first) of the output, omitting the header lines
 

@@ -170,5 +170,5 @@ function flagtype(calculation::DFCalculation{QE}, flag)
 end
 flagtype(::Type{QE}, exec, flag) = eltype(qe_flaginfo(exec, flag))
 
-ψ_cutoff_flag(::Type{QE}) = :ecutwfc
-ρ_cutoff_flag(::Type{QE}) = :ecutrho
+ψ_cutoff_flag(::DFCalculation{QE}) = :ecutwfc
+ρ_cutoff_flag(::DFCalculation{QE}) = :ecutrho

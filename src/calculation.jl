@@ -80,6 +80,9 @@ Returns an array of k-grid points that are equally spaced, calculation can be ei
 """
 kgrid(na, nb, nc, ::DFCalculation{T}) where {T} = kgrid(na, nb, nc, T)
 
+ψ_cutoff_flag(c::DFCalculation) = nothing
+ρ_cutoff_flag(c::DFCalculation) = nothing
+
 include("qe/calculation.jl")
 include("wannier90/calculation.jl")
 include("elk/calculation.jl")

@@ -259,3 +259,17 @@ function verify_execs(job::DFJob, server::Server)
     end
     Distributed.rmprocs(proc)
 end
+
+function package(execs::Vector{Exec})
+    if any(is_qe_exec, execs)
+        return QE
+    elseif any(is_wannier_exec, execs)
+        return Wannier90
+    elseif any(is_elk_exec, execs)
+        return Elk
+    elseif any(is_abinit_exec, execs)
+        return Abinit
+    else
+        return NoPackage
+    end
+end 

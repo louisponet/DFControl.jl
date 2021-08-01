@@ -40,7 +40,8 @@ function show(io::IO, job::DFJob)
     insert!(fns, 2, "dir")
     insert!(fs, 2, main_job_dir(job))
     push!(fns, "versions")
-    push!(fs, join(string.(Client.versions(job)), ", "))
+    versions = Client.versions(job)
+    push!(fs, join(string.(versions), ", "))
     if haskey(job.metadata, :timestamp)
         push!(fns, "last submission")
         push!(fs, string(round(job.metadata[:timestamp], Dates.Second)))
@@ -78,7 +79,7 @@ function show(io::IO, job::DFJob)
         dfprintln(io, crayon"cyan", "|", reset)
     end
     is = calculations(job)
-    last = Client.last_running_calculation(job)
+    last = !isempty(versions) ? Client.last_running_calculation(job) : -1
     if !isempty(is)
         dfprintln(io, crayon"cyan", line, reset)
         dfprintln(io, reset, "(", crayon"green", "scheduled", reset, ", ", crayon"red",

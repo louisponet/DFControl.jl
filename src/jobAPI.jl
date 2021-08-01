@@ -116,7 +116,7 @@ If `copy` is set to `true`, all previous calculations and output files of the cu
 """
 function set_dir!(job::DFJob, dir::AbstractString; copy = false)
     if !isabspath(dir)
-        dir = joinpath(Server(job).dir, dir)
+        dir = joinpath(Server(job), dir)
     end
     if dir[end] == '/'
         dir = dir[1:end-1]
