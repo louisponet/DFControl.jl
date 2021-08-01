@@ -48,7 +48,7 @@ include("structure.jl")
 
 include("execs.jl")
 include("utils.jl")
-export yesterday, lastweek, lastmonth
+using .Utils
 
 include("calculation.jl")
 include("job.jl")
@@ -80,6 +80,7 @@ using Pkg, LoggingExtras, Distributed
 include("Service/Service.jl")
 include("Resource/Resource.jl")
 include("Client/Client.jl")
+export Client
 
 using Requires
 
@@ -90,7 +91,7 @@ function __init__()
     merge!(Unitful.basefactors, localunits)
     Unitful.register(@__MODULE__)
     Service.init_job_registry()
-    maybe_create_localhost()
+    Client.maybe_create_localhost()
     # if !haskey(ENV, "IS_DAEMON")
     #     init_daemon()
     # else

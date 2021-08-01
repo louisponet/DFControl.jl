@@ -18,7 +18,7 @@ function extract_atoms(atoms_block::T, proj_block::T, cell::Mat3{LT},
                         continue
                     end
                     for proj in projs
-                        size = spinors ? 2 * orbsize(proj) : orbsize(proj)
+                        size = spinors ? 2 * DFC.orbsize(proj) : DFC.orbsize(proj)
                         push!(t_ats,
                               Atom(pos_at, element(pos_at), cell * ps, ps;
                                    projections = [Projection(orbital(proj), t_start,

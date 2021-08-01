@@ -73,6 +73,12 @@ function Base.:(==)(i1::DFCalculation, i2::DFCalculation)
                fieldnames(DFCalculation))
 end
 
+"""
+    kgrid(na, nb, nc, calculation)
+
+Returns an array of k-grid points that are equally spaced, calculation can be either `:wan` or `:nscf`, the returned grids are appropriate as calculations for wannier90 or an nscf calculation respectively.
+"""
+kgrid(na, nb, nc, ::DFCalculation{T}) where {T} = kgrid(na, nb, nc, T)
 
 include("qe/calculation.jl")
 include("wannier90/calculation.jl")

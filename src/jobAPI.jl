@@ -130,7 +130,7 @@ function set_localdir!(job::DFJob, dir::AbstractString; copy = false)
         dir = dir[1:end-1]
     end
     if copy
-        verify_or_create(dir)
+        mkpath(dir)
         cp(job, dir; temp = true)
     end
     job.local_dir = dir

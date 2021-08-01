@@ -59,7 +59,6 @@ function handle_workflow_runners!(job_dirs_procs)
 end
 
 save_running_jobs(job_dirs_procs) = DFControl.writelines(RUNNING_JOBS_FILE, keys(job_dirs_procs))
-load_running_jobs() = readlines(RUNNING_JOBS_FILE)
 
 # Jobs are submitted by the daemon, using supplied job jld2 from the caller (i.e. another machine)
 # This means we need to turn job.server_dir into job.local_dir

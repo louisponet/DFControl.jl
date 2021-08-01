@@ -1,7 +1,15 @@
+function kgrid(na, nb, nc, ::Type{QE})
+    return reshape([(a, b, c, 1 / (na * nb * nc))
+                    for a in collect(range(0; stop = 1, length = na + 1))[1:end-1],
+                        b in collect(range(0; stop = 1, length = nb + 1))[1:end-1],
+                        c in collect(range(0; stop = 1, length = nc + 1))[1:end-1]],
+                   (na * nb * nc))
+end
+
 function set_kpoints!(c::DFCalculation{QE}, k_grid::NTuple{3,Int}; print = true) #nscf
     calc = flag(c, :calculation)
     print && calc != "nscf" && (@warn "Expected calculation to be 'nscf'.\nGot $calc.")
-    set_data!(c, :k_points, kgrid(k_grid..., :nscf); option = :crystal, print = print)
+    set_data!(c, :k_points, kgrid(k_grid..., c); option = :crystal, print = print)
     prod(k_grid) > 100 && set_flags!(c, :verbosity => "high"; print = print)
     return c
 end
@@ -183,6 +191,7 @@ function gencalc_wan(nscf::DFCalculation{QE}, structure::AbstractStructure, Emin
     map(x -> set_wanenergies!(x, structure, nscf, Emin; Epad = Epad), wancalculations)
     return wancalculations
 end
+kakbkc(kgrid) = length.(unique.([[n[i] for n in kgrid] for i in 1:3]))
 
 """
     gencalc_wan(nscf::DFCalculation{QE}, structure::AbstractStructure, projwfc::DFCalculation{QE}, threshold::Real, wanflags...; kwargs...)

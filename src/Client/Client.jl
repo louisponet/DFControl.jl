@@ -1,7 +1,8 @@
 module Client
-    using HTTP, JSON3, StructTypes
+    using HTTP, JSON3, StructTypes, Dates, JLD2, Distributed, REPL.TerminalMenus
     using ..DFControl
     using ..DFControl: Server
+    using ..Utils
 
     @inline function JSON3.read(::StructTypes.Mutable, buf, pos, len, b, ::Type{DFCalculation}; kw...)
         x = DFCalculation{DFControl.NoPackage}("", execs=Exec[])
@@ -9,25 +10,20 @@ module Client
         return pos, x
     end
     
-    http_string(s::Server) = "http://$(s.domain):$(s.port)"
 
-    HTTP.request(method::String, s::Server, url, args...) =
-        HTTP.request(method, string(http_string(s), url), args...)
+    HTTP.request(method::String, s::Server, url, args...; kwargs...) =
+        HTTP.request(method, string(http_string(s), url), args...; kwargs...)
         
     for f in (:get, :put, :post, :head)
-        @eval HTTP.$(f)(s::Server, url, args...) =
-            HTTP.request(uppercase(string($f)), s, url, args...)
+        str = uppercase(string(f))
+        @eval HTTP.$(f)(s::Server, url, args...; kwargs...) =
+            HTTP.request("$($str)", s, url, args...; kwargs...)
     end
 
-    function DFControl.DFJob(s::Server, dir::String)
-        job = JSON3.read(HTTP.get(s, joinpath("/jobs", dir)).body, DFJob)
-        job.server = s.name
-        job.server_dir = job.local_dir
-        return job
-    end
 
-    kill_server(s::Server) = HTTP.put(s, "/kill_server")
-
-        
+    include("job.jl")
+    export save
+    include("server.jl")
+    
         
 end

@@ -1,4 +1,31 @@
 const TEMP_CALC_DIR = "outputs"
+
+function load_job(job_dir::AbstractString, version::Int)
+    apath = abspath(job_dir)
+    if ispath(job_dir)
+        if occursin(VERSION_DIR_NAME, apath)
+            error("It is not allowed to directly load a job version, please use `DFJob(dir, version=$(splitdir(apath)[end]))`")
+        end
+        if version != -1
+            real_path = version_dir(apath, version)
+            real_version = version
+        elseif ispath(joinpath(apath, "job.tt"))
+            real_path = apath
+            real_version = main_job_version(apath)
+        else
+            error("No valid job found in $apath.")
+        end
+        return DFJob(;
+                     merge((local_dir = real_path, version = real_version),
+                                 read_job_calculations(joinpath(real_path, "job.tt")))...)
+    else
+        return nothing
+    end
+end
+
+
+
+
 name(job) = job.name
 #-------------------BEGINNING GENERAL SECTION-------------#
 scriptpath(job::DFJob) = joinpath(job.local_dir, "job.tt")
@@ -6,9 +33,9 @@ starttime(job::DFJob)  = mtime(scriptpath(job))
 
 runslocal(job::DFJob)    = job.server == "localhost"
 structure(job::DFJob)    = job.structure
-isQEjob(job::DFJob)      = any(x -> package(x) == QE, calculations(job))
-iswannierjob(job::DFJob) = any(x -> package(x) == Wannier90, calculations(job)) && any(x -> isnscf(x), calculations(job))
-getnscfcalc(job::DFJob)  = DFC.getfirst(x -> isnscf(x), calculations(job))
+isQEjob(job::DFJob)      = any(x -> package(x) == QE, job.calculations)
+iswannierjob(job::DFJob) = any(x -> package(x) == Wannier90, job.calculations) && any(x -> isnscf(x), job.calculations)
+getnscfcalc(job::DFJob)  = getfirst(x -> isnscf(x), job.calculations)
 
 function workflow_logger(job::DFJob)
     return TeeLogger(MinLevelLogger(FileLogger(joinpath(job, ".workflow", "info.log");
@@ -88,18 +115,11 @@ it will be copied to the `.versions` sub directory as the previous version of `j
 and the version of `job` will be incremented. 
 """
 function save(job::DFJob; kwargs...)
-    # First we check whether the job is trying to be saved in a archived directory, absolutely not allowed
-    @assert !isarchived(job)
-        "Not allowed to save a job in a archived directory, please specify a different directory with `set_localdir!"
 
+    #Since at this stage we know the job will belong to the current localhost we change the server
+    job.server = "localhost"
     # Here we find the main directory, needed for if a job's local dir is a .versions one
     local_dir = main_job_dir(job)
-    if ispath(joinpath(local_dir, "job.tt"))
-        tj = DFJob(local_dir)
-        @assert !isrunning(tj) "Can't save a job in a directory where another is running."
-        # We want to first make sure that the previous job in the main directory is safely stored
-        cp(tj, joinpath(tj, VERSION_DIR_NAME, "$(tj.version)"); force = true)
-    end
     if local_dir != job.local_dir
         # We know for sure it was a previously saved job
         # Now that we have safely stored it we can clean out the directory to then fill
@@ -107,17 +127,15 @@ function save(job::DFJob; kwargs...)
         clean_local_dir!(local_dir)
         cp(job, local_dir; force = true)
     end
-    if isempty(job.name)
-        @warn "Job had no name, changed it to: noname"
-        job.name = "noname"
+    if ispath(joinpath(local_dir, "job.tt"))
+        tj = DFJob(local_dir)
+        cp(tj, joinpath(tj, VERSION_DIR_NAME, "$(tj.version)"); force = true)
     end
     
     set_localdir!(job, local_dir) # Needs to be done so the inputs `dir` also changes.
-    verify_or_create(local_dir)
+    mkpath(local_dir)
 
-    curver = job.version
     job.version = last_version(job) + 1
-    @info "Job version: $(curver) => $(job.version)."
     sanitize_cutoffs!(job)
     sanitize_pseudos!(job)
     sanitize_magnetization!(job)
@@ -146,12 +164,12 @@ function sanitize_flags!(job::DFJob)
             end
         end
     end
-    for i in filter(x -> package(x) == QE, calculations(job))
+    for i in filter(x -> package(x) == QE, job.calculations)
         outdir = isempty(job.server_dir) ? joinpath(job, TEMP_CALC_DIR) :
                  joinpath(job.server_dir, splitdir(job.local_dir)[end], TEMP_CALC_DIR)
         set_flags!(i, :outdir => "$outdir"; print = false)
     end
-    return sanitize_flags!.(calculations(job), (job.structure,))
+    return sanitize_flags!.(job.calculations, (job.structure,))
 end
 
 function rm_tmp_flags!(job::DFJob)
@@ -161,7 +179,7 @@ end
 
 function sanitize_cutoffs!(job)
     # the assumption is that the most important cutoff calculation is the scf/vcrelax that is ran first 
-    ψ_cut_calc = getfirst(x -> hasflag(x, ψ_cutoff_flag(x)), calculations(job))
+    ψ_cut_calc = getfirst(x -> hasflag(x, ψ_cutoff_flag(x)), job.calculations)
     if ψ_cut_calc !== nothing
         ψcut = ψ_cut_calc[ψ_cutoff_flag(ψ_cut_calc)]
     else
@@ -169,16 +187,16 @@ function sanitize_cutoffs!(job)
         @assert ψcut != 0.0 "No energy cutoff was specified in any calculation, and the calculated cutoff from the pseudopotentials was 0.0.\nPlease manually set one."
         @info "No energy cutoff was specified in the scf calculation.\nCalculated ψcut=$ψcut."
     end
-    for i in calculations(job)
+    for i in job.calculations
         ψflag = ψ_cutoff_flag(i)
         ψflag !== nothing &&
             !hasflag(i, ψflag) &&
             set_flags!(i, ψflag => ψcut; print = false)
     end
-    ρ_cut_calc = getfirst(x -> hasflag(x, ρ_cutoff_flag(x)), calculations(job))
+    ρ_cut_calc = getfirst(x -> hasflag(x, ρ_cutoff_flag(x)), job.calculations)
     if ρ_cut_calc !== nothing
         ρcut = ρ_cut_calc[ρ_cutoff_flag(ρ_cut_calc)]
-        for i in calculations(job)
+        for i in job.calculations
             ρflag = ρ_cutoff_flag(i)
             ρflag !== nothing && set_flags!(i, ρflag => ρcut; print = false)
         end
@@ -186,17 +204,17 @@ function sanitize_cutoffs!(job)
 end
 
 function sanitize_pseudos!(job::DFJob)
-    all_pseudos = pseudo.(atoms(job))
+    all_pseudos = DFC.pseudo.(atoms(job))
     uni_dirs    = unique(map(x -> x.dir, all_pseudos))
     uni_pseudos = unique(all_pseudos)
-    if !all(ispath.(path.(uni_pseudos)))
+    if !all(ispath.(DFC.path.(uni_pseudos)))
         @warn "Some Pseudos could not be located on disk."
     end
     pseudo_dir = length(uni_dirs) == 1 ? uni_dirs[1] : job.local_dir
     if length(uni_dirs) > 1
         @info "Found pseudos in multiple directories, copying them to job directory"
         for pseudo in uni_pseudos
-            cp(path(pseudo), joinpath(job.local_dir, pseudo.name); force = true)
+            cp(DFC.path(pseudo), joinpath(job.local_dir, pseudo.name); force = true)
         end
     end
     for p in all_pseudos
@@ -205,7 +223,7 @@ function sanitize_pseudos!(job::DFJob)
 end
 
 function sanitize_magnetization!(job::DFJob)
-    if !any(x -> package(x) == QE, calculations(job))
+    if !any(x -> package(x) == QE, job.calculations)
         return
     end
     return sanitize_magnetization!(job.structure)
@@ -213,8 +231,8 @@ end
 
 function find_cutoffs(job::DFJob)
     @assert job.server == "localhost" "Cutoffs can only be automatically set if the pseudo files live on the local machine."
-    pseudofiles = map(x -> x.name, filter(!isempty, [pseudo(at) for at in atoms(job)]))
-    pseudodirs  = map(x -> x.dir, filter(!isempty, [pseudo(at) for at in atoms(job)]))
+    pseudofiles = map(x -> x.name, filter(!isempty, [DFC.pseudo(at) for at in atoms(job)]))
+    pseudodirs  = map(x -> x.dir, filter(!isempty, [DFC.pseudo(at) for at in atoms(job)]))
     @assert !isempty(pseudofiles) "No atoms with pseudo files found."
     @assert !isempty(pseudodirs) "No valid pseudo directories found in the calculations."
     maxecutwfc = 0.0
@@ -251,7 +269,7 @@ Returns the last `DFCalculation` for which an output file was created.
 function last_running_calculation(job::DFJob)
     @assert job.server == "localhost" "Intended use for now is locally."
     t = mtime(scriptpath(job))
-    for i in reverse(calculations(job))
+    for i in reverse(job.calculations)
         p = outpath(i)
         if ispath(p) && mtime(p) > t
             return i
@@ -265,10 +283,6 @@ end
 `joinpath(job.local_dir, args...)`.
 """
 Base.joinpath(job::DFJob, args...) = joinpath(job.local_dir, args...)
-
-function runslocal_assert(job::DFJob)
-    @assert runslocal(job) "This only works if the job runs on `localhost`."
-end
 
 function Base.pop!(job::DFJob, name::String)
     i = findfirst(x -> x.name == name, job.calculations)
@@ -319,18 +333,18 @@ end
 is_slurm_job(job::DFJob) = haskey(job.metadata, :slurmid)
 
 """
-    isrunning(job::DFJob; print=true)
+    isrunning(job_dir::String)
 
-Returns whether a job is running or not. If the job was
+Returns whether a job exists in the `job_dir` and if it is running or not. If the job was
 submitted using `slurm`, a `QUEUED` status also counts as
 running.
-
-!!! note:
-    For now only `slurm` is supported as scheduler.
 """
-function isrunning(job::DFJob; print = true)
+function isrunning(job_dir::String)
+    !ispath(joinpath(job_dir, "job.tt")) && return false
+    job = DFJob(job_dir)
+    server = Server(job)
     n = now()
-    if is_slurm_job(job)
+    if server.scheduler == slurm
         return slurm_isrunning(job)
     else
         u = username()
@@ -426,10 +440,33 @@ in the main directory.
 main_job_dir(dir::AbstractString) = split(dir, VERSION_DIR_NAME)[1]
 main_job_dir(job::DFJob) = main_job_dir(job.local_dir)
 
-isarchived(job::DFJob) = occursin(".archived", job.local_dir)
 
 exists_job(d::AbstractString) = ispath(d) && ispath(joinpath(d, "job.tt"))
 
-
-
-
+function schedule_job(job::DFJob, submit_command)
+    outstr = ""
+    if !runslocal(job)
+        push(job)
+        outstr = read(`ssh -t $(job.server) cd $(job.server_dir) '&&' $submit_command job.tt`,
+                      String)
+    else
+        curdir = pwd()
+        cd(job.local_dir)
+        try
+            outstr = read(`$submit_command job.tt`, String)
+            cd(curdir)
+        catch
+            cd(curdir)
+            error("Tried submitting on the local machine but got an error executing `qsub`, `sbatch` and `run`.")
+        end
+    end
+    if !isempty(outstr)
+        try
+            return parse(Int, chomp(outstr))
+        catch
+            return parse(Int, split(chomp(outstr))[end])
+        end
+    else
+        return
+    end
+end

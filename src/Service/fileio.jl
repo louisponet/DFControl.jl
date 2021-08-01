@@ -176,14 +176,14 @@ function writetojob(f, job, calculations::Vector{DFCalculation{Elk}}; kwargs...)
         write(f, "#")
     end
     writeexec.((f,), execs(calculations[1]))
-    write(f, "< $(infilename(calculations[1])) > $(outfilename(calculations[1]))\n")
+    write(f, "< $(DFC.infilename(calculations[1])) > $(outfilename(calculations[1]))\n")
     return calculations
 end
 
 writeexec(f, exec::Exec) = write(f, string(exec) * " ")
 
 function writetojob(f, job, calculation::DFCalculation; kwargs...)
-    filename   = infilename(calculation)
+    filename   = DFC.infilename(calculation)
     should_run = calculation.run
     save(calculation, job.structure; kwargs...)
     if !should_run
@@ -195,7 +195,7 @@ function writetojob(f, job, calculation::DFCalculation; kwargs...)
 end
 
 function writetojob(f, job, _calculation::DFCalculation{Wannier90}; kwargs...)
-    filename   = infilename(_calculation)
+    filename   = DFC.infilename(_calculation)
     should_run = _calculation.run
     id         = findfirst(isequal(_calculation), job.calculations)
     seedname   = name(_calculation)
@@ -319,17 +319,17 @@ function read_job_line(line)
             continue
         end
         if occursin("mpi", e)
-            push!(execs, Exec(efile, dir, parse_mpi_flags(flags)))
+            push!(execs, Exec(efile, dir, DFC.parse_mpi_flags(flags)))
         elseif efile == "wannier90.x"
-            push!(execs, Exec(efile, dir, parse_wan_execflags(flags)))
+            push!(execs, Exec(efile, dir, DFC.parse_wan_execflags(flags)))
         elseif any(occursin.(QE_EXECS, (efile,)))
-            push!(execs, Exec(efile, dir, parse_qe_execflags(flags)))
+            push!(execs, Exec(efile, dir, DFC.parse_qe_execflags(flags)))
         elseif any(occursin.(ELK_EXECS, (efile,)))
             calculation = "elk.in"
             output = "elk.out"
             push!(execs, Exec(exec=efile, dir=dir))
         else
-            push!(execs, Exec(efile, dir, parse_generic_flags(flags)))
+            push!(execs, Exec(efile, dir, DFC.parse_generic_flags(flags)))
         end
     end
     return execs, calculation, output, run
@@ -409,7 +409,7 @@ function read_job_calculations(job_file::String)
                     calculation[1].infile = calculationfile
                 end
                 if calculation != (nothing, nothing)
-                    id = findall(x -> infilename(x) == calculationfile, calculations)
+                    id = findall(x -> DFC.infilename(x) == calculationfile, calculations)
                     if !isempty(id) #this can only happen for stuff that needs to get preprocessed
                         merge!(flags(calculation[1]), flags(calculations[id[1]]))
                         calculations[id[1]] = calculation[1]
@@ -442,7 +442,7 @@ function read_job_calculations(job_file::String)
     if isempty(structures)
         error("Something went wrong and no valid structures could be read from calculation files.")
     end
-    outstruct = mergestructures(structures)
+    outstruct = DFC.mergestructures(structures)
     return (name = name, header = header, calculations = calculations,
             structure = outstruct, server_dir = serverdir)
 end

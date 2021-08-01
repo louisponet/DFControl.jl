@@ -1,7 +1,15 @@
+function kgrid(na, nb, nc, ::Type{Wannier90})
+    return reshape([(a, b, c)
+                    for a in collect(range(0; stop = 1, length = na + 1))[1:end-1],
+                        b in collect(range(0; stop = 1, length = nb + 1))[1:end-1],
+                        c in collect(range(0; stop = 1, length = nc + 1))[1:end-1]],
+                   (na * nb * nc))
+end
+
 function set_kpoints!(calculation::DFCalculation{Wannier90}, k_grid::NTuple{3,Int};
                       print = true)
     set_flags!(calculation, :mp_grid => [k_grid...]; print = print)
-    set_data!(calculation, :kpoints, kgrid(k_grid..., :wan); print = print)
+    set_data!(calculation, :kpoints, kgrid(k_grid..., calculation); print = print)
     return calculation
 end
 
@@ -41,3 +49,27 @@ function set_wanenergies!(calculation::DFCalculation{Wannier90},
                :num_bands => num_bands; print = false)
     return calculation
 end
+
+#TODO: there is probably a slightly more optimal way for the frozen window, by checking max and min
+#      such that every k-point has nbands inbetween.
+function Emax(Emin, nbnd, bands)
+    nbndfound = 0
+    max = 0
+    for b in bands
+        if maximum(b.eigvals) >= Emin && nbndfound <= nbnd
+            nbndfound += 1
+            #maximum of allowed frozen window is the minimum of the first band>nbnd
+            max = minimum(b.eigvals) - 0.005
+        end
+    end
+
+    nbndfound < nbnd &&
+        error("Number of needed bands for the projections ($nbnd) exceeds the amount of bands starting from \nEmin=$Emin ($nbndfound).\nRerun nscf with nbnd=$(length(bands) + nbnd - nbndfound).")
+    return max
+end
+
+function wanenergyranges(Emin, nbnd, bands, Epad = 5)
+    max = Emax(Emin, nbnd, bands)
+    return (Emin - Epad, Emin, max, max + Epad)
+end
+

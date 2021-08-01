@@ -92,29 +92,6 @@ Loads all the known [`DFJobs`](@ref DFJob) whose `local_dir` contains `fuzzy`.
 """
 load_jobs(fuzzy::AbstractString) = DFJob.(registered_jobs(fuzzy))
 
-function request_job(job_dir::String)
-    matching_jobs = reverse(registered_jobs(job_dir))
-    choices = ["$j -- $t" for (j, t) in zip(matching_jobs, timestamp.(matching_jobs))]
-
-    if length(matching_jobs) == 1
-        return matching_jobs[1]
-    elseif isdefined(Base, :active_repl)
-        menu = RadioMenu(choices)
-        choice = request("Multiple matching jobs were found, choose one:", menu)
-        if choice != -1
-            return matching_jobs[choice]
-        else
-            return nothing
-        end
-    else
-        err_msg = "No concrete job for $job_dir found, closest matches are:"
-        for m in choices
-            err_msg = join([err_msg, m], "\n")
-        end
-        @error err_msg
-    end
-end
-
 """
     load_running_jobs(fuzzy::AbstractString = "")
 

@@ -1,77 +1,3 @@
-const SERVER_DIR = config_path("servers")
-function known_servers(fuzzy="")
-    if ispath(SERVER_DIR)
-        servers = [JLD2.load(joinpath(SERVER_DIR, s))["server"] for s in filter(x -> occursin(fuzzy, x), readdir(SERVER_DIR))]
-    else
-        servers = Server[]
-    end
-    return servers
-end
-
-function load_server(name::String)
-    if occursin("@", name)
-        return getfirst(x -> x.name == name, known_servers())
-    else
-        all = known_servers(name)
-        if length(all) > 0 
-            return all[1]
-        else
-            return nothing
-        end
-    end
-end
-
-function save(s::Server)
-    mkpath(SERVER_DIR)
-    if ispath(joinpath(SERVER_DIR, s.name * ".jld2"))
-        @info "Updating previously existing configuration for server $s."
-    else
-        JLD2.save(joinpath(SERVER_DIR, s.name * ".jld2"), "server", s)
-    end
-end
-
-ssh_string(s::Server) = s.username * "@" * s.domain
-
-function establish_connection(server::Server)
-    proc = Distributed.addprocs([(ssh_string(server), 1)])[1]
-end
-
-remove_server!(name::String) = ispath(joinpath(SERVER_DIR, name * ".jld2")) && rm(joinpath(SERVER_DIR, name * ".jld2"))
-
-function start(s::Server)
-    cmd = Cmd(`$(s.julia_exec) --startup-file=no -t auto -e "using DFControl; DFControl.Resource.run($(s.port))"`; detach = true)
-    proc = DFControl.establish_connection(s)
-    
-    p   = remotecall(run, proc, cmd; wait = false)
-    @show fetch(p)
-    @info "Daemon on Server $(s.name) started, listening on port $(s.port)."
-end
-
-kill_server(s) = Client.kill_server(s)
-
-function restart_server(s::Server)
-    kill_server(s)
-    start(s)
-end
-
-function maybe_create_localhost()
-    t = load_server("localhost")
-    if t === nothing
-        scheduler = Sys.which("sbatch") === nothing ? bash : slurm
-        if !haskey(ENV, "DFCONTROL_PORT")
-            port = 8080
-        else
-            port = parse(Int, ENV["DFCONTROL_PORT"])
-        end
-        julia_exec = joinpath(Sys.BINDIR, "julia")
-        out = Server("localhost", ENV["USER"], "localhost", port, scheduler, "", julia_exec)
-        save(out)
-        return out
-    else
-        return t
-    end
-end
-
 """
     pullfile(server::String, server_dir::String, local_dir::String, filename::String)
 
@@ -207,33 +133,6 @@ function qdel(job::DFJob)
     end
 end
 
-function schedule_job(job::DFJob, submit_command)
-    outstr = ""
-    if !runslocal(job)
-        push(job)
-        outstr = read(`ssh -t $(job.server) cd $(job.server_dir) '&&' $submit_command job.tt`,
-                      String)
-    else
-        curdir = pwd()
-        cd(job.local_dir)
-        try
-            outstr = read(`$submit_command job.tt`, String)
-            cd(curdir)
-        catch
-            cd(curdir)
-            error("Tried submitting on the local machine but got an error executing `qsub`, `sbatch` and `run`.")
-        end
-    end
-    if !isempty(outstr)
-        try
-            return parse(Int, chomp(outstr))
-        catch
-            return parse(Int, split(chomp(outstr))[end])
-        end
-    else
-        return
-    end
-end
 
 qsub(job::DFJob) = schedule_job(job, "qsub")
 sbatch(job::DFJob) = schedule_job(job, "sbatch")
@@ -282,5 +181,4 @@ function push(job::DFJob, s::Server)
 end
 
 #Gives the reverse (last job is listed first) of the output, omitting the header lines
-slurm_process_command(cmd) = strip.(reverse(readlines(cmd)))[1:end-2]
 

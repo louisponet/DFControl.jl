@@ -374,7 +374,7 @@ The `kwargs...` will be passed to the [`DFJob`](@ref) constructor.
     local_dir::String = pwd()
     header::Vector{String} = getdefault_jobheader()
     metadata::Dict = Dict()
-    version::Int = last_job_version(local_dir)
+    version::Int = -1
     copy_temp_folders::Bool = false
     server::String = getdefault_server()
     server_dir::String = ""
@@ -389,7 +389,6 @@ The `kwargs...` will be passed to the [`DFJob`](@ref) constructor.
         if isempty(structure.name)
             structure.name = split(name, "_")[1]
         end
-        last_version = last_job_version(local_dir)
         if isempty(metadata)
             mpath = joinpath(local_dir, ".metadata.jld2")
             if ispath(mpath)
@@ -418,32 +417,6 @@ function DFJob(job_name::String, structure::AbstractStructure,
     return out
 end
 
-function DFJob(job_dir::AbstractString, job_script = "job.tt";
-               version::Union{Nothing,Int} = nothing, kwargs...)
-    apath = abspath(job_dir)
-    if ispath(job_dir)
-        if occursin(VERSION_DIR_NAME, apath)
-            error("It is not allowed to directly load a job version, please use `DFJob(dir, version=$(splitdir(apath)[end]))`")
-        end
-        if version !== nothing
-            real_path = version_dir(apath, version)
-            real_version = version
-        elseif ispath(joinpath(apath, job_script))
-            real_path = apath
-            real_version = main_job_version(apath)
-        else
-            error("No valid job found in $apath.")
-        end
-    else
-        real_path = request_job(job_dir)
-        real_path === nothing && return
-        real_version = main_job_version(real_path)
-    end
-    return DFJob(;
-                 merge(merge((local_dir = real_path, version = real_version),
-                             read_job_calculations(joinpath(real_path, job_script))),
-                       kwargs)...)
-end
 StructTypes.StructType(::Type{DFJob}) = StructTypes.Mutable()
 
 abstract type Band end
@@ -510,20 +483,20 @@ function Base.hash(data::T, h::UInt) where {T<:Union{InputData,Projection,Exec}}
     return h
 end
 
-@enum Scheduler slurm=1 bash=2
+@enum Scheduler Slurm=1 Bash=2
 
 @with_kw mutable struct Server
-    name::String
-    username::String
-    domain::String
+    name::String = "nothing"
+    username::String = "nothing"
+    domain::String = "nothing"
     port::Int = 8080
-    scheduler::Scheduler
+    scheduler::Scheduler = Bash
     mountpoint::String = ""
     julia_exec::String = "julia"
 end
 
 function Server(s::String)
-    server = load_server(s) #First check if previous server exists
+    server = Client.load_server(s) #First check if previous server exists
     if server !== nothing
         return server
     end
@@ -577,3 +550,6 @@ function Server(s::String)
     save(server)
     return server
 end
+Server(j::DFJob) = Server(j.server)
+
+StructTypes.StructType(::Type{Server}) = StructTypes.Mutable()

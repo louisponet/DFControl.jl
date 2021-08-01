@@ -1,7 +1,5 @@
 const RUN_EXECS = ["mpirun", "mpiexec", "srun"]
 
-isparseable(exec::Exec) = exec.exec ∈ parseable_execs()
-
 hasflag(exec::Exec, s::Symbol) = findfirst(x -> x.symbol == s, exec.flags) != nothing
 
 Base.hash(e::ExecFlag, h::UInt) = hash(e.symbol, hash(e.value, h))
@@ -21,20 +19,6 @@ function Base.:(==)(e1::Exec, e2::Exec)
     end
 end
 
-allexecs() = vcat(RUN_EXECS, QE_EXECS, WAN_EXECS, ELK_EXECS)
-parseable_execs() = vcat(QE_EXECS, WAN_EXECS, ELK_EXECS)
-has_parseable_exec(l::String) = occursin(">", l) && any(occursin.(parseable_execs(), (l,)))
-
-function calculationparser(exec::Exec)
-    if is_qe_exec(exec)
-        qe_read_calculation
-    elseif is_wannier_exec(exec)
-        wan_read_calculation
-    elseif is_elk_exec(exec)
-        elk_read_calculation
-    end
-end
-
 function set_flags!(exec::Exec, flags...)
     for (f, val) in flags
         flag = isa(f, String) ? getfirst(x -> x.name == f, exec.flags) :
@@ -46,6 +30,7 @@ function set_flags!(exec::Exec, flags...)
             #TODO generalize this
             for (f1, f2) in zip((is_qe_exec, is_wannier_exec, is_mpi_exec),
                     (qe_execflag, wan_execflag, mpi_flag))
+
                 if f1(exec)
                     def_flag = f2(f)
                     if def_flag !== nothing

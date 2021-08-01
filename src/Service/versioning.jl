@@ -5,7 +5,7 @@ function main_job_version(dir::AbstractString)
     maindir = main_job_dir(dir)
     mdatapath = joinpath(maindir, ".metadata.jld2")
     if ispath(mdatapath)
-        metadata = load(mdatapath)
+        metadata = JLD2.load(mdatapath)
         if haskey(metadata, "version")
             return metadata["version"]
         end
