@@ -1143,7 +1143,7 @@ function save(calculation::DFCalculation{QE}, structure,
         controls = Dict{Symbol,Dict{Symbol,Any}}()
 
         for (flag, val) in calculation.flags
-            block, variable = qe_block_variable(calculation, flag)
+            block, variable = DFC.qe_block_variable(calculation, flag)
             if !haskey(controls, block.name)
                 controls[block.name] = Dict{Symbol,Any}()
             end
@@ -1214,7 +1214,7 @@ function write_structure(f, calculation::DFCalculation{QE}, structure;
     end
 
     for at in atoms(structure)
-        push!(atom_lines, position_string(QE, at; relative = relative_positions))
+        push!(atom_lines, DFC.position_string(QE, at; relative = relative_positions))
     end
 
     write(f, "ATOMIC_SPECIES\n")
@@ -1258,6 +1258,6 @@ function qe_generate_pw2wancalculation(calculation::DFCalculation{Wannier90},
     end
     pw2wanexec = Exec("pw2wannier90.x", runexecs[2].dir)
     run = get(calculation.flags, :preprocess, false) && calculation.run
-    return DFCalculation{QE}(name = "pw2wan_$(flags[:seedname])", dir = dir(calculation), flags = flags,
+    return DFCalculation{QE}(name = "pw2wan_$(flags[:seedname])", dir = DFC.dir(calculation), flags = flags,
                              data = InputData[], execs = [runexecs[1], pw2wanexec], run = run)
 end

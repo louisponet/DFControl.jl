@@ -175,8 +175,6 @@ mutable struct ExecFlag{T}
     value       :: T
     minus_count :: Int
 end
-ExecFlag() = ExecFlag(:nothing, "", "", 0, 1)
-
 ExecFlag(e::ExecFlag, value) = ExecFlag(e.symbol, e.name, e.description, value, e.minus_count)
 function ExecFlag(p::Pair)
     return ExecFlag(first(p), String(first(p)), "", last(p), 1)
@@ -185,7 +183,7 @@ function ExecFlag(p::Pair, count::Int)
     return ExecFlag(first(p), String(first(p)), "", last(p), count)
 end
 
-StructTypes.StructType(::Type{<:ExecFlag}) = StructTypes.Mutable()
+StructTypes.StructType(::Type{<:ExecFlag}) = StructTypes.Struct()
 
 """
     Exec(;exec::String = "", dir::String = "", flags::Vector{ExecFlag} = ExecFlag[])
@@ -236,8 +234,7 @@ mutable struct InputData
     data   :: Any
 end
 
-InputData() = InputData(:noting, :nothing, nothing)
-StructTypes.StructType(::Type{InputData}) = StructTypes.Mutable()
+StructTypes.StructType(::Type{InputData}) = StructTypes.Struct()
 
 
 abstract type Package end
@@ -372,7 +369,7 @@ The `kwargs...` will be passed to the [`DFJob`](@ref) constructor.
     calculations::Vector{DFCalculation} = DFCalculation[]
     dir::String = pwd()
     header::Vector{String} = getdefault_jobheader()
-    metadata::Dict = Dict()
+    metadata::SymAnyDict = SymAnyDict()
     version::Int = -1
     copy_temp_folders::Bool = false
     server::String = getdefault_server()
@@ -474,7 +471,7 @@ mutable struct TimingData
     children::Vector{TimingData}
 end
 
-function Base.hash(data::T, h::UInt) where {T<:Union{InputData,Projection,Exec}}
+function Base.hash(data::T, h::UInt) where {T<:Union{<:InputData,Projection,Exec}}
     for f in fieldnames(T)
         h = hash(getfield(data, f), h)
     end

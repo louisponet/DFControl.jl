@@ -83,23 +83,14 @@ function parse_flag_val(val, T = Float64)
 end
 
 function write_data(f, data)
-    if typeof(data) <: Vector{Vector{Float64}} || typeof(data) <: Vector{NTuple{4,Float64}} #k_points
+    if typeof(data) <: Matrix
+        DFC.writedlm(f, data)
+    elseif typeof(data) <: Union{String, Symbol}
+        write(f, "$data\n")
+    else
         for x in data
             for y in x
                 write(f, " $y")
-            end
-            write(f, "\n")
-        end
-    elseif typeof(data) <: Vector{Int} || typeof(data) <: NTuple{6,Int}
-        for x in data
-            write(f, " $x")
-        end
-        write(f, "\n")
-    elseif typeof(data) <: Matrix
-        im, jm = size(data)
-        for i in 1:im
-            for j in 1:jm
-                write(f, " $(data[i, j])")
             end
             write(f, "\n")
         end
@@ -176,7 +167,7 @@ function writetojob(f, job, calculations::Vector{DFCalculation{Elk}}; kwargs...)
         write(f, "#")
     end
     writeexec.((f,), execs(calculations[1]))
-    write(f, "< $(DFC.infilename(calculations[1])) > $(outfilename(calculations[1]))\n")
+    write(f, "< $(DFC.infilename(calculations[1])) > $(DFC.outfilename(calculations[1]))\n")
     return calculations
 end
 
@@ -190,7 +181,7 @@ function writetojob(f, job, calculation::DFCalculation; kwargs...)
         write(f, "#")
     end
     writeexec.((f,), execs(calculation))
-    write(f, "< $filename > $(outfilename(calculation))\n")
+    write(f, "< $filename > $(DFC.outfilename(calculation))\n")
     return (calculation,)
 end
 
@@ -215,7 +206,7 @@ function writetojob(f, job, _calculation::DFCalculation{Wannier90}; kwargs...)
                 write(f, "#")
             end
             writeexec.((f,), execs(_calculation))
-            write(f, "-pp $filename > $(outfilename(_calculation))\n")
+            write(f, "-pp $filename > $(DFC.outfilename(_calculation))\n")
 
             save(_calculation, job.structure; kwargs...)
             writetojob(f, job, pw2wancalculation; kwargs...)
@@ -230,7 +221,7 @@ function writetojob(f, job, _calculation::DFCalculation{Wannier90}; kwargs...)
         write(f, "#")
     end
     writeexec.((f,), execs(_calculation))
-    write(f, "$filename > $(outfilename(_calculation))\n")
+    write(f, "$filename > $(DFC.outfilename(_calculation))\n")
     return (_calculation,)
 end
 
@@ -271,14 +262,14 @@ function writejobfiles(job::DFJob; kwargs...)
         write_job_preamble(f, job)
         written_calculations = DFCalculation[]
         abicalculations = Vector{DFCalculation{Abinit}}(filter(x -> package(x) == Abinit,
-                                                               calculations(job)))
+                                                               job.calculations))
         !isempty(abicalculations) && writetojob(f, job, abicalculations; kwargs...)
         elkcalculations = Vector{DFCalculation{Elk}}(filter(x -> package(x) == Elk,
-                                                            calculations(job)))
+                                                            job.calculations))
         !isempty(elkcalculations) &&
             append!(written_calculations, writetojob(f, job, elkcalculations; kwargs...))
 
-        for i in calculations(job)
+        for i in job.calculations
             if i.run
                 rm_outfiles(i)
             end

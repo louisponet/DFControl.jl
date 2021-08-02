@@ -1,7 +1,7 @@
 #THIS IS THE MOST HORRIBLE FUNCTION I HAVE EVER CREATED!!!
 #extracts only atoms with projections
-function extract_atoms(atoms_block::T, proj_block::T, cell::Mat3{LT},
-                       spinors = false) where {T<:InputData,LT<:Length}
+function extract_atoms(atoms_block, proj_block, cell::Mat3{LT},
+                       spinors = false) where {LT<:Length}
     if atoms_block.name == :atoms_cart
         cell = Mat3(Matrix(1.0Ang * I, 3, 3))
     end
@@ -58,8 +58,8 @@ function extract_atoms(atoms_block::T, proj_block::T, cell::Mat3{LT},
     return out_ats
 end
 
-function extract_structure(name, cell_block::T, atoms_block::T, projections_block::T,
-                           spinors = false) where {T<:Union{InputData,Nothing}}
+function extract_structure(name, cell_block, atoms_block, projections_block,
+                           spinors = false)
     if atoms_block == nothing || cell_block == nothing
         return nothing
     end
@@ -75,7 +75,7 @@ end
 
 function wan_read_calculation(::Type{T}, f::IO) where {T}
     flags       = Dict{Symbol,Any}()
-    data        = Vector{InputData}()
+    data        = InputData[]
     atoms_block = nothing
     cell_block  = nothing
     proj_block  = nothing
@@ -218,7 +218,7 @@ function wan_read_calculation(filename::String, T = Float64;
                               execs = [Exec(; exec = "wannier90.x")], run = true,
                               structure_name = "NoName")
     flags       = Dict{Symbol,Any}()
-    data        = Vector{InputData}()
+    data        = InputData[]
     atoms_block = nothing
     cell_block  = nothing
     proj_block  = nothing

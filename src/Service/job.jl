@@ -23,9 +23,6 @@ function load_job(job_dir::AbstractString, version::Int)
     end
 end
 
-
-
-
 name(job) = job.name
 #-------------------BEGINNING GENERAL SECTION-------------#
 scriptpath(job::DFJob) = joinpath(job.dir, "job.tt")
@@ -128,7 +125,7 @@ function save(job::DFJob; kwargs...)
         cp(job, dir; force = true)
     end
     if ispath(joinpath(dir, "job.tt"))
-        tj = DFJob(dir)
+        tj = load_job(dir, -1)
         cp(tj, joinpath(tj, VERSION_DIR_NAME, "$(tj.version)"); force = true)
     end
     
@@ -225,7 +222,7 @@ function sanitize_magnetization!(job::DFJob)
     if !any(x -> package(x) == QE, job.calculations)
         return
     end
-    return sanitize_magnetization!(job.structure)
+    return DFC.sanitize_magnetization!(job.structure)
 end
 
 function find_cutoffs(job::DFJob)
@@ -318,7 +315,7 @@ running.
 """
 function isrunning(job_dir::String)
     !ispath(joinpath(job_dir, "job.tt")) && return false
-    job = DFJob(job_dir)
+    job = load_job(job_dir, -1)
     server = DFC.Server(job)
     n = now()
     if server.scheduler == DFC.Slurm

@@ -34,8 +34,8 @@ function ispw(c::DFCalculation{QE})
     return isbands(c) || isnscf(c) || isscf(c) || isvcrelax(c) || isrelax(c)
 end
 
-isprojwfc(c::DFCalculation{QE}) = hasexec(c, "projwfc.x")
-ishp(c::DFCalculation{QE})      = hasexec(c, "hp.x")
+isprojwfc(c::DFCalculation{QE}) = DFC.hasexec(c, "projwfc.x")
+ishp(c::DFCalculation{QE})      = DFC.hasexec(c, "hp.x")
 issoc(c::DFCalculation{QE})     = flag(c, :lspinorb) == true
 
 function ismagnetic(c::DFCalculation{QE})
@@ -119,7 +119,7 @@ function set_hubbard_flags!(c::DFCalculation{QE}, str::DFC.AbstractStructure{T})
                               dftu(x).J0 != 0.0 ||
                               sum(dftu(x).J) != 0 ||
                               sum(dftu(x).α) != 0, u_ats) || hasflag(c, :Hubbard_parameters)
-    isnc = isnoncolin(str)
+    isnc = DFC.isnoncolin(str)
     if isdftucalc
         Jmap = map(x -> copy(dftu(x).J), u_ats)
         Jdim = maximum(length.(Jmap))
@@ -151,8 +151,8 @@ function set_starting_magnetization_flags!(c::DFCalculation{QE},
     starts = T[]
     θs = T[]
     ϕs = T[]
-    ismagcalc = ismagnetic(str)
-    isnc = isnoncolin(str)
+    ismagcalc = DFC.ismagnetic(str)
+    isnc = DFC.isnoncolin(str)
     if (ismagcalc && isnc) || (flag(c, :noncolin) !== nothing && flag(c, :noncolin))
         for m in mags
             tm = normalize(m)

@@ -11,9 +11,12 @@ function DFControl.DFJob(dir::String, s="localhost"; version::Int = -1)
         dir === nothing && return
         resp = HTTP.get(server, "/jobs/" * dir, [], JSON3.write(version))
     end 
-    
+    # @show String(resp.body)
     job = JSON3.read(resp.body, DFJob)
     job.server = server.name
+    if haskey(job.metadata, :timestamp)
+        job.metadata[:timestamp] = DateTime(job.metadata[:timestamp])
+    end
     return job
 end
 
@@ -29,7 +32,7 @@ function request_job_dir(dir::String, server::Server)
         menu = RadioMenu(choices)
         choice = request("Multiple matching jobs were found, choose one:", menu)
         if choice != -1
-            return matching_jobs[choice]
+            return matching_jobs[choice][1]
         else
             return nothing
         end
@@ -57,7 +60,13 @@ function save(job::DFJob)
     curver = job.version
     resp_job = JSON3.read(HTTP.post(server, "/jobs/" * job.dir, [], JSON3.write(job)).body, DFJob)
     @info "Job version: $(curver) => $(resp_job.version)."
-    return resp_job
+    for f in fieldnames(DFJob)
+        setfield!(job, f, getfield(resp_job, f))
+    end
+    if haskey(job.metadata, :timestamp)
+        job.metadata[:timestamp] = DateTime(job.metadata[:timestamp])
+    end
+    return job
 end
 
 """
@@ -99,5 +108,10 @@ Returns the last `DFCalculation` for which an output file was created.
 """
 function last_running_calculation(job::DFJob)
     server = maybe_start_server(job)
-    return job[JSON3.read(HTTP.get(server, "/last_running_calculation", [], JSON3.write(job)).body, Int)]
+    resp = HTTP.get(server, "/last_running_calculation", [], JSON3.write(job))
+    if resp.status == 204
+        return nothing
+    else
+        return job[JSON3.read(resp.body, Int)]
+    end
 end
