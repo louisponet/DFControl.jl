@@ -106,5 +106,7 @@ const pythonpath = Sys.iswindows() ? joinpath(depsdir, "python2", "python") :
 const cif2cellpath = Sys.iswindows() ? joinpath(depsdir, "python2", "Scripts", "cif2cell") :
                      joinpath(dirname(@__DIR__), "deps", "python2", "bin", "cif2cell")
 
-
+# if ccall(:jl_generating_output, Cint, ()) == 1
+#     DFJob(joinpath(dirname(dirname(pathof(DFControl))),"test/testassets/reference_job"))
+# end
 end

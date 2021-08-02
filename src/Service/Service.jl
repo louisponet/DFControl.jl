@@ -7,9 +7,9 @@ module Service
     # delete_daemon_config!() = rm(DAEMON_CONFIG_PATH)
 
     const RUNNING_JOBS_FILE = config_path("running_jobs.txt")
-    const PENDING_JOBS_DIR = config_path("pending_jobs")
+    const PENDING_JOBS_FILE = config_path("pending_jobs.txt")
     const SERVICE_LOG = config_path("daemon.log")
-    const SLEEP_TIME = 10.0
+    const SLEEP_TIME = 1.0
 
     daemon_logger() = FileLogger(SERVICE_LOG; append = true)
 
@@ -24,6 +24,4 @@ module Service
     include("execs.jl")
     include("fileio.jl")
     include("slurm.jl")
-    
-    get_job(p::AbstractString) = DFJob(p)
 end

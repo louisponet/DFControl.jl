@@ -2,28 +2,6 @@ function set_noncolin_flags!(i::DFCalculation{QE})
     return set_flags!(i, :npsin => 4, :noncolin => true; print = false)
 end
 
-function sanitize_flags!(c::DFCalculation{QE}, structure::DFC.AbstractStructure)
-    if isvcrelax(c)
-        #this is to make sure &ions and &cell are there in the calculation 
-        !hasflag(c, :ion_dynamics) && set_flags!(c, :ion_dynamics => "bfgs"; print = false)
-        !hasflag(c, :cell_dynamics) &&
-            set_flags!(c, :cell_dynamics => "bfgs"; print = false)
-    end
-    #TODO add all the required flags
-    if exec(c, "pw.x") !== nothing
-        @assert hasflag(c, :calculation) "Please set the flag for calculation with name: $(name(c))"
-    end
-    # setting hubbard and magnetization flags
-    set_hubbard_flags!(c, structure)
-    set_starting_magnetization_flags!(c, structure)
-
-    # setting hubbard flags 
-    pseudo_dir = pseudo(atoms(structure)[1]).dir # Pseudos should be all sanitized by now
-    set_flags!(c, :pseudo_dir => pseudo_dir; print = false)
-
-    return convert_flags!(c)
-end
-
 isbands(c::DFCalculation{QE})   = flag(c, :calculation) == "bands"
 isnscf(c::DFCalculation{QE})    = flag(c, :calculation) == "nscf"
 isscf(c::DFCalculation{QE})     = flag(c, :calculation) == "scf"
@@ -111,77 +89,6 @@ end
 #asserts
 function iscalc_assert(i::DFCalculation{QE}, calc)
     @assert flag(i, :calculation) == calc "Please provide a valid '$calc' calculation."
-end
-
-function set_hubbard_flags!(c::DFCalculation{QE}, str::DFC.AbstractStructure{T}) where {T}
-    u_ats = unique(atoms(str))
-    isdftucalc = any(x -> dftu(x).U != 0 ||
-                              dftu(x).J0 != 0.0 ||
-                              sum(dftu(x).J) != 0 ||
-                              sum(dftu(x).α) != 0, u_ats) || hasflag(c, :Hubbard_parameters)
-    isnc = DFC.isnoncolin(str)
-    if isdftucalc
-        Jmap = map(x -> copy(dftu(x).J), u_ats)
-        Jdim = maximum(length.(Jmap))
-        Jarr = zeros(Jdim, length(u_ats))
-        for (i, J) in enumerate(Jmap)
-            diff = Jdim - length(J)
-            if diff > 0
-                for d in 1:diff
-                    push!(J, zero(eltype(J)))
-                end
-            end
-            Jarr[:, i] .= J
-        end
-        set_flags!(c, :lda_plus_u    => true, :Hubbard_U     => map(x -> dftu(x).U, u_ats),
-                   :Hubbard_alpha => map(x -> dftu(x).α, u_ats),
-                   :Hubbard_beta  => map(x -> dftu(x).β, u_ats), :Hubbard_J     => Jarr,
-                   :Hubbard_J0    => map(x -> dftu(x).J0, u_ats); print = false)
-        isnc && set_flags!(c, :lda_plus_u_kind => 1; print = false)
-    else
-        rm_flags!(c, :lda_plus_u, :lda_plus_u_kind, :Hubbard_U, :Hubbard_alpha,
-                  :Hubbard_beta, :Hubbard_J, :Hubbard_J0, :U_projection_type; print = false)
-    end
-end
-
-function set_starting_magnetization_flags!(c::DFCalculation{QE},
-                                           str::DFC.AbstractStructure{T}) where {T}
-    u_ats = unique(atoms(str))
-    mags = magnetization.(u_ats)
-    starts = T[]
-    θs = T[]
-    ϕs = T[]
-    ismagcalc = DFC.ismagnetic(str)
-    isnc = DFC.isnoncolin(str)
-    if (ismagcalc && isnc) || (flag(c, :noncolin) !== nothing && flag(c, :noncolin))
-        for m in mags
-            tm = normalize(m)
-            if norm(m) == 0
-                push!.((starts, θs, ϕs), 0.0)
-            else
-                θ = acos(tm[3]) * 180 / π
-                ϕ = atan(tm[2], tm[1]) * 180 / π
-                start = norm(m)
-                push!(θs, θ)
-                push!(ϕs, ϕ)
-                push!(starts, start)
-            end
-        end
-        set_flags!(c, :noncolin => true; print = false)
-        rm_flags!(c, :nspin; print = false)
-    elseif ismagcalc
-        for m in mags
-            push!.((θs, ϕs), 0.0)
-            if norm(m) == 0
-                push!(starts, 0)
-            else
-                push!(starts, sign(sum(m)) * norm(m))
-            end
-        end
-        set_flags!(c, :nspin => 2; print = false)
-    end
-    return set_flags!(c, :starting_magnetization => starts, :angle1 => θs, :angle2 => ϕs;
-                      print = false)
 end
 
 for f in (:cp, :mv)

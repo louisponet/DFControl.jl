@@ -58,13 +58,17 @@ function save(job::DFJob)
     end
     
     sanitize_cutoffs!(job)
-    sanitize_pseudos!(job)
+    files_to_copy = sanitize_pseudos!(job)
     sanitize_magnetization!(job)
     sanitize_projections!(job)
     sanitize_flags!(job)
     
     curver = job.version
     resp_job = JSON3.read(HTTP.post(server, "/jobs/" * job.dir, [], JSON3.write(job)).body, DFJob)
+    for f in files_to_copy
+        push(f, server, joinpath(job.dir, splitdir(f)[end]))
+    end
+        
     @info "Job version: $(curver) => $(resp_job.version)."
     for f in fieldnames(DFJob)
         setfield!(job, f, getfield(resp_job, f))
@@ -78,8 +82,9 @@ end
 
 function submit(job::DFJob)
     server = maybe_start_server(job)
-    DFC.verify_execs(job, server)
+    verify_execs(job, server)
     save(job)
+    HTTP.put(server, "/jobs/" * job.dir)
 end    
 
 "Runs some checks on the set flags for the calculations in the job, and sets metadata (:prefix, :outdir etc) related flags to the correct ones. It also checks whether flags in the various calculations are allowed and set to the correct types."
@@ -103,6 +108,140 @@ function sanitize_flags!(job::DFJob)
     end
     return sanitize_flags!.(job.calculations, (job.structure,))
 end
+
+"Runs through all the set flags and checks if they are allowed and set to the correct value"
+function convert_flags!(calculation::DFCalculation)
+    for (flag, value) in DFC.flags(calculation)
+        flagtype_ = DFC.flagtype(calculation, flag)
+        if flagtype_ == Nothing
+            @warn "Flag $flag was not found in allowed flags for exec $(execs(calculation)[2]). Removing flag."
+            rm_flags!(calculation, flag)
+            continue
+        end
+        if !(isa(value, flagtype_) || eltype(value) <: flagtype_)
+            try
+                if isbitstype(eltype(value))
+                    if length(value) > 1
+                        calculation[flag] = convert(flagtype_, value)
+                    else
+                        calculation[flag] = convert(eltype(flagtype_), value)
+                    end
+                else
+                    calculation[flag] = convert.(flagtype_, value)
+                end
+            catch
+                error("Input $(name(calculation)): Could not convert :$flag of value $value to the correct type ($flagtype_), please set it to the correct type.")
+            end
+        end
+    end
+end
+
+function sanitize_flags!(c::DFCalculation{QE}, structure::DFC.AbstractStructure)
+    if DFC.isvcrelax(c)
+        #this is to make sure &ions and &cell are there in the calculation 
+        !hasflag(c, :ion_dynamics) && set_flags!(c, :ion_dynamics => "bfgs"; print = false)
+        !hasflag(c, :cell_dynamics) &&
+            set_flags!(c, :cell_dynamics => "bfgs"; print = false)
+    end
+    #TODO add all the required flags
+    if exec(c, "pw.x") !== nothing
+        @assert hasflag(c, :calculation) "Please set the flag for calculation with name: $(name(c))"
+    end
+    # setting hubbard and magnetization flags
+    set_hubbard_flags!(c, structure)
+    set_starting_magnetization_flags!(c, structure)
+
+    # setting hubbard flags 
+    pseudo_dir = DFC.pseudo(atoms(structure)[1]).dir # Pseudos should be all sanitized by now
+    set_flags!(c, :pseudo_dir => pseudo_dir; print = false)
+
+    return convert_flags!(c)
+end
+
+function set_hubbard_flags!(c::DFCalculation{QE}, str::DFC.AbstractStructure{T}) where {T}
+    u_ats = unique(atoms(str))
+    isdftucalc = any(x -> dftu(x).U != 0 ||
+                              dftu(x).J0 != 0.0 ||
+                              sum(dftu(x).J) != 0 ||
+                              sum(dftu(x).α) != 0, u_ats) || hasflag(c, :Hubbard_parameters)
+    isnc = DFC.isnoncolin(str)
+    if isdftucalc
+        Jmap = map(x -> copy(dftu(x).J), u_ats)
+        Jdim = maximum(length.(Jmap))
+        Jarr = zeros(Jdim, length(u_ats))
+        for (i, J) in enumerate(Jmap)
+            diff = Jdim - length(J)
+            if diff > 0
+                for d in 1:diff
+                    push!(J, zero(eltype(J)))
+                end
+            end
+            Jarr[:, i] .= J
+        end
+        set_flags!(c, :lda_plus_u    => true, :Hubbard_U     => map(x -> dftu(x).U, u_ats),
+                   :Hubbard_alpha => map(x -> dftu(x).α, u_ats),
+                   :Hubbard_beta  => map(x -> dftu(x).β, u_ats), :Hubbard_J     => Jarr,
+                   :Hubbard_J0    => map(x -> dftu(x).J0, u_ats); print = false)
+        isnc && set_flags!(c, :lda_plus_u_kind => 1; print = false)
+    else
+        rm_flags!(c, :lda_plus_u, :lda_plus_u_kind, :Hubbard_U, :Hubbard_alpha,
+                  :Hubbard_beta, :Hubbard_J, :Hubbard_J0, :U_projection_type; print = false)
+    end
+end
+
+function set_starting_magnetization_flags!(c::DFCalculation{QE},
+                                           str::DFC.AbstractStructure{T}) where {T}
+    u_ats = unique(atoms(str))
+    mags = magnetization.(u_ats)
+    starts = T[]
+    θs = T[]
+    ϕs = T[]
+    ismagcalc = DFC.ismagnetic(str)
+    isnc = DFC.isnoncolin(str)
+    if (ismagcalc && isnc) || (flag(c, :noncolin) !== nothing && flag(c, :noncolin))
+        for m in mags
+            tm = normalize(m)
+            if norm(m) == 0
+                push!.((starts, θs, ϕs), 0.0)
+            else
+                θ = acos(tm[3]) * 180 / π
+                ϕ = atan(tm[2], tm[1]) * 180 / π
+                start = norm(m)
+                push!(θs, θ)
+                push!(ϕs, ϕ)
+                push!(starts, start)
+            end
+        end
+        set_flags!(c, :noncolin => true; print = false)
+        rm_flags!(c, :nspin; print = false)
+    elseif ismagcalc
+        for m in mags
+            push!.((θs, ϕs), 0.0)
+            if norm(m) == 0
+                push!(starts, 0)
+            else
+                push!(starts, sign(sum(m)) * norm(m))
+            end
+        end
+        set_flags!(c, :nspin => 2; print = false)
+    end
+    return set_flags!(c, :starting_magnetization => starts, :angle1 => θs, :angle2 => ϕs;
+                      print = false)
+end
+
+
+#TODO implement abinit and wannier90
+"""
+    sanitize_flags!(calculation::DFCalculation, str::DFC.AbstractStructure)
+
+Cleans up flags, i.e. remove flags that are not allowed and convert all
+flags to the correct types.
+Tries to correct common errors for different calculation types.
+"""
+function sanitize_flags!(calculation::DFCalculation, str::DFC.AbstractStructure)
+    return convert_flags!(calculation)
+end
+
 
 function rm_tmp_flags!(job::DFJob)
     rm_flags!(job, :prefix, :outdir; print=false)
@@ -139,23 +278,24 @@ function sanitize_pseudos!(job::DFJob)
     all_pseudos = DFC.pseudo.(atoms(job))
     uni_dirs    = unique(map(x -> x.dir, all_pseudos))
     uni_pseudos = unique(all_pseudos)
-    if !all(ispath.(DFC.path.(uni_pseudos)))
-        @warn "Some Pseudos could not be located on disk."
-    end
-    pseudo_dir = length(uni_dirs) == 1 ? uni_dirs[1] : job.dir
-    if length(uni_dirs) > 1
-        @info "Found pseudos in multiple directories, copying them to job directory"
-        for pseudo in uni_pseudos
-            cp(DFC.path(pseudo), joinpath(job.dir, pseudo.name); force = true)
+    s = Server(job)
+    pseudo_paths = DFC.path.(uni_pseudos)
+    if !all(x -> JSON3.read(HTTP.get(s, "/get_ispath/" * x).body, Bool), pseudo_paths)
+        if all(ispath, pseudo_paths)
+            @info "Some Pseudos could not be found on Server $(s.name), pushing them from local storage to job dir."
+            for p in all_pseudos
+                p.dir = job.dir
+            end
+            return pseudo_paths
+        else
+            @warn "Some pseudos could not be found locally, and neither on the remote server."
         end
     end
-    for p in all_pseudos
-        p.dir = pseudo_dir
-    end
+    return String[]
 end
 
 function sanitize_magnetization!(job::DFJob)
-    if !any(x -> package(x) == QE, job.calculations)
+    if !any(x -> DFC.package(x) == QE, job.calculations)
         return
     end
     return DFC.sanitize_magnetization!(job.structure)
@@ -249,15 +389,11 @@ function outputdata(job::DFJob)
     return DFC.JLD2.load(local_temp)["outputdata"]
 end
 
-"""
-    pull(server::Server, server_file::String, local_file::String)
-
-Pulls `server_file` from the server the `local_file`.
-"""
-function pull(server::Server, server_file::String, filename::String)
-    if server.name == "localhost"
-        cp(server_file, filename, force=true)
-    else
-        run(`scp $(ssh_string(server) * ":" * server_file) $filename`)
+function verify_execs(job::DFJob, server::Server)
+    for e in unique(execs(job))
+        if !JSON3.read(HTTP.get(server, "/verify_exec/", [], JSON3.write(e)).body, Bool)
+            error("$e is not a valid executable on server $(server.name)")
+        end
     end
 end
+

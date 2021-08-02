@@ -69,7 +69,7 @@ respective directory in the `.versions`.
 function maybe_cp_main_version(job::DFJob)
     maindir = main_job_dir(job)
     if ispath(joinpath(maindir, "job.tt"))
-        tjob = DFJob(maindir)
+        tjob = load_job(maindir)
         cp(tjob, joinpath(tjob, VERSION_DIR_NAME, "$(job.version)"); force = true)
     end
 end
@@ -84,7 +84,7 @@ function switch_version!(job::DFJob, version::Int)
     cur_version = job.version
     if version != cur_version
         version_assert(job, version)
-        out = DFJob(main_job_dir(job); version = version)
+        out = load_job(main_job_dir(job); version = version)
         for f in fieldnames(DFJob)
             setfield!(job, f, getfield(out, f))
         end
@@ -141,7 +141,7 @@ function rm_version!(job::DFJob, version::Int)
             lv = versions(job)[end-1]
         end
         if lv != 0
-            tj = DFJob(md; version = lv)
+            tj = load_job(md; version = lv)
             cp(tj, md; force = true)
         end
 

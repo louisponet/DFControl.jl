@@ -15,3 +15,11 @@ parseable_execs() = vcat(QE_EXECS, WAN_EXECS, ELK_EXECS)
 has_parseable_exec(l::String) = occursin(">", l) && any(occursin.(parseable_execs(), (l,)))
 
 isparseable(exec::Exec) = exec.exec ∈ parseable_execs()
+
+function verify_exec(e::Exec)
+    if !isempty(e.dir) && ispath(DFC.path(e))
+        return true
+    else
+        return Sys.which(e.exec) !== nothing
+    end
+end 

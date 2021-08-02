@@ -110,3 +110,30 @@ function maybe_create_localhost()
     end
 end
 
+"""
+    pull(server::Server, server_file::String, local_file::String)
+
+Pulls `server_file` from the server the `local_file`.
+"""
+function pull(server::Server, server_file::String, filename::String)
+    if server.name == "localhost"
+        cp(server_file, filename, force=true)
+    else
+        run(`scp $(ssh_string(server) * ":" * server_file) $filename`)
+    end
+end
+
+"""
+    push(local_file::String, server::Server, server_file::String)
+
+Pushes the `local_file` to the `server_file` on the server.
+"""
+function push(filename::String, server::Server, server_file::String)
+    if server.name == "localhost"
+        cp(filename, server_file, force=true)
+    else
+        run(`scp $filename $(ssh_string(server) * ":" * server_file)`)
+    end
+end
+
+

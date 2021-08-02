@@ -89,6 +89,8 @@ function write_data(f, data)
         DFC.writedlm(f, data)
     elseif typeof(data) <: Union{String, Symbol}
         write(f, "$data\n")
+    elseif typeof(data) <: Vector && length(data[1]) == 1
+        write(f, join(string.(data), " "))
     else
         for x in data
             for y in x

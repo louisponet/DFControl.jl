@@ -10,6 +10,9 @@ end
 save_job(req) = Service.save(JSON3.read(req.body, DFJob))
 HTTP.@register(ROUTER, "POST", "/jobs", save_job)
 
+submit_job(req) = Service.submit(job_path(req))
+HTTP.@register(ROUTER, "PUT", "/jobs/*", submit_job)
+
 get_job(req) = Service.load_job(job_path(req), JSON3.read(req.body, Int))
 HTTP.@register(ROUTER, "GET", "/jobs/*", get_job)
 HTTP.@register(ROUTER, "GET", "/jobs/", get_job)
@@ -29,3 +32,4 @@ HTTP.@register(ROUTER, "GET", "/last_running_calculation", last_running_calculat
 
 outputdata(req) = Service.outputdata(JSON3.read(req.body, DFJob)) 
 HTTP.@register(ROUTER, "GET", "/outputdata", outputdata)
+

@@ -1,10 +1,9 @@
 function main_loop()
-    mkpath(PENDING_JOBS_DIR)
     running_jobs = ispath(RUNNING_JOBS_FILE) ? readlines(RUNNING_JOBS_FILE) : String[]
     job_dirs_procs = Dict{String, Tuple{Int, Future}}()
     for j in running_jobs
         if DFControl.exists_job(j)
-            tjob = DFJob(j)
+            tjob = load_job(j)
             job_dirs_procs[j] = spawn_worker(tjob)
         end
     end
@@ -25,13 +24,19 @@ function spawn_worker(job::DFJob)
         Distributed.remotecall_eval(Distributed.Main, proc, using_expr)
         f = remotecall(DFControl.run_queue, proc, job, DFControl.JLD2.load(ctx_path)["ctx"];
                        sleep_time = SLEEP_TIME)
+        return proc, f
     else
-        proc = addprocs(1; exeflags = "--project=$(Base.current_project())")[1]
-        Distributed.remotecall_eval(Distributed.Main, proc, :(using DFControl))
-        Distributed.remotecall_eval(Distributed.Main, proc, :(DFControl.global_logger(DFControl.FileLogger(joinpath($(job.dir), "submission.log"); append = true))))
-        f = Distributed.remotecall(DFControl.submit, proc, job)
+        s = DFC.Server("localhost")
+        proc = addprocs(1)[1]
+        remotecall_fetch(cd, proc, job.dir)
+        if s.scheduler == DFC.Bash
+            cmd = Cmd(`bash job.tt`)
+        else
+            cmd = Cmd(`sbatch job.tt`)
+        end
+        f = remotecall(run, proc, cmd)
+        return proc, f
     end
-    return proc, f
 end
 
 function handle_workflow_runners!(job_dirs_procs)
@@ -58,25 +63,18 @@ function handle_workflow_runners!(job_dirs_procs)
     end
 end
 
-save_running_jobs(job_dirs_procs) = DFControl.writelines(RUNNING_JOBS_FILE, keys(job_dirs_procs))
+save_running_jobs(job_dirs_procs) = writelines(RUNNING_JOBS_FILE, keys(job_dirs_procs))
 
 # Jobs are submitted by the daemon, using supplied job jld2 from the caller (i.e. another machine)
 # Additional files are packaged with the job
 function handle_job_submission!(job_dirs_procs)
-    pending_job_submissions = readdir(PENDING_JOBS_DIR)
-    for j in pending_job_submissions
-        dat = DFControl.JLD2.load(joinpath(PENDING_JOBS_DIR, j))
-        job = dat["job"]
-        mkpath(job.dir)
-        job.server = "localhost"
-        for (fname, contents) in dat["files"]
-            write(joinpath(job, fname), contents)
+    if ispath(PENDING_JOBS_FILE)
+        pending_job_submissions = readlines(PENDING_JOBS_FILE)
+        for j in pending_job_submissions
+            job = load_job(j)
+            job_dirs_procs[job.dir] = spawn_worker(job)
         end
-        for a in atoms(job)
-            a.pseudo.dir = job.dir
-        end
-        job_dirs_procs[job.dir] = spawn_worker(job)
-        rm(joinpath(PENDING_JOBS_DIR, j))
+        write(PENDING_JOBS_FILE, "")
     end
 end
 

@@ -243,23 +243,6 @@ end
 
 path(exec::Exec) = joinpath(exec.dir, exec.exec)
 
-function verify_execs(job::DFJob, server::Server)
-    proc = establish_connection(server)
-    for e in unique(execs(job))
-        if !isempty(e.dir)
-            p = path(e)
-            if !Distributed.remotecall_fetch(ispath, proc, p)
-                error("$e is not a valid executable on server $(server.name)")
-            end
-        else
-            if Distributed.remotecall_fetch(Sys.which, proc, e.exec) === nothing
-                error("$e is not a valid executable on server $(server.name)")
-            end
-        end
-    end
-    Distributed.rmprocs(proc)
-end
-
 function package(execs::Vector{Exec})
     if any(is_qe_exec, execs)
         return QE

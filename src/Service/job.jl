@@ -1,6 +1,6 @@
 using ..DFControl: TEMP_CALC_DIR
 
-function load_job(job_dir::AbstractString, version::Int)
+function load_job(job_dir::AbstractString, version::Int=-1)
     if ispath(job_dir)
         if occursin(VERSION_DIR_NAME, job_dir)
             error("It is not allowed to directly load a job version, please use `DFJob(dir, version=$(splitdir(job_dir)[end]))`")
@@ -136,36 +136,10 @@ end
 First saves the job, then tries to submit the job script through `sbatch job.tt` or `bash job.tt` if the former command fails.
 `kwargs...` get passed to `save(job; kwargs...)`.
 """
-function submit(job::DFJob)
-        server = Server(job.server)
-        server === nothing && return
-
-        verify_execs(job, server)
-        
-        if !ispath(job.dir)
-            mkpath(job.dir)
-        end
-        files = Pair{String, String}[]
-        for p in unique(map(x->x.pseudo, atoms(job)))
-            push!(files, p.name => read(joinpath(p.dir, p.name), String))
-        end
-        JLD2.save(joinpath(job.dir, "job.jld2"), "job", job, "files", files)
-        push(job, server)
-    # else
-    #     save(job; kwargs...)
-    #     try
-    #         job.metadata[:slurmid] = qsub(job)
-    #         save_metadata(job)
-    #     catch
-    #         try
-    #             job.metadata[:slurmid] = sbatch(job)
-    #             save_metadata(job)
-    #         catch
-    #             pop!(job.metadata, :slurmid, nothing)
-    #             run(job)
-    #         end
-    #     end
-    # end
+function submit(job_dir::String)
+    open(PENDING_JOBS_FILE, "a") do f
+        write(f, job_dir * "\n")
+    end
 end
 
 
@@ -318,34 +292,6 @@ function clean_dir!(dir::AbstractString)
 end
 
 exists_job(d::AbstractString) = ispath(d) && ispath(joinpath(d, "job.tt"))
-
-function schedule_job(job::DFJob, submit_command)
-    outstr = ""
-    if !runslocal(job)
-        push(job)
-        outstr = read(`ssh -t $(job.server) cd $(job.server_dir) '&&' $submit_command job.tt`,
-                      String)
-    else
-        curdir = pwd()
-        cd(job.dir)
-        try
-            outstr = read(`$submit_command job.tt`, String)
-            cd(curdir)
-        catch
-            cd(curdir)
-            error("Tried submitting on the local machine but got an error executing `qsub`, `sbatch` and `run`.")
-        end
-    end
-    if !isempty(outstr)
-        try
-            return parse(Int, chomp(outstr))
-        catch
-            return parse(Int, split(chomp(outstr))[end])
-        end
-    else
-        return
-    end
-end
 
 "Finds the output files for each of the calculations of a job, and groups all found data into a dictionary."
 function outputdata(job::DFJob, calculations::Vector{DFCalculation}; print = true,
