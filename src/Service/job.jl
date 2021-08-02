@@ -1,4 +1,4 @@
-const TEMP_CALC_DIR = "outputs"
+using ..DFControl: TEMP_CALC_DIR
 
 function load_job(job_dir::AbstractString, version::Int)
     if ispath(job_dir)
@@ -23,16 +23,6 @@ function load_job(job_dir::AbstractString, version::Int)
     end
 end
 
-name(job) = job.name
-#-------------------BEGINNING GENERAL SECTION-------------#
-scriptpath(job::DFJob) = joinpath(job.dir, "job.tt")
-starttime(job::DFJob)  = mtime(scriptpath(job))
-
-runslocal(job::DFJob)    = job.server == "localhost"
-structure(job::DFJob)    = job.structure
-isQEjob(job::DFJob)      = any(x -> package(x) == QE, job.calculations)
-iswannierjob(job::DFJob) = any(x -> package(x) == Wannier90, job.calculations) && any(x -> isnscf(x), job.calculations)
-getnscfcalc(job::DFJob)  = getfirst(x -> isnscf(x), job.calculations)
 
 function workflow_logger(job::DFJob)
     return TeeLogger(MinLevelLogger(FileLogger(joinpath(job, ".workflow", "info.log");
@@ -133,129 +123,51 @@ function save(job::DFJob; kwargs...)
     mkpath(dir)
 
     job.version = last_version(job) + 1
-    sanitize_cutoffs!(job)
-    sanitize_pseudos!(job)
-    sanitize_magnetization!(job)
-    sanitize_projections!(job)
-    sanitize_flags!(job)
     timestamp!(job, now())
     save_metadata(job)
     writejobfiles(job; kwargs...)
     maybe_register_job(job)
-    rm_tmp_flags!(job)
     return job
 end
 
-"Runs some checks on the set flags for the calculations in the job, and sets metadata (:prefix, :outdir etc) related flags to the correct ones. It also checks whether flags in the various calculations are allowed and set to the correct types."
-function sanitize_flags!(job::DFJob)
-    set_flags!(job, :prefix => "$(job.name)"; print = false)
-    if iswannierjob(job)
-        nscfcalc = getnscfcalc(job)
-        if package(nscfcalc) == Elk
-            set_flags!(job, :num_bands => length(nscfcalc[:wann_bands]))
-            nscfcalc[:wann_projections] = projections_string.(unique(filter(x -> !isempty(projections(x)), atoms(job))))
-            nscfcalc[:elk2wan_tasks]    = ["602", "604"]
-            nscfcalc[:wann_seedname]    = Symbol(name(job))
-            if job[:wannier_plot] == true
-                push!(nscfcalc[:elk2wan_tasks], "605")
-            end
+"""
+    submit(job::DFJob; kwargs...)
+
+First saves the job, then tries to submit the job script through `sbatch job.tt` or `bash job.tt` if the former command fails.
+`kwargs...` get passed to `save(job; kwargs...)`.
+"""
+function submit(job::DFJob)
+        server = Server(job.server)
+        server === nothing && return
+
+        verify_execs(job, server)
+        
+        if !ispath(job.dir)
+            mkpath(job.dir)
         end
-    end
-    for i in filter(x -> package(x) == QE, job.calculations)
-        outdir = joinpath(job, TEMP_CALC_DIR)
-        set_flags!(i, :outdir => "$outdir"; print = false)
-    end
-    return sanitize_flags!.(job.calculations, (job.structure,))
-end
-
-function rm_tmp_flags!(job::DFJob)
-    rm_flags!(job, :prefix, :outdir; print=false)
-    rm_flags!(job, :nspin; print=false)
-end
-
-function sanitize_cutoffs!(job)
-    # the assumption is that the most important cutoff calculation is the scf/vcrelax that is ran first 
-    ψ_cut_calc = getfirst(x -> hasflag(x, DFC.ψ_cutoff_flag(x)), job.calculations)
-    if ψ_cut_calc !== nothing
-        ψcut = ψ_cut_calc[DFC.ψ_cutoff_flag(ψ_cut_calc)]
-    else
-        ψcut, = find_cutoffs(job) # Ideally this should also be at the end stage
-        @assert ψcut != 0.0 "No energy cutoff was specified in any calculation, and the calculated cutoff from the pseudopotentials was 0.0.\nPlease manually set one."
-        @info "No energy cutoff was specified in the scf calculation.\nCalculated ψcut=$ψcut."
-    end
-    for i in job.calculations
-        ψflag = DFC.ψ_cutoff_flag(i)
-        ψflag !== nothing &&
-            !hasflag(i, ψflag) &&
-            set_flags!(i, ψflag => ψcut; print = false)
-    end
-    ρ_cut_calc = getfirst(x -> hasflag(x, DFC.ρ_cutoff_flag(x)), job.calculations)
-    if ρ_cut_calc !== nothing
-        ρcut = ρ_cut_calc[DFC.ρ_cutoff_flag(ρ_cut_calc)]
-        for i in job.calculations
-            ρflag = DFC.ρ_cutoff_flag(i)
-            ρflag !== nothing && set_flags!(i, ρflag => ρcut; print = false)
+        files = Pair{String, String}[]
+        for p in unique(map(x->x.pseudo, atoms(job)))
+            push!(files, p.name => read(joinpath(p.dir, p.name), String))
         end
-    end
+        JLD2.save(joinpath(job.dir, "job.jld2"), "job", job, "files", files)
+        push(job, server)
+    # else
+    #     save(job; kwargs...)
+    #     try
+    #         job.metadata[:slurmid] = qsub(job)
+    #         save_metadata(job)
+    #     catch
+    #         try
+    #             job.metadata[:slurmid] = sbatch(job)
+    #             save_metadata(job)
+    #         catch
+    #             pop!(job.metadata, :slurmid, nothing)
+    #             run(job)
+    #         end
+    #     end
+    # end
 end
 
-function sanitize_pseudos!(job::DFJob)
-    all_pseudos = DFC.pseudo.(atoms(job))
-    uni_dirs    = unique(map(x -> x.dir, all_pseudos))
-    uni_pseudos = unique(all_pseudos)
-    if !all(ispath.(DFC.path.(uni_pseudos)))
-        @warn "Some Pseudos could not be located on disk."
-    end
-    pseudo_dir = length(uni_dirs) == 1 ? uni_dirs[1] : job.dir
-    if length(uni_dirs) > 1
-        @info "Found pseudos in multiple directories, copying them to job directory"
-        for pseudo in uni_pseudos
-            cp(DFC.path(pseudo), joinpath(job.dir, pseudo.name); force = true)
-        end
-    end
-    for p in all_pseudos
-        p.dir = pseudo_dir
-    end
-end
-
-function sanitize_magnetization!(job::DFJob)
-    if !any(x -> package(x) == QE, job.calculations)
-        return
-    end
-    return DFC.sanitize_magnetization!(job.structure)
-end
-
-function find_cutoffs(job::DFJob)
-    @assert job.server == "localhost" "Cutoffs can only be automatically set if the pseudo files live on the local machine."
-    pseudofiles = map(x -> x.name, filter(!isempty, [DFC.pseudo(at) for at in atoms(job)]))
-    pseudodirs  = map(x -> x.dir, filter(!isempty, [DFC.pseudo(at) for at in atoms(job)]))
-    @assert !isempty(pseudofiles) "No atoms with pseudo files found."
-    @assert !isempty(pseudodirs) "No valid pseudo directories found in the calculations."
-    maxecutwfc = 0.0
-    maxecutrho = 0.0
-    for d in pseudodirs
-        for f in pseudofiles
-            pth = joinpath(d, f)
-            if ispath(pth)
-                ecutwfc, ecutrho = read_cutoffs_from_pseudofile(pth)
-                if ecutwfc != nothing && ecutrho != nothing
-                    maxecutwfc = ecutwfc > maxecutwfc ? ecutwfc : maxecutwfc
-                    maxecutrho = ecutrho > maxecutrho ? ecutrho : maxecutrho
-                end
-            end
-        end
-    end
-    return maxecutwfc, maxecutrho
-end
-
-function sanitize_projections!(job::DFJob)
-    if !any(x -> !isempty(projections(x)), atoms(job))
-        return
-    end
-    uats = unique(atoms(job))
-    projs = unique([name(at) => [p.orb.name for p in projections(at)] for at in uats])
-    return set_projections!(job, projs...; print = false)
-end
 
 """
     last_running_calculation(job::DFJob)
@@ -263,9 +175,9 @@ end
 Returns the last `DFCalculation` for which an output file was created.
 """
 function last_running_calculation(job::DFJob)
-    t = mtime(scriptpath(job))
+    t = mtime(DFC.scriptpath(job))
     for (i, c) in enumerate(reverse(job.calculations))
-        p = outpath(c)
+        p = DFC.outpath(c)
         if ispath(p) && mtime(p) > t
             return i
         end
@@ -442,7 +354,7 @@ function outputdata(job::DFJob, calculations::Vector{DFCalculation}; print = tru
         return DFC.JLD2.load(joinpath(job, "results.jld2"))["outputdata"]
     end
     datadict = Dict{String, DFC.SymAnyDict}()
-    stime = starttime(job)
+    stime = DFC.starttime(job)
     #TODO Think about storing results.jld2
     for calculation in calculations
         #TODO Would I ever not want to do onlynew ?

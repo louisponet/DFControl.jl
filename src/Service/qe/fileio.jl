@@ -183,7 +183,7 @@ end
 
 function qe_parse_highest_lowest(out, line, f)
     sline = split(line)
-    if occursin(line, "lowest")
+    if occursin("lowest", line)
         high = parse(Float64, sline[7])
         low = parse(Float64, sline[8])
         out[:fermi] = high
@@ -350,7 +350,7 @@ function qe_parse_Hubbard(out, line, f)
 end
 
 function qe_parse_timing(out, line, f)
-    out[:timing] = TimingData[]
+    out[:timing] = DFC.TimingData[]
     curparent = ""
     while !occursin("PWSCF", line)
         isempty(line) && (line = readline(f); continue)
@@ -358,8 +358,8 @@ function qe_parse_timing(out, line, f)
         if line[end] == ':' # descent into call case
             curparent = String(sline[end][1:end-1])
         elseif length(sline) == 9 # normal call
-            td = TimingData(String(sline[1]), qe_parse_time(sline[3]),
-                            qe_parse_time(sline[5]), parse(Int, sline[8]), TimingData[])
+            td = DFC.TimingData(String(sline[1]), qe_parse_time(sline[3]),
+                            qe_parse_time(sline[5]), parse(Int, sline[8]), DFC.TimingData[])
             push!(out[:timing], td)
             if !isempty(curparent) # Child case
                 if curparent[1] == '*'
@@ -378,8 +378,8 @@ function qe_parse_timing(out, line, f)
             end
         elseif sline[1] == "PWSCF" # Final PWSCF report
             push!(out[:timing],
-                  TimingData("PWSCF", qe_parse_time(sline[3]), qe_parse_time(sline[5]), 1,
-                             TimingData[]))
+                  DFC.TimingData("PWSCF", qe_parse_time(sline[3]), qe_parse_time(sline[5]), 1,
+                             DFC.TimingData[]))
         end
         line = strip(readline(f))
     end

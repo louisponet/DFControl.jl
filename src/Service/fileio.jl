@@ -2,8 +2,10 @@ function parse_file(filename::AbstractString, parse_funcs::Vector{<:Pair{String}
                     extra_parse_funcs::Vector{<:Pair} = Pair{String,Function}[])
     out = Dict{Symbol,Any}()
     open(filename, "r") do f
+        lc = 0
         while !eof(f)
             line = strip(readline(f))
+            lc += 1
             if isempty(line)
                 continue
             end
@@ -13,7 +15,7 @@ function parse_file(filename::AbstractString, parse_funcs::Vector{<:Pair{String}
                 try
                     func[2](out, line, f)
                 catch 
-                    @warn "File corruption or parsing error detected executing parse function $(func[2]).\nTrying to continue smoothly."
+                    @warn "File corruption or parsing error detected executing parse function \n$(func[2]) in file $filename at line $lc: \"$line\".\nTrying to continue smoothly."
                 end
             end
         end

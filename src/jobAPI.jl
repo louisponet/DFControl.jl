@@ -1,44 +1,5 @@
 #------------- Basic Functionality ---------------#
 """
-    submit(job::DFJob; kwargs...)
-
-First saves the job, then tries to submit the job script through `sbatch job.tt` or `bash job.tt` if the former command fails.
-`kwargs...` get passed to `save(job; kwargs...)`.
-"""
-function submit(job::DFJob; server = job.server, kwargs...)
-    if job.server != "localhost" && !isempty(job.server_dir)
-        server = Server(job.server)
-        server === nothing && return
-
-        verify_execs(job, server)
-        
-        if !ispath(job.dir)
-            mkpath(job.dir)
-        end
-        files = Pair{String, String}[]
-        for p in unique(map(x->x.pseudo, atoms(job)))
-            push!(files, p.name => read(joinpath(p.dir, p.name), String))
-        end
-        JLD2.save(joinpath(job.dir, "job.jld2"), "job", job, "files", files)
-        push(job, server)
-    else
-        save(job; kwargs...)
-        try
-            job.metadata[:slurmid] = qsub(job)
-            save_metadata(job)
-        catch
-            try
-                job.metadata[:slurmid] = sbatch(job)
-                save_metadata(job)
-            catch
-                pop!(job.metadata, :slurmid, nothing)
-                run(job)
-            end
-        end
-    end
-end
-
-"""
     abort(job::DFJob)
 
 Will try to remove the job from the scheduler's queue.

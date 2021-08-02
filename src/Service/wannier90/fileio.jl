@@ -278,17 +278,6 @@ function wan_parse_flag_line(line::String)
     return flag, val
 end
 
-function projections_string(at::DFC.AbstractAtom)
-    prjs = projections(at)
-    str = "$(name(at)): $(prjs[1].orb.name)"
-    if length(prjs) > 1
-        for proj in prjs[2:end]
-            str *= ";$(proj.orb.name)"
-        end
-    end
-    return str
-end
-
 function wan_write_projections(f::IO, atoms::Vector{<:DFC.AbstractAtom})
     write(f, "begin projections\n")
     uniats = unique(atoms)
@@ -301,7 +290,7 @@ function wan_write_projections(f::IO, atoms::Vector{<:DFC.AbstractAtom})
             if isempty(prjs)
                 continue
             end
-            write(f, projections_string(at))
+            write(f, DFC.projections_string(at))
             write(f, "\n")
         end
     end

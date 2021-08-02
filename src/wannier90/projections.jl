@@ -127,3 +127,15 @@ function nprojections(structure)
     end
     return n
 end
+
+function projections_string(at::AbstractAtom)
+    prjs = projections(at)
+    str = "$(name(at)): $(prjs[1].orb.name)"
+    if length(prjs) > 1
+        for proj in prjs[2:end]
+            str *= ";$(proj.orb.name)"
+        end
+    end
+    return str
+end
+

@@ -1,4 +1,16 @@
 const VERSION_DIR_NAME = ".versions"
+const TEMP_CALC_DIR = "outputs"
+
+name(job) = job.name
+#-------------------BEGINNING GENERAL SECTION-------------#
+scriptpath(job::DFJob) = joinpath(job.dir, "job.tt")
+starttime(job::DFJob)  = mtime(scriptpath(job))
+
+runslocal(job::DFJob)    = job.server == "localhost"
+structure(job::DFJob)    = job.structure
+isQEjob(job::DFJob)      = any(x -> package(x) == QE, job.calculations)
+iswannierjob(job::DFJob) = any(x -> package(x) == Wannier90, job.calculations) && any(x -> isnscf(x), job.calculations)
+getnscfcalc(job::DFJob)  = getfirst(x -> isnscf(x), job.calculations)
 
 cell(job::DFJob)         = cell(structure(job))
 calculations(job::DFJob) = job.calculations

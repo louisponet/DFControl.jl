@@ -17,6 +17,7 @@ module Service
 
     include("running.jl")
     include("calculation.jl")
+    include("pseudos.jl")
     include("job.jl")
     include("versioning.jl")
     include("registry.jl")

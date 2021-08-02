@@ -26,6 +26,7 @@ module Client
     export save, isrunning, versions, last_version
     
     include("server.jl")
+    include("pseudos.jl")
     
         
 end

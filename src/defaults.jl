@@ -98,55 +98,6 @@ function getdefault_pseudodir(pseudoset)
             getdefault_pseudodirs()[pseudoset] : nothing)
 end
 
-"""
-    configuredefault_pseudos(server = getdefault_server(), pseudo_dirs=getdefault_pseudodirs())
-
-Reads the specified `default_pseudo_dirs` on the `default_server` and sets up the `default_pseudos` variable, and also adds all the entries to the `user_defaults.jl` file.
-"""
-function configuredefault_pseudos(; server = getdefault_server(),
-                                  pseudo_dirs = getdefault_pseudodirs())
-    maybe_init_defaults()
-    if server == ""
-        error("Either supply a valid server string or setup a default server through 'setdefault_server!()'.")
-    end
-
-    if pseudo_dirs === nothing
-        error("Either supply valid pseudo directories or setup a default pseudo dir through 'setdefault_pseudodir()'.")
-    end
-
-    outputs = Dict{Symbol,Vector{String}}()
-    for (name, directory) in pseudo_dirs
-        outputs[name] = server == "localhost" ? readdir(directory) :
-                        split(read(`ssh -t $server ls $directory`, String), "\n")
-    end
-
-    elsyms = Symbol[el.symbol for el in ELEMENTS]
-
-    for (name, pseudo_string) in outputs
-        pseudos = filter(x -> x != "", pseudo_string)
-        i = 1
-        while i <= length(pseudos)
-            pseudo  = pseudos[i]
-            element = Symbol(titlecase(String(split(split(pseudo, ".")[1], "_")[1])))
-            if element in elsyms
-                t = Pseudo[Pseudo(pseudo, pseudo_dirs[name])]
-                j = 1
-                while j + i <= length(pseudos) &&
-                    Symbol(titlecase(String(split(split(pseudos[i+j], ".")[1], "_")[1]))) ==
-                    element
-                    push!(t, Pseudo(pseudos[i+j], pseudo_dirs[name]))
-                    j += 1
-                end
-                i += j
-                expr2file(default_file,
-                          :(default_pseudos[$(QuoteNode(element))][$(QuoteNode(name))] = $t))
-                default_pseudos[element][name] = t
-            else
-                i += 1
-            end
-        end
-    end
-end
 
 """
     getdefault_pseudo(atom::Symbol, set=:default; specifier=nothing)
@@ -168,23 +119,6 @@ function getdefault_pseudo(atom::Symbol, set::Symbol; specifier = "")
             return deepcopy(default_pseudos[pp_atom][set][1])
         end
     end
-end
-
-"""
-    list_pseudosets()
-
-Lists the pseudosets that have previously been set up.
-"""
-function list_pseudosets()
-    sets = Symbol[]
-    for s in values(default_pseudos)
-        for k in keys(s)
-            if !(k ∈ sets)
-                push!(sets, k)
-            end
-        end
-    end
-    return sets
 end
 
 """

@@ -57,6 +57,12 @@ function save(job::DFJob)
         job.name = "noname"
     end
     
+    sanitize_cutoffs!(job)
+    sanitize_pseudos!(job)
+    sanitize_magnetization!(job)
+    sanitize_projections!(job)
+    sanitize_flags!(job)
+    
     curver = job.version
     resp_job = JSON3.read(HTTP.post(server, "/jobs/" * job.dir, [], JSON3.write(job)).body, DFJob)
     @info "Job version: $(curver) => $(resp_job.version)."
@@ -66,8 +72,127 @@ function save(job::DFJob)
     if haskey(job.metadata, :timestamp)
         job.metadata[:timestamp] = DateTime(job.metadata[:timestamp])
     end
+    rm_tmp_flags!(job)
     return job
 end
+
+function submit(job::DFJob)
+    server = maybe_start_server(job)
+    DFC.verify_execs(job, server)
+    save(job)
+end    
+
+"Runs some checks on the set flags for the calculations in the job, and sets metadata (:prefix, :outdir etc) related flags to the correct ones. It also checks whether flags in the various calculations are allowed and set to the correct types."
+function sanitize_flags!(job::DFJob)
+    set_flags!(job, :prefix => "$(job.name)"; print = false)
+    if DFC.iswannierjob(job)
+        nscfcalc = DFC.getnscfcalc(job)
+        if DFC.package(nscfcalc) == Elk
+            set_flags!(job, :num_bands => length(nscfcalc[:wann_bands]))
+            nscfcalc[:wann_projections] = DFC.projections_string.(unique(filter(x -> !isempty(projections(x)), atoms(job))))
+            nscfcalc[:elk2wan_tasks]    = ["602", "604"]
+            nscfcalc[:wann_seedname]    = Symbol(name(job))
+            if job[:wannier_plot] == true
+                push!(nscfcalc[:elk2wan_tasks], "605")
+            end
+        end
+    end
+    for i in filter(x -> DFC.package(x) == QE, job.calculations)
+        outdir = joinpath(job, DFC.TEMP_CALC_DIR)
+        set_flags!(i, :outdir => "$outdir"; print = false)
+    end
+    return sanitize_flags!.(job.calculations, (job.structure,))
+end
+
+function rm_tmp_flags!(job::DFJob)
+    rm_flags!(job, :prefix, :outdir; print=false)
+    rm_flags!(job, :nspin; print=false)
+end
+
+function sanitize_cutoffs!(job)
+    # the assumption is that the most important cutoff calculation is the scf/vcrelax that is ran first 
+    ψ_cut_calc = getfirst(x -> hasflag(x, DFC.ψ_cutoff_flag(x)), job.calculations)
+    if ψ_cut_calc !== nothing
+        ψcut = ψ_cut_calc[DFC.ψ_cutoff_flag(ψ_cut_calc)]
+    else
+        ψcut, = find_cutoffs(job) # Ideally this should also be at the end stage
+        @assert ψcut != 0.0 "No energy cutoff was specified in any calculation, and the calculated cutoff from the pseudopotentials was 0.0.\nPlease manually set one."
+        @info "No energy cutoff was specified in the scf calculation.\nCalculated ψcut=$ψcut."
+    end
+    for i in job.calculations
+        ψflag = DFC.ψ_cutoff_flag(i)
+        ψflag !== nothing &&
+            !hasflag(i, ψflag) &&
+            set_flags!(i, ψflag => ψcut; print = false)
+    end
+    ρ_cut_calc = getfirst(x -> hasflag(x, DFC.ρ_cutoff_flag(x)), job.calculations)
+    if ρ_cut_calc !== nothing
+        ρcut = ρ_cut_calc[DFC.ρ_cutoff_flag(ρ_cut_calc)]
+        for i in job.calculations
+            ρflag = DFC.ρ_cutoff_flag(i)
+            ρflag !== nothing && set_flags!(i, ρflag => ρcut; print = false)
+        end
+    end
+end
+
+function sanitize_pseudos!(job::DFJob)
+    all_pseudos = DFC.pseudo.(atoms(job))
+    uni_dirs    = unique(map(x -> x.dir, all_pseudos))
+    uni_pseudos = unique(all_pseudos)
+    if !all(ispath.(DFC.path.(uni_pseudos)))
+        @warn "Some Pseudos could not be located on disk."
+    end
+    pseudo_dir = length(uni_dirs) == 1 ? uni_dirs[1] : job.dir
+    if length(uni_dirs) > 1
+        @info "Found pseudos in multiple directories, copying them to job directory"
+        for pseudo in uni_pseudos
+            cp(DFC.path(pseudo), joinpath(job.dir, pseudo.name); force = true)
+        end
+    end
+    for p in all_pseudos
+        p.dir = pseudo_dir
+    end
+end
+
+function sanitize_magnetization!(job::DFJob)
+    if !any(x -> package(x) == QE, job.calculations)
+        return
+    end
+    return DFC.sanitize_magnetization!(job.structure)
+end
+
+function find_cutoffs(job::DFJob)
+    @assert job.server == "localhost" "Cutoffs can only be automatically set if the pseudo files live on the local machine."
+    pseudofiles = map(x -> x.name, filter(!isempty, [DFC.pseudo(at) for at in atoms(job)]))
+    pseudodirs  = map(x -> x.dir, filter(!isempty, [DFC.pseudo(at) for at in atoms(job)]))
+    @assert !isempty(pseudofiles) "No atoms with pseudo files found."
+    @assert !isempty(pseudodirs) "No valid pseudo directories found in the calculations."
+    maxecutwfc = 0.0
+    maxecutrho = 0.0
+    for d in pseudodirs
+        for f in pseudofiles
+            pth = joinpath(d, f)
+            if ispath(pth)
+                ecutwfc, ecutrho = read_cutoffs_from_pseudofile(pth)
+                if ecutwfc != nothing && ecutrho != nothing
+                    maxecutwfc = ecutwfc > maxecutwfc ? ecutwfc : maxecutwfc
+                    maxecutrho = ecutrho > maxecutrho ? ecutrho : maxecutrho
+                end
+            end
+        end
+    end
+    return maxecutwfc, maxecutrho
+end
+
+function sanitize_projections!(job::DFJob)
+    if !any(x -> !isempty(projections(x)), atoms(job))
+        return
+    end
+    uats = unique(atoms(job))
+    projs = unique([name(at) => [p.orb.name for p in projections(at)] for at in uats])
+    return set_projections!(job, projs...; print = false)
+end
+
 
 """
     isrunning(job::DFJob)
