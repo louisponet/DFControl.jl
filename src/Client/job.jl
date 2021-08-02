@@ -115,3 +115,24 @@ function last_running_calculation(job::DFJob)
         return job[JSON3.read(resp.body, Int)]
     end
 end
+
+function outputdata(job::DFJob)
+    server = maybe_start_server(job)
+    tmp_path = JSON3.read(HTTP.get(server, "/outputdata", [], JSON3.write(job)).body, String)
+    local_temp = tempname() *".jld2"
+    pull(server, tmp_path, local_temp)
+    return DFC.JLD2.load(local_temp)["outputdata"]
+end
+
+"""
+    pull(server::Server, server_file::String, local_file::String)
+
+Pulls `server_file` from the server the `local_file`.
+"""
+function pull(server::Server, server_file::String, filename::String)
+    if server.name == "localhost"
+        cp(server_file, filename, force=true)
+    else
+        run(`scp $(ssh_string(server) * ":" * server_file) $filename`)
+    end
+end

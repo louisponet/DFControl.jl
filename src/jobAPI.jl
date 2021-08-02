@@ -180,27 +180,6 @@ end
 
 Base.getindex(job::DFJob, el::Element) = job.structure[el]
 
-"Finds the output files for each of the calculations of a job, and groups all found data into a dictionary."
-function outputdata(job::DFJob, calculations::Vector{DFCalculation}; print = true,
-                    onlynew = false)
-    if isarchived(job) && ispath(joinpath(job, "results.jld2"))
-        return JLD2.load(joinpath(job, "results.jld2"))["outputdata"]
-    end
-    datadict = Dict()
-    stime = starttime(job)
-    for calculation in calculations
-        newout = hasnewout(calculation, stime)
-        if onlynew && !newout
-            continue
-        end
-        tout = outputdata(calculation; print = print, overwrite = newout)
-        if !isempty(tout)
-            datadict[name(calculation)] = tout
-        end
-    end
-    return datadict
-end
-outputdata(job::DFJob; kwargs...) = outputdata(job, calculations(job); kwargs...)
 
 #------------ Specialized Interaction with DFCalculations inside DFJob --------------#
 "Reads throught the pseudo files and tries to figure out the correct cutoffs"

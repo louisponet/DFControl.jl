@@ -1,15 +1,3 @@
-"""
-    pullfile(server::String, server_dir::String, dir::String, filename::String)
-
-Pulls a file from the specified server and server dir to the local dir.
-"""
-function pullfile(server::String, server_dir::String, dir::String, filename::String)
-    run(`scp $(server * ":" * server_dir * filename) $dir`)
-    pulled_files = searchdir(dir, filename)
-    if !isempty(pulled_files)
-        return pulled_files[1]
-    end
-end
 
 """
     pullfile(server_dir::String, dir::String, filename::String; server=getdefault_server())

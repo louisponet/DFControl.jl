@@ -18,7 +18,7 @@ isprojwfc(calculation::DFCalculation)  = false
 ismagnetic(calculation::DFCalculation) = false
 issoc(calculation::DFCalculation)      = false
 
-searchdir(i::DFCalculation, glob) = joinpath.((i,), searchdir(dir(i), glob))
+DFC.Utils.searchdir(i::DFCalculation, glob) = joinpath.((i,), searchdir(dir(i), glob))
 
 """
     joinpath(calc::DFCalculation, path...) = joinpath(dir(calc), path...)

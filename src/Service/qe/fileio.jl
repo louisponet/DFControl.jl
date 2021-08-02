@@ -1,4 +1,5 @@
 import Base: parse
+using DFControl: flag
 
 #this is all pretty hacky with regards to the new structure and atom api. can for sure be a lot better!
 "Quantum espresso card option parser"
@@ -37,7 +38,7 @@ function qe_read_output(calculation::DFCalculation{QE}, args...; kwargs...)
     elseif ishp(calculation)
         return qe_read_hp_output(calculation, args...; kwargs...)
     elseif ispw(calculation)
-        return qe_read_pw_output(outpath(calculation), args...; kwargs...)
+        return qe_read_pw_output(DFC.outpath(calculation), args...; kwargs...)
     end
 end
 
@@ -533,10 +534,10 @@ function qe_read_pw_output(filename::String;
                              w = out[:k_cart].w)
         end
         if get(out, :colincalc, false)
-            out[:bands_up]   = [DFBand(out[:k_cart].v, out[:k_cryst].v, zeros(length(out[:k_cart].v))) for i in 1:length(out[:k_eigvals][1])]
-            out[:bands_down] = [DFBand(out[:k_cart].v, out[:k_cryst].v, zeros(length(out[:k_cart].v))) for i in 1:length(out[:k_eigvals][1])]
+            out[:bands_up]   = [DFC.DFBand(out[:k_cart].v, out[:k_cryst].v, zeros(length(out[:k_cart].v))) for i in 1:length(out[:k_eigvals][1])]
+            out[:bands_down] = [DFC.DFBand(out[:k_cart].v, out[:k_cryst].v, zeros(length(out[:k_cart].v))) for i in 1:length(out[:k_eigvals][1])]
         else
-            out[:bands] = [DFBand(out[:k_cart].v, out[:k_cryst].v,
+            out[:bands] = [DFC.DFBand(out[:k_cart].v, out[:k_cryst].v,
                                   zeros(length(out[:k_cart].v)))
                            for i in 1:length(out[:k_eigvals][1])]
         end
@@ -580,7 +581,7 @@ Return:         Array{Float64,2}(length(k_points),length(energies)) ,
 (ytickvals,yticks)
 """
 function qe_read_kpdos(filename::String, column = 1; fermi = 0)
-    read_tmp = readdlm(filename, Float64; comments = true)
+    read_tmp = DFC.readdlm(filename, Float64; comments = true)
     zmat     = zeros(typeof(read_tmp[1]), Int64(read_tmp[end, 1]), div(size(read_tmp)[1], Int64(read_tmp[end, 1])))
     for i1 in 1:size(zmat)[1]
         for i2 in 1:size(zmat)[2]
@@ -604,7 +605,7 @@ end
 Reads partial dos file.
 """
 function qe_read_pdos(filename::String)
-    read_tmp = readdlm(filename; skipstart = 1)
+    read_tmp = DFC.readdlm(filename; skipstart = 1)
     energies = read_tmp[:, 1]
     values   = read_tmp[:, 2:end]
 
@@ -658,6 +659,9 @@ function qe_read_projwfc(filename::String)
     nkstot   = 0
     npwx     = 0
     nkb      = 0
+    if i_prob_sizes === nothing
+        error("Version of QE too low, cannot parse projwfc output")
+    end
     for i in i_prob_sizes+1:istart-3
         l = lines[i]
         if isempty(l)
@@ -726,7 +730,7 @@ function qe_read_projwfc(filename::String)
     end
     nkstot = length(kdos)
     nbnd   = length(last(kdos[1]))
-    bands  = [DFBand(nkstot) for i in 1:nbnd]
+    bands  = [DFC.DFBand(fill(kdos[1][1], nkstot), fill(zero(Vec3{Float64}), nkstot), fill(0.0, nkstot), DFC.SymAnyDict()) for i in 1:nbnd]
     for b in bands
         b.extra[:ψ]  = Vector{Vector{Float64}}(undef, nkstot)
         b.extra[:ψ²] = Vector{Float64}(undef, nkstot)

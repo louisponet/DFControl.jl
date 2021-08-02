@@ -434,3 +434,29 @@ function schedule_job(job::DFJob, submit_command)
         return
     end
 end
+
+"Finds the output files for each of the calculations of a job, and groups all found data into a dictionary."
+function outputdata(job::DFJob, calculations::Vector{DFCalculation}; print = true,
+                    onlynew = false)
+    if DFC.isarchived(job) && ispath(joinpath(job, "results.jld2"))
+        return DFC.JLD2.load(joinpath(job, "results.jld2"))["outputdata"]
+    end
+    datadict = Dict{String, DFC.SymAnyDict}()
+    stime = starttime(job)
+    #TODO Think about storing results.jld2
+    for calculation in calculations
+        #TODO Would I ever not want to do onlynew ?
+        newout = DFC.hasnewout(calculation, stime)
+        if onlynew && !newout
+            continue
+        end
+        tout = outputdata(calculation; print = print, overwrite = newout)
+        if !isempty(tout)
+            datadict[DFC.name(calculation)] = tout
+        end
+    end
+    tmp = tempname() * ".jld2" 
+    out = DFC.JLD2.save(tmp, "outputdata", datadict)
+    return tmp
+end
+outputdata(job::DFJob; kwargs...) = outputdata(job, job.calculations; kwargs...)

@@ -1,4 +1,6 @@
 const SERVER_DIR = DFC.config_path("servers")
+const LOCALHOST_UP = Ref(false)
+
 function known_servers(fuzzy="")
     if ispath(SERVER_DIR)
         servers = [JLD2.load(joinpath(SERVER_DIR, s))["server"] for s in filter(x -> occursin(fuzzy, x), readdir(SERVER_DIR))]
@@ -45,6 +47,7 @@ end
 remove_server!(name::String) = ispath(joinpath(SERVER_DIR, name * ".jld2")) && rm(joinpath(SERVER_DIR, name * ".jld2"))
 
 function start(s::Server)
+    @info "Starting:\n$s"
     cmd = Cmd(`$(s.julia_exec) --startup-file=no -t auto -e "using DFControl; DFControl.Resource.run($(s.port))"`; detach = true)
     proc = establish_connection(s)
     
@@ -52,27 +55,24 @@ function start(s::Server)
     function isalive()
         try
             HTTP.get(s, "/server_config")
-            return false
-        catch
             return true
+        catch
+            return false
         end
     end
         
     while !isalive()
-        sleep(2)
+        sleep(1)
     end
     
     @info "Daemon on Server $(s.name) started, listening on port $(s.port)."
-    while !isalive()
-        sleep(1)
-    end
     rmprocs(p)
 end
 
 function maybe_start_server(s::Server)
     try
         conf = JSON3.read(HTTP.get(s, "/server_config").body, Server)
-        @assert s.scheduler == conf.scheduler "Scheduler mismatch."
+        # @assert s.scheduler == conf.scheduler "Scheduler mismatch."
     catch
         start(s)
     end

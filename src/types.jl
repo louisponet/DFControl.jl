@@ -419,25 +419,21 @@ abstract type Band end
 """
 Energy band from DFT calculation.
 """
-mutable struct DFBand{T<:AbstractFloat,K} <: Band
-    k_points_cart  :: Vector{Vec3{K}}
-    k_points_cryst :: Vector{Vec3{T}}
-    eigvals        :: Vector{T}
-    extra          :: Dict{Symbol,Any}
+mutable struct DFBand <: Band
+    k_points_cart  :: Vector{Vec3}
+    k_points_cryst :: Vector{Vec3{Float64}}
+    eigvals        :: Vector{Float64}
+    extra          :: SymAnyDict
 end
 function DFBand(k_points_cart, k_points_cryst, eigvals)
     return DFBand(k_points_cart, k_points_cryst, eigvals, Dict{Symbol,Any}())
 end
-function DFBand(::Type{T}, vlength::Int) where {T}
-    return DFBand(Vector{Vec3{T}}(undef, vlength), Vector{Vec3{T}}(undef, vlength),
-                  Vector{T}(undef, vlength), SymAnyDict())
-end
-DFBand(vlength::Int) = DFBand(Float64, vlength)
 
 function kpoints(band::DFBand, kind = :cryst)
     return kind == :cart ? band.k_points_cart : band.k_points_cryst
 end
 eigvals(band::DFBand) = band.eigvals
+StructTypes.StructType(::Type{<:Band}) = StructTypes.Mutable()
 
 """
     bandgap(bands::AbstractVector{DFBand}, fermi=0.0)

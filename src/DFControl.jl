@@ -92,6 +92,7 @@ function __init__()
     Unitful.register(@__MODULE__)
     Service.init_job_registry()
     Client.maybe_create_localhost()
+    # Client.maybe_start_server("localhost")
     # if !haskey(ENV, "IS_DAEMON")
     #     init_daemon()
     # else

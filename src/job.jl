@@ -31,7 +31,7 @@ function Base.pop!(job::DFJob, name::String)
     return out
 end
 
-function searchdir(job::DFJob, str::AbstractString)
+function Utils.searchdir(job::DFJob, str::AbstractString)
     return joinpath.((job,), searchdir(job.dir, str))
 end
 
