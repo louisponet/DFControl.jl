@@ -32,7 +32,7 @@ end
 
 show(io::IO, bands::Vector{DFBand}) = map(x -> show(io, x), bands)
 
-function show(io::IO, job::DFJob)
+function show(io::IO, job::Job)
     reset = crayon"reset"
     fieldns = [:name, :version]
     fs = string.(filter(x -> !isempty(x), getfield.((job,), fieldns)))
@@ -78,7 +78,7 @@ function show(io::IO, job::DFJob)
         end
         dfprintln(io, crayon"cyan", "|", reset)
     end
-    is = calculations(job)
+    is = job.calculations
     last = !isempty(versions) ? Client.last_running_calculation(job) : -1
     if !isempty(is)
         dfprintln(io, crayon"cyan", line, reset)
@@ -86,7 +86,7 @@ function show(io::IO, job::DFJob)
                   "not scheduled", reset, ")")
         ln = maximum(length.(string.(name.(is))))
         for (si, i) in enumerate(is)
-            n = name(i)
+            n = i.name
             cr = i.run ? crayon"green" : crayon"red"
             dfprint(io, cr,
                     i == last ? (is_running ? "\t$n <- running\n" : "\t$n <- ran last\n") :
@@ -110,7 +110,7 @@ function write_flags(io, fls, prestr = "")
     end
 end
 
-function show(io::IO, c::DFCalculation)
+function show(io::IO, c::Calculation)
     df_show_type(io, c)
     s = """name  = $(c.name)
     dir   = $(c.dir)
@@ -120,14 +120,14 @@ function show(io::IO, c::DFCalculation)
     flags:"""
     dfprintln(io, s)
 
-    if !isempty(flags(c))
+    if !isempty(c.flags)
         if package(c) == QE
             namelist_flags = Dict{Symbol,Dict{Symbol,Any}}()
             info = qe_calculation_info(c)
             if info !== nothing
-                flag_keys = keys(flags(c))
+                flag_keys = keys(c.flags)
                 for i in info.control
-                    for f in flags(i)
+                    for f in i.flags
                         if f.name ∈ flag_keys
                             if haskey(namelist_flags, i.name)
                                 namelist_flags[i.name][f.name] = c[f.name]
@@ -143,10 +143,10 @@ function show(io::IO, c::DFCalculation)
                     write_flags(io, flgs, "\t\t")
                 end
             else
-                write_flags(io, flags(c))
+                write_flags(io, c.flags)
             end
         else
-            write_flags(io, flags(c))
+            write_flags(io, c.flags)
         end
     end
     dfprint(io, crayon"reset")
@@ -194,7 +194,7 @@ function show(io::IO, el::Element)
     return dfprint(io, crayon"reset")
 end
 
-function show(io::IO, str::AbstractStructure)
+function show(io::IO, str::Structure)
     dfprintln(io, crayon"cyan", "Structure", crayon"reset")
     dfprintln(io, crayon"red", "    cell parameters:")
     dfprint(io, crayon"reset",
@@ -207,10 +207,10 @@ function show(io::IO, str::AbstractStructure)
     return dfprintln(io, crayon"reset")
 end
 
-function show(io::IO, at::AbstractAtom{T,LT}) where {T,LT<:Length{T}}
+function show(io::IO, at::Atom)
     dfprintln(io)
     dfprintln(io, crayon"cyan", "Atom")
-    dfprintln(io, crayon"red", "    name: ", crayon"reset", "$(name(at))")
+    dfprintln(io, crayon"red", "    name: ", crayon"reset", "$(at.name)")
     for f in fieldnames(typeof(at))[3:end-1]
         fld = getfield(at, f)
         if f in (:position_cart, :position_cryst)
@@ -219,13 +219,8 @@ function show(io::IO, at::AbstractAtom{T,LT}) where {T,LT<:Length{T}}
             dfprintln(io, crayon"red", "    $f: ", crayon"reset", "$fld")
         end
     end
-    dfprint(io, crayon"red", "    dftu: ", crayon"reset")
-    for f in fieldnames(DFTU)
-        val = getfield(dftu(at), f)
-        if !isdefault(val)
-            dfprint(io, "$f: $val, ")
-        end
-    end
+    dfprintln(io, crayon"red", "    dftu:", crayon"reset")
+    show(io, at.dftu)
     dfprintln(io, crayon"reset")
     return
 end

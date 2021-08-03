@@ -1,18 +1,17 @@
 #----------- Basic Interaction --------------#
 """
-    data(calculation::DFCalculation)
-    data(calculation::DFCalculation, n::Symbol)
+    data(calculation::Calculation, n::Symbol)
 
 The former returns `calculation.data`, the later -- the `InputData` with name `n`.
 """
-data(calculation::DFCalculation, n::Symbol) = getfirst(x -> name(x) == n, data(calculation))
+data(calculation::Calculation, n::Symbol) = getfirst(x -> x.name == n, calculation.data)
 
 """
-    set_data!(calculation::DFCalculation, data::InputData)
+    set_data!(calculation::Calculation, data::InputData)
 
 If an `InputData` with the same name as `data` is already in `calculation`, it will be overwritten. Otherwise `data` gets pushed to the list of `InputData` blocks.
 """
-function set_data!(calculation::DFCalculation, data::InputData)
+function set_data!(calculation::Calculation, data::InputData)
     id = findfirst(x -> x.name == data.name, calculation.data)
     if id === nothing
         push!(calculation.data, data)
@@ -23,12 +22,12 @@ function set_data!(calculation::DFCalculation, data::InputData)
 end
 
 """
-    set_data!(calculation::DFCalculation, block_name::Symbol, new_block_data; option::Symbol=nothing, print::Bool=true)
+    set_data!(calculation::Calculation, block_name::Symbol, new_block_data; option::Symbol=nothing, print::Bool=true)
 
-Searches for an `InputData` for which `InputData.name == block_name`, and sets `DFCalculation.data = new_block_data`.
+Searches for an `InputData` for which `InputData.name == block_name`, and sets `Calculation.data = new_block_data`.
 If `option` is specified it is set, i.e. `InputData.option = option`.
 """
-function set_data!(calculation::DFCalculation, block_name::Symbol, new_block_data;
+function set_data!(calculation::Calculation, block_name::Symbol, new_block_data;
                    option::Symbol = nothing, print::Bool = true)
     setd = false
     for data_block in calculation.data
@@ -42,7 +41,7 @@ function set_data!(calculation::DFCalculation, block_name::Symbol, new_block_dat
             data_block.data = new_block_data
             data_block.option = option == nothing ? data_block.option : option
             if print
-                @info "Block data '$(data_block.name)' in calculation  '$(name(calculation))' is now:\n\t$(string(data_block.data)) \n\toption: $(data_block.option)\n"
+                @info "Block data '$(data_block.name)' in calculation  '$(calculation.name)' is now:\n\t$(string(data_block.data)) \n\toption: $(data_block.option)\n"
             end
             setd = true
         end
@@ -57,18 +56,18 @@ end
 #---------- Extended Interaction ------------#
 
 """
-    readbands(calculation::DFCalculation)
+    readbands(calculation::Calculation)
 
 Parses the `outputdata` associated with `calculation` and returns the bands if present.
 
-    readbands(job::DFJob)
+    readbands(job::Job)
 
 Will try to find the first bandstructure calculation present in the `job` with a valid
 output file, and return the `bands` if present.
 If no normal bandstructure calculation is present, it will return the bands produced
 by a possible `nscf` calculation if one exists with a valid output file.
 """
-function readbands(calculation::DFCalculation)
+function readbands(calculation::Calculation)
     hasoutput_assert(calculation)
     to = readoutput(calculation)
     if haskey(to, :bands)
@@ -76,87 +75,94 @@ function readbands(calculation::DFCalculation)
     elseif haskey(to, :bands_up)
         return (up = to[:bands_up], down = to[:bands_down])
     else
-        error("No bands found in $(name(calculation)).")
+        error("No bands found in $(calculation.name).")
     end
 end
 
 """
-    readfermi(calculation::DFCalculation)
+    readfermi(calculation::Calculation)
 
 Parses the `outputdata` associated with `calculation` and returns the fermi level if present.
 
-    readfermi(job::DFJob)
+    readfermi(job::Job)
 
 Finds the first `scf` calculation present in the `job`,
 reads its `outputdata` and returns the fermi level if present.
 """
-function readfermi(calculation::DFCalculation)
+function readfermi(calculation::Calculation)
     hasoutput_assert(calculation)
     to = readoutput(calculation)
     if haskey(to, :fermi)
         return to[:fermi]
     else
-        error("No fermi found in $(name(calculation)).")
+        error("No fermi found in $(calculation.name).")
     end
 end
 
 """
-    set_kpoints!(calculation::DFCalculation{QE}, k_grid::NTuple{3, Int}; print=true)
-    set_kpoints!(calculation::DFCalculation{QE}, k_grid::NTuple{6, Int}; print=true)
-    set_kpoints!(calculation::DFCalculation{QE}, k_grid::Vector{<:NTuple{4}}; print=true, k_option=:crystal_b)
+    set_kpoints!(calculation::Calculation{QE}, k_grid::NTuple{3, Int}; print=true)
+    set_kpoints!(calculation::Calculation{QE}, k_grid::NTuple{6, Int}; print=true)
+    set_kpoints!(calculation::Calculation{QE}, k_grid::Vector{<:NTuple{4}}; print=true, k_option=:crystal_b)
 
 Convenience function to set the `:k_points` data block of `calculation`.
 The three different methods are targeted at `nscf`, `scf` or `vcrelax`,
 and `bands` calculations, respectively.
 For the `nscf` version an explicit list of `k_points` will be generated.
 
-    set_kpoints!(calculation::DFCalculation{Wannier90}, k_grid::NTuple{3, Int})
+    set_kpoints!(calculation::Calculation{Wannier90}, k_grid::NTuple{3, Int})
 
 Similar to the `nscf` targeted function in the sense that it will generate
 an explicit list of `k_points`, adhering to the same rules as for the `nscf`.
 The `mp_grid` flag will also automatically be set.
 """
-function set_kpoints!(::DFCalculation{P}, args...; kwargs...) where {P}
+function set_kpoints!(::Calculation{P}, args...; kwargs...) where {P}
     @error "set_kpoints! not implemented for package $P."
 end
 
-#-------- Generating new DFCalculations ---------- #
+#-------- Generating new Calculations ---------- #
 
-function calculation_from_kpoints(template::DFCalculation, newname, kpoints, newflags...)
-    newcalc = DFCalculation(deepcopy(template); name = newname)
+function calculation_from_kpoints(template::Calculation, newname, kpoints, newflags...)
+    newcalc = Calculation(deepcopy(template); name = newname)
     set_flags!(newcalc, newflags...; print=false)
     set_name!(newcalc, newname)
     set_kpoints!(newcalc, kpoints; print = false)
     return newcalc
 end
 
-function gencalc_nscf(::DFCalculation{P}, args...) where {P}
+function gencalc_nscf(::Calculation{P}, args...) where {P}
     @error "gencalc_nscf is not implemented for package $P."
 end
 
-function gencalc_scf(::DFCalculation{P}, args...) where {P}
+function gencalc_scf(::Calculation{P}, args...) where {P}
     @error "gencalc_scf is not implemented for package $P."
 end
 
-function gencalc_projwfc(::DFCalculation{P}, args...) where {P}
+function gencalc_projwfc(::Calculation{P}, args...) where {P}
     @error "gencalc_projwfc is not implemented for package $P."
 end
 
-function gencalc_wan(::DFCalculation{P}, args...) where {P}
+function gencalc_wan(::Calculation{P}, args...) where {P}
     @error "gencalc_wan is not implemented for package $P."
 end
 
-function gencalc_vcrelax(::DFCalculation{P}, args...) where {P}
+function gencalc_vcrelax(::Calculation{P}, args...) where {P}
     @error "gencalc_vcrelax is not implemented for package $P."
 end
 
-function gencalc_bands(::DFCalculation{P}, args...) where {P}
+function gencalc_bands(::Calculation{P}, args...) where {P}
     @error "gencalc_bands is not implemented for package $P."
 end
 
-function isconverged(::DFCalculation{P}) where {P}
+function isconverged(::Calculation{P}) where {P}
     @error "isconverged is not implemented for package $P."
 end
+
+"""
+    kgrid(na, nb, nc, calculation)
+
+Returns an array of k-grid points that are equally spaced, calculation can be either `:wan` or `:nscf`, the returned grids are appropriate as calculations for wannier90 or an nscf calculation respectively.
+"""
+kgrid(na, nb, nc, ::Calculation{T}) where {T} = kgrid(na, nb, nc, T)
 
 ## QE
 function kgrid(na, nb, nc, ::Type{QE})
@@ -167,21 +173,21 @@ function kgrid(na, nb, nc, ::Type{QE})
                    (na * nb * nc))
 end
 
-function set_kpoints!(c::DFCalculation{QE}, k_grid::NTuple{3,Int}; print = true) #nscf
+function set_kpoints!(c::Calculation{QE}, k_grid::NTuple{3,Int}; print = true) #nscf
     print && !DFC.isnscf(c) && (@warn "Expected calculation to be 'nscf'.\nGot $calc.")
     set_data!(c, :k_points, kgrid(k_grid..., c); option = :crystal, print = print)
     prod(k_grid) > 100 && set_flags!(c, :verbosity => "high"; print = print)
     return c
 end
 
-function set_kpoints!(c::DFCalculation{QE}, k_grid::NTuple{6,Int}; print = true) #scf
+function set_kpoints!(c::Calculation{QE}, k_grid::NTuple{6,Int}; print = true) #scf
     print && !(DFC.isscf(c) || DFC.isvcrelax(c) || DFC.isrelax(c)) && (@warn "Expected calculation to be scf, vc-relax, relax.\nGot $calc.")
     set_data!(c, :k_points, [k_grid...]; option = :automatic, print = print)
     prod(k_grid[1:3]) > 100 && set_flags!(c, :verbosity => "high"; print = print)
     return c
 end
 
-function set_kpoints!(c::DFCalculation{QE}, k_grid::Vector{<:NTuple{4}}; print = true,
+function set_kpoints!(c::Calculation{QE}, k_grid::Vector{<:NTuple{4}}; print = true,
                       k_option = :crystal_b)
     print &&
         isbands(c) != "bands" &&
@@ -206,60 +212,60 @@ function set_kpoints!(c::DFCalculation{QE}, k_grid::Vector{<:NTuple{4}}; print =
 end
 
 """
-    gencalc_scf(template::DFCalculation{QE}, kpoints::NTuple{6, Int}, newflags...; name="scf")
+    gencalc_scf(template::Calculation{QE}, kpoints::NTuple{6, Int}, newflags...; name="scf")
 
 Uses the information from the template and `supplied` kpoints to generate an scf calculation.
 Extra flags can be supplied which will be set for the generated calculation.
 """
-function gencalc_scf(template::DFCalculation{QE}, kpoints::NTuple{6,Int}, newflags...;
+function gencalc_scf(template::Calculation{QE}, kpoints::NTuple{6,Int}, newflags...;
                      name = "scf")
     return calculation_from_kpoints(template, name, kpoints, :calculation => "scf",
                                     newflags...)
 end
 
 """
-    gencalc_vcrelax(template::DFCalculation{QE}, kpoints::NTuple{6, Int}, newflags...; name="scf")
+    gencalc_vcrelax(template::Calculation{QE}, kpoints::NTuple{6, Int}, newflags...; name="scf")
 
 Uses the information from the template and supplied `kpoints` to generate a vcrelax calculation.
 Extra flags can be supplied which will be set for the generated calculation.
 """
-function gencalc_vcrelax(template::DFCalculation{QE}, kpoints::NTuple{6,Int}, newflags...;
+function gencalc_vcrelax(template::Calculation{QE}, kpoints::NTuple{6,Int}, newflags...;
                          name = "vcrelax")
     return calculation_from_kpoints(template, name, kpoints, :calculation => "vc-relax",
                                     newflags...)
 end
 
 """
-    gencalc_bands(template::DFCalculation{QE}, kpoints::Vector{NTuple{4}}, newflags...; name="bands")
+    gencalc_bands(template::Calculation{QE}, kpoints::Vector{NTuple{4}}, newflags...; name="bands")
 
 Uses the information from the template and supplied `kpoints` to generate a bands calculation.
 Extra flags can be supplied which will be set for the generated calculation.
 """
-function gencalc_bands(template::DFCalculation{QE}, kpoints::Vector{<:NTuple{4}},
+function gencalc_bands(template::Calculation{QE}, kpoints::Vector{<:NTuple{4}},
                        newflags...; name = "bands")
     return calculation_from_kpoints(template, name, kpoints, :calculation => "bands",
                                     newflags...)
 end
 
 """
-    gencalc_nscf(template::DFCalculation{QE}, kpoints::NTuple{3, Int}, newflags...; name="nscf")
+    gencalc_nscf(template::Calculation{QE}, kpoints::NTuple{3, Int}, newflags...; name="nscf")
 
 Uses the information from the template and supplied `kpoints` to generate an nscf calculation.
 Extra flags can be supplied which will be set for the generated calculation.
 """
-function gencalc_nscf(template::DFCalculation{QE}, kpoints::NTuple{3,Int}, newflags...;
+function gencalc_nscf(template::Calculation{QE}, kpoints::NTuple{3,Int}, newflags...;
                       name = "nscf")
     return calculation_from_kpoints(template, name, kpoints, :calculation => "nscf",
                                     newflags...)
 end
 
 """
-    gencalc_projwfc(template::DFCalculation{QE}, Emin, Emax, DeltaE, newflags...; name="projwfc")
+    gencalc_projwfc(template::Calculation{QE}, Emin, Emax, DeltaE, newflags...; name="projwfc")
 
 Uses the information from the template and supplied `kpoints` to generate a `projwfc.x` calculation.
 Extra flags can be supplied which will be set for the generated calculation.
 """
-function gencalc_projwfc(template::DFCalculation{QE}, Emin, Emax, DeltaE, extraflags...;
+function gencalc_projwfc(template::Calculation{QE}, Emin, Emax, DeltaE, extraflags...;
                          name = "projwfc")
     occflag = flag(template, :occupations)
     ngauss  = 0
@@ -282,7 +288,7 @@ function gencalc_projwfc(template::DFCalculation{QE}, Emin, Emax, DeltaE, extraf
         excs = [Exec(; exec = "projwfc.x", dir = execs(template)[end].dir)]
     end
 
-    out = DFCalculation(deepcopy(template); name=name,  execs = excs, data=InputData[])
+    out = Calculation(deepcopy(template); name=name,  execs = excs, data=InputData[])
     set_name!(out, "projwfc")
     empty!(out.flags)
     set_flags!(out, :Emin => Emin, :Emax => Emax, :DeltaE => DeltaE, :ngauss => ngauss,
@@ -292,19 +298,27 @@ function gencalc_projwfc(template::DFCalculation{QE}, Emin, Emax, DeltaE, extraf
 end
 
 """
-    gencalc_wan(nscf::DFCalculation{QE}, structure::AbstractStructure, Emin, wanflags...;
+    gencalc_wan(nscf::Calculation{QE}, structure::Structure, Emin, wanflags...;
                 Epad     = 5.0,
                 wanexec  = Exec(exec="wannier90.x", dir=""))
 
 Generates a Wannier90 calculation to follow on the supplied `nscf` calculation. It uses the projections defined in the `structure`, and starts counting the required amount of bands from `Emin`.
 The `nscf` needs to have a valid output since it will be used in conjunction with `Emin` to find the required amount of bands and energy window for the Wannier90 calculation.
 """
-function gencalc_wan(nscf::DFCalculation{QE}, structure::AbstractStructure, Emin,
+function gencalc_wan(nscf::Calculation{QE}, structure::Structure, Emin,
                      wanflags...; Epad = 5.0,
                      wanexec = Exec(; exec = "wannier90.x", dir = ""))
     hasoutput_assert(nscf)
-    iscalc_assert(nscf, "nscf")
-    hasprojections_assert(structure)
+    @assert nscf[:calculation] == "nscf"
+    projs = vcat(map(structure.atoms) do x
+        ps = x.projections
+        @assert !isempty(ps) "Please first set projections for all atoms in the Structure."
+        return ps
+    end
+    )
+
+    DFC.Structures.sanitize!(projs, DFC.Calculation.issoc(nscf))
+    
     if iscolin(structure)
         wannames = ["wanup", "wandn"]
         @info "Spin polarized calculation found (inferred from nscf calculation)."
@@ -322,7 +336,7 @@ function gencalc_wan(nscf::DFCalculation{QE}, structure::AbstractStructure, Emin
         wanflags[:spinors] = true
     end
 
-    nwann = nprojections(structure)
+    nwann = sum(length, projs)
     @info "num_wann=$nwann (inferred from provided projections)."
     wanflags[:num_wann] = nwann
     kpoints = data(nscf, :k_points).data
@@ -332,10 +346,10 @@ function gencalc_wan(nscf::DFCalculation{QE}, structure::AbstractStructure, Emin
     isnoncolin(structure) && (wanflags[:spinors] = true)
     kdata = InputData(:kpoints, :none, [k[1:3] for k in kpoints])
 
-    wancalculations = DFCalculation{Wannier90}[]
+    wancalculations = Calculation{Wannier90}[]
     for wanfil in wannames
         push!(wancalculations,
-              DFCalculation{Wannier90}(name = wanfil, dir = dir(nscf), flags = copy(wanflags), data = [kdata],
+              Calculation{Wannier90}(name = wanfil, dir = nscf.dir, flags = copy(wanflags), data = [kdata],
                                        execs = [wanexec], run = true))
     end
 
@@ -350,14 +364,14 @@ end
 kakbkc(kgrid) = length.(unique.([[n[i] for n in kgrid] for i in 1:3]))
 
 """
-    gencalc_wan(nscf::DFCalculation{QE}, structure::AbstractStructure, projwfc::DFCalculation{QE}, threshold::Real, wanflags...; kwargs...)
+    gencalc_wan(nscf::Calculation{QE}, structure::Structure, projwfc::Calculation{QE}, threshold::Real, wanflags...; kwargs...)
 
 Generates a wannier calculation, that follows on the `nscf` calculation. Instead of passing Emin manually, the output of a projwfc.x run
 can be used together with a `threshold` to determine the minimum energy such that the contribution of the
 projections to the DOS is above the `threshold`.
 """
-function gencalc_wan(nscf::DFCalculation{QE}, structure::AbstractStructure,
-                     projwfc::DFCalculation{QE}, threshold::Real, args...; kwargs...)
+function gencalc_wan(nscf::Calculation{QE}, structure::Structure,
+                     projwfc::Calculation{QE}, threshold::Real, args...; kwargs...)
     hasexec_assert(projwfc, "projwfc.x")
     hasoutput_assert(projwfc)
     Emin = Emin_from_projwfc(structure, projwfc, threshold)
@@ -365,14 +379,28 @@ function gencalc_wan(nscf::DFCalculation{QE}, structure::AbstractStructure,
 end
 
 """
-    isconverged(c::DFCalculation{QE})
+    gencalc_wan(job::Job, min_window_determinator::Real, extra_wan_flags...; kwargs...)
 
-Returns whether an `scf` calculation was converged.
+Automates the generation of wannier calculations based on the `job`.
+When a projwfc calculation is present in the `job`, `min_window_determinator` will be used to
+determine the threshold value for including a band in the window based on the projections, otherwise
+it will be used as the `Emin` value from which to start counting the number of bands needed for all
+projections.
+`extra_wan_flags` can be any extra flags for the Wannier90 calculation such as `write_hr` etc.
 """
-function isconverged(c::DFCalculation{QE})
-    hasoutput_assert(c)
-    iscalc_assert(c, "scf")
-    return outputdata(c)[:converged]
+function gencalc_wan(job::Job, min_window_determinator::Real, extra_wan_flags...;
+                     kwargs...)
+    nscf_calculation = getfirst(x -> isnscf(x), job.calculations)
+    projwfc_calculation = getfirst(x -> isprojwfc(x), job.calculations)
+    if projwfc_calculation === nothing || !hasoutput(projwfc_calculation)
+        @info "No projwfc calculation found with valid output, using $min_window_determinator as Emin"
+        return gencalc_wan(nscf_calculation, job.structure, min_window_determinator,
+                           extra_wan_flags...; kwargs...)
+    else
+        @info "Valid projwfc output found, using $min_window_determinator as the dos threshold."
+        return gencalc_wan(nscf_calculation, job.structure, projwfc_calculation,
+                           min_window_determinator, extra_wan_flags...; kwargs...)
+    end
 end
 
 ## Wannier90
@@ -384,7 +412,7 @@ function kgrid(na, nb, nc, ::Type{Wannier90})
                    (na * nb * nc))
 end
 
-function set_kpoints!(calculation::DFCalculation{Wannier90}, k_grid::NTuple{3,Int};
+function set_kpoints!(calculation::Calculation{Wannier90}, k_grid::NTuple{3,Int};
                       print = true)
     set_flags!(calculation, :mp_grid => [k_grid...]; print = print)
     set_data!(calculation, :kpoints, kgrid(k_grid..., calculation); print = print)
@@ -392,14 +420,14 @@ function set_kpoints!(calculation::DFCalculation{Wannier90}, k_grid::NTuple{3,In
 end
 
 """
-    set_wanenergies!(wancalculation::DFCalculation{Wannier90}, structure::AbstractStructure, nscf::DFCalculation , Emin::Real; Epad=5.0)
+    set_wanenergies!(wancalculation::Calculation{Wannier90}, structure::Structure, nscf::Calculation , Emin::Real; Epad=5.0)
 
 Automatically calculates and sets the wannier energies. This uses the projections,
 `Emin` and the output of the nscf calculation to infer the other limits.
 `Epad` allows one to specify the padding around the inner and outer energy windows
 """
-function set_wanenergies!(calculation::DFCalculation{Wannier90},
-                          structure::AbstractStructure, nscf::DFCalculation, Emin::Real;
+function set_wanenergies!(calculation::Calculation{Wannier90},
+                          structure::Structure, nscf::Calculation, Emin::Real;
                           Epad = 5.0)
     hasoutput_assert(nscf)
     @assert isnscf(nscf) "Please provide a valid nscf calculation."
@@ -449,5 +477,48 @@ end
 function wanenergyranges(Emin, nbnd, bands, Epad = 5)
     max = Emax(Emin, nbnd, bands)
     return (Emin - Epad, Emin, max, max + Epad)
+end
+
+function Emin_from_projwfc(structure::DFC.Structure, projwfc::Calculation{QE},
+                           threshold::Number)
+    DFC.hasoutput_assert(projwfc)
+    DFC.hasexec_assert(projwfc, "projwfc.x")
+    if !haskey(projwfc.outdata, :states)
+        states, bands             = qe_read_projwfc(outpath(projwfc))
+        outdata(projwfc)[:states] = states
+        outdata(projwfc)[:bands]  = bands
+    else
+        states, bands = outdata(projwfc)[:states], outdata(projwfc)[:bands]
+    end
+
+    mask = zeros(length(states))
+    for (atid, at) in enumerate(atoms(structure))
+        projs = projections(at)
+
+        if isempty(projs)
+            continue
+        end
+
+        stateids = Int[]
+        for proj in projs
+            orb = orbital(proj)
+            push!.((stateids,), findall(x -> x.atom_id == atid && x.l == orb.l, states))
+        end
+        mask[stateids] .= 1.0
+    end
+    Emin = -10000.0
+    for b in bands
+        ψ = mean(b.extra[:ψ])
+        tot_relevant_occupation = dot(mask, ψ)
+
+        if tot_relevant_occupation > threshold
+            Emin = minimum(b.eigvals)
+            break
+        end
+    end
+    if Emin == -10000.0
+        error("Couldn't find any band with occupation of relevant projections above $threshold, were any set in the structure?")
+    end
+    return Emin
 end
 

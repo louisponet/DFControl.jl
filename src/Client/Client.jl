@@ -3,12 +3,24 @@ module Client
     using ..DFControl
     using ..DFControl: Server
     using ..Utils
+    
+    function package(execs::Vector{Exec})
+        if any(DFC.is_qe_exec, execs)
+            return QE
+        elseif any(DFC.is_wannier_exec, execs)
+            return Wannier90
+        elseif any(DFC.is_elk_exec, execs)
+            return Elk
+        elseif any(DFC.is_abinit_exec, execs)
+            return Abinit
+        end
+    end
 
-    @inline function JSON3.read(::StructTypes.Mutable, buf, pos, len, b, ::Type{DFCalculation}; kw...)
-        x = DFCalculation{DFControl.NoPackage}("", execs=Exec[])
-        pos, x = JSON3.read!(StructTypes.Mutable(), buf, pos, len, b, DFCalculation, x; kw...)
-        p = DFC.package(x.execs)
-        t = DFCalculation{p}(x.name, x.dir, x.flags, x.data, x.execs, x.run, x.outdata, x.infile, x.outfile)
+    @inline function JSON3.read(::StructTypes.Mutable, buf, pos, len, b, ::Type{Calculation}; kw...)
+        x = Calculation{DFControl.NoPackage}("", execs=Exec[])
+        pos, x = JSON3.read!(StructTypes.Mutable(), buf, pos, len, b, Calculation, x; kw...)
+        p = eltype(x.execs)
+        t = Calculation{p}(x.name, x.dir, x.flags, x.data, x.execs, x.run, x.outdata, x.infile, x.outfile)
         return pos, t
     end
    

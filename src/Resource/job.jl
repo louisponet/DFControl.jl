@@ -7,7 +7,7 @@ function job_path(req)
     end
 end
 
-save_job(req) = Service.save(JSON3.read(req.body, DFJob))
+save_job(req) = Service.save(JSON3.read(req.body, Job))
 HTTP.@register(ROUTER, "POST", "/jobs", save_job)
 
 submit_job(req) = Service.submit(job_path(req))
@@ -27,9 +27,9 @@ HTTP.@register(ROUTER, "GET", "/registered_jobs/", registered_jobs)
 job_versions(req) = Service.job_versions(job_path(req)) 
 HTTP.@register(ROUTER, "GET", "/job_versions/*", job_versions)
 
-last_running_calculation(req) = Service.last_running_calculation(JSON3.read(req.body, DFJob)) 
+last_running_calculation(req) = Service.last_running_calculation(JSON3.read(req.body, Job)) 
 HTTP.@register(ROUTER, "GET", "/last_running_calculation", last_running_calculation)
 
-outputdata(req) = Service.outputdata(JSON3.read(req.body, DFJob)) 
+outputdata(req) = Service.outputdata(JSON3.read(req.body, Job)) 
 HTTP.@register(ROUTER, "GET", "/outputdata", outputdata)
 

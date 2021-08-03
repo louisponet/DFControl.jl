@@ -167,20 +167,3 @@ function findspecifier(str, strs::Vector{<:AbstractString})
     end
     return testout
 end
-
-function getpseudoset(elsym::Symbol, ps::Pseudo)
-    maybe_init_defaults()
-    str = ps.name
-    for (key, val) in default_pseudos[elsym]
-        if length(val) == 1
-            str == val[1] && return key, ""
-        else
-            for v in val
-                if v == str
-                    return key, findspecifier(str, val)
-                end
-            end
-        end
-    end
-    return :none, ""
-end

@@ -1,33 +1,55 @@
-Base.:(==)(str1::AbstractStructure, str2::AbstractStructure) = cell(str1) == cell(str2) && atoms(str1) == atoms(str2)
+"""
+    Structure(cell::Mat3, atoms::Vector{Atom})
+
+The structure on which the [`Calculations`](@ref Calculation) will be performed.
+
+    Structure(cif_file::String)
+
+Creates a [`Structure`](@ref) from the supplied cif file.
+"""
+mutable struct Structure 
+    cell  :: Mat3{typeof(1.0Ang)}
+    atoms :: Vector{Atom}
+end
+Structure() = Structure("", Mat3(fill(1.0Ang,3,3)), Atom[])
+
+function Structure(cif_file::String)
+    str = cif2structure(cif_file)
+    @info "Structure extracted from $cif_file\n\tcell parameters: \n\t a = $((str.cell[:,1]...,))\n\t b = $((str.cell[:,2]...,))\n\t c = $((str.cell[:,3]...,))\n\tnat = $(length(str.atoms))\n\telements = $(unique(getfield.(str.atoms, :name)))"
+    return str
+end
+
+DFC.StructTypes.StructType(::Type{Structure}) = DFC.StructTypes.Struct()
+
+Base.:(==)(str1::Structure, str2::Structure) = str1.cell == str2.cell && str1.atoms == str2.atoms
 
 "Uses cif2cell to Meta.parse a cif file, then returns the parsed structure."
-function cif2structure(cif_file::String; structure_name = "NoName")
+function cif2structure(cif_file::String)
     tmpdir = dirname(cif_file)
     tmpfile = joinpath(tmpdir, "tmp.in")
     @assert splitext(cif_file)[2] == ".cif" error("Please specify a valid cif calculation file")
     run(`$pythonpath $cif2cellpath $cif_file --no-reduce -p quantum-espresso -o $tmpfile`)
 
-    bla, structure = qe_read_calculation(tmpfile; structure_name = structure_name)
+    bla, structure = Service.qe_read_calculation(tmpfile)
     rm(tmpfile)
     return structure
 end
 
 # TODO extend base.merge
 "Takes a vector of structures and merges all the attributes of the atoms."
-function mergestructures(structures::Vector{<:AbstractStructure})
+function mergestructures(structures::Vector{Structure})
     nonvoid = filter(x -> x != nothing, structures)
     out = nonvoid[1]
+    default_at = Atom(name=:no, position_cart=zero(Point3{typeof(Ang)}), position_cryst=zero(Point3{Float64}))
     for structure in nonvoid[2:end]
-        for at1 in atoms(out), at2 in atoms(structure)
+        for at1 in out.atoms, at2 in structure.atoms
             if at1 == at2
                 for fname in fieldnames(typeof(at1))
                     if fname in [:name, :element, :position_cart, :position_cryst]
                         continue
                     end
                     field = getfield(at2, fname)
-                    if field == nothing || isdefault(field)
-                        continue
-                    else
+                    if field != getfield(default_at, fname) 
                         setfield!(at1, fname, field)
                     end
                 end
@@ -38,42 +60,28 @@ function mergestructures(structures::Vector{<:AbstractStructure})
 end
 
 """
-    update_geometry!(str1::AbstractStructure, str2::AbstractStructure)
-    update_geometry!(job::DFJob, str2::AbstractStructure)
+    update_geometry!(str1::Structure, str2::Structure)
 
 Updates the spatial parameters of the `atoms` and `cell` of the first structure to those found in the second.
 """
-function update_geometry!(str1::AbstractStructure, str2::AbstractStructure)
+function update_geometry!(str1::Structure, str2::Structure)
     str1.cell = copy(str2.cell)
-    ats2 = atoms(str2)
-    for at1 in atoms(str1)
-        tats2 = filter(y -> y.name == name(at1), ats2)
-        id = findmin(map(x -> distance(x, at1), tats2))[2]
+    ats2 = str2.atoms
+    for at1 in str1.atoms
+        tats2 = filter(y -> y.name == at1.name, ats2)
+        id = findmin(map(x -> norm(x.position_cart - at1.position_cart), tats2))[2]
         if id === nothing
-            @error "No atom of the species $(name(at1)) found in the second structure"
+            @error "No atom of the species $(at1.name) found in the second structure"
         end
-        set_position!(at1, tats2[id].position_cryst, cell(str1))
+        set_position!(at1, tats2[id].position_cryst, str1.cell)
     end
     return str1
 end
-
-function update_geometry!(job::DFJob, new_str::AbstractStructure)
-    return update_geometry!(job.structure, new_str)
-end
-
-structure(str::Structure) = str
-
-name(str::AbstractStructure) = structure(str).name
-data(str::AbstractStructure) = structure(str).data
-
-Base.length(str::AbstractStructure) = length(atoms(str))
+Base.length(str::Structure) = length(atoms(str))
 
 ### CELL ###
-cell(str::AbstractStructure) = structure(str).cell
-
 """
-    set_cell!(structure::AbstractStructure, c::Mat3)
-    set_cell!(job::DFJob, cell_::Mat3)
+    set_cell!(structure::Structure, c::Mat3)
 
 Sets the `cell` of the `Structure` to `c`.
 `c` will first be converted to the right units to match those
@@ -81,59 +89,65 @@ of the current `cell`.
 All the absolute coordinates of the atoms will be recalculated
 based on the new `cell`. 
 """
-function set_cell!(structure::AbstractStructure, c::Mat3)
+function set_cell!(structure::Structure, c::Mat3)
     @warn "Converting cell to the units of the current cell of the structure."
-    cell_ = uconvert.(unit(cell(structure)[1]), c)
-    for a in atoms(structure)
-        set_position!(a, position_cryst(a), cell_)
+    cell_ = uconvert.(Ang, c)
+    for a in structure.atoms
+        set_position!(a, a.position_cryst, cell_)
     end
     return structure.cell = cell_
 end
-set_cell!(job::DFJob, cell_::Mat3) = set_cell!(job.structure, cell_)
+
+"""
+    scale_cell!(structure::Structure, scalemat::Matrix)
+    
+Rescales the cell of the `structure`.
+"""
+function scale_cell!(structure::Structure, scalemat::Matrix)
+    new_cell = Mat3(structure.cell * scalemat)
+    return set_cell!(structure, new_cell)
+end
 
 """
     volume(cell::Mat3)
     volume(str::Structure)
-    volume(job::DFJob)
 
 Calculates the volume for the unit cell.
 """
 volume(cell::Mat3) = det(cell)
-volume(str::Structure) = volume(cell(str))
-volume(job::DFJob) = volume(structure(job))
-
+volume(str::Structure) = volume(str.cell)
 reciprocal(cell::AbstractMatrix) = inv(cell)
 
 """
-    a(str::AbstractStructure)
+    a(str::Structure)
 
 First lattice vector.
 """
-a(str::AbstractStructure) = cell(str)[:, 1]
+a(str::Structure) = str.cell[:, 1]
 """
-    b(str::AbstractStructure)
+    b(str::Structure)
 
 Second lattice vector.
 """
-b(str::AbstractStructure) = cell(str)[:, 2]
+b(str::Structure) = str.cell[:, 2]
 """
-    c(str::AbstractStructure)
+    c(str::Structure)
 
 Third lattice vector.
 """
-c(str::AbstractStructure) = cell(str)[:, 3]
+c(str::Structure) = str.cell[:, 3]
 
 """
-    create_supercell(structure::AbstractStructure, na::Int, nb::Int, nc::Int; make_afm=false)
-    create_supercell(structure::AbstractStructure, na::UnitRange, nb::UnitRange, nc::UnitRange; make_afm=false)
+    create_supercell(structure::Structure, na::Int, nb::Int, nc::Int; make_afm=false)
+    create_supercell(structure::Structure, na::UnitRange, nb::UnitRange, nc::UnitRange; make_afm=false)
 
 Takes a structure and creates a supercell from it with: the given amount of additional cells if (`na::Int, nb::Int, nc::Int`) along the a, b, c direction, or amount of cells specified by the ranges i.e. `-1:1, -1:1, -1:1` would create a 3x3x3 supercell.
 If `make_afm` is set to `true` all the labels and magnetizations of the magnetic atoms will be reversed in a checkerboard fashion.
 """
-function create_supercell(structure::AbstractStructure, na::UnitRange, nb::UnitRange,
+function create_supercell(structure::Structure, na::UnitRange, nb::UnitRange,
                           nc::UnitRange; make_afm = false)
     orig_ats  = atoms(structure)
-    orig_cell = cell(structure)
+    orig_cell = structure.cell
     scale_mat = diagm(0 => length.([na, nb, nc]))
 
     orig_uats = unique(orig_ats)
@@ -144,89 +158,75 @@ function create_supercell(structure::AbstractStructure, na::UnitRange, nb::UnitR
         transl_vec = orig_cell * [ia, ib, ic]
         factor = isodd(ia + ib + ic) ? -1 : 1
         for at in orig_ats
-            cart_pos = position_cart(at) + transl_vec
+            cart_pos = at.position_cart + transl_vec
             cryst_pos = inv(new_cell) * cart_pos
-            if make_afm && ismagnetic(at)
-                new_magnetization = factor * magnetization(at)
+            if make_afm && norm(at.magnetization) != 0
+                new_magnetization = factor * at.magnetization
                 push!(new_atoms,
-                      Atom(at; projections = deepcopy(projections(at)),
+                      Atom(at; projections = deepcopy(at.projections),
                            magnetization = new_magnetization, position_cart = cart_pos,
                            position_cryst = Point3(cryst_pos)))
             else
                 push!(new_atoms,
-                      Atom(at; projections = deepcopy(projections(at)),
+                      Atom(at; projections = deepcopy(at.projections),
                            position_cart = cart_pos, position_cryst = Point3(cryst_pos)))
             end
         end
     end
-    out = Structure(name(structure), Mat3(new_cell), new_atoms, data(structure))
+    out = Structure(Mat3(new_cell), new_atoms)
     sanitize_magnetization!(out)
     return out 
 end
 
-function create_supercell(structure::AbstractStructure, na::Int, nb::Int, nc::Int;
+function create_supercell(structure::Structure, na::Int, nb::Int, nc::Int;
                           make_afm = false)
     return create_supercell(structure, 0:na, 0:nb, 0:nc; make_afm = make_afm)
 end
 
-create_supercell(job::DFJob, args...; kwargs...) = create_supercell(structure(job), args...; kwargs...)
-
-"""
-    scale_cell!(structure::Structure, scalemat::Matrix)
-    scale_cell!(job::DFJob, scalemat::Matrix)
-    
-Rescales the cell of the `structure`.
-"""
-function scale_cell!(structure::Structure, scalemat::Matrix)
-    new_cell = Mat3(cell(structure) * scalemat)
-    return set_cell!(structure, new_cell)
-end
-scale_cell!(job::DFJob, s) = scale_cell!(job.structure, s)
-
 ### Atoms ###
 """
-    getindex(structure::AbstractStructure, i::Int)
-    getindex(structure::AbstractStructure, name::Symbol)
-    getindex(structure::AbstractStructure, el::Element)
+    getindex(structure::Structure, i::Int)
+    getindex(structure::Structure, name::Symbol)
+    getindex(structure::Structure, el::Element)
 
 Returns the `i`th atom in `structure`, or all atoms with `name` or are of element `el`.
 """
-Base.getindex(str::AbstractStructure, i::Int) = atoms(str)[i]
-Base.getindex(str::AbstractStructure, el::Symbol) = atoms(x -> x.name == el, str)
-Base.getindex(str::AbstractStructure, el::Element) = atoms(x -> element(x) == el, str)
-ismagnetic(str::Structure) = any(x -> norm(magnetization(x)) > 0, atoms(str))
+Base.getindex(str::Structure, i::Int) = atoms(str)[i]
+Base.getindex(str::Structure, el::Symbol) = atoms(x -> x.name == el, str)
+Base.getindex(str::Structure, el::Element) = atoms(x -> x.element == el, str)
+ismagnetic(str::Structure) = any(x -> norm(x.magnetization) > 0, atoms(str))
 
 ## Magnetism ##
 function iscolin(str::Structure)
-    magats = filter(x -> norm(magnetization(x)) > 0, atoms(str))
+    magats = filter(x -> norm(x.magnetization) > 0, str.atoms)
     return !isempty(magats) &&
-           all(x -> isapprox(abs(normalize(magnetization(x)) ⋅ [0, 0, 1]), 1.0), magats)
+           all(x -> isapprox(abs(normalize(x.magnetization) ⋅ [0, 0, 1]), 1.0), magats)
 end
 
 function isnoncolin(str::Structure)
-    return any(x -> norm(magnetization(x)) > 0 &&
-                   !isapprox(abs(normalize(magnetization(x)) ⋅ [0, 0, 1]), 1.0), atoms(str))
+    return any(x -> norm(x.magnetization) > 0 &&
+                   !isapprox(abs(normalize(x.magnetization) ⋅ [0, 0, 1]), 1.0), str.atoms)
 end
 
 function sanitize_magnetization!(str::Structure)
-    magnetic_ats = filter(ismagnetic, atoms(str))
-    magnetic_elements = map(element, magnetic_ats)
+    magnetic_ats = filter(a -> norm(a.magnetization) != 0, str.atoms)
+    magnetic_elements = map(x -> x.element, magnetic_ats)
     for e in magnetic_elements
         magnetizations = Vec3[]
         dftus          = DFTU[]
         names          = Symbol[]
-        for a in filter(x -> element(x) == e, magnetic_ats)
-            nameid = findfirst(x -> x == name(a), names)
+        for a in filter(x -> x.element == e, magnetic_ats)
+            nameid = findfirst(x -> x == a.name, names)
             if nameid === nothing
-                push!(names, name(a))
-                push!(magnetizations, magnetization(a))
-                push!(dftus, dftu(a))
+                push!(names, a.name)
+                push!(magnetizations, a.magnetization)
+                push!(dftus, a.dftu)
             else
                 mag = magnetizations[nameid]
                 dftu_ = dftus[nameid]
-                if (magnetization(a) != mag || dftu(a) != dftu_)
-                    id = findfirst(x -> dftus[x] == dftu(a) &&
-                                       magnetizations[x] == magnetization(a),
+                if (a.magnetization != mag || a.dftu != dftu_)
+                    id = findfirst(x -> dftus[x] == a.dftu &&
+                                       magnetizations[x] == a.magnetization,
                                    1:length(dftus))
                     if id === nothing
                         id = 1
@@ -236,15 +236,15 @@ function sanitize_magnetization!(str::Structure)
                             tname = Symbol(string(e.symbol) * "$id")
                         end
                         push!(names, tname)
-                        push!(magnetizations, magnetization(a))
-                        push!(dftus, dftu(a))
-                        oldname = name(a)
+                        push!(magnetizations, a.magnetization)
+                        push!(dftus, a.dftu)
+                        oldname = a.name
                         a.name = tname
-                        @info "Renamed atom from $oldname to $(name(a)) in order to distinguish different magnetization species."
+                        @info "Renamed atom from $oldname to $(a.name) in order to distinguish different magnetization species."
                     else
-                        oldname = name(a)
+                        oldname = a.name
                         a.name = names[id]
-                        @info "Renamed atom from $oldname to $(name(a)) in order to distinguish different magnetization species."
+                        @info "Renamed atom from $oldname to $(a.name) in order to distinguish different magnetization species."
                     end
                 end
             end
@@ -253,19 +253,19 @@ function sanitize_magnetization!(str::Structure)
 end
 
 """
-    polyhedron(at::AbstractAtom, atoms::Vector{<:AbstractAtom}, order::Int)
-    polyhedron(at::AbstractAtom, str::AbstractStructure, order::Int)
+    polyhedron(at::Atom, atoms::Vector{Atom}, order::Int)
+    polyhedron(at::Atom, str::Structure, order::Int)
 
 Returns a polyhedron around the atom, i.e. the `order` closest atoms.
 The returned atoms will be ordered according to their distance to the first one.
 In the case of a structure rather than a set of atoms, the search will
 be performed over all atoms in the structure.
 """
-function polyhedron(at::AbstractAtom, atoms::Vector{<:AbstractAtom}, order::Int)
+function polyhedron(at::Atom, atoms::Vector{Atom}, order::Int)
     return sort(atoms; by = x -> distance(x, at))[1:order]
 end
-function polyhedron(at::AbstractAtom, str::AbstractStructure, order::Int)
-    return polyhedron(at, atoms(create_supercell(str, -1:1, -1:1, -1:1)), order)
+function polyhedron(at::Atom, str::Structure, order::Int)
+    return polyhedron(at, create_supercell(str, -1:1, -1:1, -1:1).atoms, order)
 end
 
 ### SPGLIB ###
@@ -278,21 +278,19 @@ struct SPGStructure
 end
 
 function SPGStructure(s::Structure)
-    clattice = convert(Matrix{Cdouble}, ustrip.(cell(s)'))
-    cpositions = convert(Matrix{Cdouble}, hcat(position_cryst.(atoms(s))...))
-    uats = unique(atoms(s))
+    clattice = convert(Matrix{Cdouble}, ustrip.(s.cell'))
+    cpositions = convert(Matrix{Cdouble}, hcat(map(x -> x.position_cryst, s.atoms)...))
+    uats = unique(s.atoms)
     species_indices = Cint[findfirst(x -> isequal_species(x, at), uats) for at in atoms(s)]
     return SPGStructure(clattice, cpositions, species_indices)
 end
 
 """
-    symmetry_operators(j::DFJob; maxsize=52, tolerance=$DEFAULT_TOLERANCE)
     symmetry_operators(s::Structure; maxsize=52, tolerance=$DEFAULT_TOLERANCE)
 
 Finds and returns all the rotations and translations that are symmetry operators of the structure.
 """
 symmetry_operators(s::Structure; kwargs...) = symmetry_operators(SPGStructure(s); kwargs...)
-symmetry_operators(j::DFJob; kwargs...) = symmetry_operators(j.structure; kwargs...)
 function symmetry_operators(s::SPGStructure; maxsize = 52, tolerance = DEFAULT_TOLERANCE)
     rotations    = Array{Cint}(undef, 3, 3, maxsize)
     translations = Array{Cdouble}(undef, 3, maxsize)
@@ -306,13 +304,11 @@ function symmetry_operators(s::SPGStructure; maxsize = 52, tolerance = DEFAULT_T
 end
 
 """
-    international(j::DFJob; tolerance=$DEFAULT_TOLERANCE)
     international(s::Structure; tolerance=$DEFAULT_TOLERANCE)
 
 Returns the international symbol of the space group of the structure.
 """
 international(s::Structure; kwargs...) = international(SPGStructure(s); kwargs...)
-international(j::DFJob; kwargs...) = international(j.structure; kwargs...)
 function international(s::SPGStructure; tolerance = DEFAULT_TOLERANCE)
     res = zeros(Cchar, 11)
 
@@ -326,7 +322,6 @@ function international(s::SPGStructure; tolerance = DEFAULT_TOLERANCE)
 end
 
 """
-    niggli_reduce(j::DFJob; tolerance=$DEFAULT_TOLERANCE)
     niggli_reduce(s::Structure; tolerance=$DEFAULT_TOLERANCE)
 
 Returns the niggli reduced `Structure`.
@@ -351,8 +346,6 @@ function niggli_reduce(c::Mat3{Float64}; tolerance = DEFAULT_TOLERANCE)
     return Mat3{Float64}(ccell)
 end
 
-niggli_reduce(j::DFJob; kwargs...) = niggli_reduce(j.structure; kwargs...)
-
 function niggli_reduce!(s::SPGStructure; tolerance = DEFAULT_TOLERANCE)
     numops = ccall((:spg_niggli_reduce, SPGLIB), Cint, (Ptr{Cdouble}, Cdouble), s.lattice,
                    tolerance)
@@ -372,7 +365,7 @@ end
 function find_primitive(s::Structure; kwargs...)
     uats = unique(atoms(s))
     spg = find_primitive!(SPGStructure(s))
-    new_cell = Mat3{Float64}(spg.lattice) * unit(eltype(cell(s)))
+    new_cell = Mat3{Float64}(spg.lattice) * unit(eltype(s.cell))
     newats = eltype(uats)[]
     for i in 1:length(spg.species_indices)
         tat = deepcopy(uats[spg.species_indices[i]])
@@ -389,7 +382,7 @@ end
 
 Parameters `(a, b, c, α, β, γ)`of the calculation cell returned in a `NamedTuple`.
 """
-cell_parameters(s::Structure) = cell_parameters(ustrip.(cell(s)))
+cell_parameters(s::Structure) = cell_parameters(ustrip.(s.cell))
 function cell_parameters(cell::Mat3)
     G = transpose(cell) * cell
     a, b, c = sqrt.(diag(G))
@@ -426,13 +419,12 @@ function lattice_kind(s::Structure; tolerance = DEFAULT_TOLERANCE)
 end
 
 """
-    high_symmetry_kpath(s::AbstractStructure, npoints_per_segment::Int; package=QE, kwargs...)
-    high_symmetry_kpath(j::DFJob, npoints_per_segment::Int; package=QE, kwargs...)
+    high_symmetry_kpath(s::Structure, npoints_per_segment::Int; package=QE, kwargs...)
 
 Generates a QE bands calculation compliant high symmetry kpath, to be used with
 e.g. `set_kpoints!(bands_calculation, kpoints)`. 
 """
-function high_symmetry_kpath(s::AbstractStructure, npoints_per_segment::Int; package = QE,
+function high_symmetry_kpath(s::Structure, npoints_per_segment::Int; package = QE,
                              kwargs...)
     kpoints, kpath = high_symmetry_kpoints(s)
     out_k = NTuple{4,Float64}[]
@@ -448,13 +440,9 @@ function high_symmetry_kpath(s::AbstractStructure, npoints_per_segment::Int; pac
     out_k[end] = (out_k[end][1:3]..., 1.0)
     return out_k
 end
-function high_symmetry_kpath(j::DFJob, args...; kwargs...)
-    return high_symmetry_kpath(j.structure, args...; kwargs...)
-end
 
 """
     high_symmetry_kpoints(s::Structure; tolerance = 1e-5)
-    high_symmetry_kpoints(j::DFJob; tolerance = 1e-5)
 
 Returns `(kpoints, path)` where `kpoints` are the high-symmetry k-points,
 and `path` are the sections of the high symmetry path through the first Brillouin Zone.
@@ -464,7 +452,7 @@ function high_symmetry_kpoints(s::Structure; tolerance = DEFAULT_TOLERANCE)
     kind      = lattice_kind(s)
     primitive = find_primitive(s)
 
-    primcell = ustrip.(cell(primitive))
+    primcell = ustrip.(primitive.cell)
 
     a, b, c, α, β, γ = cell_parameters(s)
 

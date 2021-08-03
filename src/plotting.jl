@@ -68,12 +68,12 @@ end
     end
 end
 
-@recipe function f(job::DFJob, ymin, ymax, occupy_ratio = 0.2; overlap_spin = false)
+@recipe function f(job::Job, ymin, ymax, occupy_ratio = 0.2; overlap_spin = false)
     palette_ = ismissing(Plots.default(:palette)) ? :default : Plots.default(:palette)
     plt_colors = repeat(Plots.plot_color(pop!(plotattributes, :seriescolor, RGB.(Plots.color_list(Plots.palette(palette_))))),4)
     ylims --> [ymin, ymax]
     gridalpha --> 0.9 
-    if !isQEjob(job)
+    if !any(x -> eltype(x) == QE, job.calculations)
         error("output plotting only implemented for QE jobs.")
     end
     frmi = readfermi(job)
@@ -138,7 +138,7 @@ end
     end
 
     # PDOS part
-    projwfc = getfirst(x -> isprojwfc(x) && hasoutfile(x), calculations(job))
+    projwfc = getfirst(x -> isprojwfc(x) && hasoutfile(x), job.calculations)
     if projwfc !== nothing
         if bands isa NamedTuple && !overlap_spin
             doswindow = 3

@@ -86,7 +86,7 @@ push!(QECalculationInfos,
                                                               "output wavefunctions on a coarse grid to save memory")])],
                         QEDataBlockInfo[]))
 
-function qe_calculation_info(calculation::Calculation{QE})
+function qe_calculation_info(calculation::DFCalculation{QE})
     return getfirst(x -> occursin(x.exec, calculation.execs[end].exec), QECalculationInfos)
 end
 function qe_calculation_info(exec::AbstractString)
@@ -143,7 +143,7 @@ function qe_block_info(block_name::Symbol)
     end
 end
 
-function qe_all_block_flags(calculation::Calculation{QE}, block_name)
+function qe_all_block_flags(calculation::DFCalculation{QE}, block_name)
     return getfirst(x -> x.name == block, qe_calculation_info(calculation).control).flags
 end
 function qe_all_block_flags(exec::AbstractString, block_name)
@@ -159,7 +159,7 @@ function qe_block_variable(exec::AbstractString, flagname)
     return :error, QEFlagInfo()
 end
 
-function qe_exec(calculation::Calculation{QE})
+function qe_exec(calculation::DFCalculation{QE})
     exec = getfirst(x -> x.exec ∈ QE_EXECS, execs(calculation))
     if exec === nothing
         error("Calculation $calculation does not have a valid QE executable, please set it first.")
@@ -167,23 +167,23 @@ function qe_exec(calculation::Calculation{QE})
     return exec
 end
 
-function qe_block_variable(calculation::Calculation, flagname)
+function qe_block_variable(calculation::DFCalculation, flagname)
     return qe_block_variable(qe_exec(calculation).exec, flagname)
 end
 
-function flagtype(calculation::Calculation{QE}, flag)
+function flagtype(calculation::DFCalculation{QE}, flag)
     return eltype(qe_flaginfo(qe_exec(calculation), flag))
 end
 flagtype(::Type{QE}, exec, flag) = eltype(qe_flaginfo(exec, flag))
 
-ψ_cutoff_flag(::Calculation{QE}) = :ecutwfc
-ρ_cutoff_flag(::Calculation{QE}) = :ecutrho
+ψ_cutoff_flag(::DFCalculation{QE}) = :ecutwfc
+ρ_cutoff_flag(::DFCalculation{QE}) = :ecutrho
 
 # Wannier
 include(joinpath(depsdir, "wannier90flags.jl"))
 const WAN_FLAGS = _WAN_FLAGS()
 flagtype(::Type{Wannier90}, flag) = haskey(WAN_FLAGS, flag) ? WAN_FLAGS[flag] : Nothing
-flagtype(::Calculation{Wannier90}, flag) = flagtype(Wannier90, flag)
+flagtype(::DFCalculation{Wannier90}, flag) = flagtype(Wannier90, flag)
 
 
 # ELK
@@ -227,7 +227,7 @@ function elk_block_variable(flag_name::Symbol)
     end
 end
 
-flagtype(::Calculation{Elk}, flag::Symbol) = eltype(elk_flaginfo(flag))
+flagtype(::DFCalculation{Elk}, flag::Symbol) = eltype(elk_flaginfo(flag))
 
 
 # Abinit
@@ -272,4 +272,4 @@ flagtype(::Calculation{Elk}, flag::Symbol) = eltype(elk_flaginfo(flag))
 include(joinpath(depsdir, "abinitflags.jl"))
 const AbinitFlags = _ABINITFLAGS()
 #
-# flagtype(calculation::Calculation{Abinit}, flag) = haskey(AbinitFlags, flag) ? AbinitFlags[flag] : Nothing
+# flagtype(calculation::DFCalculation{Abinit}, flag) = haskey(AbinitFlags, flag) ? AbinitFlags[flag] : Nothing

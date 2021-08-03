@@ -78,7 +78,7 @@ function maybe_start_server(s::Server)
     end
     return s
 end
-maybe_start_server(j::Union{DFJob, String}) = (s = Server(j); return maybe_start_server(s))
+maybe_start_server(j::Union{Job, String}) = (s = Server(j); return maybe_start_server(s))
 
 kill_server(s::Server) = HTTP.put(s, "/kill_server")
 

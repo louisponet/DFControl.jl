@@ -276,7 +276,7 @@
 #     write(f, "acell 1.0 1.0 1.0\n")
 #     write(f, "xangst\n")
 #     for at in structure.atoms
-#         write(f, position_cart(at))
+#         write(f, at.position_cart)
 #         write(f, "\n")
 #     end
 #     write(f, "rprim\n")
@@ -288,7 +288,7 @@
 #     write(f, "typat\n")
 #     i = 1
 #     for at in structure.atoms
-#         write(f, "$(findfirst(x->name(x) == name(at), unique)) ")
+#         write(f, "$(findfirst(x-> x.name== at.name, unique)) ")
 #         if i == 3
 #             i=0
 #             write(f,"\n")
@@ -298,7 +298,7 @@
 #     write(f, "\n")
 #     write(f, "znucl ")
 #     for at in unique
-#         write(f, "$(element(at).Z) ")
+#         write(f, "$(at.element.Z) ")
 #     end
 #     write(f, "\n")
 # end
@@ -310,8 +310,8 @@
 # Takes all the calculations, sees which ones have the same structure and constructs calculation files for each seperate sturcture.
 # The filename of the first calculation of a certain structure is used as file for all the datasets.
 # """
-# function write_abi_datasets(calculations::Vector{DFCalculation{Abinit}}, directory)
-#     calculation_groups = Vector{Vector{DFCalculation{Abinit}}}([[calculations[end]]])
+# function write_abi_datasets(calculations::Vector{Calculation{Abinit}}, directory)
+#     calculation_groups = Vector{Vector{Calculation{Abinit}}}([[calculations[end]]])
 #     for calculation in reverse(calculations)[2:end]
 #         for group in calculation_groups
 #             if group[1].structure == calculation.structure

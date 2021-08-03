@@ -1,5 +1,4 @@
 import Base: parse
-using DFControl: flag
 
 #this is all pretty hacky with regards to the new structure and atom api. can for sure be a lot better!
 "Quantum espresso card option parser"
@@ -32,7 +31,7 @@ function qe_parse_time(str::AbstractString)
     return t
 end
 
-function qe_read_output(calculation::DFCalculation{QE}, args...; kwargs...)
+function qe_read_output(calculation::Calculation{QE}, args...; kwargs...)
     if isprojwfc(calculation)
         return qe_read_projwfc_output(calculation, args...; kwargs...)
     elseif ishp(calculation)
@@ -201,6 +200,16 @@ function qe_parse_total_energy(out, line, f)
     else
         out[:total_energy] = [parse(Float64, split(line)[end-1])]
     end
+end
+
+function parse_k_line(line)
+    line = replace(replace(line, ")" => " "), "(" => " ")
+    splt = split(line)
+    k1   = parse(Float64, splt[4])
+    k2   = parse(Float64, splt[5])
+    k3   = parse(Float64, splt[6])
+    w    = parse(Float64, splt[end])
+    return (v = Vec3(k1, k2, k3), w = w)
 end
 
 function qe_parse_k_cryst(out, line, f)
@@ -612,7 +621,7 @@ function qe_read_pdos(filename::String)
     return energies, values
 end
 
-function qe_read_projwfc_output(c::DFCalculation{QE}, args...; kwargs...)
+function qe_read_projwfc_output(c::Calculation{QE}, args...; kwargs...)
     out = Dict{Symbol,Any}()
     pdos_files = searchdir(c, ".pdos_")
     if flag(c, :kresolveddos) == true
@@ -776,10 +785,10 @@ end
 const QE_HP_PARSE_FUNCS = ["will be perturbed" => qe_parse_pert_at,
                            "Hubbard U parameters:" => qe_parse_Hubbard_U]
 
-function qe_read_hp_output(c::DFCalculation{QE}; parse_funcs = Pair{String,<:Function}[])
+function qe_read_hp_output(c::Calculation{QE}; parse_funcs = Pair{String,<:Function}[])
     out = parse_file(outpath(c), QE_HP_PARSE_FUNCS; extra_parse_funcs = parse_funcs)
 
-    hubbard_file = joinpath(dir(c), """$(get(c, :prefix, "pwscf")).Hubbard_parameters.dat""")
+    hubbard_file = joinpath(c.dir, """$(get(c, :prefix, "pwscf")).Hubbard_parameters.dat""")
     if ispath(hubbard_file)
         merge(out,
               parse_file(hubbard_file, QE_HP_PARSE_FUNCS; extra_parse_funcs = parse_funcs))
@@ -885,14 +894,14 @@ function extract_atoms!(parsed_flags, atsyms, atom_block, pseudo_block,
         if haskey(pseudo_block.data, at_sym)
             pseudo = pseudo_block.data[at_sym]
         else
-            elkey = getfirst(x -> x != at_sym && element(x) == element(at_sym),
+            elkey = getfirst(x -> x != at_sym && x.element == at_sym.element,
                              keys(pseudo_block.data))
             pseudo = elkey !== nothing ? pseudo_block.data[elkey] :
                      (@warn "No Pseudo found for atom '$at_sym'.\nUsing Pseudo()."; Pseudo())
         end
         speciesid = findfirst(isequal(at_sym), atsyms)
         push!(atoms,
-              Atom(; name = at_sym, element = element(at_sym), position_cart = primv * pos,
+              Atom(; name = at_sym, element = at_sym.element, position_cart = primv * pos,
                    position_cryst = ustrip.(inv(cell) * pos), pseudo = pseudo,
                    magnetization = qe_magnetization(speciesid, parsed_flags),
                    dftu = qe_DFTU(speciesid, parsed_flags)))
@@ -929,7 +938,7 @@ end
     qe_read_calculation(filename, T=Float64; execs=[Exec(exec="pw.x")], run=true, structure_name="noname")
 
 Reads a Quantum Espresso calculation file. The `QE_EXEC` inside execs gets used to find which flags are allowed in this calculation file, and convert the read values to the correct Types.
-Returns a `DFCalculation{QE}` and the `Structure` that is found in the calculation.
+Returns a `Calculation{QE}` and the `Structure` that is found in the calculation.
 """
 function qe_read_calculation(filename; execs = [Exec(; exec = "pw.x")], run = true,
                              structure_name = "noname")
@@ -1092,7 +1101,7 @@ function qe_read_calculation(filename; execs = [Exec(; exec = "pw.x")], run = tr
 
     pop!.((parsed_flags,), [:prefix, :outdir], nothing)
     dir, file = splitdir(filename)
-    return DFCalculation{QE}(name = splitext(file)[1], dir = dir, flags = parsed_flags, data = datablocks, execs = execs, run = run),
+    return Calculation{QE}(name = splitext(file)[1], dir = dir, flags = parsed_flags, data = datablocks, execs = execs, run = run),
            structure
 end
 
@@ -1126,13 +1135,13 @@ function qe_writeflag(f, flag, value)
 end
 
 """
-    save(calculation::DFCalculation{QE}, structure, filename::String=inpath(calculation))
+    save(calculation::Calculation{QE}, structure, filename::String=inpath(calculation))
 
 Writes a Quantum Espresso calculation file.
 """
-function save(calculation::DFCalculation{QE}, structure,
+function save(calculation::Calculation{QE}, structure,
               filename::String = inpath(calculation); relative_positions = true)
-    if haskey(flags(calculation), :calculation)
+    if hasflag(calculation, :calculation)
         set_flags!(calculation,
                    :calculation => replace(calculation[:calculation], "_" => "-");
                    print = false)
@@ -1207,14 +1216,32 @@ function save(calculation::DFCalculation{QE}, structure,
     return
 end
 
-function write_structure(f, calculation::DFCalculation{QE}, structure;
+function write_data(f, data)
+    if typeof(data) <: Matrix
+        writedlm(f, data)
+    elseif typeof(data) <: Union{String, Symbol}
+        write(f, "$data\n")
+    elseif typeof(data) <: Vector && length(data[1]) == 1
+        write(f, join(string.(data), " "))
+    else
+        for x in data
+            for y in x
+                write(f, " $y")
+            end
+            write(f, "\n")
+        end
+    end
+end
+
+
+function write_structure(f, calculation::Calculation{QE}, structure;
                          relative_positions = true)
     unique_at    = unique(atoms(structure))
     pseudo_lines = String[]
     atom_lines   = String[]
     for at in unique_at
         push!(pseudo_lines,
-              "$(name(at)) $(element(at).atomic_weight)   $(pseudo(at).name)\n")
+              "$(at.name) $(at.element.atomic_weight)   $(at.pseudo.name)\n")
     end
 
     for at in atoms(structure)
@@ -1226,7 +1253,7 @@ function write_structure(f, calculation::DFCalculation{QE}, structure;
 
     write(f, "\n")
     write(f, "CELL_PARAMETERS (angstrom)\n")
-    write_cell(f, (ustrip.(uconvert.(Ang, cell(structure))))')
+    write_cell(f, (ustrip.(uconvert.(Ang, structure.cell)))')
     write(f, "\n")
 
     if relative_positions
@@ -1239,11 +1266,11 @@ function write_structure(f, calculation::DFCalculation{QE}, structure;
     return 
 end
 
-function qe_generate_pw2wancalculation(calculation::DFCalculation{Wannier90},
-                                       nscf_calculation::DFCalculation{QE}, runexecs)
+function qe_generate_pw2wancalculation(calculation::Calculation{Wannier90},
+                                       nscf_calculation::Calculation{QE}, runexecs)
     flags = Dict()
     flags[:prefix] = nscf_calculation[:prefix]
-    flags[:seedname] = "$(name(calculation))"
+    flags[:seedname] = "$(calculation.name)"
     flags[:outdir] = nscf_calculation[:outdir]
     flags[:wan_mode] = "standalone"
     flags[:write_mmn] = true
@@ -1262,6 +1289,6 @@ function qe_generate_pw2wancalculation(calculation::DFCalculation{Wannier90},
     end
     pw2wanexec = Exec("pw2wannier90.x", runexecs[2].dir)
     run = get(calculation.flags, :preprocess, false) && calculation.run
-    return DFCalculation{QE}(name = "pw2wan_$(flags[:seedname])", dir = DFC.dir(calculation), flags = flags,
+    return Calculation{QE}(name = "pw2wan_$(flags[:seedname])", dir = DFC.calc.dirlation), flags = flags,
                              data = InputData[], execs = [runexecs[1], pw2wanexec], run = run)
 end

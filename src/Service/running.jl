@@ -14,7 +14,7 @@ function main_loop()
     end
 end
 
-function spawn_worker(job::DFJob)
+function spawn_worker(job::Job)
     if ispath(joinpath(job, ".workflow/environment.jld2"))
         env_dat = DFControl.JLD2.load(joinpath(job, ".workflow/environment.jld2"))
         proc = addprocs(1; exeflags = "--project=$(env_dat["project"])")[1]
@@ -78,7 +78,7 @@ function handle_job_submission!(job_dirs_procs)
     end
 end
 
-function run_queue(job::DFJob, ctx::Dict; sleep_time = 10)
+function run_queue(job::Job, ctx::Dict; sleep_time = 10)
     logger = workflow_logger(job)
     with_logger(logger) do
         qd = queued_dir(job)

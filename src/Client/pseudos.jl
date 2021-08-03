@@ -44,20 +44,20 @@ end
 
 
 """
-    set_pseudo!(at::AbstractAtom, pseudo::Pseudo; print=true)
+    set_pseudo!(at::Atom, pseudo::Pseudo; print=true)
 
 Sets the pseudopotential `at` to `pseudo`, and the validity of the `Pseudo` is checked.
 """
-function set_pseudo!(at::DFC.AbstractAtom, pseudo::Pseudo; print = true)
-    print && @info "Pseudo of atom $(DFC.name(at)) set to $pseudo."
+function set_pseudo!(at::DFC.Atom, pseudo::Pseudo; print = true)
+    print && @info "Pseudo of atom $(at.name) set to $pseudo."
     return atom(at).pseudo = pseudo
 end
 
 """
-    set_pseudos!(job::DFJob, set::Symbol, specifier::String=""; kwargs...)
-    set_pseudos!(structure::AbstractStructure, set::Symbol, specifier::String=""; kwargs...)
-    set_pseudos!(job::DFJob, atsym::Symbol, set::Symbol, specifier::String=""; kwargs...)
-    set_pseudos!(structure::AbstractStructure, atsym::Symbol, set::Symbol, specifier::String=""; kwargs...)
+    set_pseudos!(job::Job, set::Symbol, specifier::String=""; kwargs...)
+    set_pseudos!(structure::Structure, set::Symbol, specifier::String=""; kwargs...)
+    set_pseudos!(job::Job, atsym::Symbol, set::Symbol, specifier::String=""; kwargs...)
+    set_pseudos!(structure::Structure, atsym::Symbol, set::Symbol, specifier::String=""; kwargs...)
 
 Sets the pseudopotentials of the atoms inside the `structure` (or `job.structure`) to the ones of `set`.
 `specifier` can be specified to select a specific pseudo if multiple pseudopotentials
@@ -70,17 +70,17 @@ will select the pseudo file that contains "rrkjus" in the filename.
 
 If `atsym` is used, only the pseudos of the atoms with that name will be set.
 
-    set_pseudos!(job::DFJob, at_pseudos::Pair{Symbol, Pseudo}...; kwargs...)
-    set_pseudos!(structure::AbstractStructure, at_pseudos::Pair{Symbol, Pseudo}...; kwargs...)
+    set_pseudos!(job::Job, at_pseudos::Pair{Symbol, Pseudo}...; kwargs...)
+    set_pseudos!(structure::Structure, at_pseudos::Pair{Symbol, Pseudo}...; kwargs...)
 
 Convenience function that allows to set pseudopotentials for multiple atom types at the same time.
 e.g. `set_pseudos!(job, :Si => getdefault_pseudo(:Si, :sssp)
 """
-function set_pseudos!(job::DFJob, set, specifier::String = ""; kwargs...)
+function set_pseudos!(job::Job, set, specifier::String = ""; kwargs...)
     return set_pseudos!(job.structure, pseudos(job.server, set, specifier); kwargs...)
 end
 
-function set_pseudos!(structure::DFC.AbstractStructure, pseudos; kwargs...)
+function set_pseudos!(structure::DFC.Structure, pseudos; kwargs...)
     for at in structure.atoms
         pseudo = get(pseudos, at.element.symbol, nothing)
         if pseudo === nothing
@@ -92,11 +92,11 @@ function set_pseudos!(structure::DFC.AbstractStructure, pseudos; kwargs...)
 end
 
 "sets the pseudopotentials to the specified one in the default pseudoset."
-function set_pseudos!(job::DFJob, at_pseudos::Pair{Symbol,Pseudo}...; kwargs...)
+function set_pseudos!(job::Job, at_pseudos::Pair{Symbol,Pseudo}...; kwargs...)
     return set_pseudos!(job.structure, at_pseudos...; kwargs...)
 end
 
-function set_pseudos!(structure::DFC.AbstractStructure, at_pseudos::Pair{Symbol,Pseudo}...;
+function set_pseudos!(structure::DFC.Structure, at_pseudos::Pair{Symbol,Pseudo}...;
                       kwargs...)
     for (atsym, pseudo) in at_pseudos
         for at in structure[atsym]

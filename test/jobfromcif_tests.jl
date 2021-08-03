@@ -18,15 +18,15 @@ testjobpath = joinpath(testdir, "testassets", "test_job")
 
     str = Structure(joinpath(testdir, "testassets/Ni.cif"); name = "Ni")
 
-    calculations = [DFCalculation{QE}("vcrelax", :calculation => "vc-relax", :verbosity => "high", :ion_dynamics => "bfgs", :cell_dynamics => "bfgs";
+    calculations = [Calculation{QE}("vcrelax", :calculation => "vc-relax", :verbosity => "high", :ion_dynamics => "bfgs", :cell_dynamics => "bfgs";
                                       execs = pw_excs,
                                       data = [InputData(:k_points, :automatic,
                                                         [6, 6, 6, 1, 1, 1])]),
-                    DFCalculation{QE}(; name = "scf", execs = pw_excs,
+                    Calculation{QE}(; name = "scf", execs = pw_excs,
                                       flags = Dict(:calculation => "scf", :verbosity => "high"),
                                       data = [InputData(:k_points, :automatic,
                                                         [4, 4, 4, 1, 1, 1])])]
-    job = DFJob(name, str, calculations, :ecutwfc => 40.0, :occupations => "smearing", :degauss=>0.01, :conv_thr => 1e-6, :nbnd => 18;
+    job = Job(name, str, calculations, :ecutwfc => 40.0, :occupations => "smearing", :degauss=>0.01, :conv_thr => 1e-6, :nbnd => 18;
                 #kwargs
                 header = header, dir = dir)
 
@@ -51,7 +51,7 @@ testjobpath = joinpath(testdir, "testassets", "test_job")
     @test job["projwfc"].execs == [pw_excs[1], Exec("projwfc.x", pw_excs[2].dir)]
     @test show(job) == nothing
 
-    job2 = DFJob(job.dir)
+    job2 = Job(job.dir)
     for (c1, c2) in zip(job2.calculations, job.calculations)
         @test c2 == c1
     end
@@ -63,11 +63,11 @@ end
 refjobpath =joinpath(testdir, "testassets", "reference_job")
 
 @testset "reference comparison" begin
-    job = DFJob(testjobpath)
+    job = Job(testjobpath)
     orig_job = deepcopy(job)
     job.structure = create_supercell(job, 1, 0, 0, make_afm = true)
     
-    job2 = DFJob(refjobpath)
+    job2 = Job(refjobpath)
     @test job2.structure == job.structure
     
     for f in DFControl.searchdir(job2, ".out")
@@ -85,7 +85,7 @@ refjobpath =joinpath(testdir, "testassets", "reference_job")
     end
     save(job)
     @test !ispath(joinpath(job, "scf.out"))
-    job = DFJob(testjobpath)
+    job = Job(testjobpath)
     
     for (c1, c2) in zip(job2.calculations, job.calculations)
         @test c2 == c1

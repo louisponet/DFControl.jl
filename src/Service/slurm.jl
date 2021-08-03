@@ -17,12 +17,12 @@ function slurm_history_jobdir(startdate = yesterday()) #format of startdate = yy
 end
 
 """
-    slurm_jobid(job::DFJob, startdate=yesterday())
+    slurm_jobid(job::Job, startdate=yesterday())
 
 Looks through the jobs since the `startdate` and returns the job ID if found.
 Returns -1 if the jobID was not found in the list of jobs since `startdate`.
 """
-function slurm_jobid(job::DFJob, startdate = yesterday())
+function slurm_jobid(job::Job, startdate = yesterday())
     if haskey(job.metadata, :slurmid)
         return job.metadata[:slurmid]
     end
@@ -45,11 +45,11 @@ function slurm_jobid(job::DFJob, startdate = yesterday())
 end
 
 """
-    slurm_isrunning(job::DFJob)
+    slurm_isrunning(job::Job)
 
 Returns whether the job is running.
 """
-function slurm_isrunning(job::DFJob)
+function slurm_isrunning(job::Job)
     id = slurm_jobid(job)
     try
         if id != -1
@@ -66,11 +66,11 @@ function slurm_isrunning(job::DFJob)
 end
 
 """
-    slurm_isqueued(job::DFJob)
+    slurm_isqueued(job::Job)
 
 Returns whether the job is queued.
 """
-function slurm_isqueued(job::DFJob)
+function slurm_isqueued(job::Job)
     id = slurm_jobid(job)
     if id != -1
         if slurm_process_command(`sacct -j $id --format=state`)[1] == "PENDING"
@@ -87,7 +87,7 @@ end
     slurm_mostrecent(index=1, jobfile="job.tt", startdate=lastmonth(), args...; kwargs...)
 
 Returns whether the `index`th most recent job with job script `jobfile`.
-Extra args and kwargs will be passed to the `DFJob` constructor.
+Extra args and kwargs will be passed to the `Job` constructor.
 """
 function slurm_mostrecent(index = 1, jobfile = "job.tt", startdate = lastmonth(), args...;
                           kwargs...)
@@ -95,5 +95,5 @@ function slurm_mostrecent(index = 1, jobfile = "job.tt", startdate = lastmonth()
     @assert length(dirs) >= index "There are less recent jobs since startdate $startdate than the index $index."
     jobpath = joinpath(dirs[index], jobfile)
     @assert ispath(jobpath) "The directory $(dirs[index]) does not have a job file with filename $jobfile."
-    return DFJob(dirs[index], args...; job_fuzzy = jobfile, kwargs...)
+    return Job(dirs[index], args...; job_fuzzy = jobfile, kwargs...)
 end

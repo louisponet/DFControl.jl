@@ -12,7 +12,7 @@ function main_job_version(dir::AbstractString)
     end
     return 0
 end
-main_job_version(job::DFJob) = main_job_version(job.dir)
+main_job_version(job::Job) = main_job_version(job.dir)
 
 function job_versions(dir::AbstractString)
     versions = Int[]
@@ -26,12 +26,12 @@ function job_versions(dir::AbstractString)
 end
 
 """
-    versions(job::DFJob)
+    versions(job::Job)
 
 Returs the valid versions of `job`.
 """
-versions(job::DFJob) = job_versions(main_job_dir(job))
-version(job::DFJob) = job.version
+versions(job::Job) = job_versions(main_job_dir(job))
+version(job::Job) = job.version
 
 function last_job_version(dir::AbstractString)
     versions = job_versions(dir)
@@ -39,11 +39,11 @@ function last_job_version(dir::AbstractString)
 end
 
 """
-    last_version(job::DFJob)
+    last_version(job::Job)
 
 Returns the last version number of `job`.
 """
-last_version(job::DFJob) = last_job_version(main_job_dir(job))
+last_version(job::Job) = last_job_version(main_job_dir(job))
 
 function version_dir(dir::AbstractString, version::Int)
     tpath = joinpath(dir, VERSION_DIR_NAME, "$version")
@@ -54,19 +54,19 @@ function version_dir(dir::AbstractString, version::Int)
     end
     return error("Version $version not found.")
 end
-version_dir(job::DFJob) = version_dir(main_job_dir(job), job.version)
-version_dir(job::DFJob, version::Int) = version_dir(main_job_dir(job), version)
+version_dir(job::Job) = version_dir(main_job_dir(job), job.version)
+version_dir(job::Job, version::Int) = version_dir(main_job_dir(job), version)
 
 exists_version(dir::AbstractString, version::Int) = version ∈ job_versions(dir)
-exists_version(job::DFJob, version::Int) = exists_version(main_job_dir(job), version)
+exists_version(job::Job, version::Int) = exists_version(main_job_dir(job), version)
 
 """
-    maybe_cp_main_version(job::DFJob)
+    maybe_cp_main_version(job::Job)
 
 Looks in the `job.dir` for the version of the job in the main directory, and copies it to the
 respective directory in the `.versions`.
 """
-function maybe_cp_main_version(job::DFJob)
+function maybe_cp_main_version(job::Job)
     maindir = main_job_dir(job)
     if ispath(joinpath(maindir, "job.tt"))
         tjob = load_job(maindir)
@@ -75,24 +75,24 @@ function maybe_cp_main_version(job::DFJob)
 end
 
 """
-    switch_version!(job::DFJob[, version::Int])
+    switch_version!(job::Job[, version::Int])
 
 Switches the version of `job` to one of the previously stored ones.
 It will save also the current version for future reference.
 """
-function switch_version!(job::DFJob, version::Int)
+function switch_version!(job::Job, version::Int)
     cur_version = job.version
     if version != cur_version
         version_assert(job, version)
         out = load_job(main_job_dir(job); version = version)
-        for f in fieldnames(DFJob)
+        for f in fieldnames(Job)
             setfield!(job, f, getfield(out, f))
         end
     end
     return job
 end
 
-function switch_version!(job::DFJob)
+function switch_version!(job::Job)
     vs = versions(job)
     timestamps = []
     for v in vs
@@ -120,12 +120,12 @@ function version_assert(job, version)
 end
 
 """
-    rm_version!(job::DFJob, version::Int)
-    rm_versions!(job::DFJob, versions::Int...)
+    rm_version!(job::Job, version::Int)
+    rm_versions!(job::Job, versions::Int...)
 
 Removes the specified `versions` from the `job` if they exist.
 """
-function rm_version!(job::DFJob, version::Int)
+function rm_version!(job::Job, version::Int)
     version_assert(job, version)
     if version == main_job_version(job)
         for f in readdir(job.dir)
@@ -158,7 +158,7 @@ function rm_version!(job::DFJob, version::Int)
     end
 end
 
-function rm_versions!(job::DFJob, versions::Int...)
+function rm_versions!(job::Job, versions::Int...)
     for v in versions
         rm_version!(job, v)
     end

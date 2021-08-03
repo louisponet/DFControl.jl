@@ -45,16 +45,16 @@ function maybe_register_job(abspath::String)
         end
     end
 end
-maybe_register_job(job::DFJob) = maybe_register_job(job.dir)
+maybe_register_job(job::Job) = maybe_register_job(job.dir)
 
 """
     registered_jobs(fuzzy::AbstractString = "")
 
-Lists all the known [`DFJobs`](@ref DFJob) directories that contain `fuzzy`.
+Lists all the known [`Jobs`](@ref Job) directories that contain `fuzzy`.
 Intended to be used as:
 ```julia
 job_dirs = registered_jobs("NiO")
-job = DFJob(job_dirs[1])
+job = Job(job_dirs[1])
 ```
 """
 function registered_jobs(fuzzy::AbstractString = "")
@@ -78,7 +78,7 @@ end
 """
     archived_jobs(fuzzy::AbstractString = "")
 
-Returns a `Vector` of pairs with all archived [`DFJobs`](@ref DFJob) whose directory contains the fuzzy as the first, and their description as the second item of the pair.
+Returns a `Vector` of pairs with all archived [`Jobs`](@ref Job) whose directory contains the fuzzy as the first, and their description as the second item of the pair.
 """
 function archived_jobs(fuzzy::AbstractString = "")
     cleanup_job_registry!(; print = false)
@@ -89,14 +89,14 @@ end
 """
     load_jobs(fuzzy::AbstractString)
 
-Loads all the known [`DFJobs`](@ref DFJob) whose `dir` contains `fuzzy`.
+Loads all the known [`Jobs`](@ref Job) whose `dir` contains `fuzzy`.
 """
-load_jobs(fuzzy::AbstractString) = DFJob.(registered_jobs(fuzzy))
+load_jobs(fuzzy::AbstractString) = Job.(registered_jobs(fuzzy))
 
 """
     load_running_jobs(fuzzy::AbstractString = "")
 
-Loads all [`DFJobs`](@ref DFJob) that are currently running.
+Loads all [`Jobs`](@ref Job) that are currently running.
 """
 function load_running_jobs(fuzzy::AbstractString = "")
     jobs = load_jobs(fuzzy)

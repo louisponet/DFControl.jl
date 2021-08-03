@@ -3,7 +3,7 @@ using ..DFControl: TEMP_CALC_DIR
 function load_job(job_dir::AbstractString, version::Int=-1)
     if ispath(job_dir)
         if occursin(VERSION_DIR_NAME, job_dir)
-            error("It is not allowed to directly load a job version, please use `DFJob(dir, version=$(splitdir(job_dir)[end]))`")
+            error("It is not allowed to directly load a job version, please use `Job(dir, version=$(splitdir(job_dir)[end]))`")
         end
         if version != -1
             real_path = version_dir(job_dir, version)
@@ -14,7 +14,7 @@ function load_job(job_dir::AbstractString, version::Int=-1)
         else
             error("No valid job found in $job_dir.")
         end
-        job = DFJob(; merge((dir = real_path, version = real_version),
+        job = Job(; merge((dir = real_path, version = real_version),
                     read_job_calculations(joinpath(real_path, "job.tt")))...)
         maybe_register_job(job)
         return job
@@ -24,7 +24,7 @@ function load_job(job_dir::AbstractString, version::Int=-1)
 end
 
 
-function workflow_logger(job::DFJob)
+function workflow_logger(job::Job)
     return TeeLogger(MinLevelLogger(FileLogger(joinpath(job, ".workflow", "info.log");
                                                append = true), Logging.Info),
                      MinLevelLogger(FileLogger(joinpath(job, ".workflow", "info.log");
@@ -33,10 +33,10 @@ function workflow_logger(job::DFJob)
                                                append = true), Logging.Error))
 end
 
-queued_dir(job::DFJob, args...) = joinpath(job, ".workflow/queued", args...)
-finished_dir(job::DFJob, args...) = joinpath(job, ".workflow/finished", args...)
+queued_dir(job::Job, args...) = joinpath(job, ".workflow/queued", args...)
+finished_dir(job::Job, args...) = joinpath(job, ".workflow/finished", args...)
 
-function queue_steps(job::DFJob, funcs)
+function queue_steps(job::Job, funcs)
     qd = queued_dir(job)
     if !ispath(qd)
         mkpath(qd)
@@ -48,7 +48,7 @@ function queue_steps(job::DFJob, funcs)
     end
 end
 
-function write_workflow_files(job::DFJob)
+function write_workflow_files(job::Job)
     all = string.(values(Base.loaded_modules))
     valid = String[]
     ks = keys(Pkg.project().dependencies)
@@ -63,7 +63,7 @@ function write_workflow_files(job::DFJob)
 end
 
 
-function clear_queue!(job::DFJob)
+function clear_queue!(job::Job)
     qd = queued_dir(job)
     if !ispath(qd)
         return
@@ -73,17 +73,17 @@ function clear_queue!(job::DFJob)
     end
 end
 
-queued(job::DFJob) = readdir(queued_dir(job))
-finished(job::DFJob) = readdir(finished_dir(job))
+queued(job::Job) = readdir(queued_dir(job))
+finished(job::Job) = readdir(finished_dir(job))
 
-# function submit_workflow(job::DFJob, funcs, d::Daemon = init_daemon())
+# function submit_workflow(job::Job, funcs, d::Daemon = init_daemon())
 #     queue_steps(job, funcs)
 #     write_workflow_files(job)
 #     while !is_started(d)
 #         sleep(1)
 #     end
 #     return runexpr("""
-#                DFControl.spawn_worker(DAEMON, DFJob("$(job.dir)"))
+#                DFControl.spawn_worker(DAEMON, Job("$(job.dir)"))
 #                DFControl.save(DAEMON)
 #                """; port = d.port)
 # end
@@ -91,7 +91,7 @@ finished(job::DFJob) = readdir(finished_dir(job))
 mods_test() = Base.loaded_modules
 
 """
-    save(job::DFJob)
+    save(job::Job)
 
 Saves the job's calculations and `job.tt` submission script in `job.dir`.
 Some sanity checks will be performed on the validity of flags, execs, pseudopotentials, etc.
@@ -101,7 +101,7 @@ If a previous job is present in the job directory (indicated by a valid job scri
 it will be copied to the `.versions` sub directory as the previous version of `job`,
 and the version of `job` will be incremented. 
 """
-function save(job::DFJob; kwargs...)
+function save(job::Job; kwargs...)
 
     #Since at this stage we know the job will belong to the current localhost we change the server
     job.server = "localhost"
@@ -131,7 +131,7 @@ function save(job::DFJob; kwargs...)
 end
 
 """
-    submit(job::DFJob; kwargs...)
+    submit(job::Job; kwargs...)
 
 First saves the job, then tries to submit the job script through `sbatch job.tt` or `bash job.tt` if the former command fails.
 `kwargs...` get passed to `save(job; kwargs...)`.
@@ -144,11 +144,11 @@ end
 
 
 """
-    last_running_calculation(job::DFJob)
+    last_running_calculation(job::Job)
 
-Returns the last `DFCalculation` for which an output file was created.
+Returns the last `Calculation` for which an output file was created.
 """
-function last_running_calculation(job::DFJob)
+function last_running_calculation(job::Job)
     t = mtime(DFC.scriptpath(job))
     for (i, c) in enumerate(reverse(job.calculations))
         p = DFC.outpath(c)
@@ -161,14 +161,14 @@ end
 for (f, strs) in zip((:cp, :mv), (("copy", "Copies"), ("move", "Moves")))
     @eval begin
         """
-            $($f)(job::DFJob, dest::AbstractString; all=false, temp=false, kwargs...)
+            $($f)(job::Job, dest::AbstractString; all=false, temp=false, kwargs...)
 
         $($(strs[2])) the contents of `job.dir` to `dest`. If `all=true`, it will also $($(strs[1])) the
         `.version` directory with all previous versions. If `temp=true` it will override
         `job.copy_temp_folders` and $($(strs[1])) also the temporary calculation directories.
         The `kwargs...` are passed to `Base.$($f)`.
         """
-        function Base.$f(job::DFJob, dest::AbstractString; all = false, temp = false,
+        function Base.$f(job::Job, dest::AbstractString; all = false, temp = false,
                          kwargs...)
             if !ispath(dest)
                 mkpath(dest)
@@ -190,7 +190,7 @@ for (f, strs) in zip((:cp, :mv), (("copy", "Copies"), ("move", "Moves")))
     end
 end
 
-is_slurm_job(job::DFJob) = haskey(job.metadata, :slurmid)
+is_slurm_job(job::Job) = haskey(job.metadata, :slurmid)
 
 """
     isrunning(job_dir::String)
@@ -237,18 +237,18 @@ function dirsize(path::String)
 end
 
 """
-    filesize(job::DFJob)
+    filesize(job::Job)
 
 Total filesize on disk for a job and all its versions.
 """
-Base.filesize(job::DFJob) = dirsize(job.dir)
+Base.filesize(job::Job) = dirsize(job.dir)
 
 """
-    cleanup(job::DFJob)
+    cleanup(job::Job)
     
 Cleanup `job.dir` interactively.
 """
-function cleanup(job::DFJob)
+function cleanup(job::Job)
     labels = String[]
     paths = String[]
     for v in versions(job)
@@ -278,7 +278,7 @@ function save_metadata(job)
                    version = job.version)
 end
 
-timestamp(job::DFJob) = job.metadata[:timestamp]
+timestamp(job::Job) = job.metadata[:timestamp]
 timestamp!(job, time) = job.metadata[:timestamp] = time
 has_timestamp(job) = haskey(job.metadata, :timestamp)
 
@@ -294,7 +294,7 @@ end
 exists_job(d::AbstractString) = ispath(d) && ispath(joinpath(d, "job.tt"))
 
 "Finds the output files for each of the calculations of a job, and groups all found data into a dictionary."
-function outputdata(job::DFJob, calculations::Vector{DFCalculation}; print = true,
+function outputdata(job::Job, calculations::Vector{Calculation}; print = true,
                     onlynew = false)
     if DFC.isarchived(job) && ispath(joinpath(job, "results.jld2"))
         return DFC.JLD2.load(joinpath(job, "results.jld2"))["outputdata"]
@@ -304,27 +304,27 @@ function outputdata(job::DFJob, calculations::Vector{DFCalculation}; print = tru
     #TODO Think about storing results.jld2
     for calculation in calculations
         #TODO Would I ever not want to do onlynew ?
-        newout = DFC.hasnewout(calculation, stime)
+        newout = mtime(outpath(calculation)) > stime
         if onlynew && !newout
             continue
         end
         tout = outputdata(calculation; print = print, overwrite = newout)
         if !isempty(tout)
-            datadict[DFC.name(calculation)] = tout
+            datadict[calculation.name] = tout
         end
     end
     tmp = tempname() * ".jld2" 
     out = DFC.JLD2.save(tmp, "outputdata", datadict)
     return tmp
 end
-outputdata(job::DFJob; kwargs...) = outputdata(job, job.calculations; kwargs...)
+outputdata(job::Job; kwargs...) = outputdata(job, job.calculations; kwargs...)
 
 """
     main_job_dir(dir::AbstractString)
-    main_job_dir(job::DFJob)
+    main_job_dir(job::Job)
 
 Returns the main directory of the job, also when the job's version is not the one
 in the main directory.
 """
 main_job_dir(dir::AbstractString) = split(dir, VERSION_DIR_NAME)[1]
-main_job_dir(job::DFJob) = main_job_dir(job.dir)
+main_job_dir(job::Job) = main_job_dir(job.dir)

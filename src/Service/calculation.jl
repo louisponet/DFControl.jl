@@ -1,23 +1,21 @@
 #these are all the control data, they hold the flags that guide the calculation
 using ..DFControl: package, flagtype, flags
-outfiles(c::DFCalculation) = filter(ispath, [outpath(c)])
+outfiles(c::Calculation) = filter(ispath, [outpath(c)])
 
-function pdos(calculation::DFCalculation, args...)
+function pdos(calculation::Calculation, args...)
     @error "pdos reading not implemented for package $(package(calculation))."
 end
 
-function Emin_from_projwfc(calculation::DFCalculation, args...)
+function Emin_from_projwfc(calculation::Calculation, args...)
     @error "Emin_from_projwfc is not implemented for package $(package(calculation))."
 end
 
-function readoutput(c::DFCalculation; kwargs...)
+function readoutput(c::Calculation; kwargs...)
     @error "Output parsing for package $(package(c)) not implemented."
 end
 
-rm_outfiles(calc::DFCalculation) = rm.(outfiles(calc))
-
 """
-    outputdata(calculation::DFCalculation; extra_parse_funcs=[], print=true, overwrite=true)
+    outputdata(calculation::Calculation; extra_parse_funcs=[], print=true, overwrite=true)
 
 If an output file exists for `calculation` this will parse it and return a `Dict` with the parsed data.
 If `overwrite=false` and `calculation.outputdata` is not empty, this will be returned instead of reparsing the
@@ -42,7 +40,7 @@ end
 outputdata(job["scf"], extra_parse_funcs = ["number of atoms/cell" => qe_parse_nat])
 ```
 """
-function outputdata(calculation::DFCalculation;
+function outputdata(calculation::Calculation;
                     extra_parse_funcs::Vector{<:Pair{String}} = Pair{String}[],
                     print = true, overwrite = true)
     if DFC.hasoutput(calculation)
@@ -56,7 +54,7 @@ function outputdata(calculation::DFCalculation;
         end
     end
     print &&
-        (@warn "No output data or output file found for calculation: $(name(calculation)).")
+        (@warn "No output data or output file found for calculation: $(calculation.name).")
     return DFC.SymAnyDict()
 end
 

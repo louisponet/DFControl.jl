@@ -9,24 +9,24 @@ getfield_(x, f) = isdefined(x, f) ? getfield(x, f) : UNDEF
          [SubTree(Text("$f → "), getfield(x, f)) for f in fieldnames(typeof(x))[2:end]])
 end
 
-@render i::Inline x::DFCalculation begin
-    runstring = x.run ? span(".syntax--constant.syntax--other.syntax--symbol", name(x)) :
+@render i::Inline x::Calculation begin
+    runstring = x.run ? span(".syntax--constant.syntax--other.syntax--symbol", x.name):
                 span(".syntax--comment", name(x))
     fields = filter(x -> x != run, [fieldnames(typeof(x))[2:end]...])
     Tree(runstring, [SubTree(Text("$f → "), getfield(x, f)) for f in fields])
 end
 
-@render i::Inline x::AbstractAtom begin
-    pos = position_cart(x)
+@render i::Inline x::Atom begin
+    pos = x.position_cart
     Tree(Text("$(name(x))  ang: $(round(pos[1], digits=5)) $(round(pos[2], digits=5)) $(round(pos[3], digits=5))"),
          [SubTree(Text("$f → "), getfield_(x, f)) for f in fieldnames(typeof(x))[2:end]])
 end
 
-@render i::Inline x::DFJob begin
+@render i::Inline x::Job begin
     Tree(x.name,
          [SubTree(Text("$f → "), getfield(x, f)) for f in fieldnames(typeof(x))[3:end]])
 end
 
-@render i::Inline x::AbstractStructure begin
-    Tree(name(x), [SubTree(Text("$f → "), getfield(x, f)) for f in fieldnames(typeof(x))])
+@render i::Inline x::Structure begin
+    Tree(x.name,[SubTree(Text("$f → "), getfield(x, f)) for f in fieldnames(typeof(x))])
 end

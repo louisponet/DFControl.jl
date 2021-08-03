@@ -1,4 +1,6 @@
 module Resource
+    # This module handles all the handling, parsing and transforming HTTP commands,
+    # and brokers between HTTP requests and Service that fullfils them. 
     using HTTP, JSON3, Dates
     using ..DFControl, ..Service
     using ..Utils

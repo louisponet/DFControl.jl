@@ -1,10 +1,60 @@
+mutable struct ExecFlag{T}
+    symbol      :: Symbol
+    name        :: String
+    description :: String
+    value       :: T
+    minus_count :: Int
+end
+ExecFlag(e::ExecFlag, value) = ExecFlag(e.symbol, e.name, e.description, value, e.minus_count)
+function ExecFlag(p::Pair)
+    return ExecFlag(first(p), String(first(p)), "", last(p), 1)
+end
+function ExecFlag(p::Pair, count::Int)
+    return ExecFlag(first(p), String(first(p)), "", last(p), count)
+end
+
+StructTypes.StructType(::Type{<:ExecFlag}) = StructTypes.Struct()
+
+Base.hash(e::ExecFlag, h::UInt)        = hash(e.symbol, hash(e.value, h))
+Base.:(==)(e1::ExecFlag, e2::ExecFlag) = e1.symbol == e2.symbol && e1.value == e2.value
+Base.eltype(::ExecFlag{T}) where {T}   = T
+
+"""
+    Exec(;exec::String = "", dir::String = "", flags::Vector{ExecFlag} = ExecFlag[])
+
+Representation of an `executable` that will run the [`Calculation`](@ref Calculation).
+Basically `dir/exec --<flags>` inside a job script.
+
+    Exec(exec::String, dir::String, flags::Pair{Symbol}...)
+
+Will first transform `flags` into a `Vector{ExecFlag}`, and construct the [`Exec`](@ref). 
+"""
+@with_kw mutable struct Exec
+    exec::String = ""
+    dir::String = ""
+    flags::Vector{ExecFlag} = ExecFlag[]
+end
+
+function Exec(exec::String, dir::String, flags...)
+    _flags = ExecFlag[]
+    ismpi = occursin("mpi", exec)
+    for (f, v) in flags
+        if ismpi 
+            mflag = mpi_flag(f)
+            @assert mflag !== nothing "$f is not a recognized mpirun flag."
+        end
+        push!(_flags, ExecFlag(f => v))
+    end
+    return Exec(exec, dir, _flags)
+end
+
+StructTypes.StructType(::Type{Exec}) = StructTypes.Mutable()
+
 const RUN_EXECS = ["mpirun", "mpiexec", "srun"]
 
 hasflag(exec::Exec, s::Symbol) = findfirst(x -> x.symbol == s, exec.flags) != nothing
 
-Base.hash(e::ExecFlag, h::UInt) = hash(e.symbol, hash(e.value, h))
-Base.:(==)(e1::ExecFlag, e2::ExecFlag) = e1.symbol == e2.symbol && e1.value == e2.value
-Base.eltype(::ExecFlag{T}) where {T} = T
+path(exec::Exec)                       = joinpath(exec.dir, exec.exec)
 
 function Base.:(==)(e1::Exec, e2::Exec)
     if e1.exec != e2.exec || e1.dir != e2.dir
@@ -17,6 +67,22 @@ function Base.:(==)(e1::Exec, e2::Exec)
         end
         return true
     end
+end
+
+function Base.string(e::Exec)
+    direxec = joinpath(e.dir, e.exec)
+    str = "$direxec"
+    for flag in e.flags
+        str *= " $(join(fill('-', flag.minus_count)))$(flag.symbol)"
+        if !isa(flag.value, AbstractString)
+            for v in flag.value
+                str *= " $v"
+            end
+        else
+            str *= " $(flag.value)"
+        end
+    end
+    return str
 end
 
 function set_flags!(exec::Exec, flags...)
@@ -48,25 +114,6 @@ function set_flags!(exec::Exec, flags...)
     return exec.flags
 end
 
-"""
-    set_execflags!(calculation::DFCalculation, exec::String, flags::Pair...)
-    set_execflags!(job::DFJob, exec::String, flags::Pair...)
-
-Goes through the execs in `calculation` or `job` and sets the `flags`
-if the executable name contains `exec`.
-"""
-function set_execflags!(calculation::DFCalculation, exec::String, flags::Pair...)
-    for e in execs(calculation, exec)
-        set_flags!(e, flags...)
-    end
-end
-
-function set_execflags!(job::DFJob, exec::String, flags::Pair...)
-    for i in job.calculations
-        set_execflags!(i, exec, flags...)
-    end
-end
-
 function rm_flags!(exec::Exec, flags...)
     for f in flags
         if isa(f, String)
@@ -77,48 +124,6 @@ function rm_flags!(exec::Exec, flags...)
     end
     return exec.flags
 end
-
-"""
-    rm_execflags!(calculation::DFCalculation, exec::String, flags...)
-    rm_execflags!(job::DFJob, exec::String, flags...)
-
-Goes through the execs in `calculation` or `job` and removes the `flags`
-if the executable name contains `exec`.
-"""
-function rm_execflags!(calculation::DFCalculation, exec::String, flags...)
-    return rm_flags!.(execs(calculation, exec), flags...)
-end
-
-function rm_execflags!(job::DFJob, exec, flags...)
-    return rm_execflags!.(job.calculations, (exec, flags)...)
-end
-
-set_dir!(exec::Exec, dir) = exec.dir = dir
-
-"""
-    set_execdir!(calculation::DFCalculation, exec::String, dir::String)
-    set_execdir!(job::DFJob, exec::String, dir::String)
-    
-Goes through the execs in `calculation` or `job` and sets the `dir`
-if the executable name contains `exec`.
-
-Example:
-```julia
-set_execdir!(calculation, "pw.x", "/path/to/QE/bin")
-set_execdir!(job, "pw.x", "/path/to/QE/bin")
-```
-"""
-function set_execdir!(calculation::DFCalculation, exec::String, dir::String)
-    return set_dir!.(execs(calculation, exec), dir)
-end
-
-function set_execdir!(job::DFJob, exec::String, dir::String)
-    return set_execdir!.(job.calculations, exec, dir)
-end
-
-include("qe/execs.jl")
-include("wannier90/execs.jl")
-include("elk/execs.jl")
 
 #### MPI Exec Functionality ###
 include(joinpath(depsdir, "mpirunflags.jl"))
@@ -201,61 +206,6 @@ function parse_mpi_flags(line::Vector{<:SubString})
 end
 
 is_mpi_exec(exec::Exec) = occursin("mpi", exec.exec)
-
-"""
-    execs(calculation::DFCalculation, exec::String="")
-    execs(job::DFJob, exec::String="")
-
-Convenience function to filter all executables in `calculation` or `job` for which `exec` occurs in the executable name.
-"""
-function execs(calculation::DFCalculation, exec::String="")
-    return filter(x -> occursin(exec, x.exec), calculation.execs)
-end
-function execs(job::DFJob, exec::String="")
-    return filter(x -> occursin(exec, x.exec), vcat(execs.(calculations(job))...))
-end
-
-"""
-    exec(calculation::DFCalculation, exec::String)
-    exec(job::DFJob, exec::String)
-
-Convenience function that returns the first executable in `calculation` or `job`
-for which `exec` occursin the name.
-"""
-exec(calculation::DFCalculation, exec::String) = (es = execs(calculation, exec); isempty(es) ? nothing : es[1])
-exec(job::DFJob, exec::String) = (es = execs(job, exec); isempty(es) ? nothing : es[1])
-
-function Base.string(e::Exec)
-    direxec = joinpath(e.dir, e.exec)
-    str = "$direxec"
-    for flag in e.flags
-        str *= " $(join(fill('-', flag.minus_count)))$(flag.symbol)"
-        if !isa(flag.value, AbstractString)
-            for v in flag.value
-                str *= " $v"
-            end
-        else
-            str *= " $(flag.value)"
-        end
-    end
-    return str
-end
-
-path(exec::Exec) = joinpath(exec.dir, exec.exec)
-
-function package(execs::Vector{Exec})
-    if any(is_qe_exec, execs)
-        return QE
-    elseif any(is_wannier_exec, execs)
-        return Wannier90
-    elseif any(is_elk_exec, execs)
-        return Elk
-    elseif any(is_abinit_exec, execs)
-        return Abinit
-    else
-        return NoPackage
-    end
-end
 
 
 #Wannier

@@ -37,7 +37,7 @@ function read_atoms(fn::IO)
     return atoms
 end
 
-function elk_parse_DFTU(atoms::Vector{<:Atom}, blocknames_flaglines::Dict{Symbol,Any})
+function elk_parse_DFTU(atoms::Vector{Atom}, blocknames_flaglines::Dict{Symbol,Any})
     lines = pop!(blocknames_flaglines, Symbol("dft+u"))
     t_l = split(lines[1])
     species_start = 3
@@ -53,7 +53,7 @@ function elk_parse_DFTU(atoms::Vector{<:Atom}, blocknames_flaglines::Dict{Symbol
         sline         = split(line)
         species_id, l = parse.(Int, sline[1:2])
         U, J0         = parse.(Float64, sline[3:4])
-        for at in filter(x -> name(x) == species_names[species_id], atoms)
+        for at in filter(x -> x.name == species_names[species_id], atoms)
             at.dftu = DFTU{Float64}(; U = U, J0 = J0, l = l)
         end
     end
@@ -64,13 +64,13 @@ end
     elk_read_calculation(filename; execs=[Exec(exec="elk")], run=true, structure_name="noname")
 
 Reads an Elk calculation file. The `ELK_EXEC` inside execs gets used to find which flags are allowed in this calculation file, and convert the read values to the correct Types.
-Returns a `DFCalculation{Elk}` and the `Structure` that is found in the calculation.
+Returns a `Calculation{Elk}` and the `Structure` that is found in the calculation.
 """
 function elk_read_calculation(fn::String; execs = [Exec(; exec = "elk")], run = true,
                               structure_name = "noname")
     blocknames_flaglines = Dict{Symbol,Any}()
     atoms = Atom{Float64}[]
-    calculations = DFCalculation[]
+    calculations = Calculation[]
     dir, file = splitdir(fn)
 
     #TODO it's a bit messy that the atoms block is not handled like this, not sure if we want to clean this up
@@ -88,11 +88,11 @@ function elk_read_calculation(fn::String; execs = [Exec(; exec = "elk")], run = 
                 if blockname == :atoms
                     atoms = read_atoms(f)
                 elseif blockname == :wannierExtra
-                    @warn "Please supply the .win file instead of wannierExtra block for extracting the Wannier DFCalculation."
+                    @warn "Please supply the .win file instead of wannierExtra block for extracting the Wannier Calculation."
 
                     wflags, wdata, ab, cb, proj_block = wan_read_calculation(f)
                     continue
-                    # push!(calculations, DFCalculation{Wannier90}("wannier", dir, wflags, wdata, execs, run))
+                    # push!(calculations, Calculation{Wannier90}("wannier", dir, wflags, wdata, execs, run))
                 elseif info != nothing
                     blocklines = String[]
                     line = sane_readline()
@@ -118,7 +118,7 @@ function elk_read_calculation(fn::String; execs = [Exec(; exec = "elk")], run = 
     scale = haskey(blocknames_flaglines, :scale) ? last(pop!(blocknames_flaglines[:scale])) : 1.0
     cell  = uconvert.(Ang, Mat3(reshape(scale .* parse.(Float64, collect(Iterators.flatten(split.(pop!(blocknames_flaglines, :avec))))), 3, 3) .* 1a₀))'
 
-    newats = [Atom{Float64,eltype(cell)}(; name = x[1], element = element(x[1]),
+    newats = [Atom{Float64,eltype(cell)}(; name = x[1], element = x[1].element,
                                          position_cryst = x[2], position_cart = cell * x[2],
                                          magnetization = x[3]) for x in atoms]
     #structure #TODO make positions be in lattices coordinates
@@ -143,7 +143,7 @@ function elk_read_calculation(fn::String; execs = [Exec(; exec = "elk")], run = 
         flags = pop!(blocknames_flaglines, :wannier)
         # flags[:elk2wan_tasks] = wan_tasks
         push!(calculations,
-              DFCalculation{Elk}(; name = "elk2wannier", dir = dir, flags = flags,
+              Calculation{Elk}(; name = "elk2wannier", dir = dir, flags = flags,
                                  execs = execs, run = true))
     end
     for f in (:ngrid, :vkloff, :plot1d, :plot2d, :plot3d)
@@ -187,7 +187,7 @@ function calculation_from_task(task, blocknames_flaglines, dir, execs, run)
     elseif task ∈ ["20", "21"]
         data = find_data((:plot1d, :plot2d, :plot3d), blocknames_flaglines)
     end
-    return DFCalculation{Elk}(name = task, dir = dir, data = data, execs = execs, run = run)
+    return Calculation{Elk}(name = task, dir = dir, data = data, execs = execs, run = run)
 end
 
 function parse(::Type{UnitRange{Int}}, l::AbstractString)
@@ -248,7 +248,7 @@ function elk_write_structure(f, structure)
         write(f, "\t$(length(ats))\n")
         for a in ats
             write(f, "\t")
-            for i in position_cryst(a)
+            for i in a.position_cryst
                 write(f, "$(round(i, digits=8)) ")
             end
             for i in magnetization(a)
@@ -272,7 +272,7 @@ function elk_write_structure(f, structure)
     return write(f, "\n")
 end
 
-function construct_flag_blocks(calculations::Vector{DFCalculation{Elk}})
+function construct_flag_blocks(calculations::Vector{Calculation{Elk}})
     all_flags = DFC.SymAnyDict()
     for i in calculations
         merge!(all_flags, i.flags)
@@ -314,7 +314,7 @@ function elk_write_flag_val(f, val)
     return write(f, "\n")
 end
 
-function elk_write_DFTU(f::IO, structure::DFC.AbstractStructure, dftu_vals::Vector)
+function elk_write_DFTU(f::IO, structure::DFC.Structure, dftu_vals::Vector)
     write(f, "dft+u\n")
     for v in dftu_vals
         elk_write_flag_val(f, v)
@@ -326,7 +326,7 @@ function elk_write_DFTU(f::IO, structure::DFC.AbstractStructure, dftu_vals::Vect
     return write(f, "\n")
 end
 
-function save(calculations::Vector{DFCalculation{Elk}}, structure::Structure)
+function save(calculations::Vector{Calculation{Elk}}, structure::Structure)
     tasks = map(x -> x.run ? "$(x.name)" : "!$(x.name)",
                 filter(x -> x.name != "elk2wannier", calculations))
     elk2wan_calculation = getfirst(x -> x.name == "elk2wannier", calculations)
