@@ -1,4 +1,3 @@
-
 """
     documentation(::Type{QE}, searchstring::AbstractString)
 

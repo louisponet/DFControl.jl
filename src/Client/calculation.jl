@@ -1,3 +1,164 @@
+#----------- Basic Interaction --------------#
+"""
+    data(calculation::DFCalculation)
+    data(calculation::DFCalculation, n::Symbol)
+
+The former returns `calculation.data`, the later -- the `InputData` with name `n`.
+"""
+data(calculation::DFCalculation, n::Symbol) = getfirst(x -> name(x) == n, data(calculation))
+
+"""
+    set_data!(calculation::DFCalculation, data::InputData)
+
+If an `InputData` with the same name as `data` is already in `calculation`, it will be overwritten. Otherwise `data` gets pushed to the list of `InputData` blocks.
+"""
+function set_data!(calculation::DFCalculation, data::InputData)
+    id = findfirst(x -> x.name == data.name, calculation.data)
+    if id === nothing
+        push!(calculation.data, data)
+    else
+        calculation.data[id] = data
+    end
+    return calculation
+end
+
+"""
+    set_data!(calculation::DFCalculation, block_name::Symbol, new_block_data; option::Symbol=nothing, print::Bool=true)
+
+Searches for an `InputData` for which `InputData.name == block_name`, and sets `DFCalculation.data = new_block_data`.
+If `option` is specified it is set, i.e. `InputData.option = option`.
+"""
+function set_data!(calculation::DFCalculation, block_name::Symbol, new_block_data;
+                   option::Symbol = nothing, print::Bool = true)
+    setd = false
+    for data_block in calculation.data
+        if data_block.name == block_name
+            if typeof(data_block.data) != typeof(new_block_data)
+                if print
+                    @warn "Overwritten data of type '$(typeof(data_block.data))' with type '$(typeof(new_block_data))'."
+                end
+            end
+            old_data = data_block.data
+            data_block.data = new_block_data
+            data_block.option = option == nothing ? data_block.option : option
+            if print
+                @info "Block data '$(data_block.name)' in calculation  '$(name(calculation))' is now:\n\t$(string(data_block.data)) \n\toption: $(data_block.option)\n"
+            end
+            setd = true
+        end
+    end
+    if !setd
+        set_data!(calculation, InputData(block_name, option, new_block_data))
+        setd = true
+    end
+    return setd, calculation
+end
+
+#---------- Extended Interaction ------------#
+
+"""
+    readbands(calculation::DFCalculation)
+
+Parses the `outputdata` associated with `calculation` and returns the bands if present.
+
+    readbands(job::DFJob)
+
+Will try to find the first bandstructure calculation present in the `job` with a valid
+output file, and return the `bands` if present.
+If no normal bandstructure calculation is present, it will return the bands produced
+by a possible `nscf` calculation if one exists with a valid output file.
+"""
+function readbands(calculation::DFCalculation)
+    hasoutput_assert(calculation)
+    to = readoutput(calculation)
+    if haskey(to, :bands)
+        return to[:bands]
+    elseif haskey(to, :bands_up)
+        return (up = to[:bands_up], down = to[:bands_down])
+    else
+        error("No bands found in $(name(calculation)).")
+    end
+end
+
+"""
+    readfermi(calculation::DFCalculation)
+
+Parses the `outputdata` associated with `calculation` and returns the fermi level if present.
+
+    readfermi(job::DFJob)
+
+Finds the first `scf` calculation present in the `job`,
+reads its `outputdata` and returns the fermi level if present.
+"""
+function readfermi(calculation::DFCalculation)
+    hasoutput_assert(calculation)
+    to = readoutput(calculation)
+    if haskey(to, :fermi)
+        return to[:fermi]
+    else
+        error("No fermi found in $(name(calculation)).")
+    end
+end
+
+"""
+    set_kpoints!(calculation::DFCalculation{QE}, k_grid::NTuple{3, Int}; print=true)
+    set_kpoints!(calculation::DFCalculation{QE}, k_grid::NTuple{6, Int}; print=true)
+    set_kpoints!(calculation::DFCalculation{QE}, k_grid::Vector{<:NTuple{4}}; print=true, k_option=:crystal_b)
+
+Convenience function to set the `:k_points` data block of `calculation`.
+The three different methods are targeted at `nscf`, `scf` or `vcrelax`,
+and `bands` calculations, respectively.
+For the `nscf` version an explicit list of `k_points` will be generated.
+
+    set_kpoints!(calculation::DFCalculation{Wannier90}, k_grid::NTuple{3, Int})
+
+Similar to the `nscf` targeted function in the sense that it will generate
+an explicit list of `k_points`, adhering to the same rules as for the `nscf`.
+The `mp_grid` flag will also automatically be set.
+"""
+function set_kpoints!(::DFCalculation{P}, args...; kwargs...) where {P}
+    @error "set_kpoints! not implemented for package $P."
+end
+
+#-------- Generating new DFCalculations ---------- #
+
+function calculation_from_kpoints(template::DFCalculation, newname, kpoints, newflags...)
+    newcalc = DFCalculation(deepcopy(template); name = newname)
+    set_flags!(newcalc, newflags...; print=false)
+    set_name!(newcalc, newname)
+    set_kpoints!(newcalc, kpoints; print = false)
+    return newcalc
+end
+
+function gencalc_nscf(::DFCalculation{P}, args...) where {P}
+    @error "gencalc_nscf is not implemented for package $P."
+end
+
+function gencalc_scf(::DFCalculation{P}, args...) where {P}
+    @error "gencalc_scf is not implemented for package $P."
+end
+
+function gencalc_projwfc(::DFCalculation{P}, args...) where {P}
+    @error "gencalc_projwfc is not implemented for package $P."
+end
+
+function gencalc_wan(::DFCalculation{P}, args...) where {P}
+    @error "gencalc_wan is not implemented for package $P."
+end
+
+function gencalc_vcrelax(::DFCalculation{P}, args...) where {P}
+    @error "gencalc_vcrelax is not implemented for package $P."
+end
+
+function gencalc_bands(::DFCalculation{P}, args...) where {P}
+    @error "gencalc_bands is not implemented for package $P."
+end
+
+function isconverged(::DFCalculation{P}) where {P}
+    @error "isconverged is not implemented for package $P."
+end
+
+## QE
 function kgrid(na, nb, nc, ::Type{QE})
     return reshape([(a, b, c, 1 / (na * nb * nc))
                     for a in collect(range(0; stop = 1, length = na + 1))[1:end-1],
@@ -7,19 +168,14 @@ function kgrid(na, nb, nc, ::Type{QE})
 end
 
 function set_kpoints!(c::DFCalculation{QE}, k_grid::NTuple{3,Int}; print = true) #nscf
-    calc = flag(c, :calculation)
-    print && calc != "nscf" && (@warn "Expected calculation to be 'nscf'.\nGot $calc.")
+    print && !DFC.isnscf(c) && (@warn "Expected calculation to be 'nscf'.\nGot $calc.")
     set_data!(c, :k_points, kgrid(k_grid..., c); option = :crystal, print = print)
     prod(k_grid) > 100 && set_flags!(c, :verbosity => "high"; print = print)
     return c
 end
 
 function set_kpoints!(c::DFCalculation{QE}, k_grid::NTuple{6,Int}; print = true) #scf
-    calc = flag(c, :calculation)
-    print &&
-        calc != "scf" &&
-        !occursin("relax", calc) &&
-        (@warn "Expected calculation to be scf, vc-relax, relax.\nGot $calc.")
+    print && !(DFC.isscf(c) || DFC.isvcrelax(c) || DFC.isrelax(c)) && (@warn "Expected calculation to be scf, vc-relax, relax.\nGot $calc.")
     set_data!(c, :k_points, [k_grid...]; option = :automatic, print = print)
     prod(k_grid[1:3]) > 100 && set_flags!(c, :verbosity => "high"; print = print)
     return c
@@ -218,3 +374,80 @@ function isconverged(c::DFCalculation{QE})
     iscalc_assert(c, "scf")
     return outputdata(c)[:converged]
 end
+
+## Wannier90
+function kgrid(na, nb, nc, ::Type{Wannier90})
+    return reshape([(a, b, c)
+                    for a in collect(range(0; stop = 1, length = na + 1))[1:end-1],
+                        b in collect(range(0; stop = 1, length = nb + 1))[1:end-1],
+                        c in collect(range(0; stop = 1, length = nc + 1))[1:end-1]],
+                   (na * nb * nc))
+end
+
+function set_kpoints!(calculation::DFCalculation{Wannier90}, k_grid::NTuple{3,Int};
+                      print = true)
+    set_flags!(calculation, :mp_grid => [k_grid...]; print = print)
+    set_data!(calculation, :kpoints, kgrid(k_grid..., calculation); print = print)
+    return calculation
+end
+
+"""
+    set_wanenergies!(wancalculation::DFCalculation{Wannier90}, structure::AbstractStructure, nscf::DFCalculation , Emin::Real; Epad=5.0)
+
+Automatically calculates and sets the wannier energies. This uses the projections,
+`Emin` and the output of the nscf calculation to infer the other limits.
+`Epad` allows one to specify the padding around the inner and outer energy windows
+"""
+function set_wanenergies!(calculation::DFCalculation{Wannier90},
+                          structure::AbstractStructure, nscf::DFCalculation, Emin::Real;
+                          Epad = 5.0)
+    hasoutput_assert(nscf)
+    @assert isnscf(nscf) "Please provide a valid nscf calculation."
+    hasprojections_assert(structure)
+
+    bands = readbands(nscf)
+    nwann = nprojections(structure)
+    @info "num_wann=$nwann (inferred from provided projections)."
+
+    if length(bands) == 2
+        num_bands = length(bands[1])
+        if hasflag(calculation, :spin) && calculation[:spin] == "up"
+            winmin, frozmin, frozmax, winmax = wanenergyranges(Emin, nwann, bands.up, Epad)
+        elseif hasflag(calculation, :spin) && calculation[:spin] == "down"
+            winmin, frozmin, frozmax, winmax = wanenergyranges(Emin, nwann, bands.down,
+                                                               Epad)
+        end
+    else
+        num_bands = length(bands)
+        winmin, frozmin, frozmax, winmax = wanenergyranges(Emin, nwann, bands, Epad)
+    end
+
+    set_flags!(calculation, :dis_win_min => winmin, :dis_froz_min => frozmin,
+               :dis_froz_max => frozmax, :dis_win_max => winmax, :num_wann => nwann,
+               :num_bands => num_bands; print = false)
+    return calculation
+end
+
+#TODO: there is probably a slightly more optimal way for the frozen window, by checking max and min
+#      such that every k-point has nbands inbetween.
+function Emax(Emin, nbnd, bands)
+    nbndfound = 0
+    max = 0
+    for b in bands
+        if maximum(b.eigvals) >= Emin && nbndfound <= nbnd
+            nbndfound += 1
+            #maximum of allowed frozen window is the minimum of the first band>nbnd
+            max = minimum(b.eigvals) - 0.005
+        end
+    end
+
+    nbndfound < nbnd &&
+        error("Number of needed bands for the projections ($nbnd) exceeds the amount of bands starting from \nEmin=$Emin ($nbndfound).\nRerun nscf with nbnd=$(length(bands) + nbnd - nbndfound).")
+    return max
+end
+
+function wanenergyranges(Emin, nbnd, bands, Epad = 5)
+    max = Emax(Emin, nbnd, bands)
+    return (Emin - Epad, Emin, max, max + Epad)
+end
+

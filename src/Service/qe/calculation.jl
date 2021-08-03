@@ -1,31 +1,7 @@
-function set_noncolin_flags!(i::DFCalculation{QE})
-    return set_flags!(i, :npsin => 4, :noncolin => true; print = false)
-end
-
-isbands(c::DFCalculation{QE})   = flag(c, :calculation) == "bands"
-isnscf(c::DFCalculation{QE})    = flag(c, :calculation) == "nscf"
-isscf(c::DFCalculation{QE})     = flag(c, :calculation) == "scf"
-isvcrelax(c::DFCalculation{QE}) = flag(c, :calculation) == "vc-relax"
-isrelax(c::DFCalculation{QE})   = flag(c, :calculation) == "relax"
-
-function ispw(c::DFCalculation{QE})
-    return isbands(c) || isnscf(c) || isscf(c) || isvcrelax(c) || isrelax(c)
-end
-
-isprojwfc(c::DFCalculation{QE}) = DFC.hasexec(c, "projwfc.x")
-ishp(c::DFCalculation{QE})      = DFC.hasexec(c, "hp.x")
-issoc(c::DFCalculation{QE})     = flag(c, :lspinorb) == true
-
-function ismagnetic(c::DFCalculation{QE})
-    return (hasflag(c, :nspin) && c[:nspin] > 0.0) ||
-           (hasflag(c, :total_magnetization) && c[:total_magnetization] != 0.0)
-end
-
 function readoutput(c::DFCalculation{QE}; kwargs...)
     return qe_read_output(c; kwargs...)
 end
 
-pseudodir(c::DFCalculation{QE}) = flag(c, :pseudo_dir)
 
 function outfiles(c::DFCalculation{QE})
     files = [outpath(c)]

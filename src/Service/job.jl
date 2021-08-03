@@ -318,3 +318,13 @@ function outputdata(job::DFJob, calculations::Vector{DFCalculation}; print = tru
     return tmp
 end
 outputdata(job::DFJob; kwargs...) = outputdata(job, job.calculations; kwargs...)
+
+"""
+    main_job_dir(dir::AbstractString)
+    main_job_dir(job::DFJob)
+
+Returns the main directory of the job, also when the job's version is not the one
+in the main directory.
+"""
+main_job_dir(dir::AbstractString) = split(dir, VERSION_DIR_NAME)[1]
+main_job_dir(job::DFJob) = main_job_dir(job.dir)

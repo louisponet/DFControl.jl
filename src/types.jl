@@ -550,3 +550,5 @@ end
 Server(j::DFJob) = Server(j.server)
 
 StructTypes.StructType(::Type{Server}) = StructTypes.Mutable()
+
+Base.joinpath(s::Server, p...) = joinpath(s.default_jobdir, p...)

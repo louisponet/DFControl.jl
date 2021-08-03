@@ -23,6 +23,7 @@ module Client
 
 
     include("job.jl")
+    include("calculation.jl")
     export save, isrunning, versions, last_version
     
     include("server.jl")

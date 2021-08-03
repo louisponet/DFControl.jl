@@ -52,25 +52,12 @@ using .Utils
 
 include("calculation.jl")
 include("job.jl")
-include("server.jl")
-include("API.jl")
+include("documentation.jl")
 
 include("constants.jl")
 
 
 include("defaults.jl")
-export setdefault_pseudodir
-export setdefault_server
-export configuredefault_pseudos
-export removedefault_pseudodir
-export removedefault_pseudos
-export setdefault_jobheader
-export getdefault_pseudo
-export getdefault_server
-export getdefault_jobheader
-export getdefault_pseudodir
-export getdefault_pseudodirs
-export list_pseudosets
 
 const dfprintln = println
 const dfprint = print

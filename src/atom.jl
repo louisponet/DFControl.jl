@@ -1,4 +1,4 @@
-include("wannier90/projections.jl")
+include("projections.jl")
 
 import Base: ==
 """

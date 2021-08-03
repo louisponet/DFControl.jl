@@ -397,3 +397,338 @@ function verify_execs(job::DFJob, server::Server)
     end
 end
 
+"""
+    set_flow!(job::DFJob, should_runs::Pair{String, Bool}...)
+
+Sets whether or not calculations should be scheduled to run.
+The `name` of each calculation in the job will be checked against the string in each pair of `should_runs`, and the
+`calculation.run` will be set accordingly.
+
+Example:
+```julia
+set_flow!(job, "" => false, "scf" => true)
+```
+would un-schedule all calculations in the job, and schedule the "scf" and "nscf" calculations to run.
+"""
+function set_flow!(job::DFJob, should_runs...)
+    for (name, run) in should_runs
+        for calculation in filter(x -> occursin(name, x.name), calculations(job))
+            calculation.run = run
+        end
+    end
+    return job
+end
+
+"""
+    set_headerword!(job::DFJob, old_new::Pair{String, String})
+
+Replaces the specified word in the header with the new word.
+"""
+function set_headerword!(job::DFJob, old_new::Pair{String,String}; print = true)
+    for (i, line) in enumerate(job.header)
+        if occursin(first(old_new), line)
+            job.header[i] = replace(line, old_new)
+            s = """Old line:
+            $line
+            New line:
+            $(job.header[i])
+            """
+            print && (@info s)
+        end
+    end
+    return job
+end
+
+"""
+    set_dir!(job::DFJob, dir::AbstractString; copy=false)
+    
+Sets `job.dir` to `dir`. If necessary the directory will be created upon saving the job.
+If `copy` is set to `true`, all previous calculations and output files of the current job version
+(i.e. those in the main job directory) will be copied to the new directory, including the
+`outputs` directory with temporary files created during jobs runs.
+"""
+function set_dir!(job::DFJob, dir::AbstractString; copy = false)
+    if !isabspath(dir)
+        dir = joinpath(Server(job), dir)
+    end
+    if dir[end] == '/'
+        dir = dir[1:end-1]
+    end
+    if copy
+        error("TODO: Implement for server side copying")
+        # mkpath(dir)
+        # cp(job, dir; temp = true)
+    end
+    job.dir = dir
+    for i in calculations(job)
+        set_dir!(i, dir)
+    end
+    return job
+end
+
+#TODO: work this
+"""
+    abort(job::DFJob)
+
+Will try to remove the job from the scheduler's queue.
+If the last running calculation happened to be a `DFCalculation{QE}`, the correct abort file will be written.
+For other codes the process is not smooth, and restarting is not guaranteed.
+"""
+function abort(job::DFJob)
+    lastrunning = job.calculations[last_running_calculation(job)]
+    if lastrunning == nothing
+        error("Is this job running?")
+    end
+    if package(lastrunning) == QE
+        length(calculations(job, QE)) > 1 &&
+            @warn "It's absolutely impossible to guarantee a graceful abort of a multi job script with QE."
+
+        abortpath = writeabortfile(job, lastrunning)
+        while ispath(abortpath)
+            continue
+        end
+        qdel(job)
+    else
+        qdel(job)
+    end
+end
+
+"Reads throught the pseudo files and tries to figure out the correct cutoffs"
+set_cutoffs!(job::DFJob) = set_cutoffs!.(calculations(job), find_cutoffs(job)...)
+
+"""
+    set_wanenergies!(job::DFJob, nscf::DFCalculation{QE}, Emin::Real; Epad=5.0)
+
+Will set the energy window limits correctly according to the projections specified in the
+structure of the job and the specified Emin. The output of `nscf` will be used to determine the
+DOS, and what the size of the frozen window needs to be to fit enough bands inside it,
+depending on the projections.
+"""
+function set_wanenergies!(job::DFJob, nscf::DFCalculation, Emin::Real; Epad = 5.0)
+    wancalcs = filter(x->package(x) == Wannier90, calculations(job))
+    @assert length(wancalcs) != 0 "Job ($(job.name)) has no Wannier90 calculations, nothing to do."
+    map(x -> set_wanenergies!(x, structure(job), nscf, Emin; Epad = Epad), wancalcs)
+    return job
+end
+
+"""
+    set_wanenergies!(job::DFJob, nscf::DFCalculation{QE}, projwfc::DFCalculation{QE}, threshold::Real; Epad=5.0)
+
+Will set the energy window limits correctly according to the projections specified in the
+structure of the job. The output of `projwfc` and the `threshold` will be used to determine
+the minimum limit of the frozen energy window such that the interesting DOS of inside it exceeds
+the threshold. `nscf` will be used to determine the DOS, and what the upper limit of the frozen window
+needs to be to fit enough bands inside it, depending on the projections.
+"""
+function set_wanenergies!(job::DFJob, nscf::DFCalculation, projwfc::DFCalculation,
+                          threshold::Real; Epad = 5.0)
+    hasoutput_assert(projwfc)
+    @assert isprojwfc(projwfc) "Please specify a valid projwfc calculation."
+    @assert isnscf(nscf) "Please specify a valid nscf calculation."
+    Emin = Emin_from_projwfc(job.structure, projwfc, threshold)
+    return set_wanenergies!(job, nscf, Emin; Epad = Epad)
+end
+
+"""
+    set_wanenergies!(job::DFJob, min_window_determinator::Real; kwargs...)
+
+Sets the energy windows of wannier calculations based on the `job`.
+When a projwfc calculation is present in the `job`, `min_window_determinator` will be used to
+determine the threshold value for including a band in the window based on the projections, otherwise
+it will be used as the `Emin` value from which to start counting the number of bands needed for all
+projections.
+"""
+function set_wanenergies!(job::DFJob, min_window_determinator::Real; kwargs...)
+    nscf_calculation = getfirst(isnscf, calculations(job))
+    projwfc_calculation = getfirst(isprojwfc, calculations(job))
+    if projwfc_calculation === nothing || !hasoutput(projwfc_calculation)
+        @info "No projwfc calculation found with valid output, using $min_window_determinator as Emin"
+        return set_wanenergies!(job, nscf_calculation, min_window_determinator; kwargs...)
+    else
+        @info "Valid projwfc output found, using $min_window_determinator as the dos threshold."
+        return set_wanenergies!(job, nscf_calculation, projwfc_calculation,
+                                min_window_determinator; kwargs...)
+    end
+end
+
+"""
+    bandgap(job::DFJob, fermi=nothing)
+
+Calculates the bandgap (possibly indirect) around the fermi level.
+Uses the first found bands calculation, if there is none it uses the first found nscf calculation.
+"""
+function bandgap(job::DFJob, fermi = nothing)
+    band_calcs = getfirst.([isbands, isnscf, isscf], (calculations(job),))
+    if all(x -> x === nothing, band_calcs)
+        error("No valid calculation found to calculate the bandgap.\nMake sure the job has either a valid bands or nscf calculation.")
+    end
+    if fermi === nothing
+        fermi_calcs = getfirst.([isnscf, isscf], (calculations(job),))
+        if all(x -> x === nothing, band_calcs)
+            error("No valid calculation found to extract the fermi level.\nPlease supply the fermi level manually.")
+        end
+        fermi = maximum(readfermi.(filter(x -> x !== nothing, fermi_calcs)))
+    end
+
+    bands = readbands.(filter(x -> x !== nothing, band_calcs))
+    return minimum(bandgap.(bands, fermi))
+end
+
+function readfermi(job::DFJob)
+    ins = filter(x -> (isscf(x) || isnscf(x)) && hasoutfile(x), calculations(job))
+    @assert isempty(ins) !== nothing "Job does not have a valid scf or nscf output."
+    for i in ins
+        o = outputdata(i)
+        if haskey(o, :fermi)
+            return o[:fermi]
+        end
+    end
+    @warn "No output files with fermi level found."
+    return 0.0
+end
+
+function readbands(job::DFJob)
+    calculation = getfirst(x -> isbands(x) && hasoutfile(x), calculations(job))
+    if calculation === nothing
+        calculation = getfirst(x -> isnscf(x) && hasoutfile(x), calculations(job))
+        if calculation === nothing
+            @warn "Job does not have a valid bands output."
+            return nothing
+        end
+        @warn "No bands calculation found, return bands from nscf calculation."
+        return readbands(calculation)
+    end
+    return readbands(calculation)
+end
+
+"""
+    gencalc_wan(job::DFJob, min_window_determinator::Real, extra_wan_flags...; kwargs...)
+
+Automates the generation of wannier calculations based on the `job`.
+When a projwfc calculation is present in the `job`, `min_window_determinator` will be used to
+determine the threshold value for including a band in the window based on the projections, otherwise
+it will be used as the `Emin` value from which to start counting the number of bands needed for all
+projections.
+`extra_wan_flags` can be any extra flags for the Wannier90 calculation such as `write_hr` etc.
+"""
+function gencalc_wan(job::DFJob, min_window_determinator::Real, extra_wan_flags...;
+                     kwargs...)
+    nscf_calculation = getfirst(x -> isnscf(x), calculations(job))
+    projwfc_calculation = getfirst(x -> isprojwfc(x), calculations(job))
+    if projwfc_calculation === nothing || !hasoutput(projwfc_calculation)
+        @info "No projwfc calculation found with valid output, using $min_window_determinator as Emin"
+        return gencalc_wan(nscf_calculation, job.structure, min_window_determinator,
+                           extra_wan_flags...; kwargs...)
+    else
+        @info "Valid projwfc output found, using $min_window_determinator as the dos threshold."
+        return gencalc_wan(nscf_calculation, job.structure, projwfc_calculation,
+                           min_window_determinator, extra_wan_flags...; kwargs...)
+    end
+end
+
+#TODO: only for QE 
+"Reads the pdos for a particular atom. Only works for QE."
+function pdos(job::DFJob, atsym::Symbol, filter_word = "")
+    projwfc = getfirst(isprojwfc, calculations(job))
+    ats = atoms(job, atsym)
+    @assert length(ats) > 0 "No atoms found with name $atsym."
+    scf = getfirst(isscf, calculations(job))
+    magnetic = any(ismagnetic, atoms(job)) || ismagnetic(scf)
+    soc = issoc(scf)
+    return pdos(projwfc, atsym, magnetic, soc, filter_word)
+end
+
+pdos(job::DFJob, atom::AbstractAtom, args...) = pdos(job, name(atom), args...)
+
+function pdos(job::DFJob, atoms::Vector{AbstractAtom} = atoms(job), args...)
+    t_energies, t_pdos = pdos(job, atoms[1], args...)
+    for i in 2:length(atoms)
+        t1, t2 = pdos(job, atoms[i], args...)
+        t_pdos .+= t2
+    end
+    return (energies = t_energies, pdos = t_pdos)
+end
+
+"""
+    last_submission(job::DFJob)
+
+If a job was ever submitted, the last submission date is returned.
+Otherwise 0 date is returned.
+"""
+function last_submission(job::DFJob)
+    return get(job.metadata, :timestap, DateTime(0))
+end
+
+"""
+    set_present!(job::DFJob, func::Function)
+    set_present!(job::DFJob, func::String)
+    set_present!(job::DFJob, func::Expr)
+
+Sets a function with the call signature `func(job)` which can be later called using the [`@present`](@ref) macro.
+"""
+function set_present!(job::DFJob, func::Function)
+    try 
+        str = loaded_modules_string() * @code_string func(job)
+        set_present!(job, str)
+    catch
+        error("Could not generate the source string for the supplied function.\nIf you are running in a Jupyter notebook, please supply the source code as a string, or expression to set_present!.\nDon't forget to include the right using statements.")
+    end
+        
+end
+function set_present!(job::DFJob, func::AbstractString) 
+    open(joinpath(job, ".present.jl"), "w") do f
+        write(f, func)
+    end
+end
+function set_present!(job::DFJob, func::Expr)
+    funcstr = string(func)
+    if funcstr[1:5] == "begin"
+        funcstr = funcstr[findfirst(isequal('\n'), funcstr)+1:findlast(isequal('\n'), funcstr)-1]
+    end
+    set_present!(job, funcstr)
+end
+
+"""
+    present(job)
+
+Calls a present function if it was previously saved using [`set_present!`](@ref) or [`archive`](@ref). 
+"""
+macro present(job)
+    return esc(quote
+        if ispath(joinpath($job, ".present.jl"))
+            t = include(joinpath($job, ".present.jl"))
+            DFControl.with_logger(DFControl.MinLevelLogger(DFControl.current_logger(), DFControl.Logging.Error)) do 
+                t($job)
+            end
+        else
+            @error "No presentation function defined.\n Please set it with `set_present!`."
+        end
+    end)
+end
+
+"""
+    archive(job::DFJob, archive_directory::AbstractString, description::String=""; present = nothing, version=job.version)
+
+Archives `job` by copying it's contents to `archive_directory` alongside a `results.jld2` file with all the parseable results as a Dict. `description` will be saved in a `description.txt` file in the `archive_directory`. A different job version can be copied using the `version` kwarg, and with the `present` kwarg a function can be specified that can be later called with the [`@present`](@ref) macro.
+"""
+function archive(job::DFJob, archive_directory::AbstractString, description::String=""; present = nothing, version=job.version)
+    @assert !isarchived(job) "Job was already archived"
+    final_dir = config_path(".archived", archive_directory)
+    @assert !ispath(final_dir) "A archived job already exists in $archive_directory"
+    mkpath(final_dir)
+
+    present !== nothing && set_present!(job, present)
+    out = outputdata(job)
+    tj = deepcopy(job)
+    switch_version!(tj, version)
+    cp(tj, final_dir)
+    set_dir!(tj, final_dir)
+
+    JLD2.save(joinpath(final_dir, "results.jld2"), "outputdata", out)
+    
+    !isempty(description) && write(joinpath(final_dir, "description.txt"), description)
+    push!(JOB_REGISTRY.archived, tj.dir)
+    @info "Archived job at $(tj.dir). If you're done with this one, it is safe to delete the directory at $(job.dir)."
+    write_job_registry()
+    return nothing
+end

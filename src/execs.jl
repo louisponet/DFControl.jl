@@ -255,4 +255,61 @@ function package(execs::Vector{Exec})
     else
         return NoPackage
     end
-end 
+end
+
+
+#Wannier
+const WAN_EXECS = ["wannier90.x"]
+
+const WAN_EXECFLAGS = ExecFlag[ExecFlag(:pp, "preprocess",
+                                        "Whether or not to preprocess the wannier calculation",
+                                        false, 1),]
+
+wan_execflag(flag::AbstractString) = getfirst(x -> x.name == flag, WAN_EXECFLAGS)
+wan_execflag(flag::Symbol) = getfirst(x -> x.symbol == flag, WAN_EXECFLAGS)
+function parse_wan_execflags(line::Vector{<:AbstractString})
+    flags = ExecFlag[]
+    i = 1
+    while i <= length(line)
+        s = strip(line[i], '-')
+        push!(flags, ExecFlag(wan_execflag(Symbol(s)), nothing))
+        i += 1
+    end
+    return flags
+end
+
+is_wannier_exec(exec::Exec) = exec.exec ∈ WAN_EXECS
+
+
+#QE
+const QE_EXECS = ["pw.x", "projwfc.x", "pp.x", "ld1.x", "ph.x", "pw2wannier90.x", "hp.x"]
+
+const QE_EXECFLAGS = ExecFlag[ExecFlag(:nk, "kpoint-pools", 
+                                       "groups k-point parallelization into nk processor pools",
+                                       0, 1),
+                              ExecFlag(:ntg, "task-groups",  "FFT task groups", 0, 1),
+                              ExecFlag(:ndiag, "diag", 
+                                       "Number of processes for linear algebra", 0, 1),
+                              ExecFlag(:ni, "images", 
+                                       "Number of processes used for the images", 0, 1)]
+
+qe_execflag(flag::AbstractString) = getfirst(x -> x.name == flag, QE_EXECFLAGS)
+qe_execflag(flag::Symbol) = getfirst(x -> x.symbol == flag, QE_EXECFLAGS)
+
+function parse_qe_execflags(line::Vector{<:AbstractString})
+    flags = ExecFlag[]
+    i = 1
+    while i <= length(line)
+        s = strip(line[i], '-')
+        push!(flags, ExecFlag(qe_execflag(Symbol(s)), parse(Int, line[i+1])))
+        i += 2
+    end
+    return flags
+end
+
+is_qe_exec(exec::Exec) = exec.exec ∈ QE_EXECS
+
+# Elk
+const ELK_EXECS = ["elk", "elk-omp"]
+
+is_elk_exec(exec::Exec) = exec.exec ∈ ELK_EXECS

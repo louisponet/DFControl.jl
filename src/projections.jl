@@ -8,6 +8,7 @@ const ORBITALS = [Orbital("s", 1, 0, 1), Orbital("p", 3, 1, 0), Orbital("px", 1,
                   Orbital("fy(3x2-y2)", 1, 3, 7), Orbital("sp", 2, -1, 0),
                   Orbital("sp2", 3, -2, 0), Orbital("sp3", 4, -3, 0),
                   Orbital("sp3d2", 6, -5, 0)]
+                  
 """
     orbital(s::String)
 
