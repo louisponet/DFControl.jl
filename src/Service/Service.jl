@@ -6,6 +6,7 @@ module Service
     using ..Calculations
     using ..Jobs
     using ..FileIO
+    using ..Servers
     # const DAEMON_CONFIG_PATH = config_path("daemon.jld2")
     # delete_daemon_config!() = rm(DAEMON_CONFIG_PATH)
 
@@ -16,7 +17,7 @@ module Service
 
     daemon_logger() = FileLogger(SERVICE_LOG; append = true)
 
-    server_config() = DFC.Server("localhost")
+    server_config() = Servers.Server("localhost")
 
     include("running.jl")
     include("calculation.jl")

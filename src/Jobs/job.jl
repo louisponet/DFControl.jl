@@ -50,9 +50,6 @@ The `kwargs...` will be passed to the [`Job`](@ref) constructor.
         if !isabspath(dir)
             dir = abspath(dir)
         end
-        if isempty(structure.name)
-            structure.name = split(name, "_")[1]
-        end
         if isempty(metadata)
             mpath = joinpath(dir, ".metadata.jld2")
             if ispath(mpath)
@@ -174,6 +171,16 @@ end
 Base.getindex(job::Job, el::Element) = job.structure[el]
 
 """
+    main_job_dir(dir::AbstractString)
+    main_job_dir(job::Job)
+
+Returns the main directory of the job, also when the job's version is not the one
+in the main directory.
+"""
+main_job_dir(dir::AbstractString) = split(dir, Jobs.VERSION_DIR_NAME)[1]
+main_job_dir(job::Job) = main_job_dir(job.dir)
+
+"""
     gencalc_wan(job::Job, min_window_determinator::Real, extra_wan_flags...; kwargs...)
 
 Automates the generation of wannier calculations based on the `job`.
@@ -185,8 +192,8 @@ projections.
 """
 function Calculations.gencalc_wan(job::Job, min_window_determinator::Real, extra_wan_flags...;
                      kwargs...)
-    nscf_calculation = getfirst(x -> isnscf(x), job.calculations)
-    projwfc_calculation = getfirst(x -> isprojwfc(x), job.calculations)
+    nscf_calculation = getfirst(x -> Calculations.isnscf(x), job.calculations)
+    projwfc_calculation = getfirst(x -> Calculations.isprojwfc(x), job.calculations)
     if projwfc_calculation === nothing || !hasoutput(projwfc_calculation)
         @info "No projwfc calculation found with valid output, using $min_window_determinator as Emin"
         return gencalc_wan(nscf_calculation, job.structure, min_window_determinator,
@@ -199,11 +206,307 @@ function Calculations.gencalc_wan(job::Job, min_window_determinator::Real, extra
 end
 
 """
-    main_job_dir(dir::AbstractString)
-    main_job_dir(job::Job)
+    set_flow!(job::Job, should_runs::Pair{String, Bool}...)
 
-Returns the main directory of the job, also when the job's version is not the one
-in the main directory.
+Sets whether or not calculations should be scheduled to run.
+The `name` of each calculation in the job will be checked against the string in each pair of `should_runs`, and the
+`calculation.run` will be set accordingly.
+
+Example:
+```julia
+set_flow!(job, "" => false, "scf" => true)
+```
+would un-schedule all calculations in the job, and schedule the "scf" and "nscf" calculations to run.
 """
-main_job_dir(dir::AbstractString) = split(dir, Jobs.VERSION_DIR_NAME)[1]
-main_job_dir(job::Job) = main_job_dir(job.dir)
+function set_flow!(job::Job, should_runs...)
+    for (name, run) in should_runs
+        for calculation in filter(x -> occursin(name, x.name), job.calculations)
+            calculation.run = run
+        end
+    end
+    return job
+end
+
+"""
+    set_headerword!(job::Job, old_new::Pair{String, String})
+
+Replaces the specified word in the header with the new word.
+"""
+function set_headerword!(job::Job, old_new::Pair{String,String}; print = true)
+    for (i, line) in enumerate(job.header)
+        if occursin(first(old_new), line)
+            job.header[i] = replace(line, old_new)
+            s = """Old line:
+            $line
+            New line:
+            $(job.header[i])
+            """
+            print && (@info s)
+        end
+    end
+    return job
+end
+
+"""
+    set_dir!(job::Job, dir::AbstractString; copy=false)
+    
+Sets `job.dir` to `dir`. If necessary the directory will be created upon saving the job.
+If `copy` is set to `true`, all previous calculations and output files of the current job version
+(i.e. those in the main job directory) will be copied to the new directory, including the
+`outputs` directory with temporary files created during jobs runs.
+"""
+function set_dir!(job::Job, dir::AbstractString; copy = false)
+    if !isabspath(dir)
+        dir = joinpath(Servers.Server(job), dir)
+    end
+    if dir[end] == '/'
+        dir = dir[1:end-1]
+    end
+    if copy
+        error("TODO: Implement for server side copying")
+        # mkpath(dir)
+        # cp(job, dir; temp = true)
+    end
+    job.dir = dir
+    for i in job.calculations
+        Calculations.set_dir!(i, dir)
+    end
+    return job
+end
+
+#TODO
+"""
+    set_wanenergies!(job::Job, nscf::Calculation{QE}, Emin::Real; Epad=5.0)
+
+Will set the energy window limits correctly according to the projections specified in the
+structure of the job and the specified Emin. The output of `nscf` will be used to determine the
+DOS, and what the size of the frozen window needs to be to fit enough bands inside it,
+depending on the projections.
+"""
+function set_wanenergies!(job::Job, nscf::Calculation, Emin::Real; Epad = 5.0)
+    wancalcs = filter(x->eltype(x) == Wannier90, job.calculations)
+    @assert length(wancalcs) != 0 "Job ($(job.name)) has no Wannier90 calculations, nothing to do."
+    map(x -> set_wanenergies!(x, structure(job), nscf, Emin; Epad = Epad), wancalcs)
+    return job
+end
+
+"""
+    set_wanenergies!(job::Job, nscf::Calculation{QE}, projwfc::Calculation{QE}, threshold::Real; Epad=5.0)
+
+Will set the energy window limits correctly according to the projections specified in the
+structure of the job. The output of `projwfc` and the `threshold` will be used to determine
+the minimum limit of the frozen energy window such that the interesting DOS of inside it exceeds
+the threshold. `nscf` will be used to determine the DOS, and what the upper limit of the frozen window
+needs to be to fit enough bands inside it, depending on the projections.
+"""
+function set_wanenergies!(job::Job, nscf::Calculation, projwfc::Calculation,
+                          threshold::Real; Epad = 5.0)
+    hasoutput_assert(projwfc)
+    @assert Calculations.isprojwfc(projwfc) "Please specify a valid projwfc calculation."
+    @assert Calculations.isnscf(nscf) "Please specify a valid nscf calculation."
+    Emin = Emin_from_projwfc(job.structure, projwfc, threshold)
+    return set_wanenergies!(job, nscf, Emin; Epad = Epad)
+end
+
+"""
+    set_wanenergies!(job::Job, min_window_determinator::Real; kwargs...)
+
+Sets the energy windows of wannier calculations based on the `job`.
+When a projwfc calculation is present in the `job`, `min_window_determinator` will be used to
+determine the threshold value for including a band in the window based on the projections, otherwise
+it will be used as the `Emin` value from which to start counting the number of bands needed for all
+projections.
+"""
+function set_wanenergies!(job::Job, min_window_determinator::Real; kwargs...)
+    nscf_calculation = getfirst(isnscf, job.calculations)
+    projwfc_calculation = getfirst(isprojwfc, job.calculations)
+    if projwfc_calculation === nothing || !hasoutput(projwfc_calculation)
+        @info "No projwfc calculation found with valid output, using $min_window_determinator as Emin"
+        return set_wanenergies!(job, nscf_calculation, min_window_determinator; kwargs...)
+    else
+        @info "Valid projwfc output found, using $min_window_determinator as the dos threshold."
+        return set_wanenergies!(job, nscf_calculation, projwfc_calculation,
+                                min_window_determinator; kwargs...)
+    end
+end
+
+"""
+    bandgap(job::Job, fermi=nothing)
+
+Calculates the bandgap (possibly indirect) around the fermi level.
+Uses the first found bands calculation, if there is none it uses the first found nscf calculation.
+"""
+function bandgap(job::Job, fermi = nothing)
+    band_calcs = getfirst.([isbands, isnscf, isscf], (job.calculations,))
+    if all(x -> x === nothing, band_calcs)
+        error("No valid calculation found to calculate the bandgap.\nMake sure the job has either a valid bands or nscf calculation.")
+    end
+    if fermi === nothing
+        fermi_calcs = getfirst.([isnscf, isscf], (job.calculations,))
+        if all(x -> x === nothing, band_calcs)
+            error("No valid calculation found to extract the fermi level.\nPlease supply the fermi level manually.")
+        end
+        fermi = maximum(readfermi.(filter(x -> x !== nothing, fermi_calcs)))
+    end
+
+    bands = readbands.(filter(x -> x !== nothing, band_calcs))
+    return minimum(bandgap.(bands, fermi))
+end
+
+function readfermi(job::Job)
+    ins = filter(x -> (isscf(x) || isnscf(x)) && hasoutfile(x), job.calculations)
+    @assert isempty(ins) !== nothing "Job does not have a valid scf or nscf output."
+    for i in ins
+        o = outputdata(i)
+        if haskey(o, :fermi)
+            return o[:fermi]
+        end
+    end
+    @warn "No output files with fermi level found."
+    return 0.0
+end
+
+function readbands(job::Job)
+    calculation = getfirst(x -> isbands(x) && hasoutfile(x), job.calculations)
+    if calculation === nothing
+        calculation = getfirst(x -> isnscf(x) && hasoutfile(x), job.calculations)
+        if calculation === nothing
+            @warn "Job does not have a valid bands output."
+            return nothing
+        end
+        @warn "No bands calculation found, return bands from nscf calculation."
+        return readbands(calculation)
+    end
+    return readbands(calculation)
+end
+
+
+#TODO: only for QE 
+"Reads the pdos for a particular atom. Only works for QE."
+function pdos(job::Job, atsym::Symbol, filter_word = "")
+    projwfc = getfirst(isprojwfc, job.calculations)
+    ats = job.structure[atsym]
+    @assert length(ats) > 0 "No atoms found with name $atsym."
+    scf = getfirst(isscf, job.calculations)
+    magnetic = Structures.ismagnetic(job.structure) || ismagnetic(scf)
+    soc = Structures.isnoncolin(job.structure) || issoc(scf)
+    return pdos(projwfc, atsym, magnetic, soc, filter_word)
+end
+
+pdos(job::Job, atom::Atom, args...) = pdos(job, atom.name, args...)
+
+function pdos(job::Job, atoms::Vector{Atom} = job.structure.atoms, args...)
+    t_energies, t_pdos = pdos(job, atoms[1], args...)
+    for i in 2:length(atoms)
+        t1, t2 = pdos(job, atoms[i], args...)
+        t_pdos .+= t2
+    end
+    return (energies = t_energies, pdos = t_pdos)
+end
+
+"""
+    set_present!(job::Job, func::Function)
+    set_present!(job::Job, func::String)
+    set_present!(job::Job, func::Expr)
+
+Sets a function with the call signature `func(job)` which can be later called using the [`@present`](@ref) macro.
+"""
+function set_present!(job::Job, func::Function)
+    try 
+        str = loaded_modules_string() * @code_string func(job)
+        set_present!(job, str)
+    catch
+        error("Could not generate the source string for the supplied function.\nIf you are running in a Jupyter notebook, please supply the source code as a string, or expression to set_present!.\nDon't forget to include the right using statements.")
+    end
+        
+end
+function set_present!(job::Job, func::AbstractString) 
+    open(joinpath(job, ".present.jl"), "w") do f
+        write(f, func)
+    end
+end
+function set_present!(job::Job, func::Expr)
+    funcstr = string(func)
+    if funcstr[1:5] == "begin"
+        funcstr = funcstr[findfirst(isequal('\n'), funcstr)+1:findlast(isequal('\n'), funcstr)-1]
+    end
+    set_present!(job, funcstr)
+end
+
+"""
+    present(job)
+
+Calls a present function if it was previously saved using [`set_present!`](@ref) or [`archive`](@ref). 
+"""
+macro present(job)
+    return esc(quote
+        if ispath(joinpath($job, ".present.jl"))
+            t = include(joinpath($job, ".present.jl"))
+            DFControl.with_logger(DFControl.MinLevelLogger(DFControl.current_logger(), DFControl.Logging.Error)) do 
+                t($job)
+            end
+        else
+            @error "No presentation function defined.\n Please set it with `set_present!`."
+        end
+    end)
+end
+
+"""
+    archive(job::Job, archive_directory::AbstractString, description::String=""; present = nothing, version=job.version)
+
+Archives `job` by copying it's contents to `archive_directory` alongside a `results.jld2` file with all the parseable results as a Dict. `description` will be saved in a `description.txt` file in the `archive_directory`. A different job version can be copied using the `version` kwarg, and with the `present` kwarg a function can be specified that can be later called with the [`@present`](@ref) macro.
+"""
+function archive(job::Job, archive_directory::AbstractString, description::String=""; present = nothing, version=job.version)
+    @assert !isarchived(job) "Job was already archived"
+    final_dir = config_path(".archived", archive_directory)
+    @assert !ispath(final_dir) "A archived job already exists in $archive_directory"
+    mkpath(final_dir)
+
+    present !== nothing && set_present!(job, present)
+    out = outputdata(job)
+    tj = deepcopy(job)
+    switch_version!(tj, version)
+    cp(tj, final_dir)
+    set_dir!(tj, final_dir)
+
+    JLD2.save(joinpath(final_dir, "results.jld2"), "outputdata", out)
+    
+    !isempty(description) && write(joinpath(final_dir, "description.txt"), description)
+    push!(JOB_REGISTRY.archived, tj.dir)
+    @info "Archived job at $(tj.dir). If you're done with this one, it is safe to delete the directory at $(job.dir)."
+    write_job_registry()
+    return nothing
+end
+
+for (f, strs) in zip((:cp, :mv), (("copy", "Copies"), ("move", "Moves")))
+    @eval begin
+        """
+            $($f)(job::Job, dest::AbstractString; all=false, temp=false, kwargs...)
+
+        $($(strs[2])) the contents of `job.dir` to `dest`. If `all=true`, it will also $($(strs[1])) the
+        `.version` directory with all previous versions. If `temp=true` it will override
+        `job.copy_temp_folders` and $($(strs[1])) also the temporary calculation directories.
+        The `kwargs...` are passed to `Base.$($f)`.
+        """
+        function Base.$f(job::Job, dest::AbstractString; all = false, temp = false,
+                         kwargs...)
+            if !ispath(dest)
+                mkpath(dest)
+            end
+            for file in readdir(job.dir)
+                if !all
+                    if file == VERSION_DIR_NAME
+                        continue
+                    elseif file == TEMP_CALC_DIR && !(temp || job.copy_temp_folders)
+                        continue
+                    end
+                end
+                if joinpath(job, file) == abspath(dest)
+                    continue
+                end
+                $f(joinpath(job, file), joinpath(dest, file); kwargs...)
+            end
+        end
+    end
+end
+

@@ -1,11 +1,11 @@
 function readoutput(calculation::Calculation{Wannier90}; kwargs...)
-    return wan_read_output(outpath(calculation); kwargs...)
+    return wan_read_output(Calculations.outpath(calculation); kwargs...)
 end
 
 #THIS IS THE MOST HORRIBLE FUNCTION I HAVE EVER CREATED!!!
 #extracts only atoms with projections
-function extract_atoms(atoms_block, proj_block, cell::Mat3{LT},
-                       spinors = false) where {LT<:Length}
+function extract_atoms(atoms_block, proj_block, cell::Mat3,
+                       spinors = false)
     if atoms_block.name == :atoms_cart
         cell = Mat3(Matrix(1.0Ang * I, 3, 3))
     end
@@ -24,8 +24,8 @@ function extract_atoms(atoms_block, proj_block, cell::Mat3{LT},
                     for proj in projs
                         size = spinors ? 2 * length(proj) : length(proj)
                         push!(t_ats,
-                              Atom(pos_at, position_cart = cell * ps, position_cryst = ps;
-                                   projections = [Projection(proj.orbital, t_start,
+                              Atom(name=pos_at, position_cart = cell * ps, position_cryst = ps;
+                                   projections = [Projection(Structures.orbital(proj), t_start,
                                                              t_start + size - 1)]))
                         t_start += size
                     end
@@ -74,7 +74,7 @@ function extract_structure(name, cell_block, atoms_block, projections_block,
     end
 
     atoms = extract_atoms(atoms_block, projections_block, cell, spinors)
-    return Structure(name, Mat3(cell), atoms)
+    return Structure(Mat3(cell), atoms)
 end
 
 function wan_read_calculation(::Type{T}, f::IO) where {T}
@@ -232,7 +232,7 @@ function wan_read_calculation(filename::String, T = Float64;
     structure = extract_structure(structure_name, cell_block, atoms_block, proj_block,
                                   get(flags, :spinors, false))
     dir, file = splitdir(filename)
-    flags[:preprocess] = hasflag(getfirst(x -> x.exec == "wannier90.x", execs), :pp) ?
+    flags[:preprocess] = Calculations.hasflag(getfirst(x -> x.exec == "wannier90.x", execs), :pp) ?
                          true : false
     return Calculation{Wannier90}(name = splitext(file)[1], dir = dir, flags = flags, data = data, execs = execs, run = run),
            structure
@@ -262,7 +262,7 @@ end
 function wan_parse_flag_line(line::String)
     split_line = strip_split(line, '=')
     flag       = Symbol(split_line[1])
-    flagtyp    = flagtype(Wannier90, flag)
+    flagtyp    = Calculations.flagtype(Wannier90, flag)
     value      = strip(lowercase(split_line[2]), '.')
     if flagtyp != String
         value = replace(value, "d" => "e")
@@ -285,8 +285,7 @@ end
 function wan_write_projections(f::IO, atoms::Vector{Atom})
     write(f, "begin projections\n")
     uniats = unique(atoms)
-    projs = projections.(uniats)
-    # projs = projections.(unique(atoms(structure)))
+    projs = map(x->x.projections, uniats)
     if all(isempty.(projs))
         write(f, "random\n")
     else
@@ -308,7 +307,7 @@ Writes the `Calculation{Wannier90}` and `structure` to a file, that can be inter
 The atoms in the structure must have projections defined.
 """
 function save(calculation::Calculation{Wannier90}, structure,
-              filename::String = inpath(calculation))
+              filename::String = Calculations.inpath(calculation))
     open(filename, "w") do f
         for (flag, value) in calculation.flags
             write_flag_line(f, flag, value)
@@ -317,15 +316,15 @@ function save(calculation::Calculation{Wannier90}, structure,
 
         if structure != nothing
             write(f, "begin unit_cell_cart\n")
-            write_cell(f, ustrip.(uconvert.(Ang, structure.cell')))
+            writedlm(f, ustrip.(structure.cell'))
             write(f, "end unit_cell_cart\n")
             write(f, "\n")
         end
-        wan_write_projections(f, atoms(structure))
+        wan_write_projections(f, structure.atoms)
 
         write(f, "\n")
         write(f, "begin atoms_frac\n")
-        for at in atoms(structure)
+        for at in structure.atoms
             pos = round.(at.position_cryst, digits = 5)
             write(f, "$(at.name)  $(pos[1]) $(pos[2]) $(pos[3])\n")
         end
@@ -431,8 +430,8 @@ function wan_read_output(filename::AbstractString;
 end
 
 function outfiles(c::Calculation{Wannier90})
-    files = [outpath(c)]
-    append!(files, filter(x -> x != inpath(c), searchdir(c, c.name)))#should include pw2wannier
+    files = [Calculations.outpath(c)]
+    append!(files, filter(x -> x != Calculations.inpath(c), searchdir(c, c.name)))#should include pw2wannier
     if get(c, :wannier_plot, false)
         append!(files, searchdir(c, "UNK"))
     end

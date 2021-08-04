@@ -4,7 +4,7 @@ function load_job(job_dir::AbstractString, version::Int=-1)
             error("It is not allowed to directly load a job version, please use `Job(dir, version=$(splitdir(job_dir)[end]))`")
         end
         if version != -1
-            real_path = version_dir(job_dir, version)
+            real_path = Jobs.version_dir(job_dir, version)
             real_version = version
         elseif ispath(joinpath(job_dir, "job.tt"))
             real_path = job_dir
@@ -13,7 +13,7 @@ function load_job(job_dir::AbstractString, version::Int=-1)
             error("No valid job found in $job_dir.")
         end
         job = Job(; merge((dir = real_path, version = real_version),
-                    Jobs.read_job_calculations(joinpath(real_path, "job.tt")))...)
+                    FileIO.read_job_calculations(joinpath(real_path, "job.tt")))...)
         Jobs.maybe_register_job(job)
         return job
     else
@@ -21,6 +21,8 @@ function load_job(job_dir::AbstractString, version::Int=-1)
     end
 end
 
+job_versions(args...) = Jobs.job_versions(args...)
+registered_jobs(args...) = Jobs.registered_jobs(args...)
 
 function workflow_logger(job::Job)
     return TeeLogger(MinLevelLogger(FileLogger(joinpath(job, ".workflow", "info.log");
@@ -117,14 +119,14 @@ function save(job::Job; kwargs...)
         cp(tj, joinpath(tj, Jobs.VERSION_DIR_NAME, "$(tj.version)"); force = true)
     end
     
-    set_dir!(job, dir) # Needs to be done so the inputs `dir` also changes.
+    Jobs.set_dir!(job, dir) # Needs to be done so the inputs `dir` also changes.
     mkpath(dir)
 
-    job.version = last_version(job) + 1
+    job.version = Jobs.last_version(job) + 1
     timestamp!(job, now())
     save_metadata(job)
-    writejobfiles(job; kwargs...)
-    maybe_register_job(job)
+    FileIO.writejobfiles(job; kwargs...)
+    Jobs.maybe_register_job(job)
     return job
 end
 
@@ -147,43 +149,11 @@ end
 Returns the last `Calculation` for which an output file was created.
 """
 function last_running_calculation(job::Job)
-    t = mtime(DFC.scriptpath(job))
+    t = mtime(Jobs.scriptpath(job))
     for (i, c) in enumerate(reverse(job.calculations))
-        p = DFC.outpath(c)
+        p = Calculations.outpath(c)
         if ispath(p) && mtime(p) > t
             return i
-        end
-    end
-end
-
-for (f, strs) in zip((:cp, :mv), (("copy", "Copies"), ("move", "Moves")))
-    @eval begin
-        """
-            $($f)(job::Job, dest::AbstractString; all=false, temp=false, kwargs...)
-
-        $($(strs[2])) the contents of `job.dir` to `dest`. If `all=true`, it will also $($(strs[1])) the
-        `.version` directory with all previous versions. If `temp=true` it will override
-        `job.copy_temp_folders` and $($(strs[1])) also the temporary calculation directories.
-        The `kwargs...` are passed to `Base.$($f)`.
-        """
-        function Base.$f(job::Job, dest::AbstractString; all = false, temp = false,
-                         kwargs...)
-            if !ispath(dest)
-                mkpath(dest)
-            end
-            for file in readdir(job.dir)
-                if !all
-                    if file == VERSION_DIR_NAME
-                        continue
-                    elseif file == Jobs.TEMP_CALC_DIR && !(temp || job.copy_temp_folders)
-                        continue
-                    end
-                end
-                if joinpath(job, file) == abspath(dest)
-                    continue
-                end
-                $f(joinpath(job, file), joinpath(dest, file); kwargs...)
-            end
         end
     end
 end
@@ -200,16 +170,16 @@ running.
 function isrunning(job_dir::String)
     !ispath(joinpath(job_dir, "job.tt")) && return false
     job = load_job(job_dir, -1)
-    server = DFC.Server(job)
+    server = Servers.Server(job)
     n = now()
-    if server.scheduler == DFC.Slurm
+    if server.scheduler == Servers.Slurm
         return slurm_isrunning(job)
     else
         u = username()
         i = last_running_calculation(job)
         i === nothing && return false
         l = job[i] 
-        codeexec = execs(l)[end].exec
+        codeexec = l.execs[end].exec
         try
             pids = parse.(Int, split(read(`pgrep $codeexec`, String)))
             if isempty(pids)

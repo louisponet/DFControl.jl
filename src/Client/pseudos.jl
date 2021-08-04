@@ -1,5 +1,5 @@
 function pseudos(server, pseudoset, fuzzy = "")
-    s = maybe_start_server(server) 
+    s = Servers.maybe_start_server(server) 
     resp = HTTP.get(s, "/pseudos/$pseudoset", [], JSON3.write(fuzzy))
     if resp.status == 204
         error("No pseudoset $pseudoset found on Server $(s.name). Please first configure it using configure_pseudoset.")
@@ -13,7 +13,7 @@ end
 Lists the pseudosets that have previously been set up.
 """
 function list_pseudosets(server = "localhost")
-    s = maybe_start_server(server)
+    s = Servers.maybe_start_server(server)
     return JSON3.read(HTTP.get(s, "/pseudo_sets").body, Vector{String})
 end
 
@@ -23,7 +23,7 @@ end
 Reads the specified `dir` and sets up the pseudos for `set`.
 """
 function configure_pseudos(set_name::String, dir::String, server = "localhost")
-    s = maybe_start_server(server)
+    s = Servers.maybe_start_server(server)
     p = isabspath(dir) ? dir : joinpath(s, dir)
     n_pseudos = JSON3.read(HTTP.post(s, "/configure_pseudos/" * p, [], JSON3.write(set_name)).body, Int)
     @info "Configured $n_pseudos pseudos on Server $(s.name), found in dir $p."
@@ -35,23 +35,10 @@ end
 Removes the pseudo set from the server.
 """
 function rm_pseudos!(set_name::String, server = "localhost")
-    s = maybe_start_server(server)
+    s = Servers.maybe_start_server(server)
     HTTP.put(s, "/rm_pseudos", [], JSON3.write(set_name))
 end
 #---#
-
-
-
-
-"""
-    set_pseudo!(at::Atom, pseudo::Pseudo; print=true)
-
-Sets the pseudopotential `at` to `pseudo`, and the validity of the `Pseudo` is checked.
-"""
-function set_pseudo!(at::DFC.Atom, pseudo::Pseudo; print = true)
-    print && @info "Pseudo of atom $(at.name) set to $pseudo."
-    return atom(at).pseudo = pseudo
-end
 
 """
     set_pseudos!(job::Job, set::Symbol, specifier::String=""; kwargs...)
@@ -77,31 +64,5 @@ Convenience function that allows to set pseudopotentials for multiple atom types
 e.g. `set_pseudos!(job, :Si => getdefault_pseudo(:Si, :sssp)
 """
 function set_pseudos!(job::Job, set, specifier::String = ""; kwargs...)
-    return set_pseudos!(job.structure, pseudos(job.server, set, specifier); kwargs...)
+    return Structures.set_pseudos!(job.structure, pseudos(job.server, set, specifier); kwargs...)
 end
-
-function set_pseudos!(structure::DFC.Structure, pseudos; kwargs...)
-    for at in structure.atoms
-        pseudo = get(pseudos, at.element.symbol, nothing)
-        if pseudo === nothing
-            @warn "Pseudo for $(at.name) not found."
-        else
-            set_pseudo!(at, pseudo; kwargs...)
-        end
-    end
-end
-
-"sets the pseudopotentials to the specified one in the default pseudoset."
-function set_pseudos!(job::Job, at_pseudos::Pair{Symbol,Pseudo}...; kwargs...)
-    return set_pseudos!(job.structure, at_pseudos...; kwargs...)
-end
-
-function set_pseudos!(structure::DFC.Structure, at_pseudos::Pair{Symbol,Pseudo}...;
-                      kwargs...)
-    for (atsym, pseudo) in at_pseudos
-        for at in structure[atsym]
-            set_pseudo!(at, pseudo; kwargs...)
-        end
-    end
-end
-

@@ -1,11 +1,10 @@
 module Display
+    using Requires, Crayons, Dates
     using ..Structures
     using ..Calculations
     using ..Jobs
     using ..Client
     using ..DFControl: Band, TimingData
-    using Requires
-    using Crayons
     
     include("base.jl")
     

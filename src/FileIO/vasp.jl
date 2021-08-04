@@ -23,7 +23,7 @@ function read_POSCAR(filename, name = "POSCAR")
                 end
             end
         end
-        return Structure(name, cell, atoms)
+        return Structure(cell, atoms)
     end
 end
 
@@ -35,18 +35,18 @@ function write_POSCAR(filename, structure)
             map(x -> write(f, "$(ustrip(uconvert(angstrom, x))) "), structure.cell[:, i])
             write(f, "\n")
         end
-        unique_els = unique(element.(atoms(structure)))
+        unique_els = unique(element.(structure.atoms))
         for e in unique_els
             write(f, "$(e.symbol) ")
         end
         write(f, "\n")
 
-        natoms = map(x -> count(y -> element(y) == x, atoms(structure)), unique_els)
+        natoms = map(x -> count(y -> element(y) == x, structure.atoms), unique_els)
         map(x -> write(f, "$x "), natoms)
         write(f, "\n")
         write(f, "Direct\n")
         for el in unique_els
-            for a in atoms(structure, el)
+            for a in structure.atoms el)
                 map(x -> write(f, "$x "), a.position_cryst)
                 write(f, "\n")
             end

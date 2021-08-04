@@ -152,7 +152,7 @@ function qe_block_variable(exec::AbstractString, flagname)
 end
 
 function qe_exec(calculation::Calculation{QE})
-    exec = getfirst(x -> x.exec ∈ QE_EXECS, execs(calculation))
+    exec = getfirst(x -> x.exec ∈ QE_EXECS, calculation.execs)
     if exec === nothing
         error("Calculation $calculation does not have a valid QE executable, please set it first.")
     end
@@ -168,11 +168,11 @@ function flagtype(calculation::Calculation{QE}, flag)
 end
 flagtype(::Type{QE}, exec, flag) = eltype(qe_flaginfo(exec, flag))
 
-isbands(c::Calculation{QE})   = c[:calculation] == "bands"
-isnscf(c::Calculation{QE})    = c[:calculation] == "nscf"
-isscf(c::Calculation{QE})     = c[:calculation] == "scf"
-isvcrelax(c::Calculation{QE}) = c[:calculation] == "vc-relax"
-isrelax(c::Calculation{QE})   = c[:calculation] == "relax"
+isbands(c::Calculation{QE})   = get(c, :calculation, nothing) == "bands"
+isnscf(c::Calculation{QE})    = get(c, :calculation, nothing) == "nscf"
+isscf(c::Calculation{QE})     = get(c, :calculation, nothing) == "scf"
+isvcrelax(c::Calculation{QE}) = get(c, :calculation, nothing) == "vc-relax"
+isrelax(c::Calculation{QE})   = get(c, :calculation, nothing) == "relax"
 
 function ispw(c::Calculation{QE})
     return isbands(c) || isnscf(c) || isscf(c) || isvcrelax(c) || isrelax(c)
@@ -200,20 +200,19 @@ end
 ψ_cutoff_flag(::Calculation{QE}) = :ecutwfc
 ρ_cutoff_flag(::Calculation{QE}) = :ecutrho
 
-for f in (:_cp, :_mv)
-    base_func = Symbol(string(f)[2:end])
-    @eval function $f(i::Calculation{QE}, dest::String; kwargs...)
+for f in (:cp, :mv)
+    @eval function Base.$f(i::Calculation{QE}, dest::String; kwargs...)
         $f(inpath(i), joinpath(dest, i.infile); kwargs...)
         if hasoutfile(i)
-            Base.$base_func(outpath(i), joinpath(dest, i.outfile); kwargs...)
+            $f(outpath(i), joinpath(dest, i.outfile); kwargs...)
         end
         if any(x -> x.exec == "projwfc.x", c.execs)
-            for f in searchdir(i, "pdos")
-                Base.$base_func(f, joinpath(dest, splitdir(f)[end]); kwargs...)
+            for file in searchdir(i, "pdos")
+                $f(file, joinpath(dest, splitdir(f)[end]); kwargs...)
             end
         elseif any(x -> x.exec == "hp.x", c.execs)
-            for f in searchdir(i, "Hubbard_parameters")
-                Base.$base_func(f, joinpath(dest, splitdir(f)[end]); kwargs...)
+            for file in searchdir(i, "Hubbard_parameters")
+                $f(file, joinpath(dest, splitdir(f)[end]); kwargs...)
             end
         end
         #TODO add ph.x outfiles

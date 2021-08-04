@@ -11,7 +11,7 @@ flagtype(::Calculation{Wannier90}, flag) = flagtype(Wannier90, flag)
 Generates a Wannier90 calculation to follow on the supplied `nscf` calculation. It uses the projections defined in the `structure`, and starts counting the required amount of bands from `Emin`.
 The `nscf` needs to have a valid output since it will be used in conjunction with `Emin` to find the required amount of bands and energy window for the Wannier90 calculation.
 """
-function gencalc_wan(nscf::Calculation{QE}, structure::Structure, Emin,
+function gencalc_wan(structure::Structure, Emin, Emax,
                      wanflags...; Epad = 5.0,
                      wanexec = Exec(; exec = "wannier90.x", dir = ""))
     hasoutput_assert(nscf)
@@ -95,26 +95,28 @@ end
 function set_kpoints!(calculation::Calculation{Wannier90}, k_grid::NTuple{3,Int};
                       print = true)
     set_flags!(calculation, :mp_grid => [k_grid...]; print = print)
-    set_data!(calculation, :kpoints, kgrid(k_grid..., calculation); print = print)
+    d = data(calculation, :kpoints)
+    if d !== nothing
+        d.data = kgrid(k_grid..., calculation)
+    else
+        push!(calculation.data, InputData(:kpoints, :none, kgrid(k_grid..., calculation)))
+    end
     return calculation
 end
 
 """
-    set_wanenergies!(wancalculation::Calculation{Wannier90}, structure::Structure, nscf::Calculation , Emin::Real; Epad=5.0)
+    set_wanenergies!(wancalculation::Calculation{Wannier90}, structure::Structure, bands::Vector{Band}, Emin::Real; Epad=5.0)
 
 Automatically calculates and sets the wannier energies. This uses the projections,
 `Emin` and the output of the nscf calculation to infer the other limits.
 `Epad` allows one to specify the padding around the inner and outer energy windows
 """
 function set_wanenergies!(calculation::Calculation{Wannier90},
-                          structure::Structure, nscf::Calculation, Emin::Real;
+                          structure::Structure, bands, Emin::Real;
                           Epad = 5.0)
-    hasoutput_assert(nscf)
-    @assert isnscf(nscf) "Please provide a valid nscf calculation."
-    hasprojections_assert(structure)
 
-    bands = readbands(nscf)
-    nwann = nprojections(structure)
+    nwann = sum(x-> sum(length.(x.projections)), structure.atoms)
+    @assert nwann != 0 "Please specify projections first."
     @info "num_wann=$nwann (inferred from provided projections)."
 
     if length(bands) == 2
@@ -159,18 +161,8 @@ function wanenergyranges(Emin, nbnd, bands, Epad = 5)
     return (Emin - Epad, Emin, max, max + Epad)
 end
 
-function Emin_from_projwfc(structure::Structure, projwfc::Calculation{QE},
+function Emin_from_projwfc(structure::Structure, states, bands::Vector{DFC.Band},
                            threshold::Number)
-    DFC.hasoutput_assert(projwfc)
-    @assert any(x -> x.exec == "projwfc.x", projwfc.execs)
-    if !haskey(projwfc.outdata, :states)
-        states, bands             = qe_read_projwfc(outpath(projwfc))
-        projwfc.outdata[:states] = states
-        projwfc.outdata[:bands]  = bands
-    else
-        states, bands = projwfc.outdata[:states], projwfc.outdata[:bands]
-    end
-
     mask = zeros(length(states))
     for (atid, at) in enumerate(structure.atoms)
         projs = at.projections
@@ -181,14 +173,14 @@ function Emin_from_projwfc(structure::Structure, projwfc::Calculation{QE},
 
         stateids = Int[]
         for proj in projs
-            orb = orbital(proj)
+            orb = proj.orbital
             push!.((stateids,), findall(x -> x.atom_id == atid && x.l == orb.l, states))
         end
         mask[stateids] .= 1.0
     end
     Emin = -10000.0
     for b in bands
-        ψ = mean(b.extra[:ψ])
+        ψ = sum(b.extra[:ψ])/length(b.extra[:ψ])
         tot_relevant_occupation = dot(mask, ψ)
 
         if tot_relevant_occupation > threshold
@@ -202,3 +194,12 @@ function Emin_from_projwfc(structure::Structure, projwfc::Calculation{QE},
     return Emin
 end
 
+for f in (:cp, :mv)
+    @eval function Base.$f(i::Calculation{Wannier90}, dest::String; kwargs...)
+        for glob in ("$(i.name)","UNK") # seedname should also cover generated pw2wannier90 files
+            for file in searchdir(i, glob)
+                $f(file, joinpath(dest, splitdir(f)[end]); kwargs...)
+            end
+        end
+    end
+end

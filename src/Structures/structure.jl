@@ -11,7 +11,7 @@ mutable struct Structure
     cell  :: Mat3{typeof(1.0Ang)}
     atoms :: Vector{Atom}
 end
-Structure() = Structure("", Mat3(fill(1.0Ang,3,3)), Atom[])
+Structure() = Structure(Mat3(fill(1.0Ang,3,3)), Atom[])
 
 function Structure(cif_file::String)
     str = cif2structure(cif_file)
@@ -19,7 +19,7 @@ function Structure(cif_file::String)
     return str
 end
 
-DFC.StructTypes.StructType(::Type{Structure}) = DFC.StructTypes.Struct()
+StructTypes.StructType(::Type{Structure}) = StructTypes.Struct()
 
 Base.:(==)(str1::Structure, str2::Structure) = str1.cell == str2.cell && str1.atoms == str2.atoms
 
@@ -40,7 +40,7 @@ end
 function mergestructures(structures::Vector{Structure})
     nonvoid = filter(x -> x != nothing, structures)
     out = nonvoid[1]
-    default_at = Atom(name=:no, position_cart=zero(Point3{typeof(Ang)}), position_cryst=zero(Point3{Float64}))
+    default_at = Atom(name=:Rh, position_cart=zero(Point3{typeof(1.0Ang)}), position_cryst=zero(Point3{Float64}))
     for structure in nonvoid[2:end]
         for at1 in out.atoms, at2 in structure.atoms
             if at1 == at2
@@ -77,7 +77,7 @@ function update_geometry!(str1::Structure, str2::Structure)
     end
     return str1
 end
-Base.length(str::Structure) = length(atoms(str))
+Base.length(str::Structure) = length(str.atoms)
 
 ### CELL ###
 """
@@ -146,7 +146,7 @@ If `make_afm` is set to `true` all the labels and magnetizations of the magnetic
 """
 function create_supercell(structure::Structure, na::UnitRange, nb::UnitRange,
                           nc::UnitRange; make_afm = false)
-    orig_ats  = atoms(structure)
+    orig_ats  = structure.atoms
     orig_cell = structure.cell
     scale_mat = diagm(0 => length.([na, nb, nc]))
 
@@ -174,7 +174,7 @@ function create_supercell(structure::Structure, na::UnitRange, nb::UnitRange,
         end
     end
     out = Structure(Mat3(new_cell), new_atoms)
-    sanitize_magnetization!(out)
+    sanitize!(out)
     return out 
 end
 
@@ -191,10 +191,10 @@ end
 
 Returns the `i`th atom in `structure`, or all atoms with `name` or are of element `el`.
 """
-Base.getindex(str::Structure, i::Int) = atoms(str)[i]
-Base.getindex(str::Structure, el::Symbol) = atoms(x -> x.name == el, str)
-Base.getindex(str::Structure, el::Element) = atoms(x -> x.element == el, str)
-ismagnetic(str::Structure) = any(x -> norm(x.magnetization) > 0, atoms(str))
+Base.getindex(str::Structure, i::Int) = str.atoms[i]
+Base.getindex(str::Structure, el::Symbol) = filter(x -> x.name == el, str.atoms)
+Base.getindex(str::Structure, el::Element) = filter(x -> x.element == el, str.atoms)
+ismagnetic(str::Structure) = any(x -> norm(x.magnetization) > 0, str.atoms)
 
 ## Magnetism ##
 function iscolin(str::Structure)
@@ -208,7 +208,7 @@ function isnoncolin(str::Structure)
                    !isapprox(abs(normalize(x.magnetization) ⋅ [0, 0, 1]), 1.0), str.atoms)
 end
 
-function sanitize_magnetization!(str::Structure)
+function sanitize!(str::Structure)
     magnetic_ats = filter(a -> norm(a.magnetization) != 0, str.atoms)
     magnetic_elements = map(x -> x.element, magnetic_ats)
     for e in magnetic_elements
@@ -268,6 +268,17 @@ function polyhedron(at::Atom, str::Structure, order::Int)
     return polyhedron(at, create_supercell(str, -1:1, -1:1, -1:1).atoms, order)
 end
 
+function set_pseudos!(structure::Structure, pseudos)
+    for at in structure.atoms
+        pseudo = get(pseudos, at.element.symbol, nothing)
+        if pseudo === nothing
+            @warn "Pseudo for $(at.name) not found."
+        else
+            at.pseudo = pseudo
+        end
+    end
+end
+
 ### SPGLIB ###
 const DEFAULT_TOLERANCE = 1e-5
 
@@ -281,7 +292,7 @@ function SPGStructure(s::Structure)
     clattice = convert(Matrix{Cdouble}, ustrip.(s.cell'))
     cpositions = convert(Matrix{Cdouble}, hcat(map(x -> x.position_cryst, s.atoms)...))
     uats = unique(s.atoms)
-    species_indices = Cint[findfirst(x -> isequal_species(x, at), uats) for at in atoms(s)]
+    species_indices = Cint[findfirst(x -> isequal_species(x, at), uats) for at in s.atoms]
     return SPGStructure(clattice, cpositions, species_indices)
 end
 
@@ -328,15 +339,15 @@ Returns the niggli reduced `Structure`.
 """
 function niggli_reduce(s::Structure; tolerance = DEFAULT_TOLERANCE)
     reduced_spg_structure = niggli_reduce!(SPGStructure(s); tolerance = DEFAULT_TOLERANCE)
-    uats = unique(atoms(s))
+    uats = unique(s.atoms)
     c = Mat3{Float64}(reduced_spg_structure.lattice') .* 1Ang
-    return Structure(s.name, c,
+    return Structure(c,
                      map(1:length(reduced_spg_structure.species_indices)) do i
                          at = deepcopy(uats[reduced_spg_structure.species_indices[i]])
                          pos = reduced_spg_structure.positions[:, i]
                          set_position!(at, pos, c)
                          return at
-                     end, s.data)
+                     end)
 end
 
 function niggli_reduce(c::Mat3{Float64}; tolerance = DEFAULT_TOLERANCE)
@@ -363,7 +374,7 @@ function find_primitive!(s::SPGStructure; tolerance = DEFAULT_TOLERANCE)
 end
 
 function find_primitive(s::Structure; kwargs...)
-    uats = unique(atoms(s))
+    uats = unique(s.atoms)
     spg = find_primitive!(SPGStructure(s))
     new_cell = Mat3{Float64}(spg.lattice) * unit(eltype(s.cell))
     newats = eltype(uats)[]
@@ -373,7 +384,7 @@ function find_primitive(s::Structure; kwargs...)
         push!(newats, tat)
     end
 
-    return Structure(s.name, new_cell, newats, s.data)
+    return Structure(new_cell, newats)
 end
 
 """

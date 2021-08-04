@@ -46,7 +46,7 @@ StructTypes.StructType(::Type{Pseudo}) = StructTypes.Mutable()
 
 Base.isempty(p::Pseudo) = isempty(p.name) && isempty(p.dir)
 
-==(p1::Pseudo, p2::Pseudo) = p1.name == p2.name && p1.dir == p2.dir
+Base.:(==)(p1::Pseudo, p2::Pseudo) = p1.name == p2.name && p1.dir == p2.dir
 
 path(p::Pseudo) = joinpath(p.dir, p.name)
 
@@ -95,7 +95,6 @@ function element(sym::Symbol)
     end
     found = filter(x -> x.symbol == sym, ELEMENTS)
     if isempty(found)
-        @warn "No element found with symbol '$sym'."
         return ELEMENTS[end]
     end
     return found[1]
@@ -134,7 +133,7 @@ StructTypes.StructType(::Type{Atom}) = StructTypes.Struct()
 
 "Takes a Vector of atoms and returns a Vector with the atoms having unique symbols."
 function Base.unique(atoms::Vector{Atom})
-    uni = A[]
+    uni = Atom[]
     for at in atoms
         if findfirst(x -> isequal_species(x, at), uni) === nothing
             push!(uni, at)

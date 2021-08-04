@@ -1,6 +1,4 @@
 #these are all the control data, they hold the flags that guide the calculation
-outfiles(c::Calculation) = filter(ispath, [Calculations.outpath(c)])
-
 function pdos(calculation::Calculation, args...)
     @error "pdos reading not implemented for package $(eltype(calculation))."
 end
@@ -60,49 +58,37 @@ end
 function pdos(c::Calculation{QE}, atsym::Symbol, magnetic::Bool, soc::Bool,
               filter_word = "")
     @assert isprojwfc(c) "Please specify a valid projwfc calculation."
-    kresolved = haskey(c, :kresolveddos) && calculation[:kresolveddos]
+    kresolved = haskey(c, :kresolveddos) && c[:kresolveddos]
     files = filter(x -> occursin("($atsym)", x) &&
                             occursin("#", x) &&
                             occursin(filter_word, x), searchdir(c.dir, "pdos"))
     @assert !isempty(files) "No pdos files found in calculation directory $(c.dir)"
     files = joinpath.((c,), files)
-    energies, = kresolved ? qe_read_kpdos(files[1]) : qe_read_pdos(files[1])
+    energies, = kresolved ? FileIO.qe_read_kpdos(files[1]) : FileIO.qe_read_pdos(files[1])
     atdos = magnetic && !soc ? zeros(size(energies, 1), 2) : zeros(size(energies, 1))
     if kresolved
         for f in files
             if magnetic && !occursin(".5", f)
-                tu = qe_read_kpdos(f, 2)[2]
-                td = qe_read_kpdos(f, 3)[2]
+                tu = FileIO.qe_read_kpdos(f, 2)[2]
+                td = FileIO.qe_read_kpdos(f, 3)[2]
                 atdos[:, 1] .+= reduce(+, tu; dims = 2) ./ size(tu, 2)
                 atdos[:, 2] .+= reduce(+, td; dims = 2) ./ size(tu, 2)
                 # elseif occursin(".5", f)
             else
-                t = qe_read_kpdos(f, 1)[2]
+                t = FileIO.qe_read_kpdos(f, 1)[2]
                 atdos .+= (reshape(reduce(+, t; dims = 2), size(atdos, 1)) ./ size(t, 2))
             end
         end
     else
         for f in files
             if magnetic && !occursin(".5", f)
-                atdos .+= qe_read_pdos(f)[2][:, 1:2]
+                atdos .+= FileIO.qe_read_pdos(f)[2][:, 1:2]
                 # elseif occursin(".5", f)
             else
-                atdos .+= qe_read_pdos(f)[2][:, 1]
+                atdos .+= FileIO.qe_read_pdos(f)[2][:, 1]
             end
         end
     end
     return (energies = energies, pdos = atdos)
-end
-
-issoccalc(calculation::Calculation{Wannier90}) = flag(calculation, :spinors) == true
-
-for f in (:cp, :mv)
-    @eval function Base.$f(i::Calculation{Wannier90}, dest::String; kwargs...)
-        for glob in ("$(i.name)","UNK") # seedname should also cover generated pw2wannier90 files
-            for f in searchdir(i, glob)
-                $f(f, joinpath(dest, splitdir(f)[end]); kwargs...)
-            end
-        end
-    end
 end
 

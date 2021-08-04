@@ -44,7 +44,7 @@ function show(io::IO, job::Job)
     push!(fs, join(string.(versions), ", "))
     if haskey(job.metadata, :timestamp)
         push!(fns, "last submission")
-        push!(fs, string(round(job.metadata[:timestamp], Dates.Second)))
+        push!(fs, string(round(job.metadata[:timestamp], Second)))
     end
     push!(fns, "running")
     is_running = Client.isrunning(job)

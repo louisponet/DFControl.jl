@@ -51,8 +51,8 @@ export Client
 
 
 function __init__()
-    # Service.init_job_registry()
-    # Client.maybe_create_localhost()
+    Jobs.init_job_registry()
+    Servers.maybe_create_localhost()
     # Client.maybe_start_server("localhost")
     # if !haskey(ENV, "IS_DAEMON")
     #     init_daemon()

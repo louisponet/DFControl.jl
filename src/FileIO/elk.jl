@@ -122,7 +122,7 @@ function elk_read_calculation(fn::String; execs = [Exec(; exec = "elk")], run = 
                                          position_cryst = x[2], position_cart = cell * x[2],
                                          magnetization = x[3]) for x in atoms]
     #structure #TODO make positions be in lattices coordinates
-    structure = Structure(structure_name, cell, newats)
+    structure = Structure(cell, newats)
 
     #different tasks
     tasks_     = pop!(blocknames_flaglines, :tasks)
@@ -239,12 +239,12 @@ end
 
 function elk_write_structure(f, structure)
     write(f, "atoms\n\t")
-    species = unique(map(x -> x.name, atoms(structure)))
+    species = unique(map(x -> x.name, structure.atoms))
     nspecies = length(species)
     write(f, "$nspecies\n")
     for s in species
         write(f, "\t'$s.in'\n")
-        ats = filter(x -> x.name == s, atoms(structure))
+        ats = filter(x -> x.name == s, structure.atoms)
         write(f, "\t$(length(ats))\n")
         for a in ats
             write(f, "\t")
@@ -319,7 +319,7 @@ function elk_write_DFTU(f::IO, structure::DFC.Structure, dftu_vals::Vector)
     for v in dftu_vals
         elk_write_flag_val(f, v)
     end
-    species = unique(atoms(structure))
+    species = unique(structure.atoms)
     for (i, s) in enumerate(species)
         write(f, "\t$i $(string(Elk, dftu(s)))\n")
     end

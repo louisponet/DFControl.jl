@@ -1,6 +1,7 @@
 module Structures
     # This module handles all functionality related to Structure and Atom
     using ..DFControl
+    using ..Utils
     using LinearAlgebra, StructTypes, Parameters, StaticArrays
     using spglib_jll
     const SPGLIB = spglib_jll.libsymspg
@@ -33,7 +34,7 @@ module Structures
     include("atom.jl")
     include("structure.jl")
 
-    export Projection, Atom, Element, Structure
+    export Projection, Atom, Element, Structure, Pseudo, DFTU
     
     export angstrom, Ang
 end

@@ -47,7 +47,7 @@ function writetojob(f, job, calculation::Calculation; kwargs...)
     if !should_run
         write(f, "#")
     end
-    writeexec.((f,), execs(calculation))
+    writeexec.((f,), calculation.execs)
     write(f, "< $filename > $(calculation.outfile)\n")
     return (calculation,)
 end
@@ -58,28 +58,28 @@ function writetojob(f, job, _calculation::Calculation{Wannier90}; kwargs...)
     id         = findfirst(isequal(_calculation), job.calculations)
     seedname   = _calculation.name
 
-    nscf_calc = getfirst(x -> isnscf(x), job.calculations)
+    nscf_calc = getfirst(x -> Calculations.isnscf(x), job.calculations)
     if nscf_calc !== nothing
         runexec = nscf_calc.execs
         # For elk the setup necessary for the wan_calc needs to be done before writing the wan calculation
         # because it's inside elk.in
-        if package(nscf_calc) == QE
+        if eltype(nscf_calc) == QE
             pw2wancalculation = qe_generate_pw2wancalculation(_calculation, nscf_calc,
                                                               runexec)
-            preprocess = pop!(_calculation, :preprocess)
+            preprocess = pop!(_calculation, :preprocess, false)
             wannier_plot = pop!(_calculation, :wannier_plot, nothing)
 
             if !preprocess || !should_run
                 write(f, "#")
             end
-            writeexec.((f,), execs(_calculation))
-            write(f, "-pp $filename > $(DFC.outfilename(_calculation))\n")
+            writeexec.((f,), _calculation.execs)
+            write(f, "-pp $filename > $(joinpath(_calculation.dir, _calculation.outfile))\n")
 
             save(_calculation, job.structure; kwargs...)
             writetojob(f, job, pw2wancalculation; kwargs...)
             _calculation[:preprocess] = preprocess
             wannier_plot !== nothing && (_calculation[:wannier_plot] = wannier_plot)
-        elseif package(nscf_calc) == Elk
+        elseif eltype(nscf_calc) == Elk
             pw2wancalculation = job["elk2wannier"]
         end
     end
@@ -87,8 +87,8 @@ function writetojob(f, job, _calculation::Calculation{Wannier90}; kwargs...)
     if !should_run
         write(f, "#")
     end
-    writeexec.((f,), execs(_calculation))
-    write(f, "$filename > $(DFC.outfilename(_calculation))\n")
+    writeexec.((f,), _calculation.execs)
+    write(f, "$filename > $(joinpath(_calculation.dir, _calculation.outfile))\n")
     return (_calculation,)
 end
 
@@ -136,7 +136,7 @@ function writejobfiles(job::Job; kwargs...)
 
         for i in job.calculations
             if i.run
-                rm.(outfiles(i))
+                rm.(Calculations.outfiles(i))
             end
             if i ∉ written_calculations
                 append!(written_calculations, writetojob(f, job, i; kwargs...))
@@ -165,7 +165,7 @@ function read_job_line(line)
     #     Not sure how we can actually do this
     for s in spl
         d, e = splitdir(s)
-        if e ∈ allexecs()
+        if e ∈ Calculations.allexecs()
             push!(exec_and_flags, s => SubString[])
         elseif !isempty(exec_and_flags)
             # else
@@ -181,43 +181,22 @@ function read_job_line(line)
             continue
         end
         if occursin("mpi", e)
-            push!(execs, Exec(efile, dir, DFC.parse_mpi_flags(flags)))
+            push!(execs, Exec(efile, dir, Calculations.parse_mpi_flags(flags)))
         elseif efile == "wannier90.x"
-            push!(execs, Exec(efile, dir, DFC.parse_wan_execflags(flags)))
-        elseif any(occursin.(QE_EXECS, (efile,)))
-            push!(execs, Exec(efile, dir, DFC.parse_qe_execflags(flags)))
-        elseif any(occursin.(ELK_EXECS, (efile,)))
+            push!(execs, Exec(efile, dir, Calculations.parse_wan_execflags(flags)))
+        elseif any(occursin.(Calculations.QE_EXECS, (efile,)))
+            push!(execs, Exec(efile, dir, Calculations.parse_qe_execflags(flags)))
+        elseif any(occursin.(Calculations.ELK_EXECS, (efile,)))
             calculation = "elk.in"
             output = "elk.out"
             push!(execs, Exec(exec=efile, dir=dir))
         else
-            push!(execs, Exec(efile, dir, DFC.parse_generic_flags(flags)))
+            push!(execs, Exec(efile, dir, Calculations.parse_generic_flags(flags)))
         end
     end
     return execs, calculation, output, run
 end
 
-function parse_generic_flags(flags::Vector{<:SubString})
-    out = ExecFlag[]
-    f = :none
-    c = 1
-    for s in flags
-        if s[1] == '-'
-            c = count(isequal('-'), s)
-            f = Symbol(strip(s, '-'))
-        else
-            v = tryparse(Int, s)
-            if v === nothing
-                v = tryparse(Float64, s)
-                if v === nothing
-                    v = s
-                end
-            end
-            push!(out, ExecFlag(f => v, c))
-        end
-    end
-    return out
-end
 
 # TODO: make this work again
 # function read_job_filenames(job_file::String)
@@ -240,12 +219,23 @@ end
 #     return calculation_files, output_files
 # end
 
+function calculationparser(exec::Exec)
+    if Calculations.is_qe_exec(exec)
+        qe_read_calculation
+    elseif Calculations.is_wannier_exec(exec)
+        wan_read_calculation
+    elseif Calculations.is_elk_exec(exec)
+        elk_read_calculation
+    end
+end
+
+
 function read_job_calculations(job_file::String)
     dir = splitdir(job_file)[1]
     name = ""
     header = Vector{String}()
-    calculations = Calculation[]
-    structures = DFC.Structure[]
+    cs = Calculation[]
+    structures = Structure[]
     scratch_dir = ""
     open(job_file, "r") do f
         readline(f)
@@ -254,35 +244,35 @@ function read_job_calculations(job_file::String)
             if line == ""
                 continue
             end
-            if has_parseable_exec(line)
-                execs, calculationfile, output, run = read_job_line(line)
-                inpath = joinpath(dir, calculationfile)
+            if Calculations.has_parseable_exec(line)
+                execs, cfile, output, run = read_job_line(line)
+                inpath = joinpath(dir, cfile)
                 if !ispath(inpath)
-                    calculation = (nothing, nothing)
+                    c = (nothing, nothing)
                 else
-                    calccommand = getfirst(isparseable, execs)
-                    calculation = calccommand != nothing ?
-                                  calculationparser(calccommand)(inpath; execs = execs,
+                    command = getfirst(Calculations.isparseable, execs)
+                    c = command != nothing ?
+                                  calculationparser(command)(inpath; execs = execs,
                                                                  run = run) :
                                   (nothing, nothing)
                 end
-                if calculation[1] !== nothing
-                    calculation[1].outfile = output
-                    calculation[1].infile = calculationfile
+                if c[1] !== nothing
+                    c[1].outfile = output
+                    c[1].infile = cfile
                 end
-                if calculation != (nothing, nothing)
-                    id = findall(x -> x.infile == calculationfile, calculations)
+                if c != (nothing, nothing)
+                    id = findall(x -> x.infile == cfile, cs)
                     if !isempty(id) #this can only happen for stuff that needs to get preprocessed
-                        merge!(calculation[1].flags, calculations[id[1]].flags)
-                        calculations[id[1]] = calculation[1]
+                        merge!(c[1].flags, cs[id[1]].flags)
+                        cs[id[1]] = c[1]
                     else
-                        if isa(calculation[1], Vector)
-                            append!(calculations, calculation[1])
+                        if isa(c[1], Vector)
+                            append!(cs, c[1])
                         else
-                            push!(calculations, calculation[1])
+                            push!(cs, c[1])
                         end
-                        if calculation[2] != nothing
-                            push!(structures, calculation[2])
+                        if c[2] != nothing
+                            push!(structures, c[2])
                         end
                     end
                 end
@@ -300,10 +290,12 @@ function read_job_calculations(job_file::String)
             end
         end
     end
-    if isempty(structures)
-        error("Something went wrong and no valid structures could be read from calculation files.")
+    if !isempty(structures)
+        structure = Structures.mergestructures(structures)
+    else
+        structure = Structure()
+        @warn "No valid structures could be read from calculation files."
     end
-    structure = DFC.mergestructures(structures)
-    return (;name, header, calculations, structure)
+    return (;name, header, calculations=cs, structure)
 end
 

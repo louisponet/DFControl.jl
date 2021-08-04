@@ -35,7 +35,7 @@ Will first transform `flags` into a `Vector{ExecFlag}`, and construct the [`Exec
     flags::Vector{ExecFlag} = ExecFlag[]
 end
 
-function Exec(exec::String, dir::String, flags...)
+function Exec(exec::String, dir::String, flags::Pair...)
     _flags = ExecFlag[]
     ismpi = occursin("mpi", exec)
     for (f, v) in flags
@@ -54,7 +54,7 @@ const RUN_EXECS = ["mpirun", "mpiexec", "srun"]
 
 hasflag(exec::Exec, s::Symbol) = findfirst(x -> x.symbol == s, exec.flags) != nothing
 
-path(exec::Exec)                       = joinpath(exec.dir, exec.exec)
+path(exec::Exec)               = joinpath(exec.dir, exec.exec)
 
 function Base.:(==)(e1::Exec, e2::Exec)
     if e1.exec != e2.exec || e1.dir != e2.dir
@@ -263,3 +263,39 @@ is_qe_exec(exec::Exec) = exec.exec ∈ QE_EXECS
 const ELK_EXECS = ["elk", "elk-omp"]
 
 is_elk_exec(exec::Exec) = exec.exec ∈ ELK_EXECS
+
+allexecs() = vcat(RUN_EXECS, QE_EXECS, WAN_EXECS, ELK_EXECS)
+parseable_execs() = vcat(QE_EXECS, WAN_EXECS, ELK_EXECS)
+has_parseable_exec(l::String) = occursin(">", l) && any(occursin.(parseable_execs(), (l,)))
+
+isparseable(exec::Exec) = exec.exec ∈ parseable_execs()
+
+function verify_exec(e::Exec)
+    if !isempty(e.dir) && ispath(joinpath(e.dir, e.exec))
+        return true
+    else
+        return Sys.which(e.exec) !== nothing
+    end
+end
+
+function parse_generic_flags(flags::Vector{<:SubString})
+    out =ExecFlag[]
+    f = :none
+    c = 1
+    for s in flags
+        if s[1] == '-'
+            c = count(isequal('-'), s)
+            f = Symbol(strip(s, '-'))
+        else
+            v = tryparse(Int, s)
+            if v === nothing
+                v = tryparse(Float64, s)
+                if v === nothing
+                    v = s
+                end
+            end
+            push!(out, ExecFlag(f => v, c))
+        end
+    end
+    return out
+end

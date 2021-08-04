@@ -35,7 +35,7 @@ testjobpath = joinpath(testdir, "testassets", "test_job")
 
     set_kpoints!(job["scf"], (6, 6, 6, 1, 1, 1))
 
-    set_magnetization!(atoms(job, element(:Ni))[1], [0,0, 0.1])
+    set_magnetization!(job.structure.atoms element(:Ni))[1], [0,0, 0.1])
     set_Hubbard_U!(job, element(:Ni) => 4.0)
 
     push!(job, gencalc_bands(job["scf"], high_symmetry_kpath(job, 20)))

@@ -231,7 +231,7 @@
 #         end
 #         # up till here everything was in bohr, not anymore.
 #         if !isempty(s_atoms)
-#             push!(out_structures, Structure(structure_name, rprimd, s_atoms))
+#             push!(out_structures, Structure(rprimd, s_atoms))
 #         end
 #     end
 #     return out_structures

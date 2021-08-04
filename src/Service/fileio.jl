@@ -77,13 +77,6 @@ function rm_expr_lhs(filename, lhs)
     end
 end
 
-function write_cell(f::IO, cell::AbstractMatrix)
-    @assert size(cell) == (3, 3) "writing cell only allows 3x3 matrices!"
-    write(f, "$(cell[1, 1]) $(cell[1, 2]) $(cell[1, 3])\n")
-    write(f, "$(cell[2, 1]) $(cell[2, 2]) $(cell[2, 3])\n")
-    return write(f, "$(cell[3, 1]) $(cell[3, 2]) $(cell[3, 3])\n")
-end
-
 "LOL this absolutely is impossible to do for QE"
 function writeabortfile(job::Job, calculation::Calculation{QE})
     abortpath = joinpath(job.dir, TEMP_CALC_DIR, "$(job.name).EXIT")
@@ -125,8 +118,8 @@ function write_xsf(filename::AbstractString, structure::DFC.Structure)
         write(f, "$(c[2,1]) $(c[2,2]) $(c[2,3])\n")
         write(f, "$(c[3,1]) $(c[3,2]) $(c[3,3])\n")
         write(f, "PRIMCOORD\n")
-        write(f, "$(length(atoms(structure))) 1\n")
-        for at in atoms(structure)
+        write(f, "$(length(structure.atoms)) 1\n")
+        for at in structure.atoms
             n = at.element.symbol
             p = ustrip.(at.position_cart)
             write(f, "$n $(p[1]) $(p[2]) $(p[3])\n")

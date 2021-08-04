@@ -13,14 +13,14 @@ testjobpath = joinpath(testassetspath, "test_job")
     @test length(job.structure) == 2 
     @test isapprox(magnetization(atoms(job, :Ni1)[1]), [0,0,-0.1])
     @test isapprox(magnetization(atoms(job, :Ni)[1]), [0,0,0.1])
-    @test isapprox(magnetization.(atoms(job, element(:Ni))), [[0,0,0.1], [0,0,-0.1]])
+    @test isapprox(magnetization.(job.structure.atoms element(:Ni))), [[0,0,0.1], [0,0,-0.1]])
     ngl = niggli_reduce(job.structure)
     @test volume(job.structure) == volume(ngl)
     @test job.structure.cell != ngl.cell
-    prev = atoms(job, element(:Ni))[1].position_cryst[1]
+    prev = job.structure.atoms element(:Ni))[1].position_cryst[1]
     prev_vol = volume(job.structure)
     scale_cell!(job, diagm(0=>[2,1,1]))
-    @test atoms(job, element(:Ni))[1].position_cryst[1] == 0.5prev
+    @test job.structure.atoms element(:Ni))[1].position_cryst[1] == 0.5prev
     @test 2*prev_vol == volume(job)
 
     out_str = outputdata(job["scf"])[:initial_structure]
@@ -31,12 +31,12 @@ end
 @testset "supercell" begin
     job = Job(testjobpath)
     struct2 = DFControl.create_supercell(job.structure, 1, 2, 1)
-    newpositions = [at.position_cart for at in atoms(struct2)]
-    oldposition = atoms(job.structure)[1].position_cart
+    newpositions = [at.position_cart for at in struct2.atoms]
+    oldposition = job.structure.atoms[1].position_cart
     cell_ = job.structure.cell
 
-    @test atoms(job.structure)[1].position_cart ==
-          job.structure.cell' * atoms(job.structure)[1].position_cryst
+    @test job.structure.atoms[1].position_cart ==
+          job.structure.cell' * job.structure.atoms[1].position_cryst
     @test oldposition == newpositions[1]
     @test oldposition + cell_[:, 1] ∈ newpositions
     @test oldposition + 2 * cell_[:, 2] ∈ newpositions
@@ -236,7 +236,7 @@ rm(testjobpath, recursive=true)
 
 # testorbs = ["s", "p"]
 # set_projections!(job, :Pt => testorbs)
-# @test convert.(String, [p.orb for p in Iterators.flatten(projections.(atoms(job, :Pt)))]) ==
+# @test convert.(String, [p.orb for p in Iterators.flatten(projections.(job.structure.atoms :Pt)))]) ==
 #       testorbs
 # set_wanenergies!(job, nscf, fermi - 7.0; Epad = 3.0)
 
@@ -265,7 +265,7 @@ rm(testjobpath, recursive=true)
 # report = progressreport(job; onlynew = false, print = false)
 # @test report[:fermi] == 17.4572
 # @test length(report[:accuracy]) == 9
-# oldat = atoms(job)[1]
+# oldat = job.structure.atoms[1]
 # copy_outfiles()
 # newatompos = outputdata(job, "vc_relax"; onlynew = false)[:final_structure]
 # job.structure = newatompos
@@ -276,7 +276,7 @@ rm(testjobpath, recursive=true)
 # set_pseudos!(job, :Si => Pseudo("Si.UPF", joinpath(testdir, "testassets", "pseudos_copy")))
 # save(job)
 # @test ispath(joinpath(job.dir, "Si.UPF"))
-# @test atoms(job, :Si)[1].pseudo == Pseudo("Si.UPF", job.dir)
+# @test job.structure.atoms :Si)[1].pseudo == Pseudo("Si.UPF", job.dir)
 # rm(joinpath(testdir, "testassets", "pseudos_copy"); recursive = true)
 
 # job["nscf"][:occupations] = "smearing"
@@ -288,25 +288,25 @@ rm(testjobpath, recursive=true)
 # @test projwfc[:ngauss] == 1
 
 # set_Hubbard_U!(job, :Si => 1.0)
-# @test atoms(job, :Si)[1].dftu.U == 1.0
+# @test job.structure.atoms :Si)[1].dftu.U == 1.0
 
 # prev_a = job.structure.cell[1, :]
 # prev_b = job.structure.cell[2, :]
 # prev_c = job.structure.cell[3, :]
-# prev_pos = position_cart.(atoms(job))
+# prev_pos = position_cart.(job.structure.atoms)
 # scale_cell!(job, [2 0 0; 0 2 0; 0 0 2])
 # @test prev_a .* 2 == job.structure.cell[1, :]
 # @test prev_b .* 2 == job.structure.cell[2, :]
 # @test prev_c .* 2 == job.structure.cell[3, :]
-# for (p, at) in zip(prev_pos, atoms(job))
+# for (p, at) in zip(prev_pos, job.structure.atoms)
 #     @test round.(DFControl.ustrip.(p * 2), digits = 3) ==
 #           round.(DFControl.ustrip.(at.position_cart), digits = 3)
 # end
 
 # set_magnetization!(job, :Pt => [1.0, 0.0, 0.0])
-# @test magnetization(atoms(job, :Pt)[1]) == DFControl.Vec3(1.0, 0.0, 0.0)
+# @test magnetization(job.structure.atoms :Pt)[1]) == DFControl.Vec3(1.0, 0.0, 0.0)
 
-# at             = atoms(job)[1]
+# at             = job.structure.atoms[1]
 # c              = job.structure.cell
 # orig_pos_cart  = at.position_cart
 # orig_pos_cryst = at.position_cryst
@@ -317,7 +317,7 @@ rm(testjobpath, recursive=true)
 # set_position!(at, orig_pos_cryst .+ [0.1, 0.1, 0.1], c)
 # @test at.position_cart == c * at.position_cryst
 
-# at2 = atoms(job)[2]
+# at2 = job.structure.atoms[2]
 # p1, p2 = at.position_cart, at.position_cart)
 # mid = (p1 + p2) / 2
 # bondlength = distance(at, at2)
@@ -365,26 +365,26 @@ rm(testjobpath, recursive=true)
 # new_str = create_supercell(structure(job), 1, 0, 0)
 # prevcell = job.structure.cell
 # @test norm(new_str.cell[:, 1]) == norm(prevcell[:, 1]) * 2
-# prevlen = length(atoms(job))
-# @test length(atoms(new_str)) == 2 * prevlen
-# prevlen_Pt = length(atoms(job, :Pt))
+# prevlen = length(job.structure.atoms)
+# @test length(new_str.atoms) == 2 * prevlen
+# prevlen_Pt = length(job.structure.atoms :Pt))
 
 # set_magnetization!(job, :Pt => [0, 0, 1])
-# orig_projs = projections(atoms(job, :Pt)[1])
+# orig_projs = projections(job.structure.atoms :Pt)[1])
 
 # job.structure = create_supercell(structure(job), 1, 0, 0; make_afm = true)
 # DFControl.sanitize_magnetization!(job)
 # DFControl.set_starting_magnetization_flags!.(filter(x -> eltype(x) == QE,
 #                                                     job.calculations),
 #                                              (job.structure,))
-# @test length(atoms(job, :Pt)) == prevlen_Pt
-# @test length(atoms(job, :Pt1)) == prevlen_Pt
+# @test length(job.structure.atoms :Pt)) == prevlen_Pt
+# @test length(job.structure.atoms :Pt1)) == prevlen_Pt
 
-# @test magnetization(atoms(job, :Pt)[1]) == [0, 0, 1]
-# @test magnetization(atoms(job, :Pt1)[1]) == [0, 0, -1]
+# @test magnetization(job.structure.atoms :Pt)[1]) == [0, 0, 1]
+# @test magnetization(job.structure.atoms :Pt1)[1]) == [0, 0, -1]
 
 # DFControl.sanitize_projections!(job)
-# @test projections(atoms(job, :Pt)[1]) != projections(atoms(job, :Pt1)[1])
+# @test projections(job.structure.atoms :Pt)[1]) != projections(job.structure.atoms :Pt1)[1])
 
 # # job4.server_dir = "/tmp"
 # # save(job4)

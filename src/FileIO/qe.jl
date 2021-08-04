@@ -856,7 +856,7 @@ function qe_DFTU(speciesid::Int, parsed_flags::Dict{Symbol,Any})
        length(parsed_flags[:Hubbard_beta]) >= speciesid
         β = parsed_flags[:Hubbard_beta][speciesid]
     end
-    return DFTU{Float64}(; U = U, J0 = J0, α = α, β = β, J = sum(J) == 0 ? [0.0] : J)
+    return DFTU(; U = U, J0 = J0, α = α, β = β, J = sum(J) == 0 ? [0.0] : J)
 end
 
 degree2π(ang) = ang / 180 * π
@@ -880,7 +880,7 @@ function qe_magnetization(atid::Int, parsed_flags::Dict{Symbol,Any})
 end
 
 function extract_atoms!(parsed_flags, atsyms, atom_block, pseudo_block,
-                        cell::Mat3{LT}) where {LT<:Length}
+                        cell::Mat3)
     atoms = Atom[]
 
     option = atom_block.option
@@ -890,7 +890,7 @@ function extract_atoms!(parsed_flags, atsyms, atom_block, pseudo_block,
     elseif option == :alat
         primv = alat(parsed_flags, true) * Mat3(Matrix(1.0I, 3, 3))
     elseif option == :bohr
-        primv = 1a₀ .* Mat3(Matrix(1.0I, 3, 3))
+        primv = 1bohr .* Mat3(Matrix(1.0I, 3, 3))
     else
         primv = 1Ang .* Mat3(Matrix(1.0I, 3, 3))
     end
@@ -905,8 +905,8 @@ function extract_atoms!(parsed_flags, atsyms, atom_block, pseudo_block,
         end
         speciesid = findfirst(isequal(at_sym), atsyms)
         push!(atoms,
-              Atom(; name = at_sym, element = at_sym.element, position_cart = primv * pos,
-                   position_cryst = ustrip.(inv(cell) * pos), pseudo = pseudo,
+              Atom(; name = at_sym, element = Structures.element(at_sym), position_cart = primv * pos,
+                   position_cryst = UnitfulAtomic.ustrip.(inv(cell) * pos), pseudo = pseudo,
                    magnetization = qe_magnetization(speciesid, parsed_flags),
                    dftu = qe_DFTU(speciesid, parsed_flags)))
     end
@@ -921,7 +921,7 @@ function extract_structure!(name, parsed_flags, cell_block, atsyms, atom_block,
     end
     cell = extract_cell!(parsed_flags, cell_block)
     atoms = extract_atoms!(parsed_flags, atsyms, atom_block, pseudo_block, cell)
-    return Structure(name, cell, atoms)
+    return Structure(cell, atoms)
 end
 
 function separate(f, A::AbstractVector{T}) where {T}
@@ -960,7 +960,7 @@ function qe_read_calculation(filename; execs = [Exec(; exec = "pw.x")], run = tr
                            x -> filter(y -> !(occursin("/", y) && length(y) == 1), x) |>
                                 x -> filter(!isempty, x)
 
-    exec = getfirst(x -> x.exec ∈ QE_EXECS, execs)
+    exec = getfirst(x -> x.exec ∈ Calculations.QE_EXECS, execs)
 
     flaglines, lines = separate(x -> occursin("=", x), lines)
     flaglines = strip_split.(flaglines, "=")
@@ -969,7 +969,7 @@ function qe_read_calculation(filename; execs = [Exec(; exec = "pw.x")], run = tr
     #easy flags
     for (f, v) in easy_flaglines
         sym = Symbol(f)
-        typ = flagtype(QE, exec, sym)
+        typ = Calculations.flagtype(QE, exec, sym)
         if eltype(typ) <: Bool
             v = replace(lowercase(v), "." => "")
         elseif eltype(typ) <: Number
@@ -1029,7 +1029,7 @@ function qe_read_calculation(filename; execs = [Exec(; exec = "pw.x")], run = tr
 
                 sym = Symbol(_s[1])
                 ids = parse.(Int, _s[2:end])
-                typ = flagtype(QE, exec, sym)
+                typ = Calculations.flagtype(QE, exec, sym)
                 v = replace(v, "d" => "e")
                 if typ === Nothing
                     @warn "Flag $f in file $filename not found in allowed flags for $(exec.exec)"
@@ -1144,14 +1144,14 @@ end
 Writes a Quantum Espresso calculation file.
 """
 function save(calculation::Calculation{QE}, structure,
-              filename::String = inpath(calculation); relative_positions = true)
-    if hasflag(calculation, :calculation)
-        set_flags!(calculation,
+              filename::String = Calculations.inpath(calculation))
+    if Calculations.hasflag(calculation, :calculation)
+        Calculations.set_flags!(calculation,
                    :calculation => replace(calculation[:calculation], "_" => "-");
                    print = false)
     end
     open(filename, "w") do f
-        if exec(calculation, "ph.x") !== nothing
+        if findfirst(x -> x.exec == "ph.x", calculation.execs) !== nothing
             write(f, "--\n")
         end
         writeflag(flag_data) = qe_writeflag(f, flag_data[1], flag_data[2])
@@ -1160,7 +1160,7 @@ function save(calculation::Calculation{QE}, structure,
         controls = Dict{Symbol,Dict{Symbol,Any}}()
 
         for (flag, val) in calculation.flags
-            block, variable = DFC.qe_block_variable(calculation, flag)
+            block, variable = Calculations.qe_block_variable(calculation, flag)
             if !haskey(controls, block.name)
                 controls[block.name] = Dict{Symbol,Any}()
             end
@@ -1180,8 +1180,8 @@ function save(calculation::Calculation{QE}, structure,
         for (name, flags) in blocks2file
             write(f, "&$name\n")
             if name == :system
-                nat  = length(atoms(structure))
-                ntyp = length(unique(atoms(structure)))
+                nat  = length(structure.atoms)
+                ntyp = length(unique(structure.atoms))
                 # A     = 1.0
                 ibrav = 0
                 write(f, "  ibrav = $ibrav\n")
@@ -1192,9 +1192,8 @@ function save(calculation::Calculation{QE}, structure,
             map(writeflag, [(flag, data) for (flag, data) in flags])
             write(f, "/\n\n")
         end
-        if exec(calculation, "pw.x") !== nothing
-            write_structure(f, calculation, structure;
-                            relative_positions = relative_positions)
+        if findfirst(x->x.exec == "pw.x", calculation.execs) !== nothing
+            write_structure(f, calculation, structure)
         end
         for dat in calculation.data
             if dat.name != :noname
@@ -1238,61 +1237,44 @@ function write_data(f, data)
 end
 
 
-function write_structure(f, calculation::Calculation{QE}, structure;
-                         relative_positions = true)
-    unique_at    = unique(atoms(structure))
-    pseudo_lines = String[]
-    atom_lines   = String[]
-    for at in unique_at
-        push!(pseudo_lines,
-              "$(at.name) $(at.element.atomic_weight)   $(at.pseudo.name)\n")
-    end
-
-    for at in atoms(structure)
-        push!(atom_lines, DFC.position_string(QE, at; relative = relative_positions))
-    end
-
+function write_structure(f, calculation::Calculation{QE}, structure)
+    unique_at    = unique(structure.atoms)
     write(f, "ATOMIC_SPECIES\n")
-    write.((f,), pseudo_lines)
-
-    write(f, "\n")
+    write(f, join(map(at -> "$(at.name) $(at.element.atomic_weight) $(at.pseudo.name)", unique_at), "\n"))
+    write(f, "\n\n")
     write(f, "CELL_PARAMETERS (angstrom)\n")
-    write_cell(f, (ustrip.(uconvert.(Ang, structure.cell)))')
+    writedlm(f, ustrip.(structure.cell'))
     write(f, "\n")
 
-    if relative_positions
-        write(f, "ATOMIC_POSITIONS (crystal) \n")
-    else
-        write(f, "ATOMIC_POSITIONS (angstrom) \n")
-    end
-    write.((f,), atom_lines)
-    write(f, "\n")
+    write(f, "ATOMIC_POSITIONS (crystal) \n")
+    write(f, join(map(at -> "$(at.name) $(join(at.position_cryst, " "))", structure.atoms), "\n"))
+    write(f, "\n\n")
     return 
 end
 
-function qe_generate_pw2wancalculation(calculation::Calculation{Wannier90},
-                                       nscf_calculation::Calculation{QE}, runexecs)
+function qe_generate_pw2wancalculation(c::Calculation{Wannier90},
+                                       nscf::Calculation{QE}, runexecs)
     flags = Dict()
-    flags[:prefix] = nscf_calculation[:prefix]
-    flags[:seedname] = "$(calculation.name)"
-    flags[:outdir] = nscf_calculation[:outdir]
+    flags[:prefix] = nscf[:prefix]
+    flags[:seedname] = "$(c.name)"
+    flags[:outdir] = nscf[:outdir]
     flags[:wan_mode] = "standalone"
     flags[:write_mmn] = true
     flags[:write_amn] = true
-    if get(calculation, :spin, nothing) !== nothing
-        flags[:spin_component] = get(calculation, :spin)
+    if haskey(c, :spin)
+        flags[:spin_component] = c[:spin]
     end
-    if get(calculation, :spinors, nothing) !== nothing
-        flags[:write_spn] = get(calculation, :spinors)
+    if haskey(c, :spinors)
+        flags[:write_spn] = c[:spinors]
     end
-    if get(calculation, :wannier_plot, nothing) !== nothing
-        flags[:write_unk] = get(calculation, :wannier_plot)
+    if haskey(c, :wannier_plot)
+        flags[:write_unk] = c[:wannier_plot]
     end
-    if any(get(calculation, :berry_task, []) .== ("morb"))
+    if any(get(c, :berry_task, []) .== ("morb"))
         flags[:write_uHu] = true
     end
     pw2wanexec = Exec("pw2wannier90.x", runexecs[2].dir)
-    run = get(calculation, :preprocess, false) && calculation.run
-    return Calculation{QE}(name = "pw2wan_$(flags[:seedname])", dir = calculation.dir, flags = flags,
+    run = get(c, :preprocess, false) && c.run
+    return Calculation{QE}(name = "pw2wan_$(flags[:seedname])", dir = c.dir, flags = flags,
                              data = InputData[], execs = [runexecs[1], pw2wanexec], run = run)
 end

@@ -166,10 +166,10 @@ end
         max_occ = maximum(state_occupations)
         # sorted_occ = sortperm(state_occupations, rev=true)
         # goodids = findall(i -> state_occupations[sorted_occ][i] > occupy_ratio * max_occ, 1:length(state_occupations))
-        # ats_orbs = unique(map(x -> (atoms(job)[x.atom_id].name, orbital(x.l).name), states[sorted_occ][goodids]))
+        # ats_orbs = unique(map(x -> (job.structure.atoms[x.atom_id].name, orbital(x.l).name), states[sorted_occ][goodids]))
         goodids = findall(i -> state_occupations[i] > occupy_ratio * max_occ,
                           1:length(state_occupations))
-        ats_orbs = unique(map(x -> (atoms(job)[x.atom_id].name, orbital(x.l).name),
+        ats_orbs = unique(map(x -> (job.structure.atoms[x.atom_id].name, orbital(x.l).name),
                               states[goodids]))
         @info "Found $(length(ats_orbs)) atomic orbitals that satisfy the minimum occupation:\n$ats_orbs"
 

@@ -4,6 +4,10 @@ module Resource
     using HTTP, JSON3, Dates
     using ..DFControl, ..Service
     using ..Utils
+    using ..Servers
+    using ..Jobs
+    using ..Calculations
+    using ..Structures
     
     const ROUTER = HTTP.Router()
 
@@ -68,7 +72,7 @@ module Resource
     end
 
     function run(port)
-        cd(DFC.Server("localhost").default_jobdir)
+        cd(Servers.Server("localhost").default_jobdir)
         Service.global_logger(Service.daemon_logger()) 
         # Service.start()
         # server = HTTP.Sockets.listen(HTTP.Sockets.InetAddr(parse(IPAddr, "0.0.0.0"), port))

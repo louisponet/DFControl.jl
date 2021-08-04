@@ -1,6 +1,6 @@
 module Calculations
     # This module handles all interactions with calculations
-    using Parameters, StructTypes
+    using Parameters, StructTypes, LinearAlgebra
     using ..DFControl
     using ..Utils
     using ..Structures
@@ -14,12 +14,4 @@ module Calculations
 
     export Exec, Calculation, InputData
     export Wannier90, QE, Abinit, Elk
-    
-    function Base.hash(data::T, h::UInt) where {T<:Union{<:InputData,Exec}}
-        for f in fieldnames(T)
-            h = hash(getfield(data, f), h)
-        end
-        return h
-    end
-
 end

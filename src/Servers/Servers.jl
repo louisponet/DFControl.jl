@@ -21,7 +21,7 @@ module Servers
     end
 
     function Server(s::String)
-        server = Client.load_server(s) #First check if previous server exists
+        server = load_server(s) #First check if previous server exists
         if server !== nothing
             return server
         end
@@ -128,7 +128,7 @@ module Servers
             HTTP.request("$($str)", s, url, args...; kwargs...)
     end
     
-    function Distributed.addprocs(server::Server, nprocs::Int, args...; kwargs...)
+    function Distributed.addprocs(server::Server, nprocs::Int=1, args...; kwargs...)
         if server.name == "localhost"
             proc = Distributed.addprocs(nprocs, args...; kwargs...)
         else
@@ -142,7 +142,7 @@ module Servers
     function start(s::Server)
         @info "Starting:\n$s"
         cmd = Cmd(`$(s.julia_exec) --startup-file=no -t auto -e "using DFControl; DFControl.Resource.run($(s.port))"`; detach = true)
-        proc = addprocs(s)
+        proc = addprocs(s)[1]
         
         p   = remotecall(run, proc, cmd; wait = false)
         function isalive()
@@ -159,7 +159,7 @@ module Servers
         end
         
         @info "Daemon on Server $(s.name) started, listening on port $(s.port)."
-        rmprocs(p)
+        rmprocs(proc)
     end
 
     function maybe_start_server(s::Server)
@@ -183,7 +183,7 @@ module Servers
     function maybe_create_localhost()
         t = load_server("localhost")
         if t === nothing
-            scheduler = Sys.which("sbatch") === nothing ? DFC.Bash : DFC.Slurm
+            scheduler = Sys.which("sbatch") === nothing ? Bash : Slurm
             if !haskey(ENV, "DFCONTROL_PORT")
                 port = 8080
             else

@@ -49,7 +49,7 @@ e.g. if `run=false` the corresponding line will be commented out in the job scri
 
 Create a [`Calculation`](@ref) from `name` and `flags`, other `kwargs...` will be passed to the constructor.
 
-    Calculation(template::Calculation, name::AbstractString, flags::Pair{Symbol, Any}...; excs=deepcopy(execs(template)), run=true, data=nothing, dir=copy(template.dir))
+    Calculation(template::Calculation, name::AbstractString, flags::Pair{Symbol, Any}...; excs=deepcopy(template.execs), run=true, data=nothing, dir=copy(template.dir))
 
 Creates a new [`Calculation`](@ref) from the `template`, setting the `flags` of the newly created one to the specified ones.
 """
@@ -127,7 +127,7 @@ isrelax(c::Calculation)    = false
 ismagnetic(c::Calculation) = false
 issoc(c::Calculation)      = false
 outfiles(c::Calculation)   = [outpath(c)]
-
+ispw(c::Calculation) = false
 
 """
     set_name!(c::Calculation, name::AbstractString)
@@ -178,8 +178,7 @@ Returns the flag with given symbol.
 Searches through the job's calculations for the requested flag.
 A `Dict` will be returned with calculation names as the keys and the flags as values.
 """
-Base.getindex(c::Calculation, n::Symbol) =
-    get(c, n, throw(KeyError(n)))
+Base.getindex(c::Calculation, n::Symbol) = haskey(c, n)  ?  c.flags[n] : throw(KeyError(n))
 
 Base.haskey(c::Calculation, n::Symbol) = haskey(c.flags, n)
 Base.get(c::Calculation, args...) = get(c.flags, args...)
@@ -245,9 +244,9 @@ end
 "Runs through all the set flags and checks if they are allowed and set to the correct value"
 function convert_flags!(calculation::Calculation)
     for (flag, value) in calculation.flags
-        flagtype_ = DFC.flagtype(calculation, flag)
+        flagtype_ = flagtype(calculation, flag)
         if flagtype_ == Nothing
-            @warn "Flag $flag was not found in allowed flags for exec $(execs(calculation)[2]). Removing flag."
+            @warn "Flag $flag was not found in allowed flags for exec $(calculation.execs[2]). Removing flag."
             rm_flags!(calculation, flag)
             continue
         end
@@ -351,3 +350,127 @@ Returns an array of k-grid points that are equally spaced, calculation can be ei
 """
 kgrid(na, nb, nc, ::Calculation{T}) where {T} = kgrid(na, nb, nc, T)
 
+function sanitize_flags!(cs::Vector{<:Calculation}, str::Structure, name, outdir)
+    if any(x -> eltype(x) == Wannier90, cs) && any(isnscf, cs)
+        nscfcalc = getfirst(isnscf, cs)
+        wancalc = getfirst(x -> eltype(x) == Wannier90, cs)
+        if eltype(nscfcalc) == Elk
+            wancalc.flags[:num_bands] = length(nscfcalc[:wann_bands])
+            nscfcalc.flags[:wann_projections] = Structures.projections_string.(unique(filter(x -> !isempty(x.projections), str.atoms)))
+            nscfcalc.flags[:elk2wan_tasks]    = ["602", "604"]
+            nscfcalc.flags[:wann_seedname]    = Symbol(name)
+            if get(wancalc, :wannier_plot, false)
+                push!(nscfcalc[:elk2wan_tasks], "605")
+            end
+        end
+    end
+
+    u_ats = unique(str.atoms)
+    isnc = Structures.isnoncolin(str)
+    flags_to_set = []
+    if any(x -> x.dftu.U != 0 ||
+                 x.dftu.J0 != 0.0 ||
+                 sum(x.dftu.J) != 0 ||
+                 sum(x.dftu.α) != 0, u_ats)
+                 
+        Jmap = map(x -> copy(x.dftu.J), u_ats)
+        Jdim = maximum(length.(Jmap))
+        Jarr = zeros(Jdim, length(u_ats))
+        for (i, J) in enumerate(Jmap)
+            diff = Jdim - length(J)
+            if diff > 0
+                for d in 1:diff
+                    push!(J, zero(eltype(J)))
+                end
+            end
+            Jarr[:, i] .= J
+        end
+        append!(flags_to_set, [:Hubbard_U     => map(x -> x.dftu.U, u_ats),
+                       :Hubbard_alpha => map(x -> x.dftu.α, u_ats),
+                       :Hubbard_beta  => map(x -> x.dftu.β, u_ats), :Hubbard_J     => Jarr,
+                       :Hubbard_J0    => map(x -> x.dftu.J0, u_ats)])
+    end
+    if !isempty(flags_to_set) || any(x -> hasflag(x, :Hubbard_parameters), cs)
+        push!(flags_to_set, :lda_plus_u => true)
+        if isnc
+            push!(flags_to_set, :lda_plus_u_kind => 1)
+        end
+    end
+    if !isempty(flags_to_set)
+        for c in cs
+            set_flags!(c, flags_to_set...; print=false)
+        end
+    else
+        for c in cs
+            for f in (:lda_plus_u, :lda_plus_u_kind, :Hubbard_U, :Hubbard_alpha,
+                      :Hubbard_beta, :Hubbard_J, :Hubbard_J0, :U_projection_type)
+                pop!(c, f, nothing)
+            end
+        end
+    end
+
+    flags_to_set = []
+    mags = map(x->x.magnetization,u_ats)
+    starts = Float64[]
+    θs = Float64[]
+    ϕs = Float64[]
+    ismagcalc = isnc ? true : Structures.ismagnetic(str)
+    if (ismagcalc && isnc) || any(x->get(x, :noncolin, false), cs)
+        for m in mags
+            tm = normalize(m)
+            if norm(m) == 0
+                push!.((starts, θs, ϕs), 0.0)
+            else
+                θ = acos(tm[3]) * 180 / π
+                ϕ = atan(tm[2], tm[1]) * 180 / π
+                start = norm(m)
+                push!(θs, θ)
+                push!(ϕs, ϕ)
+                push!(starts, start)
+            end
+        end
+        push!(flags_to_set, :noncolin => true)
+        pop!(c, :nspin, nothing)
+    elseif ismagcalc
+        for m in mags
+            push!.((θs, ϕs), 0.0)
+            if norm(m) == 0
+                push!(starts, 0)
+            else
+                push!(starts, sign(sum(m)) * norm(m))
+            end
+        end
+    end
+    append!(flags_to_set, [:starting_magnetization => starts, :angle1 => θs, :angle2 => ϕs])
+    ismagcalc && !isnc && push!(flags_to_set, :nspin => 2)
+    pseudo_dir = str.atoms[1].pseudo.dir # Pseudos should be all sanitized by now
+    for c in cs
+        set_flags!(c, :prefix => "$name", :outdir => "$outdir"; print = false)
+        if ispw(c)
+            set_flags!(c, flags_to_set...; print=false)
+            if isnc
+                pop!(c, :nspin, nothing)
+            end
+            if isvcrelax(c)
+                #this is to make sure &ions and &cell are there in the calculation 
+                !hasflag(c, :ion_dynamics) && set_flags!(c, :ion_dynamics => "bfgs"; print = false)
+                !hasflag(c, :cell_dynamics) &&
+                    set_flags!(c, :cell_dynamics => "bfgs"; print = false)
+            end
+            #TODO add all the required flags
+            @assert hasflag(c, :calculation) "Please set the flag for calculation with name: $(name(c))"
+            
+            set_flags!(c, :pseudo_dir => pseudo_dir; print = false)
+        end
+        convert_flags!(c)
+    end
+   
+    return 
+end
+
+rm_tmp_flags!(::Calculation) = nothing
+function rm_tmp_flags!(c::Calculation{QE})
+    pop!(c, :prefix, nothing)
+    pop!(c, :outdir, nothing)
+    pop!(c, :nspin, nothing)
+end

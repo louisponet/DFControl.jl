@@ -1,7 +1,7 @@
 module FileIO
     # This module handles all the io of files, and parsing.
-    using DelimitedFiles
-    using Dates
+    using DelimitedFiles, Dates, LinearAlgebra, UnitfulAtomic
+    using UnitfulAtomic: ustrip, uconvert
     using ..DFControl
     using ..Utils
     using ..Calculations

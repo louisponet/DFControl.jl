@@ -3,15 +3,15 @@ const JOB_REGISTRY = (in_progress = String[], archived = String[])
 all_known_jobs() = vcat(JOB_REGISTRY[1], JOB_REGISTRY[2]) 
 
 function init_job_registry()
-    append!(JOB_REGISTRY.in_progress, readlines(config_path("in_progress_jobs.txt")))
-    append!(JOB_REGISTRY.archived, readlines(config_path("archived_jobs.txt")))
+    append!(JOB_REGISTRY.in_progress, readlines(DFC.config_path("in_progress_jobs.txt")))
+    append!(JOB_REGISTRY.archived, readlines(DFC.config_path("archived_jobs.txt")))
 end
 
 function write_job_registry()
     init_job_registry() # Needs to be done to not overwrite other DFControl instances
     cleanup_job_registry!(; print=false)
     for (f, REG) in zip(("in_progress_jobs.txt", "archived_jobs.txt"), JOB_REGISTRY)
-        open(config_path(f), "w") do f
+        open(DFC.config_path(f), "w") do f
             for j in REG
                 write(f, "$j\n")
             end
