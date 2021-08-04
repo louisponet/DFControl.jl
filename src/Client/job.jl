@@ -1,4 +1,6 @@
-function DFControl.Job(dir::String, s="localhost"; version::Int = -1)
+Servers.Server(j::Job) = Server(j.server)
+
+function Jobs.Job(dir::String, s="localhost"; version::Int = -1)
     server = maybe_start_server(s)
     # server = Server(s)
     # dir = dir[1] == '/' ? dir[2:end] : dir
@@ -94,7 +96,7 @@ function sanitize_flags!(job::Job)
         nscfcalc = getfirst(DFC.isnscf, job.calculations)
         if eltype(nscfcalc) == Elk
             DFC.set_flags!(job, :num_bands => length(nscfcalc[:wann_bands]); print=false)
-            nscfcalc[:wann_projections] = DFC.projections_string.(unique(filter(x -> !isempty(projections(x)), atoms(job))))
+            nscfcalc[:wann_projections] = Structures.projections_string.(unique(filter(x -> !isempty(projections(x)), atoms(job))))
             nscfcalc[:elk2wan_tasks]    = ["602", "604"]
             nscfcalc[:wann_seedname]    = Symbol(job.name)
             if job[:wannier_plot] == true
@@ -110,8 +112,8 @@ function sanitize_flags!(job::Job)
 end
 
 
-function sanitize_flags!(c::Calculation{QE}, structure::DFC.Structure)
-    if DFC.isvcrelax(c)
+function sanitize_flags!(c::Calculation{QE}, structure::Structure)
+    if Calculations.isvcrelax(c)
         #this is to make sure &ions and &cell are there in the calculation 
         !hasflag(c, :ion_dynamics) && set_flags!(c, :ion_dynamics => "bfgs"; print = false)
         !hasflag(c, :cell_dynamics) &&

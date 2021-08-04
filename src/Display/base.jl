@@ -224,3 +224,10 @@ function show(io::IO, at::Atom)
     dfprintln(io, crayon"reset")
     return
 end
+
+function Base.show(io::IO, proj::Projection)
+    println(io, crayon"cyan", "Orbital: ", crayon"reset", "$(proj.orbital.name)")
+    println(io, crayon"red", "start index: ", crayon"reset", "$(proj.start)")
+    return println(io, crayon"red", "last index: ", crayon"reset", "$(proj.last)")
+end
+

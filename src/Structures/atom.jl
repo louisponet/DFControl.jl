@@ -71,7 +71,7 @@ Reads all the elements from the file.
 """
 const ELEMENTS = Element[]
 
-open(joinpath(@__DIR__, "..", "assets", "elements.txt"), "r") do f
+open(joinpath(@__DIR__, "..", "..", "assets", "elements.txt"), "r") do f
     while !eof(f)
         line = split(readline(f))
         push!(ELEMENTS,
@@ -103,7 +103,6 @@ end
 
 element(z::Int) = getfirst(x -> x.Z == z, ELEMENTS)
 
-abstract type Atom end
 # TODO Multiple l per atom in Elk??
 #We use angstrom everywhere
 """
@@ -163,6 +162,8 @@ function Base.range(at::Atom)
 end
 
 Base.range(v::Vector{Atom}) = vcat(range.(v)...)
+
+projections_string(at::Atom) = "$(at.name): "* join(map(x -> x.orbital.name, at.projections), ";")
 
 function Base.:(==)(at1::Atom, at2::Atom)
     return at1.name == at2.name &&

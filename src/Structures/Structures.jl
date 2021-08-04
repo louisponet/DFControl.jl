@@ -1,16 +1,13 @@
 module Structures
     # This module handles all functionality related to Structure and Atom
-    using LinearAlgebra
-    
-    using StructTypes
-    using Parameters
+    using ..DFControl
+    using LinearAlgebra, StructTypes, Parameters, StaticArrays
     using spglib_jll
     const SPGLIB = spglib_jll.libsymspg
 
-    using UnitfulAtomic.Unitful: angstrom, Length, @unit, FreeUnits, unit, 𝐋, FreeUnits
+    using UnitfulAtomic.Unitful: angstrom, Length, @unit, FreeUnits, unit, 𝐋, FreeUnits, Quantity
     const Ang = angstrom
 
-    const localunits = Unitful.basefactors
     const ReciprocalType{T,A} = Quantity{T,𝐋^-1,FreeUnits{A,𝐋^-1,nothing}}
 
     StructTypes.StructType(::Type{<:Quantity}) = StructTypes.Struct() 

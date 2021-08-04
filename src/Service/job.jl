@@ -1,8 +1,6 @@
-using ..DFControl: TEMP_CALC_DIR
-
 function load_job(job_dir::AbstractString, version::Int=-1)
     if ispath(job_dir)
-        if occursin(VERSION_DIR_NAME, job_dir)
+        if occursin(Jobs.VERSION_DIR_NAME, job_dir)
             error("It is not allowed to directly load a job version, please use `Job(dir, version=$(splitdir(job_dir)[end]))`")
         end
         if version != -1
@@ -10,13 +8,13 @@ function load_job(job_dir::AbstractString, version::Int=-1)
             real_version = version
         elseif ispath(joinpath(job_dir, "job.tt"))
             real_path = job_dir
-            real_version = main_job_version(job_dir)
+            real_version = Jobs.main_job_version(job_dir)
         else
             error("No valid job found in $job_dir.")
         end
         job = Job(; merge((dir = real_path, version = real_version),
-                    read_job_calculations(joinpath(real_path, "job.tt")))...)
-        maybe_register_job(job)
+                    Jobs.read_job_calculations(joinpath(real_path, "job.tt")))...)
+        Jobs.maybe_register_job(job)
         return job
     else
         return nothing
@@ -106,7 +104,7 @@ function save(job::Job; kwargs...)
     #Since at this stage we know the job will belong to the current localhost we change the server
     job.server = "localhost"
     # Here we find the main directory, needed for if a job's local dir is a .versions one
-    dir = main_job_dir(job)
+    dir = Jobs.main_job_dir(job)
     if dir != job.dir
         # We know for sure it was a previously saved job
         # Now that we have safely stored it we can clean out the directory to then fill
@@ -177,7 +175,7 @@ for (f, strs) in zip((:cp, :mv), (("copy", "Copies"), ("move", "Moves")))
                 if !all
                     if file == VERSION_DIR_NAME
                         continue
-                    elseif file == TEMP_CALC_DIR && !(temp || job.copy_temp_folders)
+                    elseif file == Jobs.TEMP_CALC_DIR && !(temp || job.copy_temp_folders)
                         continue
                     end
                 end
@@ -256,7 +254,7 @@ function cleanup(job::Job)
         s = round(dirsize(vpath) / 1e6; digits = 3)
         push!(labels, "Version $v:  $s Mb")
         push!(paths, vpath)
-        opath = joinpath(vpath, TEMP_CALC_DIR)
+        opath = joinpath(vpath, Jobs.TEMP_CALC_DIR)
         if ispath(opath)
             s_out = round(dirsize(opath) / 1e6; digits = 3)
             push!(labels, "Version $v/outputs:  $s_out Mb")
@@ -284,7 +282,7 @@ has_timestamp(job) = haskey(job.metadata, :timestamp)
 
 function clean_dir!(dir::AbstractString)
     for f in readdir(dir)
-        if f == TEMP_CALC_DIR || f == VERSION_DIR_NAME || splitext(f)[end] == ".jl"
+        if f == Jobs.TEMP_CALC_DIR || f == Jobs.VERSION_DIR_NAME || splitext(f)[end] == ".jl"
             continue
         end
         rm(joinpath(dir, f); recursive = true)
@@ -318,13 +316,3 @@ function outputdata(job::Job, calculations::Vector{Calculation}; print = true,
     return tmp
 end
 outputdata(job::Job; kwargs...) = outputdata(job, job.calculations; kwargs...)
-
-"""
-    main_job_dir(dir::AbstractString)
-    main_job_dir(job::Job)
-
-Returns the main directory of the job, also when the job's version is not the one
-in the main directory.
-"""
-main_job_dir(dir::AbstractString) = split(dir, VERSION_DIR_NAME)[1]
-main_job_dir(job::Job) = main_job_dir(job.dir)

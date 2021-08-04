@@ -22,9 +22,7 @@ module Service
     include("calculation.jl")
     include("pseudos.jl")
     include("job.jl")
-    include("versioning.jl")
-    include("registry.jl")
-    include("execs.jl")
-    include("fileio.jl")
+    # include("execs.jl")
+    # include("fileio.jl")
     include("slurm.jl")
 end

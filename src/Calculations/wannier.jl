@@ -23,7 +23,7 @@ function gencalc_wan(nscf::Calculation{QE}, structure::Structure, Emin,
     end
     )
 
-    DFC.Structures.sanitize!(projs, DFC.Calculation.issoc(nscf))
+    Structures.sanitize!(projs, Calculations.issoc(nscf))
     
     if iscolin(structure)
         wannames = ["wanup", "wandn"]
@@ -81,31 +81,6 @@ function gencalc_wan(nscf::Calculation{QE}, structure::Structure,
     hasoutput_assert(projwfc)
     Emin = Emin_from_projwfc(structure, projwfc, threshold)
     return gencalc_wan(nscf, structure, Emin, args...; kwargs...)
-end
-
-"""
-    gencalc_wan(job::Job, min_window_determinator::Real, extra_wan_flags...; kwargs...)
-
-Automates the generation of wannier calculations based on the `job`.
-When a projwfc calculation is present in the `job`, `min_window_determinator` will be used to
-determine the threshold value for including a band in the window based on the projections, otherwise
-it will be used as the `Emin` value from which to start counting the number of bands needed for all
-projections.
-`extra_wan_flags` can be any extra flags for the Wannier90 calculation such as `write_hr` etc.
-"""
-function gencalc_wan(job::Job, min_window_determinator::Real, extra_wan_flags...;
-                     kwargs...)
-    nscf_calculation = getfirst(x -> isnscf(x), job.calculations)
-    projwfc_calculation = getfirst(x -> isprojwfc(x), job.calculations)
-    if projwfc_calculation === nothing || !hasoutput(projwfc_calculation)
-        @info "No projwfc calculation found with valid output, using $min_window_determinator as Emin"
-        return gencalc_wan(nscf_calculation, job.structure, min_window_determinator,
-                           extra_wan_flags...; kwargs...)
-    else
-        @info "Valid projwfc output found, using $min_window_determinator as the dos threshold."
-        return gencalc_wan(nscf_calculation, job.structure, projwfc_calculation,
-                           min_window_determinator, extra_wan_flags...; kwargs...)
-    end
 end
 
 ## Wannier90
@@ -184,7 +159,7 @@ function wanenergyranges(Emin, nbnd, bands, Epad = 5)
     return (Emin - Epad, Emin, max, max + Epad)
 end
 
-function Emin_from_projwfc(structure::DFC.Structure, projwfc::Calculation{QE},
+function Emin_from_projwfc(structure::Structure, projwfc::Calculation{QE},
                            threshold::Number)
     DFC.hasoutput_assert(projwfc)
     @assert any(x -> x.exec == "projwfc.x", projwfc.execs)

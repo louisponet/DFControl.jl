@@ -1,4 +1,3 @@
-using ..DFControl: main_job_dir, VERSION_DIR_NAME
 # 0 Job version means that no jobs have ran yet.
 "Returns the version found in the .metadata.jld2 if it exists. Otherwise 0."
 function main_job_version(dir::AbstractString)

@@ -230,16 +230,26 @@ end
 
 function set_kpoints!(c::Calculation{QE}, k_grid::NTuple{3,Int}; print = true) #nscf
     print && !isnscf(c) && (@warn "Expected calculation to be 'nscf'.\nGot $calc.")
-    data(c, :k_points).data = kgrid(k_grid..., c)
-    data(c, :k_points).option = :crystal
+    d = data(c, :k_points)
+    if d !== nothing
+        d.data = kgrid(k_grid..., c)
+        d.option = :crystal
+    else
+        push!(c.data, InputData(:k_points, :crystal, kgrid(k_grid..., c)))
+    end
     prod(k_grid) > 100 && set_flags!(c, :verbosity => "high"; print = print)
     return c
 end
 
 function set_kpoints!(c::Calculation{QE}, k_grid::NTuple{6,Int}; print = true) #scf
     print && !(isscf(c) || isvcrelax(c) || isrelax(c)) && (@warn "Expected calculation to be scf, vc-relax, relax.\nGot $calc.")
-    data(c, :k_points).data = [k_grid...]
-    data(c, :k_points).option = :automatic
+    d = data(c, :k_points)
+    if d !== nothing
+        d.data = [k_grid...]
+        d.option = :automatic
+    else
+        push!(c.data, InputData(:k_points, :automatic, [k_grid...]))
+    end
     prod(k_grid[1:3]) > 100 && set_flags!(c, :verbosity => "high"; print = print)
     return c
 end
@@ -264,8 +274,13 @@ function set_kpoints!(c::Calculation{QE}, k_grid::Vector{<:NTuple{4}}; print = t
                        otherwise bands won't get printed."
         end
     end
-    data(c, :k_points).data = k_grid
-    data(c, :k_points).option = k_option
+    d = data(c, :k_points)
+    if d !== nothing
+        data(c, :k_points).data = k_grid
+        data(c, :k_points).option = k_option
+    else
+        push!(c.data, InputData(:k_points, k_option, k_grid))
+    end
     return c
 end
 
@@ -325,7 +340,7 @@ Extra flags can be supplied which will be set for the generated calculation.
 """
 function gencalc_projwfc(template::Calculation{QE}, Emin, Emax, DeltaE, extraflags...;
                          name = "projwfc")
-    occflag = flag(template, :occupations)
+    occflag = get(template, :occupations, "fixed")
     ngauss  = 0
     if occflag == "smearing"
         smearingflag = flag(template, :smearing)
@@ -337,13 +352,13 @@ function gencalc_projwfc(template::Calculation{QE}, Emin, Emax, DeltaE, extrafla
             ngauss = -99
         end
     end
-    tdegaussflag = flag(template, :degauss)
-    degauss = tdegaussflag != nothing ? tdegaussflag : 0.0
-    if length(execs(template)) == 2
-        excs = [execs(template)[1],
-                Exec(; exec = "projwfc.x", dir = execs(template)[end].dir)]
+    tdegaussflag = get(template, :degauss, nothing)
+    degauss = tdegaussflag !== nothing ? tdegaussflag : 0.0
+    if length(template.execs) == 2
+        excs = [template.execs[1],
+                Exec(; exec = "projwfc.x", dir = template.execs[end].dir)]
     else
-        excs = [Exec(; exec = "projwfc.x", dir = execs(template)[end].dir)]
+        excs = [Exec(; exec = "projwfc.x", dir = template.execs[end].dir)]
     end
 
     out = Calculation(deepcopy(template); name=name,  execs = excs, data=InputData[])

@@ -25,6 +25,7 @@ struct Abinit <: Package end
 struct Elk <: Package end
 StructTypes.StructType(::Type{<:Package}) = StructTypes.Struct()
 
+
 """
     Calculation{P<:Package}(name    ::String;
                               dir     ::String = "",
@@ -96,9 +97,15 @@ function Calculation(template::Calculation, name, newflags...;
     calculation.dir   = dir
     set_flags!(calculation, newflags...; print = false)
 
-    if data != nothing
-        for (name, (option, data)) in data
-            set_data!(calculation, name, data; option = option, print = false)
+    if data !== nothing
+        for (name, (option, dat)) in data
+            d = getfirst(x->x.name == name, calculation.data)
+            if d !== nothing
+                 d.data = dat
+                 d.option = option
+            else
+                push!(calculation.data, InputData(name, option, dat))
+            end
         end
     end
     return calculation
@@ -226,7 +233,7 @@ function set_flags!(c::Calculation{T}, flags...; print = true) where {T}
             old_data = haskey(c.flags, flag) ? c.flags[flag] : ""
             c.flags[flag] = value
             print &&
-                (@info "$(c.name):\  -> $flag:\n      $old_data set to: $value\n")
+                (@info "$(c.name): -> $flag:\n      $old_data set to: $value\n")
         else
             print &&
                 @warn "Flag $flag was ignored since it could not be found in the allowed flags for calculation $(c.name)"

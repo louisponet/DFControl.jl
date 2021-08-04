@@ -32,12 +32,7 @@ orbital(s::String) = getfirst(x -> x.name == s, ORBITALS)
 orbital(l::Number) = getfirst(x -> x.l == l, ORBITALS)
 
 Base.convert(::Type{String}, x::Orbital) = x.name
-orbsize(orbital::Orbital) = orbital.size
-orbsize(orbital::String) = orbsize(orbital(orbital))
-
-orbital(proj::Projection) = proj.orbital
-orbsize(proj::Projection) = proj.last - proj.start + 1
-
+Base.length(o::Orbital) = orbital.size
 
 Base.hash(orbital::Orbital, h::UInt) = hash(orbital.mr, hash(orbital.l, h))
 Base.:(==)(o1::Orbital, o2::Orbital) = o1.l == o2.l && o1.mr == o2.mr
@@ -58,12 +53,6 @@ Projection(o::Orbital, start::Int) = Projection(o, start, start + o.size - 1)
 Projection(ostr::String, start::Int) = (o = orbital(ostr); Projection(o, start))
 StructTypes.StructType(::Type{Projection}) = StructTypes.Struct()
 
-function Base.show(io::IO, proj::Projection)
-    println(io, crayon"cyan", "Orbital: ", crayon"reset", "$(proj.orbital.name)")
-    println(io, crayon"red", "start index: ", crayon"reset", "$(proj.start)")
-    return println(io, crayon"red", "last index: ", crayon"reset", "$(proj.last)")
-end
-
 function sanitize!(projs::Vector{Projection}, soc::Bool)
     id = 1
     for proj in projs
@@ -76,6 +65,11 @@ function sanitize!(projs::Vector{Projection}, soc::Bool)
 end
 
 Base.range(proj::Projection) = proj.start:proj.last
-Base.length(proj::Projection) = length(range(proj))
+Base.length(proj::Projection) = length(proj.orbital)
 
-projections_string(at::Atom) = "$(at.name): "* join(map(x -> x.orbital.name, at.projections), ";")
+function Base.hash(data::Projection, h::UInt)
+    for f in fieldnames(Projection)
+        h = hash(getfield(data, f), h)
+    end
+    return h
+end

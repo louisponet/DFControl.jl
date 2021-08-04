@@ -806,10 +806,10 @@ function alat(flags, pop = false)
         alat *= 1Ang
     elseif haskey(flags, :celldm_1)
         alat = pop ? pop!(flags, :celldm_1) : flags[:celldm_1]
-        alat *= 1a₀
+        alat *= 1bohr
     elseif haskey(flags, :celldm)
         alat = pop ? pop!(flags, :celldm)[1] : flags[:celldm][1]
-        alat *= 1a₀
+        alat *= 1bohr
     else
         error("Cell option 'alat' was found, but no matching flag was set. \n
                The 'alat' has to  be specified through 'A' or 'celldm(1)'.")
@@ -826,7 +826,7 @@ function extract_cell!(flags, cell_block)
             _alat = alat(flags)
 
         elseif cell_block.option == :bohr
-            _alat = 1u"a₀"
+            _alat = 1bohr
         end
 
         return (_alat .* cell_block.data)'
@@ -1279,20 +1279,20 @@ function qe_generate_pw2wancalculation(calculation::Calculation{Wannier90},
     flags[:wan_mode] = "standalone"
     flags[:write_mmn] = true
     flags[:write_amn] = true
-    if flag(calculation, :spin) !== nothing
-        flags[:spin_component] = flag(calculation, :spin)
+    if get(calculation, :spin, nothing) !== nothing
+        flags[:spin_component] = get(calculation, :spin)
     end
-    if flag(calculation, :spinors) !== nothing
-        flags[:write_spn] = flag(calculation, :spinors)
+    if get(calculation, :spinors, nothing) !== nothing
+        flags[:write_spn] = get(calculation, :spinors)
     end
-    if flag(calculation, :wannier_plot) !== nothing
-        flags[:write_unk] = flag(calculation, :wannier_plot)
+    if get(calculation, :wannier_plot, nothing) !== nothing
+        flags[:write_unk] = get(calculation, :wannier_plot)
     end
-    if any(flag(calculation, :berry_task) .== ("morb"))
+    if any(get(calculation, :berry_task, []) .== ("morb"))
         flags[:write_uHu] = true
     end
     pw2wanexec = Exec("pw2wannier90.x", runexecs[2].dir)
-    run = get(calculation.flags, :preprocess, false) && calculation.run
-    return Calculation{QE}(name = "pw2wan_$(flags[:seedname])", dir = DFC.calc.dirlation), flags = flags,
+    run = get(calculation, :preprocess, false) && calculation.run
+    return Calculation{QE}(name = "pw2wan_$(flags[:seedname])", dir = calculation.dir, flags = flags,
                              data = InputData[], execs = [runexecs[1], pw2wanexec], run = run)
 end

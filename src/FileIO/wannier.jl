@@ -22,10 +22,10 @@ function extract_atoms(atoms_block, proj_block, cell::Mat3{LT},
                         continue
                     end
                     for proj in projs
-                        size = spinors ? 2 * DFC.orbsize(proj) : DFC.orbsize(proj)
+                        size = spinors ? 2 * length(proj) : length(proj)
                         push!(t_ats,
-                              Atom(pos_at, element(pos_at), cell * ps, ps;
-                                   projections = [Projection(orbital(proj), t_start,
+                              Atom(pos_at, position_cart = cell * ps, position_cryst = ps;
+                                   projections = [Projection(proj.orbital, t_start,
                                                              t_start + size - 1)]))
                         t_start += size
                     end
@@ -45,7 +45,7 @@ function extract_atoms(atoms_block, proj_block, cell::Mat3{LT},
                 end
                 if length(same_ats) > 1
                     for at in same_ats[2:end]
-                        push!(projections(same_ats[1]), projections(at)[1])
+                        push!(same_ats[1].projections, at.projections[1])
                     end
                 end
                 push!(out_ats, same_ats[1])
@@ -55,7 +55,7 @@ function extract_atoms(atoms_block, proj_block, cell::Mat3{LT},
         for (pos_at, pos) in atoms
             for p in pos
                 push!(out_ats,
-                      Atom(pos_at, element(pos_at), cell * p, p; projections = :random))
+                      Atom(pos_at, position_cart = cell * p, position_cryst = p, projections = :random))
             end
         end
     end
@@ -282,7 +282,7 @@ function wan_parse_flag_line(line::String)
     return flag, val
 end
 
-function wan_write_projections(f::IO, atoms::Vector{<:DFC.Atom})
+function wan_write_projections(f::IO, atoms::Vector{Atom})
     write(f, "begin projections\n")
     uniats = unique(atoms)
     projs = projections.(uniats)
@@ -294,7 +294,7 @@ function wan_write_projections(f::IO, atoms::Vector{<:DFC.Atom})
             if isempty(prjs)
                 continue
             end
-            write(f, DFC.projections_string(at))
+            write(f, Structures.projections_string(at))
             write(f, "\n")
         end
     end

@@ -34,24 +34,25 @@ end
 
 export Point, Point3, Vec3, Mat3, Mat4
 
-using Parameters
+using Parameters, StructTypes, Dates
 include("types.jl")
 include("utils.jl")
 include("Structures/Structures.jl")
 include("Calculations/Calculations.jl")
 include("Jobs/Jobs.jl")
 include("FileIO/FileIO.jl")
-include("Display/Display.jl")
 
+include("Servers/Servers.jl")
 include("Service/Service.jl")
 include("Resource/Resource.jl")
 include("Client/Client.jl")
+include("Display/Display.jl")
 export Client
 
 
 function __init__()
-    Service.init_job_registry()
-    Client.maybe_create_localhost()
+    # Service.init_job_registry()
+    # Client.maybe_create_localhost()
     # Client.maybe_start_server("localhost")
     # if !haskey(ENV, "IS_DAEMON")
     #     init_daemon()

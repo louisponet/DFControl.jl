@@ -1,8 +1,10 @@
 module Client
     using HTTP, JSON3, StructTypes, Dates, JLD2, Distributed, REPL.TerminalMenus
     using ..DFControl
-    using ..DFControl: Server
     using ..Utils
+    using ..Servers
+    using ..Calculations
+    using ..Jobs
     
     @inline function JSON3.read(::StructTypes.Mutable, buf, pos, len, b, ::Type{Calculation}; kw...)
         x = Calculation{DFControl.NoPackage}("", execs=Exec[])
@@ -12,22 +14,12 @@ module Client
         return pos, t
     end
    
-    HTTP.request(method::String, s::Server, url, args...; kwargs...) =
-        HTTP.request(method, string(http_string(s), url), args...; kwargs...)
-        
-    for f in (:get, :put, :post, :head)
-        str = uppercase(string(f))
-        @eval HTTP.$(f)(s::Server, url, args...; kwargs...) =
-            HTTP.request("$($str)", s, url, args...; kwargs...)
-    end
+   
 
-
-    include("job.jl")
-    include("calculation.jl")
-    export save, isrunning, versions, last_version
+    # include("job.jl")
+    # export save, isrunning, versions, last_version
     
-    include("server.jl")
-    include("pseudos.jl")
+    # include("pseudos.jl")
     
         
 end
