@@ -1,5 +1,9 @@
 import Base: parse
 
+function readoutput(c::Calculation{QE}; kwargs...)
+    return qe_read_output(c; kwargs...)
+end
+
 #this is all pretty hacky with regards to the new structure and atom api. can for sure be a lot better!
 "Quantum espresso card option parser"
 function cardoption(line)
@@ -32,12 +36,12 @@ function qe_parse_time(str::AbstractString)
 end
 
 function qe_read_output(calculation::Calculation{QE}, args...; kwargs...)
-    if isprojwfc(calculation)
+    if any(x -> x.exec == "projwfc.x", calculation.execs)
         return qe_read_projwfc_output(calculation, args...; kwargs...)
-    elseif ishp(calculation)
+    elseif any(x -> x.exec == "hp.x", calculation.execs)
         return qe_read_hp_output(calculation, args...; kwargs...)
-    elseif ispw(calculation)
-        return qe_read_pw_output(DFC.outpath(calculation), args...; kwargs...)
+    elseif any(x -> x.exec == "pw.x", calculation.execs)
+        return qe_read_pw_output(Calculations.outpath(calculation), args...; kwargs...)
     end
 end
 
@@ -217,7 +221,7 @@ function qe_parse_k_cryst(out, line, f)
         out[:k_cryst] = (v = Vec3{Float64}[], w = Float64[])
         line = readline(f)
         while line != "" && !occursin("--------", line)
-            parsed = parse_k_line(line, Float64)
+            parsed = parse_k_line(line)
             push!(out[:k_cryst].v, parsed.v)
             push!(out[:k_cryst].w, parsed.w)
             line = readline(f)
@@ -231,7 +235,7 @@ function qe_parse_k_cart(out, line, f)
         alat = out[:in_alat]
         out[:k_cart] = (v = Vec3{typeof(2π / alat)}[], w = Float64[])
         while line != "" && !occursin("--------", line)
-            tparse = parse_k_line(line, Float64)
+            tparse = parse_k_line(line)
             push!(out[:k_cart].v, tparse.v .* 2π / alat)
             push!(out[:k_cart].w, tparse.w)
             line = readline(f)
@@ -421,7 +425,7 @@ function qe_parse_starting_simplified_dftu(out, line, f)
         atsym = Symbol(sline[1])
         L = parse(Int, sline[2])
         vals = parse.(Float64, sline[3:end])
-        out[:starting_simplified_dftu][atsym] = DFTU{Float64}(l = L, U = vals[1], α=vals[2], J0=vals[3], β=vals[4])
+        out[:starting_simplified_dftu][atsym] = DFTU(l = L, U = vals[1], α=vals[2], J0=vals[3], β=vals[4])
         line = readline(f)
     end
 end
@@ -543,10 +547,10 @@ function qe_read_pw_output(filename::String;
                              w = out[:k_cart].w)
         end
         if get(out, :colincalc, false)
-            out[:bands_up]   = [DFC.DFBand(out[:k_cart].v, out[:k_cryst].v, zeros(length(out[:k_cart].v))) for i in 1:length(out[:k_eigvals][1])]
-            out[:bands_down] = [DFC.DFBand(out[:k_cart].v, out[:k_cryst].v, zeros(length(out[:k_cart].v))) for i in 1:length(out[:k_eigvals][1])]
+            out[:bands_up]   = [DFC.Band(out[:k_cart].v, out[:k_cryst].v, zeros(length(out[:k_cart].v))) for i in 1:length(out[:k_eigvals][1])]
+            out[:bands_down] = [DFC.Band(out[:k_cart].v, out[:k_cryst].v, zeros(length(out[:k_cart].v))) for i in 1:length(out[:k_eigvals][1])]
         else
-            out[:bands] = [DFC.DFBand(out[:k_cart].v, out[:k_cryst].v,
+            out[:bands] = [DFC.Band(out[:k_cart].v, out[:k_cryst].v,
                                   zeros(length(out[:k_cart].v)))
                            for i in 1:length(out[:k_eigvals][1])]
         end
@@ -590,7 +594,7 @@ Return:         Array{Float64,2}(length(k_points),length(energies)) ,
 (ytickvals,yticks)
 """
 function qe_read_kpdos(filename::String, column = 1; fermi = 0)
-    read_tmp = DFC.readdlm(filename, Float64; comments = true)
+    read_tmp = readdlm(filename, Float64; comments = true)
     zmat     = zeros(typeof(read_tmp[1]), Int64(read_tmp[end, 1]), div(size(read_tmp)[1], Int64(read_tmp[end, 1])))
     for i1 in 1:size(zmat)[1]
         for i2 in 1:size(zmat)[2]
@@ -614,7 +618,7 @@ end
 Reads partial dos file.
 """
 function qe_read_pdos(filename::String)
-    read_tmp = DFC.readdlm(filename; skipstart = 1)
+    read_tmp = readdlm(filename; skipstart = 1)
     energies = read_tmp[:, 1]
     values   = read_tmp[:, 2:end]
 
@@ -739,7 +743,7 @@ function qe_read_projwfc(filename::String)
     end
     nkstot = length(kdos)
     nbnd   = length(last(kdos[1]))
-    bands  = [DFC.DFBand(fill(kdos[1][1], nkstot), fill(zero(Vec3{Float64}), nkstot), fill(0.0, nkstot), DFC.SymAnyDict()) for i in 1:nbnd]
+    bands  = [DFC.Band(fill(kdos[1][1], nkstot), fill(zero(Vec3{Float64}), nkstot), fill(0.0, nkstot), Dict{Symbol,Any}()) for i in 1:nbnd]
     for b in bands
         b.extra[:ψ]  = Vector{Vector{Float64}}(undef, nkstot)
         b.extra[:ψ²] = Vector{Float64}(undef, nkstot)
@@ -829,7 +833,7 @@ function extract_cell!(flags, cell_block)
     end
 end
 
-function qe_DFTU(speciesid::Int, parsed_flags::DFC.SymAnyDict)
+function qe_DFTU(speciesid::Int, parsed_flags::Dict{Symbol,Any})
     U  = 0.0
     J0 = 0.0
     J  = [0.0]
@@ -857,7 +861,7 @@ end
 
 degree2π(ang) = ang / 180 * π
 
-function qe_magnetization(atid::Int, parsed_flags::DFC.SymAnyDict)
+function qe_magnetization(atid::Int, parsed_flags::Dict{Symbol,Any})
     θ = haskey(parsed_flags, :angle1) && length(parsed_flags[:angle1]) >= atid ?
         parsed_flags[:angle1][atid] : 0.0
     θ = degree2π(θ)
@@ -877,7 +881,7 @@ end
 
 function extract_atoms!(parsed_flags, atsyms, atom_block, pseudo_block,
                         cell::Mat3{LT}) where {LT<:Length}
-    atoms = Atom{Float64,LT}[]
+    atoms = Atom[]
 
     option = atom_block.option
     if option == :crystal || option == :crystal_sg
@@ -961,7 +965,7 @@ function qe_read_calculation(filename; execs = [Exec(; exec = "pw.x")], run = tr
     flaglines, lines = separate(x -> occursin("=", x), lines)
     flaglines = strip_split.(flaglines, "=")
     easy_flaglines, difficult_flaglines = separate(x -> !occursin("(", x[1]), flaglines)
-    parsed_flags = DFC.SymAnyDict()
+    parsed_flags = Dict{Symbol,Any}()
     #easy flags
     for (f, v) in easy_flaglines
         sym = Symbol(f)

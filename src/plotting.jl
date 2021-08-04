@@ -24,14 +24,14 @@ end
 
 #@TODO create nice ticks when ks=:relative
 # """
-# Recipe to plot a DFBand. If ks is set to relative it calculates the relative offset of the k_points to the middle of the k-point path and puts that on the x-axis.
+# Recipe to plot a Band. If ks is set to relative it calculates the relative offset of the k_points to the middle of the k-point path and puts that on the x-axis.
 
-# Input:    band::DFBand
+# Input:    band::Band
 # Optional: ks=nothing
 # Kwargs:   fermi=0, -> applies fermi level to band eigenvalues before plotting.
 # linewidth=2
 # """
-@recipe function f(band::DFBand, ks = nothing; fermi = 0, linewidth = 2)
+@recipe function f(band::Band, ks = nothing; fermi = 0, linewidth = 2)
     if ks == :relative_cart
         ks = []
         k_m = band.k_points_cart[div(size(band.k_points_cart)[1] + 1, 2)]
@@ -60,7 +60,7 @@ end
     return ks, out
 end
 
-@recipe function f(bands::Vector{<:DFBand}, ks = nothing)
+@recipe function f(bands::Vector{<:Band}, ks = nothing)
     for (i, band) in enumerate(bands)
         @series begin
             band, ks

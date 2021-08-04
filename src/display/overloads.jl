@@ -15,7 +15,7 @@ end
 
 show(io::IO, data::Vector{InputData}) = map(x -> show(io, x), data)
 
-function show(io::IO, band::DFBand) 
+function show(io::IO, band::Band) 
     df_show_type(io, band)
     string = """
     k_points of length $(length(band.k_points_cart)):
@@ -30,7 +30,7 @@ function show(io::IO, band::DFBand)
     return
 end
 
-show(io::IO, bands::Vector{DFBand}) = map(x -> show(io, x), bands)
+show(io::IO, bands::Vector{Band}) = map(x -> show(io, x), bands)
 
 function show(io::IO, job::Job)
     reset = crayon"reset"

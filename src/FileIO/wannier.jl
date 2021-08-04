@@ -1,3 +1,7 @@
+function readoutput(calculation::Calculation{Wannier90}; kwargs...)
+    return wan_read_output(outpath(calculation); kwargs...)
+end
+
 #THIS IS THE MOST HORRIBLE FUNCTION I HAVE EVER CREATED!!!
 #extracts only atoms with projections
 function extract_atoms(atoms_block, proj_block, cell::Mat3{LT},
@@ -8,9 +12,9 @@ function extract_atoms(atoms_block, proj_block, cell::Mat3{LT},
     projections_ = proj_block.data
     atoms = atoms_block.data
     t_start = 1
-    out_ats = Atom{Float64,LT}[]
+    out_ats = Atom[]
     if projections_ != nothing
-        t_ats = Atom{Float64,LT}[]
+        t_ats = Atom[]
         for (proj_at, projs) in projections_
             for (pos_at, pos) in atoms
                 for ps in pos
@@ -30,7 +34,7 @@ function extract_atoms(atoms_block, proj_block, cell::Mat3{LT},
         end
         for (pos_at, pos) in atoms
             for ps in pos
-                same_ats = Atom{Float64,LT}[]
+                same_ats = Atom[]
                 for at in t_ats
                     if at.position_cart == cell * ps
                         push!(same_ats, at)

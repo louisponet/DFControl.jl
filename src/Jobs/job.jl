@@ -38,7 +38,7 @@ The `kwargs...` will be passed to the [`Job`](@ref) constructor.
     calculations::Vector{Calculation} = Calculation[]
     dir::String = pwd()
     header::Vector{String} = String[]
-    metadata::SymAnyDict = SymAnyDict()
+    metadata::Dict{Symbol,Any} = Dict{Symbol,Any}()
     version::Int = -1
     copy_temp_folders::Bool = false
     server::String = "localhost"

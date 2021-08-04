@@ -9,7 +9,6 @@ module Structures
 
     using Unitful: angstrom, Length, @unit, FreeUnits, unit, 𝐋, FreeUnits
     const Ang = angstrom
-    export Unitful.angstrom, Ang
 
     const localunits = Unitful.basefactors
     const ReciprocalType{T,A} = Quantity{T,𝐋^-1,FreeUnits{A,𝐋^-1,nothing}}
@@ -36,4 +35,8 @@ module Structures
     include("projections.jl")
     include("atom.jl")
     include("structure.jl")
+
+    export Projection, Atom, Element, Structure
+    
+    export Unitful.angstrom, Ang
 end

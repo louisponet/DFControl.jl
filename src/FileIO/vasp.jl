@@ -9,7 +9,7 @@ function read_POSCAR(filename, name = "POSCAR")
         t = lowercase(readline(f)[1])
 
         cartesian = t == 'c' || t == 'k'
-        atoms = Atom{Float64,eltype(cell)}[]
+        atoms = Atom[]
         for (atsym, nats) in zip(atom_symbols, natoms)
             for i in 1:nats
                 if cartesian

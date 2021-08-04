@@ -116,7 +116,7 @@ function save(job::Job; kwargs...)
     end
     if ispath(joinpath(dir, "job.tt"))
         tj = load_job(dir, -1)
-        cp(tj, joinpath(tj, VERSION_DIR_NAME, "$(tj.version)"); force = true)
+        cp(tj, joinpath(tj, Jobs.VERSION_DIR_NAME, "$(tj.version)"); force = true)
     end
     
     set_dir!(job, dir) # Needs to be done so the inputs `dir` also changes.
@@ -299,7 +299,7 @@ function outputdata(job::Job, calculations::Vector{Calculation}; print = true,
     if DFC.isarchived(job) && ispath(joinpath(job, "results.jld2"))
         return DFC.JLD2.load(joinpath(job, "results.jld2"))["outputdata"]
     end
-    datadict = Dict{String, DFC.SymAnyDict}()
+    datadict = Dict{String, Dict{Symbol,Any}}()
     stime = DFC.starttime(job)
     #TODO Think about storing results.jld2
     for calculation in calculations

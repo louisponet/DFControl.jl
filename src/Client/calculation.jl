@@ -331,7 +331,7 @@ function gencalc_wan(nscf::Calculation{QE}, structure::Structure, Emin,
                 If this was not intended please set it and rerun the nscf calculation.
                 This generally gives errors because of omitted kpoints, needed for pw2wannier90.x"
     end
-    wanflags = wanflags != nothing ? SymAnyDict(wanflags) : SymAnyDict()
+    wanflags = wanflags != nothing ? Dict{Symbol,Any}(wanflags) : Dict{Symbol,Any}()
     if issoc(nscf)
         wanflags[:spinors] = true
     end
@@ -482,18 +482,18 @@ end
 function Emin_from_projwfc(structure::DFC.Structure, projwfc::Calculation{QE},
                            threshold::Number)
     DFC.hasoutput_assert(projwfc)
-    DFC.hasexec_assert(projwfc, "projwfc.x")
+    @assert any(x -> x.exec == "projwfc.x", projwfc.execs)
     if !haskey(projwfc.outdata, :states)
         states, bands             = qe_read_projwfc(outpath(projwfc))
-        outdata(projwfc)[:states] = states
-        outdata(projwfc)[:bands]  = bands
+        projwfc.outdata[:states] = states
+        projwfc.outdata[:bands]  = bands
     else
-        states, bands = outdata(projwfc)[:states], outdata(projwfc)[:bands]
+        states, bands = projwfc.outdata[:states], projwfc.outdata[:bands]
     end
 
     mask = zeros(length(states))
-    for (atid, at) in enumerate(atoms(structure))
-        projs = projections(at)
+    for (atid, at) in enumerate(structure.atoms)
+        projs = at.projections
 
         if isempty(projs)
             continue

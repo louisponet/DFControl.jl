@@ -3,8 +3,10 @@ module Calculations
     using ..Utils
     using Parameters
     using StructTypes
-
+    include("execs.jl")
+    include("calculation.jl")
     include("qe.jl")
-    include("wannier.jl")
-    
+
+    export Exec, Calculation, InputData
+    export Wannier90, QE, Abinit, Elk
 end

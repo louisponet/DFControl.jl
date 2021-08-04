@@ -1,30 +1,30 @@
-abstract type Band end
+abstract type AbstractBand end
 
 """
 Energy band from DFT calculation.
 """
-mutable struct DFBand <: Band
+mutable struct Band <: AbstractBand
     k_points_cart  :: Vector{Vec3}
     k_points_cryst :: Vector{Vec3{Float64}}
     eigvals        :: Vector{Float64}
-    extra          :: SymAnyDict
+    extra          :: Dict{Symbol,Any}
 end
-function DFBand(k_points_cart, k_points_cryst, eigvals)
-    return DFBand(k_points_cart, k_points_cryst, eigvals, Dict{Symbol,Any}())
+function Band(k_points_cart, k_points_cryst, eigvals)
+    return Band(k_points_cart, k_points_cryst, eigvals, Dict{Symbol,Any}())
 end
 
-function kpoints(band::DFBand, kind = :cryst)
+function kpoints(band::Band, kind = :cryst)
     return kind == :cart ? band.k_points_cart : band.k_points_cryst
 end
-eigvals(band::DFBand) = band.eigvals
-StructTypes.StructType(::Type{<:Band}) = StructTypes.Mutable()
+eigvals(band::Band) = band.eigvals
+StructTypes.StructType(::Type{<:AbstractBand}) = StructTypes.Mutable()
 
 """
-    bandgap(bands::AbstractVector{DFBand}, fermi=0.0)
+    bandgap(bands::AbstractVector{Band}, fermi=0.0)
 
 Calculates the bandgap (possibly indirect) around the fermi level.
 """
-function bandgap(bands::Union{Iterators.Flatten,AbstractVector{<:Band}}, fermi = 0.0)
+function bandgap(bands::Union{Iterators.Flatten,AbstractVector{<:AbstractBand}}, fermi = 0.0)
     max_valence = -Inf
     min_conduction = Inf
     for b in bands

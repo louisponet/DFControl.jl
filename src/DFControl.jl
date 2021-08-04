@@ -5,6 +5,7 @@ export DFC
 const CONFIG_DIR = occursin("cache", first(Base.DEPOT_PATH)) ?
                    abspath(Base.DEPOT_PATH[2], "config", "DFControl") :
                    abspath(Base.DEPOT_PATH[1], "config", "DFControl")
+const DEPS_DIR = joinpath(dirname(@__DIR__), "deps")
 
 config_path(path...) = joinpath(CONFIG_DIR, path...)
 
@@ -21,14 +22,11 @@ using RecipesBase
 @reexport using StaticArrays
 
 const Point{N,F} = SVector{N,F}
-const Point3{F} = SVector{3,F}
-const Vec3{F} = SVector{3,F}
-
-const Mat3{F} = SMatrix{3,3,F,9}
-const Mat4{F} = SMatrix{4,4,F,16}
-
-const SymAnyDict = Dict{Symbol,Any}
-const Vec{N,T} = SVector{N,T}
+const Point3{F}  = SVector{3,F}
+const Vec3{F}    = SVector{3,F}
+const Mat3{F}    = SMatrix{3,3,F,9}
+const Mat4{F}    = SMatrix{4,4,F,16}
+const Vec{N,T}   = SVector{N,T}
 
 Point{N,T}(x::T) where {N,T} = Point{N,T}(x, x, x)
 
@@ -50,11 +48,8 @@ using Pkg
 using LoggingExtras
 using StructTypes
 
-const depsdir = joinpath(dirname(@__DIR__), "deps")
 
 include("types.jl")
-export Job, Exec, Calculation, InputData
-export Structure, Atom, Pseudo, DFTU, Orbital, Projection
 include("utils.jl")
 using .Utils
 
@@ -91,9 +86,9 @@ function __init__()
     return 
 end
 
-const pythonpath = Sys.iswindows() ? joinpath(depsdir, "python2", "python") :
+const pythonpath = Sys.iswindows() ? joinpath(DEPS_DIR, "python2", "python") :
                    joinpath(dirname(@__DIR__), "deps", "python2", "bin", "python")
-const cif2cellpath = Sys.iswindows() ? joinpath(depsdir, "python2", "Scripts", "cif2cell") :
+const cif2cellpath = Sys.iswindows() ? joinpath(DEPS_DIR, "python2", "Scripts", "cif2cell") :
                      joinpath(dirname(@__DIR__), "deps", "python2", "bin", "cif2cell")
 
 # if ccall(:jl_generating_output, Cint, ()) == 1

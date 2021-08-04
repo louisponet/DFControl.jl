@@ -375,9 +375,9 @@ function read_abi_output(filename::String, T = Float64)
     end
 end
 #
-# "Reads an abinit FATBANDS output file and returns the found DFBands, with pdos values in the data field. K-points are not given (they aren't present in the output file)."
+# "Reads an abinit FATBANDS output file and returns the found Bands, with pdos values in the data field. K-points are not given (they aren't present in the output file)."
 # function read_abi_fatbands(filename::String, T=Float64)
-#     bands = DFBand[]
+#     bands = Band[]
 #     open(filename, "r") do f
 #         while !eof(f)
 #             line = readline(f)
@@ -391,16 +391,16 @@ end
 #                     push!(extra[:pdos], pdos)
 #                     line = readline(f)
 #                 end
-#                 push!(bands, DFBand{T}([T[0.0, 0.0, 0.0] for i=1:length(eigvals)], [T[0.0, 0.0, 0.0] for i=1:length(eigvals)], eigvals, extra))
+#                 push!(bands, Band{T}([T[0.0, 0.0, 0.0] for i=1:length(eigvals)], [T[0.0, 0.0, 0.0] for i=1:length(eigvals)], eigvals, extra))
 #             end
 #         end
 #     end
 #     return bands
 # end
 #
-# "Reads an abinit EBANDS.agr output file and returns the found DFBands. K-points only given in crystalline coordinates."
+# "Reads an abinit EBANDS.agr output file and returns the found Bands. K-points only given in crystalline coordinates."
 function read_abi_ebands(filename::String, T = Float64)
-    bands = DFBand[]
+    bands = Band[]
     open(filename, "r") do f
         k_points_cryst = Vector{Vector{T}}()
         while !eof(f)
@@ -424,7 +424,7 @@ function read_abi_ebands(filename::String, T = Float64)
                     line = readline(f)
                 end
                 push!(bands,
-                      DFBand([T[0.0, 0.0, 0.0] for i in 1:length(eigvals)], k_points_cryst,
+                      Band([T[0.0, 0.0, 0.0] for i in 1:length(eigvals)], k_points_cryst,
                              eigvals))
             end
         end
@@ -432,9 +432,9 @@ function read_abi_ebands(filename::String, T = Float64)
     return bands
 end
 #
-# "Reads and abinit _EIG output file and returns the found DFBands. K-points are only given in crystalline coordinates."
+# "Reads and abinit _EIG output file and returns the found Bands. K-points are only given in crystalline coordinates."
 # function read_abi_eig(filename::String, T=Float64)
-#     bands = DFBand[]
+#     bands = Band[]
 #     k_points_array = Vector{Vector{T}}()
 #     eigvals_array  = Vector{Vector{T}}()
 #     open(filename, "r") do f
@@ -447,7 +447,7 @@ end
 #         end
 #     end
 #     for eigvals in eigvals_array
-#         push!(bands, DFBand([T[0.0, 0.0, 0.0] for i=1:length(eigvals)], k_points_array, eigvals))
+#         push!(bands, Band([T[0.0, 0.0, 0.0] for i=1:length(eigvals)], k_points_array, eigvals))
 #     end
 #     return bands
 # end

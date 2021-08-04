@@ -17,7 +17,6 @@ end
 
 StructTypes.StructType(::Type{InputData}) = StructTypes.Struct()
 
-
 abstract type Package end
 struct NoPackage <: Package end
 struct Wannier90 <: Package end
@@ -25,8 +24,6 @@ struct QE <: Package end
 struct Abinit <: Package end
 struct Elk <: Package end
 StructTypes.StructType(::Type{<:Package}) = StructTypes.Struct()
-export Wannier90, QE, Abinit, Elk
-
 
 """
     Calculation{P<:Package}(name    ::String;
@@ -58,16 +55,16 @@ Creates a new [`Calculation`](@ref) from the `template`, setting the `flags` of 
 @with_kw_noshow mutable struct Calculation{P<:Package}
     name::String
     dir::String = ""
-    flags::SymAnyDict = SymAnyDict()
+    flags::Dict{Symbol,Any} = Dict{Symbol,Any}()
     data::Vector{InputData} = InputData[]
     execs::Vector{Exec}
     run::Bool = true
-    outdata::SymAnyDict = SymAnyDict()
+    outdata::Dict{Symbol,Any} = Dict{Symbol,Any}()
     infile::String = P == Wannier90 ? name * ".win" : name * ".in"
     outfile::String = P == Wannier90 ? name * ".wout" : name * ".out"
     function Calculation{P}(name, dir, flags, data, execs, run, outdata, infile,
                               outfile) where {P<:Package}
-        out = new{P}(name, dir, SymAnyDict(), data, execs, run, outdata, infile, outfile)
+        out = new{P}(name, dir, Dict{Symbol,Any}(), data, execs, run, outdata, infile, outfile)
         set_flags!(out, flags...; print = false)
         for (f, v) in flags
             if !hasflag(out, f)
@@ -78,7 +75,7 @@ Creates a new [`Calculation`](@ref) from the `template`, setting the `flags` of 
     end
 end
 function Calculation{P}(name, dir, flags, data, execs, run) where {P<:Package}
-    return Calculation{P}(name, abspath(dir), flags, data, execs, run, SymAnyDict(),
+    return Calculation{P}(name, abspath(dir), flags, data, execs, run, Dict{Symbol,Any}(),
                             P == Wannier90 ? name * ".win" : name * ".in",
                             P == Wannier90 ? name * ".wout" : name * ".out")
 end
@@ -88,8 +85,8 @@ function Calculation{P}(name, flags...; kwargs...) where {P<:Package}
 end
 
 function Calculation(template::Calculation, name, newflags...;
-                       excs = deepcopy(execs(template)), run  = true, data = nothing,
-                       dir  = deepcopy(template.dir))
+                       excs = deepcopy(template.execs), run  = true, data = nothing,
+                       dir  = copy(template.dir))
     newflags = Dict(newflags...)
 
     calculation       = deepcopy(template)
@@ -120,46 +117,10 @@ isnscf(c::Calculation)     = false
 isscf(c::Calculation)      = false
 isvcrelax(c::Calculation)  = false
 isrelax(c::Calculation)    = false
-isprojwfc(c::Calculation)  = false
 ismagnetic(c::Calculation) = false
 issoc(c::Calculation)      = false
 outfiles(c::Calculation)   = [outpath(c)]
 
-# QE interface
-isbands(c::Calculation{QE})   = c[:calculation] == "bands"
-isnscf(c::Calculation{QE})    = c[:calculation] == "nscf"
-isscf(c::Calculation{QE})     = c[:calculation] == "scf"
-isvcrelax(c::Calculation{QE}) = c[:calculation] == "vc-relax"
-isrelax(c::Calculation{QE})   = c[:calculation] == "relax"
-
-function ispw(c::Calculation{QE})
-    return isbands(c) || isnscf(c) || isscf(c) || isvcrelax(c) || isrelax(c)
-end
-
-issoc(c::Calculation{QE})     = c[:lspinorb] == true
-
-function ismagnetic(c::Calculation{QE})
-    return (hasflag(c, :nspin) && c[:nspin] > 0.0) ||
-           (hasflag(c, :total_magnetization) && c[:total_magnetization] != 0.0)
-end
-
-function outfiles(c::Calculation{QE})
-    files = [outpath(c)]
-    for (is, fuzzies) in zip(("projwfc.x", "hp.x"), (("pdos",), ("Hubbard_parameters",)))
-        if any(x -> x.exec == is, c.execs)
-            for f in fuzzies
-                append!(files, searchdir(c, f))
-            end
-        end
-    end
-    return filter(ispath, unique(files))
-end
-
-# ELK
-infilename(c::Calculation{Elk}) = "elk.in"
-isbandscalc(c::Calculation{Elk}) = c.name == "20"
-isnscfcalc(c::Calculation{Elk}) = c.name == "elk2wannier" #nscf == elk2wan??
-isscfcalc(c::Calculation{Elk}) = c.name ∈ ["0", "1"]
 
 """
     set_name!(c::Calculation, name::AbstractString)
@@ -304,33 +265,61 @@ end
 
 ψ_cutoff_flag(::Calculation) = nothing
 ρ_cutoff_flag(::Calculation) = nothing
-ψ_cutoff_flag(::Calculation{QE}) = :ecutwfc
-ρ_cutoff_flag(::Calculation{Wannier90}) = :ecutrho
 
 function set_cutoffs!(c::Calculation, ecutwfc, ecutrho)
     return set_flags!(c, ψ_cutoff_flag(c) => ecutwfc, ρ_cutoff_flag(c) => ecutrho)
 end
 
-function iscalc_assert(i::Calculation{QE}, calc)
-    @assert flag(i, :calculation) == calc "Please provide a valid '$calc' calculation."
+include(joinpath(DFC.DEPS_DIR, "wannier90flags.jl"))
+const WAN_FLAGS = _WAN_FLAGS()
+flagtype(::Type{Wannier90}, flag) = haskey(WAN_FLAGS, flag) ? WAN_FLAGS[flag] : Nothing
+flagtype(::Calculation{Wannier90}, flag) = flagtype(Wannier90, flag)
+include(joinpath(DFC.DEPS_DIR, "elkflags.jl"))
+
+struct ElkFlagInfo{T}
+    name::Symbol
+    default::Union{T,Nothing}  #check again v0.7 Some
+    description::String
+end
+ElkFlagInfo() = ElkFlagInfo{Nothing}(:error, "")
+Base.eltype(x::ElkFlagInfo{T}) where {T} = T
+
+struct ElkControlBlockInfo <: AbstractBlockInfo
+    name::Symbol
+    flags::Vector{<:ElkFlagInfo}
+    description::String
 end
 
-for f in (:cp, :mv)
-    @eval function Base.$f(i::Calculation{QE}, dest::String; kwargs...)
-        $f(inpath(i), joinpath(dest, i.infile); kwargs...)
-        if hasoutfile(i)
-            $f(outpath(i), joinpath(dest, i.outfile); kwargs...)
-        end
-        if any(x -> x.exec == "projwfc.x", c.execs)
-            for f in searchdir(i, "pdos")
-                $f(f, joinpath(dest, splitdir(f)[end]); kwargs...)
-            end
-        elseif any(x -> x.exec == "hp.x", c.execs)
-            for f in searchdir(i, "Hubbard_parameters")
-                $f(f, joinpath(dest, splitdir(f)[end]); kwargs...)
+const ELK_CONTROLBLOCKS = _ELK_CONTROLBLOCKS()
+
+function elk_flaginfo(flag::Symbol)
+    for b in ELK_CONTROLBLOCKS
+        for f in b.flags
+            if f.name == flag
+                return f
             end
         end
-        #TODO add ph.x outfiles
     end
 end
 
+elk_block_info(name::Symbol) = getfirst(x -> x.name == name, ELK_CONTROLBLOCKS)
+
+function elk_block_variable(flag_name::Symbol)
+    for b in ELK_CONTROLBLOCKS
+        for f in b.flags
+            if f.name == flag_name
+                return b
+            end
+        end
+    end
+end
+
+flagtype(::Calculation{Elk}, flag::Symbol) = eltype(elk_flaginfo(flag))
+
+infilename(c::Calculation{Elk}) = "elk.in"
+isbandscalc(c::Calculation{Elk}) = c.name == "20"
+isnscfcalc(c::Calculation{Elk}) = c.name == "elk2wannier" #nscf == elk2wan??
+isscfcalc(c::Calculation{Elk}) = c.name ∈ ["0", "1"]
+
+include(joinpath(DFC.DEPS_DIR, "abinitflags.jl"))
+const AbinitFlags = _ABINITFLAGS()

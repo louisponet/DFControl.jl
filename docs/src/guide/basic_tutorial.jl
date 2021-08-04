@@ -31,13 +31,13 @@ pw_execs = [Exec("mpirun", "", :np => 4), Exec("pw.x", "/opt/qe/bin/", :nk => 4)
 # Then we create the first calculation for our job, we name it scf, which will be used to reference it later.
 # We also pass the executables to be used and additional flags to be set to the constructor.
 # Afterwards we set the kpoints to be used in the scf calculation.
-scf_calculation = DFCalculation{QE}("scf", :calculation => "scf"; execs = pw_execs)
+scf_calculation = Calculation{QE}("scf", :calculation => "scf"; execs = pw_execs)
 set_kpoints!(scf_calculation, (6, 6, 6, 1, 1, 1))
 
 # The code recognizes internally that this 6-Tuple corresponds to a
 # `K_POINTS (automatic)` block in QE. Alternatively (leading to an identical final result):
 
-scf_calculation = DFCalculation{QE}("scf", :calculation => "scf"; execs = pw_execs,
+scf_calculation = Calculation{QE}("scf", :calculation => "scf"; execs = pw_execs,
                                     data = [InputData(:k_points, :automatic,
                                                       (6, 6, 6, 1, 1, 1))])
 

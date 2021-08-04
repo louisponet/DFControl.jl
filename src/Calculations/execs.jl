@@ -126,7 +126,7 @@ function rm_flags!(exec::Exec, flags...)
 end
 
 #### MPI Exec Functionality ###
-include(joinpath(depsdir, "mpirunflags.jl"))
+include(joinpath(DFC.DEPS_DIR, "mpirunflags.jl"))
 const MPI_FLAGS = _MPI_FLAGS()
 
 mpi_flag(flag::AbstractString) = getfirst(x -> x.name == flag, MPI_FLAGS)

@@ -69,7 +69,7 @@ Returns a `Calculation{Elk}` and the `Structure` that is found in the calculatio
 function elk_read_calculation(fn::String; execs = [Exec(; exec = "elk")], run = true,
                               structure_name = "noname")
     blocknames_flaglines = Dict{Symbol,Any}()
-    atoms = Atom{Float64}[]
+    atoms = Atom[]
     calculations = Calculation[]
     dir, file = splitdir(fn)
 
@@ -93,7 +93,7 @@ function elk_read_calculation(fn::String; execs = [Exec(; exec = "elk")], run = 
                     wflags, wdata, ab, cb, proj_block = wan_read_calculation(f)
                     continue
                     # push!(calculations, Calculation{Wannier90}("wannier", dir, wflags, wdata, execs, run))
-                elseif info != nothing
+                elseif info !== nothing
                     blocklines = String[]
                     line = sane_readline()
                     while !isempty(line)
@@ -118,7 +118,7 @@ function elk_read_calculation(fn::String; execs = [Exec(; exec = "elk")], run = 
     scale = haskey(blocknames_flaglines, :scale) ? last(pop!(blocknames_flaglines[:scale])) : 1.0
     cell  = uconvert.(Ang, Mat3(reshape(scale .* parse.(Float64, collect(Iterators.flatten(split.(pop!(blocknames_flaglines, :avec))))), 3, 3) .* 1a₀))'
 
-    newats = [Atom{Float64,eltype(cell)}(; name = x[1], element = x[1].element,
+    newats = [Atom(; name = x[1], element = x[1].element,
                                          position_cryst = x[2], position_cart = cell * x[2],
                                          magnetization = x[3]) for x in atoms]
     #structure #TODO make positions be in lattices coordinates
@@ -152,7 +152,7 @@ function elk_read_calculation(fn::String; execs = [Exec(; exec = "elk")], run = 
 
     #elk2wannier
 
-    flags = DFC.SymAnyDict()
+    flags = Dict{Symbol,Any}()
 
     if haskey(blocknames_flaglines, Symbol("dft+u"))
         flags[:dftu], flags[:inpdftu] = elk_parse_DFTU(structure.atoms,
@@ -199,7 +199,7 @@ function parse(::Type{UnitRange{Int}}, l::AbstractString)
 end
 
 function parse_block_flags(blockname::Symbol, lines::Vector{<:AbstractString})
-    flags = DFC.SymAnyDict()
+    flags = Dict{Symbol,Any}()
     i = 1
     totlen = length(lines)
     for flaginfo in elk_block_info(blockname).flags
@@ -273,14 +273,14 @@ function elk_write_structure(f, structure)
 end
 
 function construct_flag_blocks(calculations::Vector{Calculation{Elk}})
-    all_flags = DFC.SymAnyDict()
+    all_flags = Dict{Symbol,Any}()
     for i in calculations
         merge!(all_flags, i.flags)
         for d in data(i)
             merge!(all_flags, d.data)
         end
     end
-    block_flags = DFC.SymAnyDict()
+    block_flags = Dict{Symbol,Any}()
 
     for b in ELK_CONTROLBLOCKS
         bvals = Any[]

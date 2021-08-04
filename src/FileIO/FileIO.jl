@@ -1,9 +1,12 @@
 module FileIO
     # This module handles all the io of files, and parsing.
-    using ..DFControl
-    using ..Utils
     using DelimitedFiles
     using Dates
+    using ..DFControl
+    using ..Utils
+    using ..Calculations
+    using ..Structures
+    using ..Jobs
 
     include("qe.jl")
     include("wannier.jl")
@@ -70,7 +73,5 @@ module FileIO
         return Point{N,T}(parse.(T, spl))
     end
     Base.parse(::Type{T}, s::AbstractString) where {T<:Point} = parse(T, split(s))
-
-
 
 end
