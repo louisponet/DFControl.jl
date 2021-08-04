@@ -137,6 +137,14 @@ function set_name!(c::Calculation, name::AbstractString; print = true)
     return name
 end
 
+"""
+    data(calculation::Calculation, n::Symbol)
+
+The former returns `calculation.data`, the later -- the `InputData` with name `n`.
+"""
+data(calculation::Calculation, n::Symbol) = getfirst(x -> x.name == n, calculation.data)
+
+
 #
 # Directory interface
 #
@@ -270,56 +278,69 @@ function set_cutoffs!(c::Calculation, ecutwfc, ecutrho)
     return set_flags!(c, ψ_cutoff_flag(c) => ecutwfc, ρ_cutoff_flag(c) => ecutrho)
 end
 
-include(joinpath(DFC.DEPS_DIR, "wannier90flags.jl"))
-const WAN_FLAGS = _WAN_FLAGS()
-flagtype(::Type{Wannier90}, flag) = haskey(WAN_FLAGS, flag) ? WAN_FLAGS[flag] : Nothing
-flagtype(::Calculation{Wannier90}, flag) = flagtype(Wannier90, flag)
-include(joinpath(DFC.DEPS_DIR, "elkflags.jl"))
 
-struct ElkFlagInfo{T}
-    name::Symbol
-    default::Union{T,Nothing}  #check again v0.7 Some
-    description::String
-end
-ElkFlagInfo() = ElkFlagInfo{Nothing}(:error, "")
-Base.eltype(x::ElkFlagInfo{T}) where {T} = T
+"""
+    set_kpoints!(calculation::Calculation{QE}, k_grid::NTuple{3, Int}; print=true)
+    set_kpoints!(calculation::Calculation{QE}, k_grid::NTuple{6, Int}; print=true)
+    set_kpoints!(calculation::Calculation{QE}, k_grid::Vector{<:NTuple{4}}; print=true, k_option=:crystal_b)
 
-struct ElkControlBlockInfo <: AbstractBlockInfo
-    name::Symbol
-    flags::Vector{<:ElkFlagInfo}
-    description::String
-end
+Convenience function to set the `:k_points` data block of `calculation`.
+The three different methods are targeted at `nscf`, `scf` or `vcrelax`,
+and `bands` calculations, respectively.
+For the `nscf` version an explicit list of `k_points` will be generated.
 
-const ELK_CONTROLBLOCKS = _ELK_CONTROLBLOCKS()
+    set_kpoints!(calculation::Calculation{Wannier90}, k_grid::NTuple{3, Int})
 
-function elk_flaginfo(flag::Symbol)
-    for b in ELK_CONTROLBLOCKS
-        for f in b.flags
-            if f.name == flag
-                return f
-            end
-        end
-    end
+Similar to the `nscf` targeted function in the sense that it will generate
+an explicit list of `k_points`, adhering to the same rules as for the `nscf`.
+The `mp_grid` flag will also automatically be set.
+"""
+function set_kpoints!(::Calculation{P}, args...; kwargs...) where {P}
+    @error "set_kpoints! not implemented for package $P."
 end
 
-elk_block_info(name::Symbol) = getfirst(x -> x.name == name, ELK_CONTROLBLOCKS)
+#-------- Generating new Calculations ---------- #
 
-function elk_block_variable(flag_name::Symbol)
-    for b in ELK_CONTROLBLOCKS
-        for f in b.flags
-            if f.name == flag_name
-                return b
-            end
-        end
-    end
+function calculation_from_kpoints(template::Calculation, newname, kpoints, newflags...)
+    newcalc = Calculation(deepcopy(template); name = newname)
+    set_flags!(newcalc, newflags...; print=false)
+    set_name!(newcalc, newname)
+    set_kpoints!(newcalc, kpoints; print = false)
+    return newcalc
 end
 
-flagtype(::Calculation{Elk}, flag::Symbol) = eltype(elk_flaginfo(flag))
+function gencalc_nscf(::Calculation{P}, args...) where {P}
+    @error "gencalc_nscf is not implemented for package $P."
+end
 
-infilename(c::Calculation{Elk}) = "elk.in"
-isbandscalc(c::Calculation{Elk}) = c.name == "20"
-isnscfcalc(c::Calculation{Elk}) = c.name == "elk2wannier" #nscf == elk2wan??
-isscfcalc(c::Calculation{Elk}) = c.name ∈ ["0", "1"]
+function gencalc_scf(::Calculation{P}, args...) where {P}
+    @error "gencalc_scf is not implemented for package $P."
+end
 
-include(joinpath(DFC.DEPS_DIR, "abinitflags.jl"))
-const AbinitFlags = _ABINITFLAGS()
+function gencalc_projwfc(::Calculation{P}, args...) where {P}
+    @error "gencalc_projwfc is not implemented for package $P."
+end
+
+function gencalc_wan(::Calculation{P}, args...) where {P}
+    @error "gencalc_wan is not implemented for package $P."
+end
+
+function gencalc_vcrelax(::Calculation{P}, args...) where {P}
+    @error "gencalc_vcrelax is not implemented for package $P."
+end
+
+function gencalc_bands(::Calculation{P}, args...) where {P}
+    @error "gencalc_bands is not implemented for package $P."
+end
+
+function isconverged(::Calculation{P}) where {P}
+    @error "isconverged is not implemented for package $P."
+end
+
+"""
+    kgrid(na, nb, nc, calculation)
+
+Returns an array of k-grid points that are equally spaced, calculation can be either `:wan` or `:nscf`, the returned grids are appropriate as calculations for wannier90 or an nscf calculation respectively.
+"""
+kgrid(na, nb, nc, ::Calculation{T}) where {T} = kgrid(na, nb, nc, T)
+

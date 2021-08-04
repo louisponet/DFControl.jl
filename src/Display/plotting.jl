@@ -1,5 +1,7 @@
 using Colors
-using ..Plots
+using ...Plots
+using LinearAlgebra
+using RecipesBase
 
 Base.:*(f::Number, r::RGB) = RGB(f * r.r, f * r.b, f * r.g)
 Base.:+(r1::RGB, r2::RGB) = RGB(r1.r + r2.r, r1.b + r2.b, r1.g + r2.g)

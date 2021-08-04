@@ -38,7 +38,7 @@ function show(io::IO, job::Job)
     fs = string.(filter(x -> !isempty(x), getfield.((job,), fieldns)))
     fns = string.(fieldns)
     insert!(fns, 2, "dir")
-    insert!(fs, 2, main_job_dir(job))
+    insert!(fs, 2, Jobs.main_job_dir(job))
     push!(fns, "versions")
     versions = Client.versions(job)
     push!(fs, join(string.(versions), ", "))
@@ -84,7 +84,7 @@ function show(io::IO, job::Job)
         dfprintln(io, crayon"cyan", line, reset)
         dfprintln(io, reset, "(", crayon"green", "scheduled", reset, ", ", crayon"red",
                   "not scheduled", reset, ")")
-        ln = maximum(length.(string.(name.(is))))
+        ln = maximum(length.(string.(map(x->x.name, is))))
         for (si, i) in enumerate(is)
             n = i.name
             cr = i.run ? crayon"green" : crayon"red"
@@ -116,14 +116,14 @@ function show(io::IO, c::Calculation)
     dir   = $(c.dir)
     execs = $(join([e.exec for e in c.execs],", "))
     run   = $(c.run)
-    data  = $([e.name for e in data(c)])
+    data  = $([e.name for e in c.data])
     flags:"""
     dfprintln(io, s)
 
     if !isempty(c.flags)
-        if package(c) == QE
+        if eltype(c) == QE
             namelist_flags = Dict{Symbol,Dict{Symbol,Any}}()
-            info = qe_calculation_info(c)
+            info = Calculations.qe_calculation_info(c)
             if info !== nothing
                 flag_keys = keys(c.flags)
                 for i in info.control
@@ -153,7 +153,7 @@ function show(io::IO, c::Calculation)
     return
 end
 
-function show(io::IO, flag_info::QEFlagInfo{T}) where {T}
+function show(io::IO, flag_info::Calculations.QEFlagInfo{T}) where {T}
     df_show_type(io, flag_info)
     dfprintln(io, crayon"yellow", "name : $(flag_info.name)")
     dfprintln(io, crayon"cyan", "description:", crayon"reset")
@@ -161,7 +161,7 @@ function show(io::IO, flag_info::QEFlagInfo{T}) where {T}
     return
 end
 
-function show(io::IO, flag_info::ElkFlagInfo{T}) where {T}
+function show(io::IO, flag_info::Calculations.ElkFlagInfo{T}) where {T}
     df_show_type(io, flag_info)
     dfprintln(io, crayon"yellow", "name : $(flag_info.name)")
     dfprintln(io, crayon"green", "default:", crayon"reset")
@@ -175,7 +175,7 @@ function show(io::IO, flag_info::ElkFlagInfo{T}) where {T}
     return
 end
 
-function show(io::IO, info::ElkControlBlockInfo)
+function show(io::IO, info::Calculations.ElkControlBlockInfo)
     dfprintln(io, crayon"yellow", "name = $(info.name)")
     dfprintln(io, crayon"cyan", "flags:", crayon"reset")
     for flag in info.flags
@@ -201,7 +201,7 @@ function show(io::IO, str::Structure)
             "\t a = $((str.cell[:,1]...,))\n\t b = $((str.cell[:,2]...,))\n\t c = $((str.cell[:,3]...,))\n")
     dfprintln(io, crayon"red", "    nat:", crayon"reset", " $(length(str.atoms))")
     dfprintln(io, crayon"red", "    ntyp:", crayon"reset", " $(length(unique(str.atoms)))")
-    for a in atoms(str)
+    for a in str.atoms
         show(io, a)
     end
     return dfprintln(io, crayon"reset")

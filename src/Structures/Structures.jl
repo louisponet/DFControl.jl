@@ -7,7 +7,7 @@ module Structures
     using spglib_jll
     const SPGLIB = spglib_jll.libsymspg
 
-    using Unitful: angstrom, Length, @unit, FreeUnits, unit, 𝐋, FreeUnits
+    using UnitfulAtomic.Unitful: angstrom, Length, @unit, FreeUnits, unit, 𝐋, FreeUnits
     const Ang = angstrom
 
     const localunits = Unitful.basefactors
@@ -38,5 +38,5 @@ module Structures
 
     export Projection, Atom, Element, Structure
     
-    export Unitful.angstrom, Ang
+    export angstrom, Ang
 end

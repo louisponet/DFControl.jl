@@ -4,6 +4,7 @@ module Service
     using ..DFControl: config_path
     using ..Utils
     using ..Calculations
+    using ..Jobs
     using ..FileIO
     # const DAEMON_CONFIG_PATH = config_path("daemon.jld2")
     # delete_daemon_config!() = rm(DAEMON_CONFIG_PATH)

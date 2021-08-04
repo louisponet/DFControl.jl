@@ -1,17 +1,16 @@
 #these are all the control data, they hold the flags that guide the calculation
-using ..DFControl: package, flagtype, flags
-outfiles(c::Calculation) = filter(ispath, [outpath(c)])
+outfiles(c::Calculation) = filter(ispath, [Calculations.outpath(c)])
 
 function pdos(calculation::Calculation, args...)
-    @error "pdos reading not implemented for package $(package(calculation))."
+    @error "pdos reading not implemented for package $(eltype(calculation))."
 end
 
 function Emin_from_projwfc(calculation::Calculation, args...)
-    @error "Emin_from_projwfc is not implemented for package $(package(calculation))."
+    @error "Emin_from_projwfc is not implemented for package $(eltype(calculation))."
 end
 
 function readoutput(c::Calculation; kwargs...)
-    @error "Output parsing for package $(package(c)) not implemented."
+    @error "Output parsing for package $(eltype(c)) not implemented."
 end
 
 """
@@ -61,7 +60,7 @@ end
 function pdos(c::Calculation{QE}, atsym::Symbol, magnetic::Bool, soc::Bool,
               filter_word = "")
     @assert isprojwfc(c) "Please specify a valid projwfc calculation."
-    kresolved = hasflag(c, :kresolveddos) && calculation[:kresolveddos]
+    kresolved = haskey(c, :kresolveddos) && calculation[:kresolveddos]
     files = filter(x -> occursin("($atsym)", x) &&
                             occursin("#", x) &&
                             occursin(filter_word, x), searchdir(c.dir, "pdos"))

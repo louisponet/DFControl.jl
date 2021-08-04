@@ -515,7 +515,7 @@ function qe_read_pw_output(filename::String;
         if haskey(out, :alat)
             tmp_flags[:A] = out[:alat] == :angstrom ? 1.0 :
                             (out[:alat] == :crystal ? out[:in_alat] :
-                             conversions[:bohr2ang] * out[:alat])
+                             uconvert(Ang, out[:alat] * 1UnitfulAtomic.bohr))
         else
             tmp_flags[:A] = 1.0
         end
