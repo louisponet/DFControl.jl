@@ -169,7 +169,7 @@ end
 function qe_parse_pseudo(out, line, f)
     !haskey(out, :pseudos) && (out[:pseudos] = Dict{Symbol,Pseudo}())
     pseudopath = readline(f) |> strip |> splitdir
-    return out[:pseudos][Symbol(split(line)[5])] = Pseudo(pseudopath[2], pseudopath[1])
+    return out[:pseudos][Symbol(split(line)[5])] = Pseudo(name=pseudopath[2], dir=pseudopath[1])
 end
 
 function qe_parse_fermi(out, line, f)
@@ -1004,7 +1004,7 @@ function qe_read_calculation(filename; execs = [Exec(; exec = "pw.x")], run = tr
             push!(used_lineids, i_species + k)
             sline = strip_split(lines[i_species+k])
             atsym = Symbol(sline[1])
-            pseudos.data[atsym] = Pseudo(sline[end], pseudo_dir)
+            pseudos.data[atsym] = Pseudo(name=sline[end], dir=pseudo_dir)
             push!(atsyms, atsym)
         end
 

@@ -32,7 +32,7 @@ function cif2structure(cif_file::String)
     @assert splitext(cif_file)[2] == ".cif" error("Please specify a valid cif calculation file")
     run(`$(DFControl.PYTHONPATH) $(DFControl.CIF2CELLPATH) $cif_file --no-reduce -p quantum-espresso -o $tmpfile`)
 
-    bla, structure = Service.qe_read_calculation(tmpfile)
+    bla, structure = DFC.FileIO.qe_read_calculation(tmpfile)
     rm(tmpfile)
     return structure
 end

@@ -25,7 +25,7 @@ Reads the specified `dir` and sets up the pseudos for `set`.
 function configure_pseudoset(set_name::String, dir::String, server = "localhost")
     s = Servers.maybe_start_server(server)
     p = isabspath(dir) ? dir : joinpath(s, dir)
-    n_pseudos = JSON3.read(HTTP.post(s, "/configure_pseudos/" * p, [],
+    n_pseudos = JSON3.read(HTTP.post(s, "/configure_pseudoset/" * p, [],
                                      JSON3.write(set_name)).body, Int)
     @info "Configured $n_pseudos pseudos on Server $(s.name), found in dir $p."
 end

@@ -28,7 +28,8 @@ using ..FileIO
 end
 
 using ..DFControl: set_dir!; export set_dir!
-using ..Calculations: set_name!; export set_name!
+using ..Calculations: set_name!, set_kpoints!; export set_name!, set_kpoints!
+using ..Structures: set_pseudos!, element; export set_pseudos!, element
 
 
 include("job.jl")

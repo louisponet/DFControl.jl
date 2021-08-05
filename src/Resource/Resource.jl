@@ -35,8 +35,8 @@ HTTP.@register(ROUTER, "GET", "/pseudos/*", pseudos)
 pseudo_sets(req) = Service.pseudo_sets()
 HTTP.@register(ROUTER, "GET", "/pseudo_sets/", pseudo_sets)
 
-configure_pseudos(req) = Service.configure_pseudos(req.body, job_path(req))
-HTTP.@register(ROUTER, "POST", "/configure_pseudos/*", configure_pseudos)
+configure_pseudoset(req) = Service.configure_pseudoset(req.body, job_path(req))
+HTTP.@register(ROUTER, "POST", "/configure_pseudoset/*", configure_pseudoset)
 
 rm_pseudos!(req) = Service.rm_pseudos!(req.body)
 HTTP.@register(ROUTER, "PUT", "/rm_pseudos", rm_pseudos!)

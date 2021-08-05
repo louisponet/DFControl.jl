@@ -7,7 +7,7 @@ using spglib_jll
 const SPGLIB = spglib_jll.libsymspg
 
 using UnitfulAtomic.Unitful: angstrom, Length, @unit, FreeUnits, unit, 𝐋, FreeUnits,
-                             Quantity
+                             Quantity, ustrip, uconvert
 const Ang = angstrom
 
 const ReciprocalType{T,A} = Quantity{T,𝐋^-1,FreeUnits{A,𝐋^-1,nothing}}

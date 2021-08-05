@@ -36,14 +36,12 @@ StructTypes.StructType(::Type{DFTU}) = StructTypes.Mutable()
 A pseudo potential file.
 """
 @with_kw mutable struct Pseudo
-    name::String
-    dir::String
+    name::String = ""
+    dir::String = ""
     ψ_cutoff::Float64 = 0.0
     ρ_cutoff::Float64 = 0.0
-    Pseudo() = new("", "", 0.0, 0.0)
     Pseudo(name::AbstractString, dir::AbstractString, x, y) = new(name, abspath(dir), x, y)
 end
-
 StructTypes.StructType(::Type{Pseudo}) = StructTypes.Mutable()
 
 Base.isempty(p::Pseudo) = isempty(p.name) && isempty(p.dir)

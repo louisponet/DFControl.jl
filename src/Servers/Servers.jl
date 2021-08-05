@@ -134,7 +134,7 @@ for f in (:get, :put, :post, :head)
 end
 
 function Distributed.addprocs(server::Server, nprocs::Int = 1, args...; kwargs...)
-    if server.name == "localhost"
+    if server.domain == "localhost"
         proc = Distributed.addprocs(nprocs, args...; kwargs...)
     else
         proc = Distributed.addprocs([(ssh_string(server), nprocs)], args...; kwargs...)
@@ -147,6 +147,15 @@ function remove_server!(name::String)
            rm(joinpath(SERVER_DIR, name * ".jld2"))
 end
 
+function isalive(s::Server)
+    try
+        HTTP.get(s, "/server_config")
+        return true
+    catch
+        return false
+    end
+end
+
 function start(s::Server)
     @info "Starting:\n$s"
     cmd = Cmd(`$(s.julia_exec) --startup-file=no -t auto -e "using DFControl; DFControl.Resource.run($(s.port))"`;
@@ -154,16 +163,8 @@ function start(s::Server)
     proc = addprocs(s)[1]
 
     p = remotecall(run, proc, cmd; wait = false)
-    function isalive()
-        try
-            HTTP.get(s, "/server_config")
-            return true
-        catch
-            return false
-        end
-    end
 
-    while !isalive()
+    while !isalive(s)
         sleep(1)
     end
 

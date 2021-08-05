@@ -509,6 +509,7 @@ for (f, strs) in zip((:cp, :mv), (("copy", "Copies"), ("move", "Moves")))
 end
 
 function sanitize_cutoffs!(job::Job)
+    ψcut, ρcut = 0.0, 0.0
     # the assumption is that the most important cutoff calculation is the scf/vcrelax that is ran first 
     ψ_cut_calc = getfirst(x -> haskey(x, Calculations.ψ_cutoff_flag(x)), job.calculations)
     if ψ_cut_calc !== nothing
@@ -520,19 +521,18 @@ function sanitize_cutoffs!(job::Job)
         @assert ψcut != 0.0 "No energy cutoff was specified in any calculation, and the calculated cutoff from the pseudopotentials was 0.0.\nPlease manually set one."
         @info "No energy cutoff was specified in the scf calculation.\nCalculated ψcut=$ψcut."
     end
+    ρ_cut_calc = getfirst(x -> Calculations.hasflag(x, Calculations.ρ_cutoff_flag(x)),
+                          job.calculations)
+    if ρ_cut_calc !== nothing
+        ρcut = ρ_cut_calc[Calculations.ρ_cutoff_flag(ρ_cut_calc)]
+    end
     for i in job.calculations
         ψflag = Calculations.ψ_cutoff_flag(i)
         ψflag !== nothing &&
             !haskey(i, ψflag) &&
             Calculations.set_flags!(i, ψflag => ψcut; print = false)
-    end
-    ρ_cut_calc = getfirst(x -> Calculations.hasflag(x, Calculations.ρ_cutoff_flag(x)),
-                          job.calculations)
-    if ρ_cut_calc !== nothing
-        ρcut = ρ_cut_calc[Calculations.ρ_cutoff_flag(ρ_cut_calc)]
-        for i in job.calculations
-            ρflag = Calculations.ρ_cutoff_flag(i)
-            ρflag !== nothing && Calculations.set_flags!(i, ρflag => ρcut; print = false)
-        end
+        ρflag = Calculations.ρ_cutoff_flag(i)
+        ρflag !== nothing && !haskey(i, ρflag) && ρcut != 0.0 &&
+            Calculations.set_flags!(i, ρflag => ρcut; print = false)
     end
 end

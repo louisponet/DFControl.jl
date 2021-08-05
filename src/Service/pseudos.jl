@@ -1,17 +1,16 @@
 #We used this function to always keep the saved pseudos updated
 function with_pseudos(f::Function)
     pp = config_path("pseudos.jld2")
-    pseudos = ispath(pp) ? DFC.JLD2.load(pp)["pseudos"] :
-              Dict{String,Dict{Symbol,Vector{Pseudo}}}()
+    pseudos = ispath(pp) ? JLD2.load(pp)["pseudos"] :
+              Dict{String,Dict{Symbol,Vector{Structures.Pseudo}}}()
     t = f(pseudos)
-    DFC.JLD2.save(config_path("pseudos.jld2"), "pseudos", pseudos)
+    JLD2.save(config_path("pseudos.jld2"), "pseudos", pseudos)
     return t
 end
 
 function pseudos(set::String, fuzzy::String)
-    @info fuzzy
     with_pseudos() do all_sets
-        out = Dict{Symbol,DFC.Pseudo}()
+        out = Dict{Symbol,Structures.Pseudo}()
         pseudos = get(all_sets, set, nothing)
         pseudos === nothing && return nothing
         @info length(pseudos)
@@ -33,15 +32,15 @@ function rm_pseudos!(set::String)
 end
 
 """
-    configure_pseudos(set_name::String, dir::String)
+    configure_pseudoset(set_name::String, dir::String)
 
 Reads the specified `dir` and sets up the pseudos for `set`.
 """
-function configure_pseudos(set_name::String, dir::String)
+function configure_pseudoset(set_name::String, dir::String)
     with_pseudos() do pseudos
         files = readdir(dir)
         pseudos[set_name] = Dict{Symbol,Vector{Pseudo}}([el.symbol => Pseudo[]
-                                                         for el in DFC.ELEMENTS])
+                                                         for el in Structures.ELEMENTS])
         for pseudo_string in files
             element = Symbol(titlecase(String(split(split(pseudo_string, ".")[1], "_")[1])))
             if haskey(pseudos[set_name], element)
@@ -53,13 +52,13 @@ function configure_pseudos(set_name::String, dir::String)
                         line = readline(f)
                         if occursin("Suggested minimum cutoff for wavefunctions:", line)
                             ψ_cutoff = parse(Float64, split(line)[end-1])
-                            ρ_cuttoff = parse(Float64, split(readline(f))[end-1])
+                            ρ_cutoff = parse(Float64, split(readline(f))[end-1])
                             break
                         end
                         i += 1
                     end
                 end
-                push!(pseudos[set_name][element], Pseudo(pseudo_string, splitdir(dir)[1], ψ_cutoff, ρ_cutoff))
+                push!(pseudos[set_name][element], Pseudo(pseudo_string, dir, ψ_cutoff, ρ_cutoff))
             end
         end
         return length(files)

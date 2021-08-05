@@ -343,7 +343,7 @@ function gencalc_projwfc(template::Calculation{QE}, Emin, Emax, DeltaE, extrafla
     occflag = get(template, :occupations, "fixed")
     ngauss  = 0
     if occflag == "smearing"
-        smearingflag = flag(template, :smearing)
+        smearingflag = get(template, :smearing,"gaussian")
         if smearingflag ∈ ("methfessel-paxton", "m-p", "mp")
             ngauss = 1
         elseif smearingflag ∈ ("marzari-vanderbilt", "cold", "m-v", "mv")

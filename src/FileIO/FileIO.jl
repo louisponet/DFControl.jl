@@ -75,7 +75,7 @@ function Base.parse(::Type{Point{N,T}}, spl::Vector{<:AbstractString}) where {N,
 end
 Base.parse(::Type{T}, s::AbstractString) where {T<:Point} = parse(T, split(s))
 
-function write_xsf(filename::AbstractString, structure::DFC.Structure)
+function write_xsf(filename::AbstractString, structure::Structure)
     open(filename, "w") do f
         write(f, "CRYSTAL\n")
         c = ustrip.(structure.cell')
