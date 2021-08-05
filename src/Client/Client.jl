@@ -1,10 +1,11 @@
 module Client
-using HTTP, JSON3, StructTypes, Dates, JLD2, Distributed, REPL.TerminalMenus
+using HTTP, JSON3, StructTypes, Dates, JLD2, Distributed, REPL.TerminalMenus, Reexport
 using ..DFControl
 using ..Utils
-using ..Servers
-using ..Calculations
-using ..Jobs
+@reexport using ..Servers
+@reexport using ..Structures
+@reexport using ..Calculations
+@reexport using ..Jobs
 
 @inline function JSON3.read(::StructTypes.Mutable, buf, pos, len, b, ::Type{Calculation};
                             kw...)
@@ -25,9 +26,14 @@ using ..Jobs
     return pos, t
 end
 
+using ..DFControl: set_dir!; export set_dir!
+using ..Calculations: set_name!; export set_name!
+
+
 include("job.jl")
-# export save, isrunning, versions, last_version
+export submit, save, isrunning, versions, last_version, outputdata
 
 include("pseudos.jl")
+export configure_pseudoset, rm_pseudoset!
 
 end

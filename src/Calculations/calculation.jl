@@ -114,7 +114,7 @@ end
 # Calculation() = Calculation{NoPackage}(package=NoPackage())
 StructTypes.StructType(::Type{<:Calculation}) = StructTypes.Mutable()
 
-set_dir!(c::Calculation, dir) = (c.dir = dir)
+DFC.set_dir!(c::Calculation, dir) = (c.dir = dir)
 inpath(c::Calculation)        = joinpath(c, c.infile)
 outpath(c::Calculation)       = joinpath(c, c.outfile)
 

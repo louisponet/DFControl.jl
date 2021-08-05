@@ -53,7 +53,7 @@ function save(job::Job)
 
     @assert !isrunning(job) "Can't save a job in a directory where another is running."
 
-    @assert !DFC.isarchived(job)
+    @assert !Jobs.isarchived(job)
     "Not allowed to save a job in a archived directory, please specify a different directory with `set_dir!"
 
     if isempty(job.name)
@@ -108,7 +108,7 @@ function sanitize_cutoffs!(job)
             !haskey(i, ψflag) &&
             Calculations.set_flags!(i, ψflag => ψcut; print = false)
     end
-    ρ_cut_calc = getfirst(x -> Calculations.hasflag(x, Calculations..ρ_cutoff_flag(x)),
+    ρ_cut_calc = getfirst(x -> Calculations.hasflag(x, Calculations.ρ_cutoff_flag(x)),
                           job.calculations)
     if ρ_cut_calc !== nothing
         ρcut = ρ_cut_calc[Calculations.ρ_cutoff_flag(ρ_cut_calc)]
@@ -120,11 +120,11 @@ function sanitize_cutoffs!(job)
 end
 
 function sanitize_pseudos!(job::Job)
-    all_pseudos = map(x -> x.pseudo, job.atoms)
+    all_pseudos = map(x -> x.pseudo, job.structure.atoms)
     uni_dirs = unique(map(x -> x.dir, all_pseudos))
     uni_pseudos = unique(all_pseudos)
     s = Server(job)
-    pseudo_paths = DFC.path.(uni_pseudos)
+    pseudo_paths = Structures.path.(uni_pseudos)
     if !all(x -> JSON3.read(HTTP.get(s, "/get_ispath/" * x).body, Bool), pseudo_paths)
         if all(ispath, pseudo_paths)
             @info "Some Pseudos could not be found on Server $(s.name), pushing them from local storage to job dir."
@@ -209,12 +209,12 @@ function outputdata(job::Job)
     tmp_path = JSON3.read(HTTP.get(server, "/outputdata", [], JSON3.write(job)).body,
                           String)
     local_temp = tempname() * ".jld2"
-    pull(server, tmp_path, local_temp)
-    return DFC.JLD2.load(local_temp)["outputdata"]
+    Servers.pull(server, tmp_path, local_temp)
+    return JLD2.load(local_temp)["outputdata"]
 end
 
 function verify_execs(job::Job, server::Server)
-    for e in unique(execs(job))
+    for e in unique(vcat(map(x->x.execs, job.calculations)...))
         if !JSON3.read(HTTP.get(server, "/verify_exec/", [], JSON3.write(e)).body, Bool)
             error("$e is not a valid executable on server $(server.name)")
         end

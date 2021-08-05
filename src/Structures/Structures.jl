@@ -36,6 +36,6 @@ include("atom.jl")
 include("structure.jl")
 
 export Projection, Atom, Element, Structure, Pseudo, DFTU
-
 export angstrom, Ang
+
 end

@@ -58,9 +58,9 @@ function write_workflow_files(job::Job)
             push!(valid, p)
         end
     end
-    DFControl.JLD2.save(joinpath(job, ".workflow/environment.jld2"), "modules", valid,
+    JLD2.save(joinpath(job, ".workflow/environment.jld2"), "modules", valid,
                         "project", Base.current_project())
-    return DFControl.JLD2.save(joinpath(job, ".workflow/ctx.jld2"), "ctx",
+    return JLD2.save(joinpath(job, ".workflow/ctx.jld2"), "ctx",
                                Dict{Symbol,Any}())
 end
 
@@ -120,7 +120,7 @@ function save(job::Job; kwargs...)
         cp(tj, joinpath(tj, Jobs.VERSION_DIR_NAME, "$(tj.version)"); force = true)
     end
 
-    Jobs.set_dir!(job, dir) # Needs to be done so the inputs `dir` also changes.
+    set_dir!(job, dir) # Needs to be done so the inputs `dir` also changes.
     mkpath(dir)
 
     job.version = Jobs.last_version(job) + 1
@@ -170,7 +170,7 @@ running.
 function isrunning(job_dir::String)
     !ispath(joinpath(job_dir, "job.tt")) && return false
     job = load_job(job_dir, -1)
-    server = Servers.Server(job)
+    server = Server(job)
     n = now()
     if server.scheduler == Servers.Slurm
         return slurm_isrunning(job)
@@ -266,15 +266,15 @@ exists_job(d::AbstractString) = ispath(d) && ispath(joinpath(d, "job.tt"))
 "Finds the output files for each of the calculations of a job, and groups all found data into a dictionary."
 function outputdata(job::Job, calculations::Vector{Calculation}; print = true,
                     onlynew = false)
-    if DFC.isarchived(job) && ispath(joinpath(job, "results.jld2"))
-        return DFC.JLD2.load(joinpath(job, "results.jld2"))["outputdata"]
+    if Jobs.isarchived(job) && ispath(joinpath(job, "results.jld2"))
+        return JLD2.load(joinpath(job, "results.jld2"))["outputdata"]
     end
     datadict = Dict{String,Dict{Symbol,Any}}()
-    stime = DFC.starttime(job)
+    stime = Jobs.starttime(job)
     #TODO Think about storing results.jld2
     for calculation in calculations
         #TODO Would I ever not want to do onlynew ?
-        newout = mtime(outpath(calculation)) > stime
+        newout = mtime(Calculations.outpath(calculation)) > stime
         if onlynew && !newout
             continue
         end
@@ -284,7 +284,9 @@ function outputdata(job::Job, calculations::Vector{Calculation}; print = true,
         end
     end
     tmp = tempname() * ".jld2"
-    out = DFC.JLD2.save(tmp, "outputdata", datadict)
+    out = JLD2.save(tmp, "outputdata", datadict)
     return tmp
 end
 outputdata(job::Job; kwargs...) = outputdata(job, job.calculations; kwargs...)
+
+verify_exec(e::Exec) = Calculations.verify_exec(e)

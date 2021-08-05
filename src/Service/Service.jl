@@ -17,7 +17,7 @@ const SLEEP_TIME = 1.0
 
 daemon_logger() = FileLogger(SERVICE_LOG; append = true)
 
-server_config() = Servers.Server("localhost")
+server_config() = Server("localhost")
 
 include("running.jl")
 include("calculation.jl")

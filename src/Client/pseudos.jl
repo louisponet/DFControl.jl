@@ -18,11 +18,11 @@ function list_pseudosets(server = "localhost")
 end
 
 """
-    configure_pseudos(set_name::String, dir::String, server = "localhost")
+    configure_pseudoset(set_name::String, dir::String, server = "localhost")
 
 Reads the specified `dir` and sets up the pseudos for `set`.
 """
-function configure_pseudos(set_name::String, dir::String, server = "localhost")
+function configure_pseudoset(set_name::String, dir::String, server = "localhost")
     s = Servers.maybe_start_server(server)
     p = isabspath(dir) ? dir : joinpath(s, dir)
     n_pseudos = JSON3.read(HTTP.post(s, "/configure_pseudos/" * p, [],
@@ -35,7 +35,7 @@ end
 
 Removes the pseudo set from the server.
 """
-function rm_pseudos!(set_name::String, server = "localhost")
+function rm_pseudoset!(set_name::String, server = "localhost")
     s = Servers.maybe_start_server(server)
     return HTTP.put(s, "/rm_pseudos", [], JSON3.write(set_name))
 end
@@ -64,7 +64,7 @@ If `atsym` is used, only the pseudos of the atoms with that name will be set.
 Convenience function that allows to set pseudopotentials for multiple atom types at the same time.
 e.g. `set_pseudos!(job, :Si => getdefault_pseudo(:Si, :sssp)
 """
-function set_pseudos!(job::Job, set, specifier::String = ""; kwargs...)
+function Structures.set_pseudos!(job::Job, set, specifier::String = ""; kwargs...)
     return Structures.set_pseudos!(job.structure, pseudos(job.server, set, specifier);
                                    kwargs...)
 end

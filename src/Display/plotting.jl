@@ -151,7 +151,7 @@ end
             doswindow = 2
             layout --> (1, 2)
         end
-        states, projbands = qe_read_projwfc(outpath(projwfc))
+        states, projbands = qe_read_projwfc(Calculations.outpath(projwfc))
         # First we find the amount that all the states appear in the window
         state_occupations = zeros(length(states))
         for ib in 1:(bands isa NamedTuple ? 2 : 1)

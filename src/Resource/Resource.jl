@@ -75,7 +75,7 @@ function requestHandler(req)
 end
 
 function run(port)
-    cd(Servers.Server("localhost").default_jobdir)
+    cd(Server("localhost").default_jobdir)
     Service.global_logger(Service.daemon_logger())
     # Service.start()
     # server = HTTP.Sockets.listen(HTTP.Sockets.InetAddr(parse(IPAddr, "0.0.0.0"), port))

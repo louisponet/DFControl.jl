@@ -46,8 +46,10 @@ end
 
 mutable struct TimingData
     name::String
-    cpu::Dates.AbstractTime
-    wall::Dates.AbstractTime
+    cpu::Dates.CompoundPeriod
+    wall::Dates.CompoundPeriod
     calls::Int
     children::Vector{TimingData}
 end
+StructTypes.StructType(::Type{TimingData}) = StructTypes.Mutable()
+StructTypes.StructType(::Type{Dates.CompoundPeriod}) = StructTypes.Struct()

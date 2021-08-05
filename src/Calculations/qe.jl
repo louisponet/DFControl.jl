@@ -43,7 +43,7 @@ struct QECalculationInfo
 end
 
 function allflags(info::QECalculationInfo)
-    return vcat([[i.flags for i in info.control]; [i.flags for i in info.data]])
+    return vcat([[i.flags for i in info.control]; [i.flags for i in info.data]]...)
 end
 
 include(joinpath(DFC.DEPS_DIR, "qeflags.jl"))

@@ -253,9 +253,9 @@ If `copy` is set to `true`, all previous calculations and output files of the cu
 (i.e. those in the main job directory) will be copied to the new directory, including the
 `outputs` directory with temporary files created during jobs runs.
 """
-function set_dir!(job::Job, dir::AbstractString; copy = false)
+function DFC.set_dir!(job::Job, dir::AbstractString; copy = false)
     if !isabspath(dir)
-        dir = joinpath(Servers.Server(job), dir)
+        dir = joinpath(Server(job), dir)
     end
     if dir[end] == '/'
         dir = dir[1:end-1]
@@ -267,7 +267,7 @@ function set_dir!(job::Job, dir::AbstractString; copy = false)
     end
     job.dir = dir
     for i in job.calculations
-        Calculations.set_dir!(i, dir)
+        set_dir!(i, dir)
     end
     return job
 end

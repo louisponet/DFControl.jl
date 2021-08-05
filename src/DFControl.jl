@@ -38,6 +38,12 @@ export Point, Point3, Vec3, Mat3, Mat4
 using Parameters, StructTypes, Dates
 include("types.jl")
 include("utils.jl")
+
+
+# Common functions
+
+set_dir!() = nothing
+
 include("Structures/Structures.jl")
 include("Calculations/Calculations.jl")
 include("Jobs/Jobs.jl")
@@ -47,8 +53,11 @@ include("Servers/Servers.jl")
 include("Service/Service.jl")
 include("Resource/Resource.jl")
 include("Client/Client.jl")
+
+
 include("Display/Display.jl")
-export Client
+
+@reexport using .Client
 
 function __init__()
     Jobs.init_job_registry()

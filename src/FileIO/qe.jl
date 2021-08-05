@@ -103,7 +103,7 @@ function qe_parse_polarization(out, line, f)
 end
 
 function qe_parse_lattice_parameter(out, line, f)
-    out[:in_alat] = ustrip(uconvert(Ang, parse(Float64, split(line)[5]) * 1a₀))
+    out[:in_alat] = ustrip(uconvert(Ang, parse(Float64, split(line)[5]) * 1bohr))
     return out[:alat] = :crystal
 end
 
@@ -648,7 +648,7 @@ function qe_read_projwfc_output(c::Calculation{QE}, args...; kwargs...)
             push!(out[:pdos], (energies = energs, values = vals))
         end
     end
-    out[:states], out[:bands] = qe_read_projwfc(outpath(c))
+    out[:states], out[:bands] = qe_read_projwfc(Calculations.outpath(c))
     return out
 end
 
@@ -792,7 +792,7 @@ const QE_HP_PARSE_FUNCS = ["will be perturbed" => qe_parse_pert_at,
                            "Hubbard U parameters:" => qe_parse_Hubbard_U]
 
 function qe_read_hp_output(c::Calculation{QE}; parse_funcs = Pair{String,<:Function}[])
-    out = parse_file(outpath(c), QE_HP_PARSE_FUNCS; extra_parse_funcs = parse_funcs)
+    out = parse_file(Calculations.outpath(c), QE_HP_PARSE_FUNCS; extra_parse_funcs = parse_funcs)
 
     hubbard_file = joinpath(c.dir, """$(get(c, :prefix, "pwscf")).Hubbard_parameters.dat""")
     if ispath(hubbard_file)

@@ -46,7 +46,7 @@ function outputdata(calculation::Calculation;
         else
             t = FileIO.readoutput(calculation; parse_funcs = extra_parse_funcs)
             calculation.outdata = t === nothing ?
-                                  FileIO.parse_file(Calculation.outpath(calculation),
+                                  FileIO.parse_file(Calculations.outpath(calculation),
                                                     extra_parse_funcs) : t
             return calculation.outdata
         end
