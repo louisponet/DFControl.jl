@@ -22,7 +22,7 @@ const ORBITALS = [Orbital("s", 1, 0, 1), Orbital("p", 3, 1, 0), Orbital("px", 1,
                   Orbital("fy(3x2-y2)", 1, 3, 7), Orbital("sp", 2, -1, 0),
                   Orbital("sp2", 3, -2, 0), Orbital("sp3", 4, -3, 0),
                   Orbital("sp3d2", 6, -5, 0)]
-                  
+
 """
     orbital(s::String)
 
@@ -43,9 +43,9 @@ Base.:(==)(o1::Orbital, o2::Orbital) = o1.l == o2.l && o1.mr == o2.mr
 A Wannier90 `Projection`, representing an `Orbital` with indices from `start` to `last`.
 """
 mutable struct Projection
-    orbital :: Orbital
-    start :: Int
-    last  :: Int
+    orbital::Orbital
+    start::Int
+    last::Int
 end
 Projection() = Projection(Orbital(), 0, 0)
 Projection(o::Orbital) = Projection(o, 0, 0)

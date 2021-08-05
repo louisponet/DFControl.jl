@@ -15,7 +15,7 @@ end
 
 show(io::IO, data::Vector{InputData}) = map(x -> show(io, x), data)
 
-function show(io::IO, band::Band) 
+function show(io::IO, band::Band)
     df_show_type(io, band)
     string = """
     k_points of length $(length(band.k_points_cart)):
@@ -84,7 +84,7 @@ function show(io::IO, job::Job)
         dfprintln(io, crayon"cyan", line, reset)
         dfprintln(io, reset, "(", crayon"green", "scheduled", reset, ", ", crayon"red",
                   "not scheduled", reset, ")")
-        ln = maximum(length.(string.(map(x->x.name, is))))
+        ln = maximum(length.(string.(map(x -> x.name, is))))
         for (si, i) in enumerate(is)
             n = i.name
             cr = i.run ? crayon"green" : crayon"red"
@@ -230,4 +230,3 @@ function Base.show(io::IO, proj::Projection)
     println(io, crayon"red", "start index: ", crayon"reset", "$(proj.start)")
     return println(io, crayon"red", "last index: ", crayon"reset", "$(proj.last)")
 end
-

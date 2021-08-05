@@ -5,7 +5,9 @@ mutable struct ExecFlag{T}
     value       :: T
     minus_count :: Int
 end
-ExecFlag(e::ExecFlag, value) = ExecFlag(e.symbol, e.name, e.description, value, e.minus_count)
+function ExecFlag(e::ExecFlag, value)
+    return ExecFlag(e.symbol, e.name, e.description, value, e.minus_count)
+end
 function ExecFlag(p::Pair)
     return ExecFlag(first(p), String(first(p)), "", last(p), 1)
 end
@@ -39,7 +41,7 @@ function Exec(exec::String, dir::String, flags::Pair...)
     _flags = ExecFlag[]
     ismpi = occursin("mpi", exec)
     for (f, v) in flags
-        if ismpi 
+        if ismpi
             mflag = mpi_flag(f)
             @assert mflag !== nothing "$f is not a recognized mpirun flag."
         end
@@ -54,7 +56,7 @@ const RUN_EXECS = ["mpirun", "mpiexec", "srun"]
 
 hasflag(exec::Exec, s::Symbol) = findfirst(x -> x.symbol == s, exec.flags) != nothing
 
-path(exec::Exec)               = joinpath(exec.dir, exec.exec)
+path(exec::Exec) = joinpath(exec.dir, exec.exec)
 
 function Base.:(==)(e1::Exec, e2::Exec)
     if e1.exec != e2.exec || e1.dir != e2.dir
@@ -96,7 +98,6 @@ function set_flags!(exec::Exec, flags...)
             #TODO generalize this
             for (f1, f2) in zip((is_qe_exec, is_wannier_exec, is_mpi_exec),
                     (qe_execflag, wan_execflag, mpi_flag))
-
                 if f1(exec)
                     def_flag = f2(f)
                     if def_flag !== nothing
@@ -207,7 +208,6 @@ end
 
 is_mpi_exec(exec::Exec) = occursin("mpi", exec.exec)
 
-
 #Wannier
 const WAN_EXECS = ["wannier90.x"]
 
@@ -230,17 +230,16 @@ end
 
 is_wannier_exec(exec::Exec) = exec.exec ∈ WAN_EXECS
 
-
 #QE
 const QE_EXECS = ["pw.x", "projwfc.x", "pp.x", "ld1.x", "ph.x", "pw2wannier90.x", "hp.x"]
 
-const QE_EXECFLAGS = ExecFlag[ExecFlag(:nk, "kpoint-pools", 
+const QE_EXECFLAGS = ExecFlag[ExecFlag(:nk, "kpoint-pools",
                                        "groups k-point parallelization into nk processor pools",
                                        0, 1),
-                              ExecFlag(:ntg, "task-groups",  "FFT task groups", 0, 1),
-                              ExecFlag(:ndiag, "diag", 
+                              ExecFlag(:ntg, "task-groups", "FFT task groups", 0, 1),
+                              ExecFlag(:ndiag, "diag",
                                        "Number of processes for linear algebra", 0, 1),
-                              ExecFlag(:ni, "images", 
+                              ExecFlag(:ni, "images",
                                        "Number of processes used for the images", 0, 1)]
 
 qe_execflag(flag::AbstractString) = getfirst(x -> x.name == flag, QE_EXECFLAGS)
@@ -279,7 +278,7 @@ function verify_exec(e::Exec)
 end
 
 function parse_generic_flags(flags::Vector{<:SubString})
-    out =ExecFlag[]
+    out = ExecFlag[]
     f = :none
     c = 1
     for s in flags

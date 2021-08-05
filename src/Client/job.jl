@@ -1,6 +1,6 @@
 Servers.Server(j::Job) = Server(j.server)
 
-function Jobs.Job(dir::String, s="localhost"; version::Int = -1)
+function Jobs.Job(dir::String, s = "localhost"; version::Int = -1)
     server = Servers.maybe_start_server(s)
     # server = Server(s)
     # dir = dir[1] == '/' ? dir[2:end] : dir
@@ -12,7 +12,7 @@ function Jobs.Job(dir::String, s="localhost"; version::Int = -1)
         dir = request_job_dir(dir, server)
         dir === nothing && return
         resp = HTTP.get(server, "/jobs/" * dir, [], JSON3.write(version))
-    end 
+    end
     # @show String(resp.body)
     job = JSON3.read(resp.body, Job)
     job.server = server.name
@@ -23,8 +23,8 @@ function Jobs.Job(dir::String, s="localhost"; version::Int = -1)
 end
 
 function request_job_dir(dir::String, server::Server)
-    resp = HTTP.get(server, "/registered_jobs/" *  dir)
-    matching_jobs = reverse(JSON3.read(resp.body, Vector{Tuple{String, DateTime}}))
+    resp = HTTP.get(server, "/registered_jobs/" * dir)
+    matching_jobs = reverse(JSON3.read(resp.body, Vector{Tuple{String,DateTime}}))
     if length(matching_jobs) == 1
         return matching_jobs[1][1]
     elseif length(matching_jobs) == 0
@@ -50,28 +50,30 @@ end
 function save(job::Job)
     # First we check whether the job is trying to be saved in a archived directory, absolutely not allowed
     server = Servers.maybe_start_server(job)
-    
+
     @assert !isrunning(job) "Can't save a job in a directory where another is running."
 
     @assert !DFC.isarchived(job)
-        "Not allowed to save a job in a archived directory, please specify a different directory with `set_dir!"
-    
+    "Not allowed to save a job in a archived directory, please specify a different directory with `set_dir!"
+
     if isempty(job.name)
         @warn "Job had no name, changed it to: noname"
         job.name = "noname"
     end
     Structures.sanitize!(job.structure)
-    Calculations.sanitize_flags!(job.calculations, job.structure, job.name, joinpath(job, Jobs.TEMP_CALC_DIR))
-    
+    Calculations.sanitize_flags!(job.calculations, job.structure, job.name,
+                                 joinpath(job, Jobs.TEMP_CALC_DIR))
+
     sanitize_cutoffs!(job)
     files_to_copy = sanitize_pseudos!(job)
-    
+
     curver = job.version
-    resp_job = JSON3.read(HTTP.post(server, "/jobs/" * job.dir, [], JSON3.write(job)).body, Job)
+    resp_job = JSON3.read(HTTP.post(server, "/jobs/" * job.dir, [], JSON3.write(job)).body,
+                          Job)
     for f in files_to_copy
         Servers.push(f, server, joinpath(job.dir, splitdir(f)[end]))
     end
-        
+
     @info "Job version: $(curver) => $(resp_job.version)."
     for f in fieldnames(Job)
         setfield!(job, f, getfield(resp_job, f))
@@ -87,8 +89,8 @@ function submit(job::Job)
     server = Servers.maybe_start_server(job)
     verify_execs(job, server)
     save(job)
-    HTTP.put(server, "/jobs/" * job.dir)
-end    
+    return HTTP.put(server, "/jobs/" * job.dir)
+end
 
 function sanitize_cutoffs!(job)
     # the assumption is that the most important cutoff calculation is the scf/vcrelax that is ran first 
@@ -106,7 +108,8 @@ function sanitize_cutoffs!(job)
             !haskey(i, ψflag) &&
             Calculations.set_flags!(i, ψflag => ψcut; print = false)
     end
-    ρ_cut_calc = getfirst(x -> Calculations.hasflag(x, Calculations..ρ_cutoff_flag(x)), job.calculations)
+    ρ_cut_calc = getfirst(x -> Calculations.hasflag(x, Calculations..ρ_cutoff_flag(x)),
+                          job.calculations)
     if ρ_cut_calc !== nothing
         ρcut = ρ_cut_calc[Calculations.ρ_cutoff_flag(ρ_cut_calc)]
         for i in job.calculations
@@ -117,8 +120,8 @@ function sanitize_cutoffs!(job)
 end
 
 function sanitize_pseudos!(job::Job)
-    all_pseudos = map(x->x.pseudo, job.atoms)
-    uni_dirs    = unique(map(x -> x.dir, all_pseudos))
+    all_pseudos = map(x -> x.pseudo, job.atoms)
+    uni_dirs = unique(map(x -> x.dir, all_pseudos))
     uni_pseudos = unique(all_pseudos)
     s = Server(job)
     pseudo_paths = DFC.path.(uni_pseudos)
@@ -137,7 +140,7 @@ function sanitize_pseudos!(job::Job)
 end
 
 function find_cutoffs(job::Job)
-    pseudos = map(x -> x.pseudo, job.structure.atoms) 
+    pseudos = map(x -> x.pseudo, job.structure.atoms)
     maxecutwfc = 0.0
     maxecutrho = 0.0
     for p in pseudos
@@ -203,8 +206,9 @@ end
 
 function outputdata(job::Job)
     server = Servers.maybe_start_server(job)
-    tmp_path = JSON3.read(HTTP.get(server, "/outputdata", [], JSON3.write(job)).body, String)
-    local_temp = tempname() *".jld2"
+    tmp_path = JSON3.read(HTTP.get(server, "/outputdata", [], JSON3.write(job)).body,
+                          String)
+    local_temp = tempname() * ".jld2"
     pull(server, tmp_path, local_temp)
     return DFC.JLD2.load(local_temp)["outputdata"]
 end

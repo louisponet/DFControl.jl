@@ -1,10 +1,10 @@
 function pseudos(server, pseudoset, fuzzy = "")
-    s = Servers.maybe_start_server(server) 
+    s = Servers.maybe_start_server(server)
     resp = HTTP.get(s, "/pseudos/$pseudoset", [], JSON3.write(fuzzy))
     if resp.status == 204
         error("No pseudoset $pseudoset found on Server $(s.name). Please first configure it using configure_pseudoset.")
     end
-    return JSON3.read(resp.body, Dict{Symbol, Pseudo})  
+    return JSON3.read(resp.body, Dict{Symbol,Pseudo})
 end
 
 """
@@ -25,7 +25,8 @@ Reads the specified `dir` and sets up the pseudos for `set`.
 function configure_pseudos(set_name::String, dir::String, server = "localhost")
     s = Servers.maybe_start_server(server)
     p = isabspath(dir) ? dir : joinpath(s, dir)
-    n_pseudos = JSON3.read(HTTP.post(s, "/configure_pseudos/" * p, [], JSON3.write(set_name)).body, Int)
+    n_pseudos = JSON3.read(HTTP.post(s, "/configure_pseudos/" * p, [],
+                                     JSON3.write(set_name)).body, Int)
     @info "Configured $n_pseudos pseudos on Server $(s.name), found in dir $p."
 end
 
@@ -36,7 +37,7 @@ Removes the pseudo set from the server.
 """
 function rm_pseudos!(set_name::String, server = "localhost")
     s = Servers.maybe_start_server(server)
-    HTTP.put(s, "/rm_pseudos", [], JSON3.write(set_name))
+    return HTTP.put(s, "/rm_pseudos", [], JSON3.write(set_name))
 end
 #---#
 
@@ -64,5 +65,6 @@ Convenience function that allows to set pseudopotentials for multiple atom types
 e.g. `set_pseudos!(job, :Si => getdefault_pseudo(:Si, :sssp)
 """
 function set_pseudos!(job::Job, set, specifier::String = ""; kwargs...)
-    return Structures.set_pseudos!(job.structure, pseudos(job.server, set, specifier); kwargs...)
+    return Structures.set_pseudos!(job.structure, pseudos(job.server, set, specifier);
+                                   kwargs...)
 end

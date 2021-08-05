@@ -24,7 +24,8 @@ StructTypes.StructType(::Type{<:AbstractBand}) = StructTypes.Mutable()
 
 Calculates the bandgap (possibly indirect) around the fermi level.
 """
-function bandgap(bands::Union{Iterators.Flatten,AbstractVector{<:AbstractBand}}, fermi = 0.0)
+function bandgap(bands::Union{Iterators.Flatten,AbstractVector{<:AbstractBand}},
+                 fermi = 0.0)
     max_valence = -Inf
     min_conduction = Inf
     for b in bands
@@ -50,4 +51,3 @@ mutable struct TimingData
     calls::Int
     children::Vector{TimingData}
 end
-

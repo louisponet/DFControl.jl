@@ -372,7 +372,8 @@ function qe_parse_timing(out, line, f)
             curparent = String(sline[end][1:end-1])
         elseif length(sline) == 9 # normal call
             td = DFC.TimingData(String(sline[1]), qe_parse_time(sline[3]),
-                            qe_parse_time(sline[5]), parse(Int, sline[8]), DFC.TimingData[])
+                                qe_parse_time(sline[5]), parse(Int, sline[8]),
+                                DFC.TimingData[])
             push!(out[:timing], td)
             if !isempty(curparent) # Child case
                 if curparent[1] == '*'
@@ -391,8 +392,8 @@ function qe_parse_timing(out, line, f)
             end
         elseif sline[1] == "PWSCF" # Final PWSCF report
             push!(out[:timing],
-                  DFC.TimingData("PWSCF", qe_parse_time(sline[3]), qe_parse_time(sline[5]), 1,
-                             DFC.TimingData[]))
+                  DFC.TimingData("PWSCF", qe_parse_time(sline[3]), qe_parse_time(sline[5]),
+                                 1, DFC.TimingData[]))
         end
         line = strip(readline(f))
     end
@@ -405,31 +406,32 @@ end
 
 function qe_parse_starting_magnetization(out, line, f)
     readline(f)
-    out[:starting_magnetization] = Dict{Symbol, Vec3}()
+    out[:starting_magnetization] = Dict{Symbol,Vec3}()
     line = readline(f)
     while !isempty(line)
         sline = split(line)
         atsym = Symbol(sline[1])
         mag = parse.(Float64, sline[2:end])
-        out[:starting_magnetization][atsym] = length(mag) == 1 ?  Vec3(0.0, 0.0, mag[1]) : Vec3(mag...)
+        out[:starting_magnetization][atsym] = length(mag) == 1 ? Vec3(0.0, 0.0, mag[1]) :
+                                              Vec3(mag...)
         line = readline(f)
     end
 end
 
 function qe_parse_starting_simplified_dftu(out, line, f)
     readline(f)
-    out[:starting_simplified_dftu] = Dict{Symbol, DFTU}()
+    out[:starting_simplified_dftu] = Dict{Symbol,DFTU}()
     line = readline(f)
     while !isempty(line)
         sline = split(line)
         atsym = Symbol(sline[1])
         L = parse(Int, sline[2])
         vals = parse.(Float64, sline[3:end])
-        out[:starting_simplified_dftu][atsym] = DFTU(l = L, U = vals[1], α=vals[2], J0=vals[3], β=vals[4])
+        out[:starting_simplified_dftu][atsym] = DFTU(; l = L, U = vals[1], α = vals[2],
+                                                     J0 = vals[3], β = vals[4])
         line = readline(f)
     end
 end
-
 
 const QE_PW_PARSE_FUNCTIONS = ["C/m^2" => qe_parse_polarization,
                                "lattice parameter" => qe_parse_lattice_parameter,
@@ -465,8 +467,7 @@ const QE_PW_PARSE_FUNCTIONS = ["C/m^2" => qe_parse_polarization,
                                "--- enter write_ns ---" => qe_parse_Hubbard,
                                "init_run" => qe_parse_timing,
                                "Starting magnetic structure" => qe_parse_starting_magnetization,
-                               "Simplified LDA+U calculation" => qe_parse_starting_simplified_dftu,
-                               ]
+                               "Simplified LDA+U calculation" => qe_parse_starting_simplified_dftu]
 
 """
     qe_read_pw_output(filename::String; parse_funcs::Vector{Pair{String}}=Pair{String,<:Function}[])
@@ -495,7 +496,8 @@ function qe_read_pw_output(filename::String;
                                                      out[:atsyms], atoms_data, pseudo_data)
         # Add starting mag and DFTU
         if haskey(out, :starting_magnetization)
-            set_magnetization!(out[:initial_structure], pairs(out[:starting_magnetization])...; print=false)
+            set_magnetization!(out[:initial_structure],
+                               pairs(out[:starting_magnetization])...; print = false)
         end
         if haskey(out, :starting_simplified_dftu)
             dftus = out[:starting_simplified_dftu]
@@ -505,7 +507,6 @@ function qe_read_pw_output(filename::String;
                 end
             end
         end
-            
     end
 
     # Process final Structure
@@ -525,7 +526,8 @@ function qe_read_pw_output(filename::String;
                                                    out[:atsyms], atoms_data, pseudo_data)
         # Add starting mag and DFTU
         if haskey(out, :starting_magnetization)
-            set_magnetization!(out[:initial_structure], pairs(out[:starting_magnetization])...; print=false)
+            set_magnetization!(out[:initial_structure],
+                               pairs(out[:starting_magnetization])...; print = false)
         end
         if haskey(out, :starting_simplified_dftu)
             dftus = out[:starting_simplified_dftu]
@@ -551,7 +553,7 @@ function qe_read_pw_output(filename::String;
             out[:bands_down] = [DFC.Band(out[:k_cart].v, out[:k_cryst].v, zeros(length(out[:k_cart].v))) for i in 1:length(out[:k_eigvals][1])]
         else
             out[:bands] = [DFC.Band(out[:k_cart].v, out[:k_cryst].v,
-                                  zeros(length(out[:k_cart].v)))
+                                    zeros(length(out[:k_cart].v)))
                            for i in 1:length(out[:k_eigvals][1])]
         end
         for i in 1:length(out[:k_eigvals])
@@ -879,8 +881,7 @@ function qe_magnetization(atid::Int, parsed_flags::Dict{Symbol,Any})
     end
 end
 
-function extract_atoms!(parsed_flags, atsyms, atom_block, pseudo_block,
-                        cell::Mat3)
+function extract_atoms!(parsed_flags, atsyms, atom_block, pseudo_block, cell::Mat3)
     atoms = Atom[]
 
     option = atom_block.option
@@ -905,7 +906,8 @@ function extract_atoms!(parsed_flags, atsyms, atom_block, pseudo_block,
         end
         speciesid = findfirst(isequal(at_sym), atsyms)
         push!(atoms,
-              Atom(; name = at_sym, element = Structures.element(at_sym), position_cart = primv * pos,
+              Atom(; name = at_sym, element = Structures.element(at_sym),
+                   position_cart = primv * pos,
                    position_cryst = UnitfulAtomic.ustrip.(inv(cell) * pos), pseudo = pseudo,
                    magnetization = qe_magnetization(speciesid, parsed_flags),
                    dftu = qe_DFTU(speciesid, parsed_flags)))
@@ -1052,7 +1054,7 @@ function qe_read_calculation(filename; execs = [Exec(; exec = "pw.x")], run = tr
                     elseif sym == :starting_ns_eigenvalue
                         #7 and 4 are the largest possible, and in the end if they are not filled
                         #they won't be written in the new input anyway
-                        parsed_flags[sym] = zeros(eltype(typ), 7, 4, nat) 
+                        parsed_flags[sym] = zeros(eltype(typ), 7, 4, nat)
                     end
                 end
                 parsed_flags[sym][ids...] = length(parsedval) == 1 ? parsedval[1] :
@@ -1105,8 +1107,8 @@ function qe_read_calculation(filename; execs = [Exec(; exec = "pw.x")], run = tr
 
     pop!.((parsed_flags,), [:prefix, :outdir], nothing)
     dir, file = splitdir(filename)
-    return Calculation{QE}(name = splitext(file)[1], dir = dir, flags = parsed_flags, data = datablocks, execs = execs, run = run),
-           structure
+    return Calculation{QE}(; name = splitext(file)[1], dir = dir, flags = parsed_flags,
+                           data = datablocks, execs = execs, run = run), structure
 end
 
 function qe_writeflag(f, flag, value)
@@ -1147,8 +1149,8 @@ function save(calculation::Calculation{QE}, structure,
               filename::String = Calculations.inpath(calculation))
     if Calculations.hasflag(calculation, :calculation)
         Calculations.set_flags!(calculation,
-                   :calculation => replace(calculation[:calculation], "_" => "-");
-                   print = false)
+                                :calculation => replace(calculation[:calculation],
+                                                        "_" => "-"); print = false)
     end
     open(filename, "w") do f
         if findfirst(x -> x.exec == "ph.x", calculation.execs) !== nothing
@@ -1192,7 +1194,7 @@ function save(calculation::Calculation{QE}, structure,
             map(writeflag, [(flag, data) for (flag, data) in flags])
             write(f, "/\n\n")
         end
-        if findfirst(x->x.exec == "pw.x", calculation.execs) !== nothing
+        if findfirst(x -> x.exec == "pw.x", calculation.execs) !== nothing
             write_structure(f, calculation, structure)
         end
         for dat in calculation.data
@@ -1214,15 +1216,15 @@ function save(calculation::Calculation{QE}, structure,
     end
     #TODO handle writing hubbard and magnetization better
     delete!.((calculation.flags,),
-                    (:Hubbard_U, :Hubbard_J0, :Hubbard_J, :Hubbard_alpha, :Hubbard_beta,
-                     :starting_magnetization, :angle1, :angle2, :pseudo_dir))
+             (:Hubbard_U, :Hubbard_J0, :Hubbard_J, :Hubbard_alpha, :Hubbard_beta,
+              :starting_magnetization, :angle1, :angle2, :pseudo_dir))
     return
 end
 
 function write_data(f, data)
     if typeof(data) <: Matrix
         writedlm(f, data)
-    elseif typeof(data) <: Union{String, Symbol}
+    elseif typeof(data) <: Union{String,Symbol}
         write(f, "$data\n")
     elseif typeof(data) <: Vector && length(data[1]) == 1
         write(f, join(string.(data), " "))
@@ -1236,24 +1238,27 @@ function write_data(f, data)
     end
 end
 
-
 function write_structure(f, calculation::Calculation{QE}, structure)
-    unique_at    = unique(structure.atoms)
+    unique_at = unique(structure.atoms)
     write(f, "ATOMIC_SPECIES\n")
-    write(f, join(map(at -> "$(at.name) $(at.element.atomic_weight) $(at.pseudo.name)", unique_at), "\n"))
+    write(f,
+          join(map(at -> "$(at.name) $(at.element.atomic_weight) $(at.pseudo.name)",
+                   unique_at), "\n"))
     write(f, "\n\n")
     write(f, "CELL_PARAMETERS (angstrom)\n")
     writedlm(f, ustrip.(structure.cell'))
     write(f, "\n")
 
     write(f, "ATOMIC_POSITIONS (crystal) \n")
-    write(f, join(map(at -> "$(at.name) $(join(at.position_cryst, " "))", structure.atoms), "\n"))
+    write(f,
+          join(map(at -> "$(at.name) $(join(at.position_cryst, " "))", structure.atoms),
+               "\n"))
     write(f, "\n\n")
-    return 
+    return
 end
 
-function qe_generate_pw2wancalculation(c::Calculation{Wannier90},
-                                       nscf::Calculation{QE}, runexecs)
+function qe_generate_pw2wancalculation(c::Calculation{Wannier90}, nscf::Calculation{QE},
+                                       runexecs)
     flags = Dict()
     flags[:prefix] = nscf[:prefix]
     flags[:seedname] = "$(c.name)"
@@ -1275,6 +1280,7 @@ function qe_generate_pw2wancalculation(c::Calculation{Wannier90},
     end
     pw2wanexec = Exec("pw2wannier90.x", runexecs[2].dir)
     run = get(c, :preprocess, false) && c.run
-    return Calculation{QE}(name = "pw2wan_$(flags[:seedname])", dir = c.dir, flags = flags,
-                             data = InputData[], execs = [runexecs[1], pw2wanexec], run = run)
+    return Calculation{QE}(; name = "pw2wan_$(flags[:seedname])", dir = c.dir,
+                           flags = flags, data = InputData[],
+                           execs = [runexecs[1], pw2wanexec], run = run)
 end

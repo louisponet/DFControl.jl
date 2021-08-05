@@ -4,8 +4,7 @@ end
 
 #THIS IS THE MOST HORRIBLE FUNCTION I HAVE EVER CREATED!!!
 #extracts only atoms with projections
-function extract_atoms(atoms_block, proj_block, cell::Mat3,
-                       spinors = false)
+function extract_atoms(atoms_block, proj_block, cell::Mat3, spinors = false)
     if atoms_block.name == :atoms_cart
         cell = Mat3(Matrix(1.0Ang * I, 3, 3))
     end
@@ -24,9 +23,10 @@ function extract_atoms(atoms_block, proj_block, cell::Mat3,
                     for proj in projs
                         size = spinors ? 2 * length(proj) : length(proj)
                         push!(t_ats,
-                              Atom(name=pos_at, position_cart = cell * ps, position_cryst = ps;
-                                   projections = [Projection(Structures.orbital(proj), t_start,
-                                                             t_start + size - 1)]))
+                              Atom(; name = pos_at, position_cart = cell * ps,
+                                   position_cryst = ps,
+                                   projections = [Projection(Structures.orbital(proj),
+                                                             t_start, t_start + size - 1)]))
                         t_start += size
                     end
                 end
@@ -55,7 +55,8 @@ function extract_atoms(atoms_block, proj_block, cell::Mat3,
         for (pos_at, pos) in atoms
             for p in pos
                 push!(out_ats,
-                      Atom(pos_at, position_cart = cell * p, position_cryst = p, projections = :random))
+                      Atom(pos_at; position_cart = cell * p, position_cryst = p,
+                           projections = :random))
             end
         end
     end
@@ -185,7 +186,7 @@ function wan_read_calculation(::Type{T}, f::IO) where {T}
 
             elseif block_name == :kpoints
                 line     = readline(f)
-                k_points = Array{NTuple{3, T},1}()
+                k_points = Array{NTuple{3,T},1}()
                 while !occursin("end", lowercase(line))
                     if line == ""
                         line = readline(f)
@@ -227,15 +228,15 @@ function wan_read_calculation(filename::String, T = Float64;
     cell_block  = nothing
     proj_block  = nothing
     open(filename, "r") do f
-        flags, data, atoms_block, cell_block, proj_block = wan_read_calculation(T, f)
+        return flags, data, atoms_block, cell_block, proj_block = wan_read_calculation(T, f)
     end
     structure = extract_structure(structure_name, cell_block, atoms_block, proj_block,
                                   get(flags, :spinors, false))
     dir, file = splitdir(filename)
-    flags[:preprocess] = Calculations.hasflag(getfirst(x -> x.exec == "wannier90.x", execs), :pp) ?
-                         true : false
-    return Calculation{Wannier90}(name = splitext(file)[1], dir = dir, flags = flags, data = data, execs = execs, run = run),
-           structure
+    flags[:preprocess] = Calculations.hasflag(getfirst(x -> x.exec == "wannier90.x", execs),
+                                              :pp) ? true : false
+    return Calculation{Wannier90}(; name = splitext(file)[1], dir = dir, flags = flags,
+                                  data = data, execs = execs, run = run), structure
 end
 
 function wan_parse_array_value(eltyp, value_str)
@@ -285,7 +286,7 @@ end
 function wan_write_projections(f::IO, atoms::Vector{Atom})
     write(f, "begin projections\n")
     uniats = unique(atoms)
-    projs = map(x->x.projections, uniats)
+    projs = map(x -> x.projections, uniats)
     if all(isempty.(projs))
         write(f, "random\n")
     else
@@ -376,7 +377,6 @@ function write_flag_line(f, flag, data, seperator = "=", i = "")
         write(f, "$data\n")
     end
 end
-
 
 function wan_parse_disentanglement(out, line, f)
     DisTuple = NamedTuple{(:Iter, :Ω_i_1, :Ω_i, :δ, :Time),

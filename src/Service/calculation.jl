@@ -46,7 +46,8 @@ function outputdata(calculation::Calculation;
         else
             t = FileIO.readoutput(calculation; parse_funcs = extra_parse_funcs)
             calculation.outdata = t === nothing ?
-                                  FileIO.parse_file(Calculation.outpath(calculation), extra_parse_funcs) : t
+                                  FileIO.parse_file(Calculation.outpath(calculation),
+                                                    extra_parse_funcs) : t
             return calculation.outdata
         end
     end
@@ -91,4 +92,3 @@ function pdos(c::Calculation{QE}, atsym::Symbol, magnetic::Bool, soc::Bool,
     end
     return (energies = energies, pdos = atdos)
 end
-

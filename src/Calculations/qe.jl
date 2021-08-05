@@ -15,7 +15,6 @@ struct QEControlBlockInfo <: AbstractBlockInfo
 end
 Base.in(f::Symbol, i::QEControlBlockInfo) = findfirst(x -> x.name == f, i.flags) !== nothing
 
-
 #TODO rewrite this this is garbage
 function qe_flaginfo(block::AbstractBlockInfo, variable_name::Symbol)
     varstr1 = string(variable_name)
@@ -178,7 +177,7 @@ function ispw(c::Calculation{QE})
     return isbands(c) || isnscf(c) || isscf(c) || isvcrelax(c) || isrelax(c)
 end
 
-issoc(c::Calculation{QE})     = c[:lspinorb] == true
+issoc(c::Calculation{QE}) = c[:lspinorb] == true
 
 function ismagnetic(c::Calculation{QE})
     return (hasflag(c, :nspin) && c[:nspin] > 0.0) ||
@@ -241,7 +240,9 @@ function set_kpoints!(c::Calculation{QE}, k_grid::NTuple{3,Int}; print = true) #
 end
 
 function set_kpoints!(c::Calculation{QE}, k_grid::NTuple{6,Int}; print = true) #scf
-    print && !(isscf(c) || isvcrelax(c) || isrelax(c)) && (@warn "Expected calculation to be scf, vc-relax, relax.\nGot $calc.")
+    print &&
+        !(isscf(c) || isvcrelax(c) || isrelax(c)) &&
+        (@warn "Expected calculation to be scf, vc-relax, relax.\nGot $calc.")
     d = data(c, :k_points)
     if d !== nothing
         d.data = [k_grid...]
@@ -313,8 +314,8 @@ end
 Uses the information from the template and supplied `kpoints` to generate a bands calculation.
 Extra flags can be supplied which will be set for the generated calculation.
 """
-function gencalc_bands(template::Calculation{QE}, kpoints::Vector{<:NTuple{4}},
-                       newflags...; name = "bands")
+function gencalc_bands(template::Calculation{QE}, kpoints::Vector{<:NTuple{4}}, newflags...;
+                       name = "bands")
     return calculation_from_kpoints(template, name, kpoints, :calculation => "bands",
                                     newflags...)
 end
@@ -360,7 +361,7 @@ function gencalc_projwfc(template::Calculation{QE}, Emin, Emax, DeltaE, extrafla
         excs = [Exec(; exec = "projwfc.x", dir = template.execs[end].dir)]
     end
 
-    out = Calculation(deepcopy(template); name=name,  execs = excs, data=InputData[])
+    out = Calculation(deepcopy(template); name = name, execs = excs, data = InputData[])
     set_name!(out, "projwfc")
     empty!(out.flags)
     set_flags!(out, :Emin => Emin, :Emax => Emax, :DeltaE => DeltaE, :ngauss => ngauss,
@@ -368,4 +369,3 @@ function gencalc_projwfc(template::Calculation{QE}, Emin, Emax, DeltaE, extrafla
     set_flags!(out, extraflags...)
     return out
 end
-

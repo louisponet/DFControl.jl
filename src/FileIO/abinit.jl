@@ -425,7 +425,7 @@ function read_abi_ebands(filename::String, T = Float64)
                 end
                 push!(bands,
                       Band([T[0.0, 0.0, 0.0] for i in 1:length(eigvals)], k_points_cryst,
-                             eigvals))
+                           eigvals))
             end
         end
     end

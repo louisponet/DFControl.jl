@@ -18,8 +18,7 @@ function add_structure!(dio::Diorama, str::Structure; polyhedra::Vector{Symbol} 
         color = RGB{Float32}(at.element.color...)
         Entity(dio,
                Gl.assemble_sphere(origin; color = color,
-                                  radius = Float32(0.2 +
-                                                   at.element.atomic_weight / 400.0f0))...,
+                                  radius = Float32(0.2 + at.element.atomic_weight / 400.0f0))...,
                Gl.Text(; str = String(at.name), font_size = 2))
         if sum(magnetization(at)) != 0
             Entity(dio,
@@ -31,7 +30,8 @@ function add_structure!(dio::Diorama, str::Structure; polyhedra::Vector{Symbol} 
     for el in element.(polyhedra)
         for at in atoms(str, el)
             distances = sort(distance.((at,), atoms(str)))
-            count = length(filter(i -> distances[i+1] - distances[i] < 1e-1angstrom), 1:length(distances)-1)
+            count = length(filter(i -> distances[i+1] - distances[i] < 1e-1angstrom),
+                           1:length(distances)-1)
             poly = polyhedron(str, count)
         end
     end

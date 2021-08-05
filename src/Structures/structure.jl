@@ -7,11 +7,11 @@ The structure on which the [`Calculations`](@ref Calculation) will be performed.
 
 Creates a [`Structure`](@ref) from the supplied cif file.
 """
-mutable struct Structure 
+mutable struct Structure
     cell  :: Mat3{typeof(1.0Ang)}
     atoms :: Vector{Atom}
 end
-Structure() = Structure(Mat3(fill(1.0Ang,3,3)), Atom[])
+Structure() = Structure(Mat3(fill(1.0Ang, 3, 3)), Atom[])
 
 function Structure(cif_file::String)
     str = cif2structure(cif_file)
@@ -21,7 +21,9 @@ end
 
 StructTypes.StructType(::Type{Structure}) = StructTypes.Struct()
 
-Base.:(==)(str1::Structure, str2::Structure) = str1.cell == str2.cell && str1.atoms == str2.atoms
+function Base.:(==)(str1::Structure, str2::Structure)
+    return str1.cell == str2.cell && str1.atoms == str2.atoms
+end
 
 "Uses cif2cell to Meta.parse a cif file, then returns the parsed structure."
 function cif2structure(cif_file::String)
@@ -40,7 +42,8 @@ end
 function mergestructures(structures::Vector{Structure})
     nonvoid = filter(x -> x != nothing, structures)
     out = nonvoid[1]
-    default_at = Atom(name=:Rh, position_cart=zero(Point3{typeof(1.0Ang)}), position_cryst=zero(Point3{Float64}))
+    default_at = Atom(; name = :Rh, position_cart = zero(Point3{typeof(1.0Ang)}),
+                      position_cryst = zero(Point3{Float64}))
     for structure in nonvoid[2:end]
         for at1 in out.atoms, at2 in structure.atoms
             if at1 == at2
@@ -49,7 +52,7 @@ function mergestructures(structures::Vector{Structure})
                         continue
                     end
                     field = getfield(at2, fname)
-                    if field != getfield(default_at, fname) 
+                    if field != getfield(default_at, fname)
                         setfield!(at1, fname, field)
                     end
                 end
@@ -144,8 +147,8 @@ c(str::Structure) = str.cell[:, 3]
 Takes a structure and creates a supercell from it with: the given amount of additional cells if (`na::Int, nb::Int, nc::Int`) along the a, b, c direction, or amount of cells specified by the ranges i.e. `-1:1, -1:1, -1:1` would create a 3x3x3 supercell.
 If `make_afm` is set to `true` all the labels and magnetizations of the magnetic atoms will be reversed in a checkerboard fashion.
 """
-function create_supercell(structure::Structure, na::UnitRange, nb::UnitRange,
-                          nc::UnitRange; make_afm = false)
+function create_supercell(structure::Structure, na::UnitRange, nb::UnitRange, nc::UnitRange;
+                          make_afm = false)
     orig_ats  = structure.atoms
     orig_cell = structure.cell
     scale_mat = diagm(0 => length.([na, nb, nc]))
@@ -175,11 +178,10 @@ function create_supercell(structure::Structure, na::UnitRange, nb::UnitRange,
     end
     out = Structure(Mat3(new_cell), new_atoms)
     sanitize!(out)
-    return out 
+    return out
 end
 
-function create_supercell(structure::Structure, na::Int, nb::Int, nc::Int;
-                          make_afm = false)
+function create_supercell(structure::Structure, na::Int, nb::Int, nc::Int; make_afm = false)
     return create_supercell(structure, 0:na, 0:nb, 0:nc; make_afm = make_afm)
 end
 
@@ -341,8 +343,7 @@ function niggli_reduce(s::Structure; tolerance = DEFAULT_TOLERANCE)
     reduced_spg_structure = niggli_reduce!(SPGStructure(s); tolerance = DEFAULT_TOLERANCE)
     uats = unique(s.atoms)
     c = Mat3{Float64}(reduced_spg_structure.lattice') .* 1Ang
-    return Structure(c,
-                     map(1:length(reduced_spg_structure.species_indices)) do i
+    return Structure(c, map(1:length(reduced_spg_structure.species_indices)) do i
                          at = deepcopy(uats[reduced_spg_structure.species_indices[i]])
                          pos = reduced_spg_structure.positions[:, i]
                          set_position!(at, pos, c)

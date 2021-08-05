@@ -9,8 +9,9 @@ const DEPS_DIR = joinpath(dirname(@__DIR__), "deps")
 
 const PYTHONPATH = Sys.iswindows() ? joinpath(DEPS_DIR, "python2", "python") :
                    joinpath(dirname(@__DIR__), "deps", "python2", "bin", "python")
-                   
-const CIF2CELLPATH = Sys.iswindows() ? joinpath(DEPS_DIR, "python2", "Scripts", "cif2cell") :
+
+const CIF2CELLPATH = Sys.iswindows() ?
+                     joinpath(DEPS_DIR, "python2", "Scripts", "cif2cell") :
                      joinpath(dirname(@__DIR__), "deps", "python2", "bin", "cif2cell")
 
 config_path(path...) = joinpath(CONFIG_DIR, path...)
@@ -49,7 +50,6 @@ include("Client/Client.jl")
 include("Display/Display.jl")
 export Client
 
-
 function __init__()
     Jobs.init_job_registry()
     Servers.maybe_create_localhost()
@@ -59,7 +59,7 @@ function __init__()
     # else
     #     global_logger(DFControl.daemon_logger())
     # end
-    return 
+    return
 end
 
 # if ccall(:jl_generating_output, Cint, ()) == 1

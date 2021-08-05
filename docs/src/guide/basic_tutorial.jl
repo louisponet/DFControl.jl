@@ -38,8 +38,8 @@ set_kpoints!(scf_calculation, (6, 6, 6, 1, 1, 1))
 # `K_POINTS (automatic)` block in QE. Alternatively (leading to an identical final result):
 
 scf_calculation = Calculation{QE}("scf", :calculation => "scf"; execs = pw_execs,
-                                    data = [InputData(:k_points, :automatic,
-                                                      (6, 6, 6, 1, 1, 1))])
+                                  data = [InputData(:k_points, :automatic,
+                                                    (6, 6, 6, 1, 1, 1))])
 
 # We can now define our job: 
 job = DFJob("Si", structure, [scf_calculation], :ecutwfc => 20, :conv_thr => 1e-6;

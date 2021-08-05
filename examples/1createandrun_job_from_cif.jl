@@ -21,8 +21,8 @@ set_kpoints!(scf_calculation, (6, 6, 6, 1, 1, 1))
 # Or
 
 scf_calculation = Calculation{QE}("scf", pw_execs, :calculation => "scf";
-                                    data = [InputData(:k_points, :automatic,
-                                                      (6, 6, 6, 1, 1, 1))])
+                                  data = [InputData(:k_points, :automatic,
+                                                    (6, 6, 6, 1, 1, 1))])
 
 # Using these we can now define our job, if we would have more calculations they would be added
 # to the list [scf_calculation].

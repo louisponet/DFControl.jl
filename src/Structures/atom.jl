@@ -9,9 +9,9 @@
 DFT+U parameters for a given [`Atom`](@ref).
 """
 @with_kw mutable struct DFTU
-    l::Int = -1
-    U::Float64   = 0.0
-    J0::Float64  = 0.0
+    l::Int      = -1
+    U::Float64  = 0.0
+    J0::Float64 = 0.0
     #QE params
     α::Float64 = 0.0
     β::Float64 = 0.0
@@ -50,7 +50,6 @@ Base.:(==)(p1::Pseudo, p2::Pseudo) = p1.name == p2.name && p1.dir == p2.dir
 
 path(p::Pseudo) = joinpath(p.dir, p.name)
 
-
 """
     Element(symbol::Symbol, Z::Int, name::String, atomic_weight::Float64, color::NTuple{3, Float64})
     
@@ -63,7 +62,7 @@ struct Element
     atomic_weight :: Float64
     color         :: NTuple{3,Float64}
 end
-Element() = Element(:nothing, -1, "", -1, (0.0,0.0,0.0))
+Element() = Element(:nothing, -1, "", -1, (0.0, 0.0, 0.0))
 StructTypes.StructType(::Type{Element}) = StructTypes.Struct()
 
 """
@@ -162,11 +161,12 @@ end
 
 Base.range(v::Vector{Atom}) = vcat(range.(v)...)
 
-projections_string(at::Atom) = "$(at.name): "* join(map(x -> x.orbital.name, at.projections), ";")
+function projections_string(at::Atom)
+    return "$(at.name): " * join(map(x -> x.orbital.name, at.projections), ";")
+end
 
 function Base.:(==)(at1::Atom, at2::Atom)
-    return at1.name == at2.name &&
-           norm(at1.position_cart - at2.position_cart) < 1e-6Ang
+    return at1.name == at2.name && norm(at1.position_cart - at2.position_cart) < 1e-6Ang
 end
 
 """
@@ -174,15 +174,13 @@ end
 
 Updates the position of the atom to this. The unit cell is used to make sure both `position_cryst` and `position_cart` are correct.
 """
-function set_position!(at::Atom, pos::AbstractVector{T},
-                       unit_cell::Mat3) where {T<:Real}
+function set_position!(at::Atom, pos::AbstractVector{T}, unit_cell::Mat3) where {T<:Real}
     at.position_cryst = Point3{T}(pos...)
     at.position_cart  = unit_cell * at.position_cryst
     return at
 end
 
-function set_position!(at::Atom, pos::AbstractVector{T},
-                       unit_cell::Mat3) where {T<:Length}
+function set_position!(at::Atom, pos::AbstractVector{T}, unit_cell::Mat3) where {T<:Length}
     at.position_cart  = Point3{T}(pos...)
     at.position_cryst = unit_cell^-1 * at.position_cart
     return at

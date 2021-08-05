@@ -43,7 +43,7 @@ The `kwargs...` will be passed to the [`Job`](@ref) constructor.
     copy_temp_folders::Bool = false
     server::String = "localhost"
     function Job(name, structure, calculations, dir, header, metadata, version,
-                   copy_temp_folders, server)
+                 copy_temp_folders, server)
         if dir[end] == '/'
             dir = dir[1:end-1]
         end
@@ -66,11 +66,10 @@ The `kwargs...` will be passed to the [`Job`](@ref) constructor.
 end
 
 #TODO implement abinit
-function Job(job_name::String, structure::Structure,
-               calculations::Vector{<:Calculation}, common_flags::Pair{Symbol,<:Any}...;
-               kwargs...)
+function Job(job_name::String, structure::Structure, calculations::Vector{<:Calculation},
+             common_flags::Pair{Symbol,<:Any}...; kwargs...)
     out = Job(; name = job_name, structure = structure, calculations = calculations,
-                kwargs...)
+              kwargs...)
     for (f, v) in common_flags
         out[f] = v
     end
@@ -79,12 +78,11 @@ end
 
 StructTypes.StructType(::Type{Job}) = StructTypes.Mutable()
 
-
 #-------------------BEGINNING GENERAL SECTION-------------#
 scriptpath(job::Job) = joinpath(job.dir, "job.tt")
 starttime(job::Job)  = mtime(scriptpath(job))
 
-runslocal(job::Job)    = job.server == "localhost"
+runslocal(job::Job) = job.server == "localhost"
 isarchived(job::Job) = occursin(".archived", job.dir)
 
 """
@@ -119,7 +117,7 @@ function Base.getindex(job::Job, flg::Symbol)
     for i in job.calculations
         tfl = i[flg]
         if tfl !== nothing
-            outdict[i.name]= tfl
+            outdict[i.name] = tfl
         end
     end
     return outdict
@@ -190,8 +188,8 @@ it will be used as the `Emin` value from which to start counting the number of b
 projections.
 `extra_wan_flags` can be any extra flags for the Wannier90 calculation such as `write_hr` etc.
 """
-function Calculations.gencalc_wan(job::Job, min_window_determinator::Real, extra_wan_flags...;
-                     kwargs...)
+function Calculations.gencalc_wan(job::Job, min_window_determinator::Real,
+                                  extra_wan_flags...; kwargs...)
     nscf_calculation = getfirst(x -> Calculations.isnscf(x), job.calculations)
     projwfc_calculation = getfirst(x -> Calculations.isprojwfc(x), job.calculations)
     if projwfc_calculation === nothing || !hasoutput(projwfc_calculation)
@@ -284,7 +282,7 @@ DOS, and what the size of the frozen window needs to be to fit enough bands insi
 depending on the projections.
 """
 function set_wanenergies!(job::Job, nscf::Calculation, Emin::Real; Epad = 5.0)
-    wancalcs = filter(x->eltype(x) == Wannier90, job.calculations)
+    wancalcs = filter(x -> eltype(x) == Wannier90, job.calculations)
     @assert length(wancalcs) != 0 "Job ($(job.name)) has no Wannier90 calculations, nothing to do."
     map(x -> set_wanenergies!(x, structure(job), nscf, Emin; Epad = Epad), wancalcs)
     return job
@@ -380,7 +378,6 @@ function readbands(job::Job)
     return readbands(calculation)
 end
 
-
 #TODO: only for QE 
 "Reads the pdos for a particular atom. Only works for QE."
 function pdos(job::Job, atsym::Symbol, filter_word = "")
@@ -412,17 +409,16 @@ end
 Sets a function with the call signature `func(job)` which can be later called using the [`@present`](@ref) macro.
 """
 function set_present!(job::Job, func::Function)
-    try 
+    try
         str = loaded_modules_string() * @code_string func(job)
         set_present!(job, str)
     catch
         error("Could not generate the source string for the supplied function.\nIf you are running in a Jupyter notebook, please supply the source code as a string, or expression to set_present!.\nDon't forget to include the right using statements.")
     end
-        
 end
-function set_present!(job::Job, func::AbstractString) 
+function set_present!(job::Job, func::AbstractString)
     open(joinpath(job, ".present.jl"), "w") do f
-        write(f, func)
+        return write(f, func)
     end
 end
 function set_present!(job::Job, func::Expr)
@@ -430,7 +426,7 @@ function set_present!(job::Job, func::Expr)
     if funcstr[1:5] == "begin"
         funcstr = funcstr[findfirst(isequal('\n'), funcstr)+1:findlast(isequal('\n'), funcstr)-1]
     end
-    set_present!(job, funcstr)
+    return set_present!(job, funcstr)
 end
 
 """
@@ -440,15 +436,16 @@ Calls a present function if it was previously saved using [`set_present!`](@ref)
 """
 macro present(job)
     return esc(quote
-        if ispath(joinpath($job, ".present.jl"))
-            t = include(joinpath($job, ".present.jl"))
-            DFControl.with_logger(DFControl.MinLevelLogger(DFControl.current_logger(), DFControl.Logging.Error)) do 
-                t($job)
-            end
-        else
-            @error "No presentation function defined.\n Please set it with `set_present!`."
-        end
-    end)
+                   if ispath(joinpath($job, ".present.jl"))
+                       t = include(joinpath($job, ".present.jl"))
+                       DFControl.with_logger(DFControl.MinLevelLogger(DFControl.current_logger(),
+                                                                      DFControl.Logging.Error)) do
+                           return t($job)
+                       end
+                   else
+                       @error "No presentation function defined.\n Please set it with `set_present!`."
+                   end
+               end)
 end
 
 """
@@ -456,7 +453,8 @@ end
 
 Archives `job` by copying it's contents to `archive_directory` alongside a `results.jld2` file with all the parseable results as a Dict. `description` will be saved in a `description.txt` file in the `archive_directory`. A different job version can be copied using the `version` kwarg, and with the `present` kwarg a function can be specified that can be later called with the [`@present`](@ref) macro.
 """
-function archive(job::Job, archive_directory::AbstractString, description::String=""; present = nothing, version=job.version)
+function archive(job::Job, archive_directory::AbstractString, description::String = "";
+                 present = nothing, version = job.version)
     @assert !isarchived(job) "Job was already archived"
     final_dir = config_path(".archived", archive_directory)
     @assert !ispath(final_dir) "A archived job already exists in $archive_directory"
@@ -470,7 +468,7 @@ function archive(job::Job, archive_directory::AbstractString, description::Strin
     set_dir!(tj, final_dir)
 
     JLD2.save(joinpath(final_dir, "results.jld2"), "outputdata", out)
-    
+
     !isempty(description) && write(joinpath(final_dir, "description.txt"), description)
     push!(JOB_REGISTRY.archived, tj.dir)
     @info "Archived job at $(tj.dir). If you're done with this one, it is safe to delete the directory at $(job.dir)."
@@ -509,4 +507,3 @@ for (f, strs) in zip((:cp, :mv), (("copy", "Copies"), ("move", "Moves")))
         end
     end
 end
-

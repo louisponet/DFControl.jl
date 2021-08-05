@@ -1,4 +1,4 @@
-function load_job(job_dir::AbstractString, version::Int=-1)
+function load_job(job_dir::AbstractString, version::Int = -1)
     if ispath(job_dir)
         if occursin(Jobs.VERSION_DIR_NAME, job_dir)
             error("It is not allowed to directly load a job version, please use `Job(dir, version=$(splitdir(job_dir)[end]))`")
@@ -12,8 +12,9 @@ function load_job(job_dir::AbstractString, version::Int=-1)
         else
             error("No valid job found in $job_dir.")
         end
-        job = Job(; merge((dir = real_path, version = real_version),
-                    FileIO.read_job_calculations(joinpath(real_path, "job.tt")))...)
+        job = Job(;
+                  merge((dir = real_path, version = real_version),
+                        FileIO.read_job_calculations(joinpath(real_path, "job.tt")))...)
         Jobs.maybe_register_job(job)
         return job
     else
@@ -57,11 +58,11 @@ function write_workflow_files(job::Job)
             push!(valid, p)
         end
     end
-    DFControl.JLD2.save(joinpath(job, ".workflow/environment.jld2"), "modules", valid, "project",
-              Base.current_project())
-    return DFControl.JLD2.save(joinpath(job, ".workflow/ctx.jld2"), "ctx", Dict{Symbol,Any}())
+    DFControl.JLD2.save(joinpath(job, ".workflow/environment.jld2"), "modules", valid,
+                        "project", Base.current_project())
+    return DFControl.JLD2.save(joinpath(job, ".workflow/ctx.jld2"), "ctx",
+                               Dict{Symbol,Any}())
 end
-
 
 function clear_queue!(job::Job)
     qd = queued_dir(job)
@@ -118,7 +119,7 @@ function save(job::Job; kwargs...)
         tj = load_job(dir, -1)
         cp(tj, joinpath(tj, Jobs.VERSION_DIR_NAME, "$(tj.version)"); force = true)
     end
-    
+
     Jobs.set_dir!(job, dir) # Needs to be done so the inputs `dir` also changes.
     mkpath(dir)
 
@@ -138,10 +139,9 @@ First saves the job, then tries to submit the job script through `sbatch job.tt`
 """
 function submit(job_dir::String)
     open(PENDING_JOBS_FILE, "a") do f
-        write(f, job_dir * "\n")
+        return write(f, job_dir * "\n")
     end
 end
-
 
 """
     last_running_calculation(job::Job)
@@ -178,7 +178,7 @@ function isrunning(job_dir::String)
         u = username()
         i = last_running_calculation(job)
         i === nothing && return false
-        l = job[i] 
+        l = job[i]
         codeexec = l.execs[end].exec
         try
             pids = parse.(Int, split(read(`pgrep $codeexec`, String)))
@@ -252,7 +252,9 @@ has_timestamp(job) = haskey(job.metadata, :timestamp)
 
 function clean_dir!(dir::AbstractString)
     for f in readdir(dir)
-        if f == Jobs.TEMP_CALC_DIR || f == Jobs.VERSION_DIR_NAME || splitext(f)[end] == ".jl"
+        if f == Jobs.TEMP_CALC_DIR ||
+           f == Jobs.VERSION_DIR_NAME ||
+           splitext(f)[end] == ".jl"
             continue
         end
         rm(joinpath(dir, f); recursive = true)
@@ -267,7 +269,7 @@ function outputdata(job::Job, calculations::Vector{Calculation}; print = true,
     if DFC.isarchived(job) && ispath(joinpath(job, "results.jld2"))
         return DFC.JLD2.load(joinpath(job, "results.jld2"))["outputdata"]
     end
-    datadict = Dict{String, Dict{Symbol,Any}}()
+    datadict = Dict{String,Dict{Symbol,Any}}()
     stime = DFC.starttime(job)
     #TODO Think about storing results.jld2
     for calculation in calculations
@@ -281,7 +283,7 @@ function outputdata(job::Job, calculations::Vector{Calculation}; print = true,
             datadict[calculation.name] = tout
         end
     end
-    tmp = tempname() * ".jld2" 
+    tmp = tempname() * ".jld2"
     out = DFC.JLD2.save(tmp, "outputdata", datadict)
     return tmp
 end

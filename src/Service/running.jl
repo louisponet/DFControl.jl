@@ -1,6 +1,6 @@
 function main_loop()
     running_jobs = ispath(RUNNING_JOBS_FILE) ? readlines(RUNNING_JOBS_FILE) : String[]
-    job_dirs_procs = Dict{String, Tuple{Int, Future}}()
+    job_dirs_procs = Dict{String,Tuple{Int,Future}}()
     for j in running_jobs
         if DFControl.exists_job(j)
             tjob = load_job(j)
@@ -109,4 +109,3 @@ function run_queue(job::Job, ctx::Dict; sleep_time = 10)
     end
     return true
 end
-

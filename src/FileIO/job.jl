@@ -73,7 +73,8 @@ function writetojob(f, job, _calculation::Calculation{Wannier90}; kwargs...)
                 write(f, "#")
             end
             writeexec.((f,), _calculation.execs)
-            write(f, "-pp $filename > $(joinpath(_calculation.dir, _calculation.outfile))\n")
+            write(f,
+                  "-pp $filename > $(joinpath(_calculation.dir, _calculation.outfile))\n")
 
             save(_calculation, job.structure; kwargs...)
             writetojob(f, job, pw2wancalculation; kwargs...)
@@ -94,10 +95,8 @@ end
 
 #TODO: This should take scratch dir of server
 
-function write_job_preamble(f, job::Job)
-end
-function write_job_postamble(f, job::Job)
-end
+function write_job_preamble(f, job::Job) end
+function write_job_postamble(f, job::Job) end
 # function write_job_preamble(f, job::Job)
 #     if !isempty(job.server_dir)
 #         dir = splitpath(job.dir)[end]
@@ -189,14 +188,13 @@ function read_job_line(line)
         elseif any(occursin.(Calculations.ELK_EXECS, (efile,)))
             calculation = "elk.in"
             output = "elk.out"
-            push!(execs, Exec(exec=efile, dir=dir))
+            push!(execs, Exec(; exec = efile, dir = dir))
         else
             push!(execs, Exec(efile, dir, Calculations.parse_generic_flags(flags)))
         end
     end
     return execs, calculation, output, run
 end
-
 
 # TODO: make this work again
 # function read_job_filenames(job_file::String)
@@ -229,7 +227,6 @@ function calculationparser(exec::Exec)
     end
 end
 
-
 function read_job_calculations(job_file::String)
     dir = splitdir(job_file)[1]
     name = ""
@@ -252,9 +249,8 @@ function read_job_calculations(job_file::String)
                 else
                     command = getfirst(Calculations.isparseable, execs)
                     c = command != nothing ?
-                                  calculationparser(command)(inpath; execs = execs,
-                                                                 run = run) :
-                                  (nothing, nothing)
+                        calculationparser(command)(inpath; execs = execs, run = run) :
+                        (nothing, nothing)
                 end
                 if c[1] !== nothing
                     c[1].outfile = output
@@ -296,6 +292,5 @@ function read_job_calculations(job_file::String)
         structure = Structure()
         @warn "No valid structures could be read from calculation files."
     end
-    return (;name, header, calculations=cs, structure)
+    return (; name, header, calculations = cs, structure)
 end
-

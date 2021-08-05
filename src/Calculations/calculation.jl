@@ -25,7 +25,6 @@ struct Abinit <: Package end
 struct Elk <: Package end
 StructTypes.StructType(::Type{<:Package}) = StructTypes.Struct()
 
-
 """
     Calculation{P<:Package}(name    ::String;
                               dir     ::String = "",
@@ -64,8 +63,9 @@ Creates a new [`Calculation`](@ref) from the `template`, setting the `flags` of 
     infile::String = P == Wannier90 ? name * ".win" : name * ".in"
     outfile::String = P == Wannier90 ? name * ".wout" : name * ".out"
     function Calculation{P}(name, dir, flags, data, execs, run, outdata, infile,
-                              outfile) where {P<:Package}
-        out = new{P}(name, dir, Dict{Symbol,Any}(), data, execs, run, outdata, infile, outfile)
+                            outfile) where {P<:Package}
+        out = new{P}(name, dir, Dict{Symbol,Any}(), data, execs, run, outdata, infile,
+                     outfile)
         set_flags!(out, flags...; print = false)
         for (f, v) in flags
             if !hasflag(out, f)
@@ -77,8 +77,8 @@ Creates a new [`Calculation`](@ref) from the `template`, setting the `flags` of 
 end
 function Calculation{P}(name, dir, flags, data, execs, run) where {P<:Package}
     return Calculation{P}(name, abspath(dir), flags, data, execs, run, Dict{Symbol,Any}(),
-                            P == Wannier90 ? name * ".win" : name * ".in",
-                            P == Wannier90 ? name * ".wout" : name * ".out")
+                          P == Wannier90 ? name * ".win" : name * ".in",
+                          P == Wannier90 ? name * ".wout" : name * ".out")
 end
 
 function Calculation{P}(name, flags...; kwargs...) where {P<:Package}
@@ -86,8 +86,8 @@ function Calculation{P}(name, flags...; kwargs...) where {P<:Package}
 end
 
 function Calculation(template::Calculation, name, newflags...;
-                       excs = deepcopy(template.execs), run  = true, data = nothing,
-                       dir  = copy(template.dir))
+                     excs = deepcopy(template.execs), run  = true, data = nothing,
+                     dir  = copy(template.dir))
     newflags = Dict(newflags...)
 
     calculation       = deepcopy(template)
@@ -99,10 +99,10 @@ function Calculation(template::Calculation, name, newflags...;
 
     if data !== nothing
         for (name, (option, dat)) in data
-            d = getfirst(x->x.name == name, calculation.data)
+            d = getfirst(x -> x.name == name, calculation.data)
             if d !== nothing
-                 d.data = dat
-                 d.option = option
+                d.data = dat
+                d.option = option
             else
                 push!(calculation.data, InputData(name, option, dat))
             end
@@ -127,7 +127,7 @@ isrelax(c::Calculation)    = false
 ismagnetic(c::Calculation) = false
 issoc(c::Calculation)      = false
 outfiles(c::Calculation)   = [outpath(c)]
-ispw(c::Calculation) = false
+ispw(c::Calculation)       = false
 
 """
     set_name!(c::Calculation, name::AbstractString)
@@ -139,8 +139,7 @@ function set_name!(c::Calculation, name::AbstractString; print = true)
     c.name = name
     c.infile = name * splitext(c.infile)[2]
     c.outfile = name * splitext(c.outfile)[2]
-    print &&
-        @info "\nname = $name\ninfile = $(c.infile))\noutfile = $(c.outfile)"
+    print && @info "\nname = $name\ninfile = $(c.infile))\noutfile = $(c.outfile)"
     return name
 end
 
@@ -150,7 +149,6 @@ end
 The former returns `calculation.data`, the later -- the `InputData` with name `n`.
 """
 data(calculation::Calculation, n::Symbol) = getfirst(x -> x.name == n, calculation.data)
-
 
 #
 # Directory interface
@@ -178,7 +176,7 @@ Returns the flag with given symbol.
 Searches through the job's calculations for the requested flag.
 A `Dict` will be returned with calculation names as the keys and the flags as values.
 """
-Base.getindex(c::Calculation, n::Symbol) = haskey(c, n)  ?  c.flags[n] : throw(KeyError(n))
+Base.getindex(c::Calculation, n::Symbol) = haskey(c, n) ? c.flags[n] : throw(KeyError(n))
 
 Base.haskey(c::Calculation, n::Symbol) = haskey(c.flags, n)
 Base.get(c::Calculation, args...) = get(c.flags, args...)
@@ -231,8 +229,7 @@ function set_flags!(c::Calculation{T}, flags...; print = true) where {T}
             end
             old_data = haskey(c.flags, flag) ? c.flags[flag] : ""
             c.flags[flag] = value
-            print &&
-                (@info "$(c.name): -> $flag:\n      $old_data set to: $value\n")
+            print && (@info "$(c.name): -> $flag:\n      $old_data set to: $value\n")
         else
             print &&
                 @warn "Flag $flag was ignored since it could not be found in the allowed flags for calculation $(c.name)"
@@ -284,7 +281,6 @@ function set_cutoffs!(c::Calculation, ecutwfc, ecutrho)
     return set_flags!(c, ψ_cutoff_flag(c) => ecutwfc, ρ_cutoff_flag(c) => ecutrho)
 end
 
-
 """
     set_kpoints!(calculation::Calculation{QE}, k_grid::NTuple{3, Int}; print=true)
     set_kpoints!(calculation::Calculation{QE}, k_grid::NTuple{6, Int}; print=true)
@@ -309,7 +305,7 @@ end
 
 function calculation_from_kpoints(template::Calculation, newname, kpoints, newflags...)
     newcalc = Calculation(deepcopy(template); name = newname)
-    set_flags!(newcalc, newflags...; print=false)
+    set_flags!(newcalc, newflags...; print = false)
     set_name!(newcalc, newname)
     set_kpoints!(newcalc, kpoints; print = false)
     return newcalc
@@ -355,7 +351,7 @@ function sanitize_flags!(cs::Vector{<:Calculation}, str::Structure, name, outdir
         nscfcalc = getfirst(isnscf, cs)
         wancalc = getfirst(x -> eltype(x) == Wannier90, cs)
         if eltype(nscfcalc) == Elk
-            wancalc.flags[:num_bands] = length(nscfcalc[:wann_bands])
+            wancalc.flags[:num_bands]         = length(nscfcalc[:wann_bands])
             nscfcalc.flags[:wann_projections] = Structures.projections_string.(unique(filter(x -> !isempty(x.projections), str.atoms)))
             nscfcalc.flags[:elk2wan_tasks]    = ["602", "604"]
             nscfcalc.flags[:wann_seedname]    = Symbol(name)
@@ -369,10 +365,9 @@ function sanitize_flags!(cs::Vector{<:Calculation}, str::Structure, name, outdir
     isnc = Structures.isnoncolin(str)
     flags_to_set = []
     if any(x -> x.dftu.U != 0 ||
-                 x.dftu.J0 != 0.0 ||
-                 sum(x.dftu.J) != 0 ||
-                 sum(x.dftu.α) != 0, u_ats)
-                 
+                    x.dftu.J0 != 0.0 ||
+                    sum(x.dftu.J) != 0 ||
+                    sum(x.dftu.α) != 0, u_ats)
         Jmap = map(x -> copy(x.dftu.J), u_ats)
         Jdim = maximum(length.(Jmap))
         Jarr = zeros(Jdim, length(u_ats))
@@ -385,10 +380,11 @@ function sanitize_flags!(cs::Vector{<:Calculation}, str::Structure, name, outdir
             end
             Jarr[:, i] .= J
         end
-        append!(flags_to_set, [:Hubbard_U     => map(x -> x.dftu.U, u_ats),
-                       :Hubbard_alpha => map(x -> x.dftu.α, u_ats),
-                       :Hubbard_beta  => map(x -> x.dftu.β, u_ats), :Hubbard_J     => Jarr,
-                       :Hubbard_J0    => map(x -> x.dftu.J0, u_ats)])
+        append!(flags_to_set,
+                [:Hubbard_U     => map(x -> x.dftu.U, u_ats),
+                 :Hubbard_alpha => map(x -> x.dftu.α, u_ats),
+                 :Hubbard_beta  => map(x -> x.dftu.β, u_ats), :Hubbard_J     => Jarr,
+                 :Hubbard_J0    => map(x -> x.dftu.J0, u_ats)])
     end
     if !isempty(flags_to_set) || any(x -> hasflag(x, :Hubbard_parameters), cs)
         push!(flags_to_set, :lda_plus_u => true)
@@ -398,24 +394,25 @@ function sanitize_flags!(cs::Vector{<:Calculation}, str::Structure, name, outdir
     end
     if !isempty(flags_to_set)
         for c in cs
-            set_flags!(c, flags_to_set...; print=false)
+            set_flags!(c, flags_to_set...; print = false)
         end
     else
         for c in cs
-            for f in (:lda_plus_u, :lda_plus_u_kind, :Hubbard_U, :Hubbard_alpha,
-                      :Hubbard_beta, :Hubbard_J, :Hubbard_J0, :U_projection_type)
+            for f in
+                (:lda_plus_u, :lda_plus_u_kind, :Hubbard_U, :Hubbard_alpha, :Hubbard_beta,
+                 :Hubbard_J, :Hubbard_J0, :U_projection_type)
                 pop!(c, f, nothing)
             end
         end
     end
 
     flags_to_set = []
-    mags = map(x->x.magnetization,u_ats)
+    mags = map(x -> x.magnetization, u_ats)
     starts = Float64[]
     θs = Float64[]
     ϕs = Float64[]
     ismagcalc = isnc ? true : Structures.ismagnetic(str)
-    if (ismagcalc && isnc) || any(x->get(x, :noncolin, false), cs)
+    if (ismagcalc && isnc) || any(x -> get(x, :noncolin, false), cs)
         for m in mags
             tm = normalize(m)
             if norm(m) == 0
@@ -447,30 +444,31 @@ function sanitize_flags!(cs::Vector{<:Calculation}, str::Structure, name, outdir
     for c in cs
         set_flags!(c, :prefix => "$name", :outdir => "$outdir"; print = false)
         if ispw(c)
-            set_flags!(c, flags_to_set...; print=false)
+            set_flags!(c, flags_to_set...; print = false)
             if isnc
                 pop!(c, :nspin, nothing)
             end
             if isvcrelax(c)
                 #this is to make sure &ions and &cell are there in the calculation 
-                !hasflag(c, :ion_dynamics) && set_flags!(c, :ion_dynamics => "bfgs"; print = false)
+                !hasflag(c, :ion_dynamics) &&
+                    set_flags!(c, :ion_dynamics => "bfgs"; print = false)
                 !hasflag(c, :cell_dynamics) &&
                     set_flags!(c, :cell_dynamics => "bfgs"; print = false)
             end
             #TODO add all the required flags
             @assert hasflag(c, :calculation) "Please set the flag for calculation with name: $(name(c))"
-            
+
             set_flags!(c, :pseudo_dir => pseudo_dir; print = false)
         end
         convert_flags!(c)
     end
-   
-    return 
+
+    return
 end
 
 rm_tmp_flags!(::Calculation) = nothing
 function rm_tmp_flags!(c::Calculation{QE})
     pop!(c, :prefix, nothing)
     pop!(c, :outdir, nothing)
-    pop!(c, :nspin, nothing)
+    return pop!(c, :nspin, nothing)
 end

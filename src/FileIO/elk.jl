@@ -118,9 +118,8 @@ function elk_read_calculation(fn::String; execs = [Exec(; exec = "elk")], run = 
     scale = haskey(blocknames_flaglines, :scale) ? last(pop!(blocknames_flaglines[:scale])) : 1.0
     cell  = uconvert.(Ang, Mat3(reshape(scale .* parse.(Float64, collect(Iterators.flatten(split.(pop!(blocknames_flaglines, :avec))))), 3, 3) .* 1a₀))'
 
-    newats = [Atom(; name = x[1], element = x[1].element,
-                                         position_cryst = x[2], position_cart = cell * x[2],
-                                         magnetization = x[3]) for x in atoms]
+    newats = [Atom(; name = x[1], element = x[1].element, position_cryst = x[2],
+                   position_cart = cell * x[2], magnetization = x[3]) for x in atoms]
     #structure #TODO make positions be in lattices coordinates
     structure = Structure(cell, newats)
 
@@ -144,7 +143,7 @@ function elk_read_calculation(fn::String; execs = [Exec(; exec = "elk")], run = 
         # flags[:elk2wan_tasks] = wan_tasks
         push!(calculations,
               Calculation{Elk}(; name = "elk2wannier", dir = dir, flags = flags,
-                                 execs = execs, run = true))
+                               execs = execs, run = true))
     end
     for f in (:ngrid, :vkloff, :plot1d, :plot2d, :plot3d)
         haskey(blocknames_flaglines, f) && pop!(blocknames_flaglines, f)
@@ -187,7 +186,7 @@ function calculation_from_task(task, blocknames_flaglines, dir, execs, run)
     elseif task ∈ ["20", "21"]
         data = find_data((:plot1d, :plot2d, :plot3d), blocknames_flaglines)
     end
-    return Calculation{Elk}(name = task, dir = dir, data = data, execs = execs, run = run)
+    return Calculation{Elk}(; name = task, dir = dir, data = data, execs = execs, run = run)
 end
 
 function parse(::Type{UnitRange{Int}}, l::AbstractString)

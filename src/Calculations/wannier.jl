@@ -11,20 +11,18 @@ flagtype(::Calculation{Wannier90}, flag) = flagtype(Wannier90, flag)
 Generates a Wannier90 calculation to follow on the supplied `nscf` calculation. It uses the projections defined in the `structure`, and starts counting the required amount of bands from `Emin`.
 The `nscf` needs to have a valid output since it will be used in conjunction with `Emin` to find the required amount of bands and energy window for the Wannier90 calculation.
 """
-function gencalc_wan(structure::Structure, Emin, Emax,
-                     wanflags...; Epad = 5.0,
+function gencalc_wan(structure::Structure, Emin, Emax, wanflags...; Epad = 5.0,
                      wanexec = Exec(; exec = "wannier90.x", dir = ""))
     hasoutput_assert(nscf)
     @assert nscf[:calculation] == "nscf"
     projs = vcat(map(structure.atoms) do x
-        ps = x.projections
-        @assert !isempty(ps) "Please first set projections for all atoms in the Structure."
-        return ps
-    end
-    )
+                     ps = x.projections
+                     @assert !isempty(ps) "Please first set projections for all atoms in the Structure."
+                     return ps
+                 end)
 
     Structures.sanitize!(projs, Calculations.issoc(nscf))
-    
+
     if iscolin(structure)
         wannames = ["wanup", "wandn"]
         @info "Spin polarized calculation found (inferred from nscf calculation)."
@@ -55,8 +53,9 @@ function gencalc_wan(structure::Structure, Emin, Emax,
     wancalculations = Calculation{Wannier90}[]
     for wanfil in wannames
         push!(wancalculations,
-              Calculation{Wannier90}(name = wanfil, dir = nscf.dir, flags = copy(wanflags), data = [kdata],
-                                       execs = [wanexec], run = true))
+              Calculation{Wannier90}(; name = wanfil, dir = nscf.dir,
+                                     flags = copy(wanflags), data = [kdata],
+                                     execs = [wanexec], run = true))
     end
 
     if length(wancalculations) > 1
@@ -75,8 +74,8 @@ Generates a wannier calculation, that follows on the `nscf` calculation. Instead
 can be used together with a `threshold` to determine the minimum energy such that the contribution of the
 projections to the DOS is above the `threshold`.
 """
-function gencalc_wan(nscf::Calculation{QE}, structure::Structure,
-                     projwfc::Calculation{QE}, threshold::Real, args...; kwargs...)
+function gencalc_wan(nscf::Calculation{QE}, structure::Structure, projwfc::Calculation{QE},
+                     threshold::Real, args...; kwargs...)
     hasexec_assert(projwfc, "projwfc.x")
     hasoutput_assert(projwfc)
     Emin = Emin_from_projwfc(structure, projwfc, threshold)
@@ -111,11 +110,9 @@ Automatically calculates and sets the wannier energies. This uses the projection
 `Emin` and the output of the nscf calculation to infer the other limits.
 `Epad` allows one to specify the padding around the inner and outer energy windows
 """
-function set_wanenergies!(calculation::Calculation{Wannier90},
-                          structure::Structure, bands, Emin::Real;
-                          Epad = 5.0)
-
-    nwann = sum(x-> sum(length.(x.projections)), structure.atoms)
+function set_wanenergies!(calculation::Calculation{Wannier90}, structure::Structure, bands,
+                          Emin::Real; Epad = 5.0)
+    nwann = sum(x -> sum(length.(x.projections)), structure.atoms)
     @assert nwann != 0 "Please specify projections first."
     @info "num_wann=$nwann (inferred from provided projections)."
 
@@ -180,7 +177,7 @@ function Emin_from_projwfc(structure::Structure, states, bands::Vector{DFC.Band}
     end
     Emin = -10000.0
     for b in bands
-        ψ = sum(b.extra[:ψ])/length(b.extra[:ψ])
+        ψ = sum(b.extra[:ψ]) / length(b.extra[:ψ])
         tot_relevant_occupation = dot(mask, ψ)
 
         if tot_relevant_occupation > threshold
@@ -196,7 +193,7 @@ end
 
 for f in (:cp, :mv)
     @eval function Base.$f(i::Calculation{Wannier90}, dest::String; kwargs...)
-        for glob in ("$(i.name)","UNK") # seedname should also cover generated pw2wannier90 files
+        for glob in ("$(i.name)", "UNK") # seedname should also cover generated pw2wannier90 files
             for file in searchdir(i, glob)
                 $f(file, joinpath(dest, splitdir(f)[end]); kwargs...)
             end

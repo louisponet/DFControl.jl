@@ -106,7 +106,7 @@ function read_cutoffs_from_pseudofile(file::AbstractString)
 end
 
 function write_xsf(filename::AbstractString, structure::DFC.Structure)
-    open(filename,"w") do f
+    open(filename, "w") do f
         write(f, "CRYSTAL\n")
         c = ustrip.(structure.cell')
         write(f, "PRIMVEC\n")

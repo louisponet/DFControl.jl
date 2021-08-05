@@ -98,7 +98,6 @@ function getdefault_pseudodir(pseudoset)
             getdefault_pseudodirs()[pseudoset] : nothing)
 end
 
-
 """
     getdefault_pseudo(atom::Symbol, set=:default; specifier=nothing)
 
