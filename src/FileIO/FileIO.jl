@@ -75,4 +75,26 @@ function Base.parse(::Type{Point{N,T}}, spl::Vector{<:AbstractString}) where {N,
 end
 Base.parse(::Type{T}, s::AbstractString) where {T<:Point} = parse(T, split(s))
 
+function write_xsf(filename::AbstractString, structure::DFC.Structure)
+    open(filename, "w") do f
+        write(f, "CRYSTAL\n")
+        c = ustrip.(structure.cell')
+        write(f, "PRIMVEC\n")
+        write(f, "$(c[1,1]) $(c[1,2]) $(c[1,3])\n")
+        write(f, "$(c[2,1]) $(c[2,2]) $(c[2,3])\n")
+        write(f, "$(c[3,1]) $(c[3,2]) $(c[3,3])\n")
+        write(f, "CONVVEC\n")
+        write(f, "$(c[1,1]) $(c[1,2]) $(c[1,3])\n")
+        write(f, "$(c[2,1]) $(c[2,2]) $(c[2,3])\n")
+        write(f, "$(c[3,1]) $(c[3,2]) $(c[3,3])\n")
+        write(f, "PRIMCOORD\n")
+        write(f, "$(length(structure.atoms)) 1\n")
+        for at in structure.atoms
+            n = at.element.symbol
+            p = ustrip.(at.position_cart)
+            write(f, "$n $(p[1]) $(p[2]) $(p[3])\n")
+        end
+    end
+end
+
 end

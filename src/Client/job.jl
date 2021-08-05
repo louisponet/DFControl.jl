@@ -64,7 +64,8 @@ function save(job::Job)
     Calculations.sanitize_flags!(job.calculations, job.structure, job.name,
                                  joinpath(job, Jobs.TEMP_CALC_DIR))
 
-    sanitize_cutoffs!(job)
+
+    Jobs.sanitize_cutoffs!(job)
     files_to_copy = sanitize_pseudos!(job)
 
     curver = job.version
@@ -92,33 +93,6 @@ function submit(job::Job)
     return HTTP.put(server, "/jobs/" * job.dir)
 end
 
-function sanitize_cutoffs!(job)
-    # the assumption is that the most important cutoff calculation is the scf/vcrelax that is ran first 
-    ψ_cut_calc = getfirst(x -> haskey(x, Calculations.ψ_cutoff_flag(x)), job.calculations)
-    if ψ_cut_calc !== nothing
-        ψcut = ψ_cut_calc[Calculations.ψ_cutoff_flag(ψ_cut_calc)]
-    else
-        ψcut, = find_cutoffs(job) # Ideally this should also be at the end stage
-        @assert ψcut != 0.0 "No energy cutoff was specified in any calculation, and the calculated cutoff from the pseudopotentials was 0.0.\nPlease manually set one."
-        @info "No energy cutoff was specified in the scf calculation.\nCalculated ψcut=$ψcut."
-    end
-    for i in job.calculations
-        ψflag = Calculations.ψ_cutoff_flag(i)
-        ψflag !== nothing &&
-            !haskey(i, ψflag) &&
-            Calculations.set_flags!(i, ψflag => ψcut; print = false)
-    end
-    ρ_cut_calc = getfirst(x -> Calculations.hasflag(x, Calculations.ρ_cutoff_flag(x)),
-                          job.calculations)
-    if ρ_cut_calc !== nothing
-        ρcut = ρ_cut_calc[Calculations.ρ_cutoff_flag(ρ_cut_calc)]
-        for i in job.calculations
-            ρflag = Calculations.ρ_cutoff_flag(i)
-            ρflag !== nothing && Calculations.set_flags!(i, ρflag => ρcut; print = false)
-        end
-    end
-end
-
 function sanitize_pseudos!(job::Job)
     all_pseudos = map(x -> x.pseudo, job.structure.atoms)
     uni_dirs = unique(map(x -> x.dir, all_pseudos))
@@ -137,24 +111,6 @@ function sanitize_pseudos!(job::Job)
         end
     end
     return String[]
-end
-
-function find_cutoffs(job::Job)
-    pseudos = map(x -> x.pseudo, job.structure.atoms)
-    maxecutwfc = 0.0
-    maxecutrho = 0.0
-    for p in pseudos
-        pth = joinpath(p.dir, p.name)
-        if ispath(pth)
-            ecutwfc, ecutrho = read_cutoffs_from_pseudofile(pth)
-            if ecutwfc !== nothing && ecutrho !== nothing
-                maxecutwfc = ecutwfc > maxecutwfc ? ecutwfc : maxecutwfc
-                maxecutrho = ecutrho > maxecutrho ? ecutrho : maxecutrho
-            end
-        end
-    end
-    @assert maxecutwfc != 0.0 "No valid pseudos with cutoffs found."
-    return maxecutwfc, maxecutrho
 end
 
 """

@@ -294,3 +294,4 @@ function read_job_calculations(job_file::String)
     end
     return (; name, header, calculations = cs, structure)
 end
+

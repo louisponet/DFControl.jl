@@ -45,7 +45,21 @@ function configure_pseudos(set_name::String, dir::String)
         for pseudo_string in files
             element = Symbol(titlecase(String(split(split(pseudo_string, ".")[1], "_")[1])))
             if haskey(pseudos[set_name], element)
-                push!(pseudos[set_name][element], Pseudo(pseudo_string, splitdir(dir)[1]))
+                ψ_cutoff, ρ_cutoff = 0.0, 0.0
+                open(joinpath(dir, pseudo_string), "r") do f
+                    line = readline(f)
+                    i = 1
+                    while i < 100 #semi arbitrary cutoff to amount of lines read
+                        line = readline(f)
+                        if occursin("Suggested minimum cutoff for wavefunctions:", line)
+                            ψ_cutoff = parse(Float64, split(line)[end-1])
+                            ρ_cuttoff = parse(Float64, split(readline(f))[end-1])
+                            break
+                        end
+                        i += 1
+                    end
+                end
+                push!(pseudos[set_name][element], Pseudo(pseudo_string, splitdir(dir)[1], ψ_cutoff, ρ_cutoff))
             end
         end
         return length(files)

@@ -507,3 +507,32 @@ for (f, strs) in zip((:cp, :mv), (("copy", "Copies"), ("move", "Moves")))
         end
     end
 end
+
+function sanitize_cutoffs!(job::Job)
+    # the assumption is that the most important cutoff calculation is the scf/vcrelax that is ran first 
+    ψ_cut_calc = getfirst(x -> haskey(x, Calculations.ψ_cutoff_flag(x)), job.calculations)
+    if ψ_cut_calc !== nothing
+        ψcut = ψ_cut_calc[Calculations.ψ_cutoff_flag(ψ_cut_calc)]
+    else
+        pseudos = unique(map(x -> x.pseudo, job.structure.atoms))
+        ψcut = maximum(x -> x.ψ_cutoff, pseudos)
+        ρcut = maximum(x -> x.ρ_cutoff, pseudos)
+        @assert ψcut != 0.0 "No energy cutoff was specified in any calculation, and the calculated cutoff from the pseudopotentials was 0.0.\nPlease manually set one."
+        @info "No energy cutoff was specified in the scf calculation.\nCalculated ψcut=$ψcut."
+    end
+    for i in job.calculations
+        ψflag = Calculations.ψ_cutoff_flag(i)
+        ψflag !== nothing &&
+            !haskey(i, ψflag) &&
+            Calculations.set_flags!(i, ψflag => ψcut; print = false)
+    end
+    ρ_cut_calc = getfirst(x -> Calculations.hasflag(x, Calculations.ρ_cutoff_flag(x)),
+                          job.calculations)
+    if ρ_cut_calc !== nothing
+        ρcut = ρ_cut_calc[Calculations.ρ_cutoff_flag(ρ_cut_calc)]
+        for i in job.calculations
+            ρflag = Calculations.ρ_cutoff_flag(i)
+            ρflag !== nothing && Calculations.set_flags!(i, ρflag => ρcut; print = false)
+        end
+    end
+end
