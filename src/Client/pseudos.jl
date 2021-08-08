@@ -31,7 +31,7 @@ function configure_pseudoset(set_name::String, dir::String, server = "localhost"
 end
 
 """
-    rm_pseudos!(set_name::String, server = "localhost")
+    rm_pseudoset!(set_name::String, server = "localhost")
 
 Removes the pseudo set from the server.
 """

@@ -77,6 +77,9 @@ function save(job::Job)
 
     @info "Job version: $(curver) => $(resp_job.version)."
     for f in fieldnames(Job)
+        if f == :server
+            continue
+        end
         setfield!(job, f, getfield(resp_job, f))
     end
     if haskey(job.metadata, :timestamp)

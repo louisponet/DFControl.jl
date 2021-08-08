@@ -135,7 +135,7 @@ function writejobfiles(job::Job; kwargs...)
 
         for i in job.calculations
             if i.run
-                rm.(Calculations.outfiles(i))
+                rm.(filter(ispath, Calculations.outfiles(i)))
             end
             if i ∉ written_calculations
                 append!(written_calculations, writetojob(f, job, i; kwargs...))

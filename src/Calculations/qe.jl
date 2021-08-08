@@ -172,16 +172,17 @@ isnscf(c::Calculation{QE})    = get(c, :calculation, nothing) == "nscf"
 isscf(c::Calculation{QE})     = get(c, :calculation, nothing) == "scf"
 isvcrelax(c::Calculation{QE}) = get(c, :calculation, nothing) == "vc-relax"
 isrelax(c::Calculation{QE})   = get(c, :calculation, nothing) == "relax"
+isprojwfc(c::Calculation{QE}) = findfirst(x -> x.exec == "projwfc.x", c.execs) !== nothing
+ishp(c::Calculation{QE}) = findfirst(x -> x.exec == "hp.x", c.execs) !== nothing
 
 function ispw(c::Calculation{QE})
     return isbands(c) || isnscf(c) || isscf(c) || isvcrelax(c) || isrelax(c)
 end
 
-issoc(c::Calculation{QE}) = c[:lspinorb] == true
+issoc(c::Calculation{QE}) = get(c, :lspinorb, false)
 
 function ismagnetic(c::Calculation{QE})
-    return (hasflag(c, :nspin) && c[:nspin] > 0.0) ||
-           (hasflag(c, :total_magnetization) && c[:total_magnetization] != 0.0)
+    return get(c, :nspin, 0.0) > 0.0 || get(c, :total_magnetization, 0.0)
 end
 
 function outfiles(c::Calculation{QE})
@@ -205,11 +206,11 @@ for f in (:cp, :mv)
         if hasoutfile(i)
             $f(outpath(i), joinpath(dest, i.outfile); kwargs...)
         end
-        if any(x -> x.exec == "projwfc.x", c.execs)
+        if isprojwfc(i)
             for file in searchdir(i, "pdos")
                 $f(file, joinpath(dest, splitdir(f)[end]); kwargs...)
             end
-        elseif any(x -> x.exec == "hp.x", c.execs)
+        elseif ishp(i)
             for file in searchdir(i, "Hubbard_parameters")
                 $f(file, joinpath(dest, splitdir(f)[end]); kwargs...)
             end

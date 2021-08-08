@@ -35,13 +35,13 @@ function qe_parse_time(str::AbstractString)
     return t
 end
 
-function qe_read_output(calculation::Calculation{QE}, args...; kwargs...)
-    if any(x -> x.exec == "projwfc.x", calculation.execs)
-        return qe_read_projwfc_output(calculation, args...; kwargs...)
-    elseif any(x -> x.exec == "hp.x", calculation.execs)
-        return qe_read_hp_output(calculation, args...; kwargs...)
-    elseif any(x -> x.exec == "pw.x", calculation.execs)
-        return qe_read_pw_output(Calculations.outpath(calculation), args...; kwargs...)
+function qe_read_output(c::Calculation{QE}, args...; kwargs...)
+    if Calculations.isprojwfc(c)
+        return qe_read_projwfc_output(c, args...; kwargs...)
+    elseif Calculations.ishp(c)
+        return qe_read_hp_output(c, args...; kwargs...)
+    elseif Calculations.ispw(c)
+        return qe_read_pw_output(Calculations.outpath(c), args...; kwargs...)
     end
 end
 
@@ -496,8 +496,11 @@ function qe_read_pw_output(filename::String;
                                                      out[:atsyms], atoms_data, pseudo_data)
         # Add starting mag and DFTU
         if haskey(out, :starting_magnetization)
-            set_magnetization!(out[:initial_structure],
-                               pairs(out[:starting_magnetization])...; print = false)
+            for (atsym, mag) in out[:starting_magnetization]
+                for a in out[:initial_structure][atsym]
+                    a.magnetization = mag
+                end
+            end
         end
         if haskey(out, :starting_simplified_dftu)
             dftus = out[:starting_simplified_dftu]
@@ -526,8 +529,11 @@ function qe_read_pw_output(filename::String;
                                                    out[:atsyms], atoms_data, pseudo_data)
         # Add starting mag and DFTU
         if haskey(out, :starting_magnetization)
-            set_magnetization!(out[:initial_structure],
-                               pairs(out[:starting_magnetization])...; print = false)
+            for (atsym, mag) in out[:starting_magnetization]
+                for a in out[:initial_structure][atsym]
+                    a.magnetization = mag
+                end
+            end
         end
         if haskey(out, :starting_simplified_dftu)
             dftus = out[:starting_simplified_dftu]
@@ -549,8 +555,8 @@ function qe_read_pw_output(filename::String;
                              w = out[:k_cart].w)
         end
         if get(out, :colincalc, false)
-            out[:bands_up]   = [DFC.Band(out[:k_cart].v, out[:k_cryst].v, zeros(length(out[:k_cart].v))) for i in 1:length(out[:k_eigvals][1])]
-            out[:bands_down] = [DFC.Band(out[:k_cart].v, out[:k_cryst].v, zeros(length(out[:k_cart].v))) for i in 1:length(out[:k_eigvals][1])]
+            out[:bands]   = (up = [DFC.Band(out[:k_cart].v, out[:k_cryst].v, zeros(length(out[:k_cart].v))) for i in 1:length(out[:k_eigvals][1])],
+            down =[DFC.Band(out[:k_cart].v, out[:k_cryst].v, zeros(length(out[:k_cart].v))) for i in 1:length(out[:k_eigvals][1])])
         else
             out[:bands] = [DFC.Band(out[:k_cart].v, out[:k_cryst].v,
                                     zeros(length(out[:k_cart].v)))
@@ -560,9 +566,9 @@ function qe_read_pw_output(filename::String;
             for i1 in 1:length(out[:k_eigvals][i])
                 if get(out, :colincalc, false)
                     if i <= length(out[:k_cart].v)
-                        out[:bands_up][i1].eigvals[i] = out[:k_eigvals][i][i1]
+                        out[:bands].up[i1].eigvals[i] = out[:k_eigvals][i][i1]
                     else
-                        out[:bands_down][i1].eigvals[i-length(out[:k_cart].v)] = out[:k_eigvals][i][i1]
+                        out[:bands].down[i1].eigvals[i-length(out[:k_cart].v)] = out[:k_eigvals][i][i1]
                     end
                 else
                     out[:bands][i1].eigvals[i] = out[:k_eigvals][i][i1]
@@ -630,7 +636,7 @@ end
 function qe_read_projwfc_output(c::Calculation{QE}, args...; kwargs...)
     out = Dict{Symbol,Any}()
     pdos_files = searchdir(c, ".pdos_")
-    if flag(c, :kresolveddos) == true
+    if get(c, :kresolveddos, false) 
         out[:heatmaps]  = Vector{Matrix{Float64}}()
         out[:ytickvals] = Vector{Vector{Float64}}()
         out[:yticks]    = Vector{Vector{Float64}}()
@@ -899,7 +905,7 @@ function extract_atoms!(parsed_flags, atsyms, atom_block, pseudo_block, cell::Ma
         if haskey(pseudo_block.data, at_sym)
             pseudo = pseudo_block.data[at_sym]
         else
-            elkey = getfirst(x -> x != at_sym && x.element == at_sym.element,
+            elkey = getfirst(x -> x != at_sym && Structures.element(x) == Structures.element(at_sym),
                              keys(pseudo_block.data))
             pseudo = elkey !== nothing ? pseudo_block.data[elkey] :
                      (@warn "No Pseudo found for atom '$at_sym'.\nUsing Pseudo()."; Pseudo())

@@ -3,7 +3,7 @@ module Utils
 """
 Searches a directory for all files containing the key.
 """
-searchdir(path::String, key) = filter(x -> occursin(key, x), readdir(path))
+searchdir(path::String, key) = joinpath.((path,), filter(x -> occursin(key, x), readdir(path)))
 export searchdir
 
 """

@@ -38,7 +38,7 @@ HTTP.@register(ROUTER, "GET", "/pseudo_sets/", pseudo_sets)
 configure_pseudoset(req) = Service.configure_pseudoset(req.body, job_path(req))
 HTTP.@register(ROUTER, "POST", "/configure_pseudoset/*", configure_pseudoset)
 
-rm_pseudos!(req) = Service.rm_pseudos!(req.body)
+rm_pseudos!(req) = Service.rm_pseudos!(JSON3.read(req.body, String))
 HTTP.@register(ROUTER, "PUT", "/rm_pseudos", rm_pseudos!)
 # EXECS
 verify_exec(req) = Service.verify_exec(JSON3.read(req.body, Exec))

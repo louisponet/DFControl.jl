@@ -4,33 +4,33 @@ testassetspath = joinpath(testdir, "testassets")
 testjobpath = joinpath(testassetspath, "test_job")
 
 @testset "Structure manipulation" begin
-    job = Job(testjobpath)
+    job = Job(testjobpath, "localhost_test")
 
-    @test length(symmetry_operators(job)[1]) == 48
+    @test length(Structures.symmetry_operators(job.structure)[1]) == 48
     
-    job.structure = create_supercell(job, 1, 0, 0, make_afm = true)
-    @test length(symmetry_operators(job)[1]) == 12
+    job.structure = Structures.create_supercell(job.structure, 1, 0, 0, make_afm = true)
+    @test length(Structures.symmetry_operators(job.structure)[1]) == 12
     @test length(job.structure) == 2 
-    @test isapprox(magnetization(atoms(job, :Ni1)[1]), [0,0,-0.1])
-    @test isapprox(magnetization(atoms(job, :Ni)[1]), [0,0,0.1])
-    @test isapprox(magnetization.(job.structure.atoms element(:Ni))), [[0,0,0.1], [0,0,-0.1]])
-    ngl = niggli_reduce(job.structure)
-    @test volume(job.structure) == volume(ngl)
+    @test isapprox(job.structure[:Ni1][1].magnetization, [0,0,-0.1])
+    @test isapprox(job.structure[:Ni][1].magnetization, [0,0,0.1])
+    @test isapprox(map(x->x.magnetization, job.structure[Structures.element(:Ni)]), [[0,0,0.1], [0,0,-0.1]])
+    ngl = Structures.niggli_reduce(job.structure)
+    @test Structures.volume(job.structure) == Structures.volume(ngl)
     @test job.structure.cell != ngl.cell
-    prev = job.structure.atoms element(:Ni))[1].position_cryst[1]
-    prev_vol = volume(job.structure)
-    scale_cell!(job, diagm(0=>[2,1,1]))
-    @test job.structure.atoms element(:Ni))[1].position_cryst[1] == 0.5prev
-    @test 2*prev_vol == volume(job)
+    prev = job.structure[Structures.element(:Ni)][1].position_cryst[1]
+    prev_vol = Structures.volume(job.structure)
+    Structures.scale_cell!(job.structure, diagm(0=>[2,1,1]))
+    @test job.structure[Structures.element(:Ni)][1].position_cryst[1] == 0.5prev
+    @test 2*prev_vol == Structures.volume(job.structure)
 
-    out_str = outputdata(job["scf"])[:initial_structure]
-    update_geometry!(job, out_str)
+    out_str = outputdata(job)["scf"][:initial_structure]
+    Structures.update_geometry!(job.structure, out_str)
     @test out_str == job.structure
 end
 
 @testset "supercell" begin
-    job = Job(testjobpath)
-    struct2 = DFControl.create_supercell(job.structure, 1, 2, 1)
+    job = Job(testjobpath, "localhost_test")
+    struct2 = Structures.create_supercell(job.structure, 1, 2, 1)
     newpositions = [at.position_cart for at in struct2.atoms]
     oldposition = job.structure.atoms[1].position_cart
     cell_ = job.structure.cell
@@ -45,42 +45,62 @@ end
 end
 
 @testset "registry" begin
-    job = Job(testjobpath)
+    job = Job(testjobpath,  "localhost_test")
     rm(testjobpath, recursive=true)
-    prevlen = length(registered_jobs())
+    prevlen = length(Jobs.registered_jobs())
     save(job)
-    @test length(registered_jobs()) == prevlen + 1
-    @test registered_jobs()[end] == job.dir
+    @test length(Jobs.registered_jobs()) == prevlen + 1
+    @test Jobs.registered_jobs()[end][1] == job.dir
 end
 
 @testset "execs" begin
-    job = Job(testjobpath)
-    set_execdir!(job, "pw.x", "test/test")
-    @test job.calculations[1].execs[2].dir == "test/test"
-    set_execflags!(job, "pw.x", :nk => 4)
-    set_execflags!(job, "mpirun", :np => 4)
-    @test exec(job, "pw.x").flags[1].symbol == :nk
-    @test exec(job, "pw.x").flags[1].value == 4
-    @test exec(job, "mpirun").flags[1].symbol == :np
-    @test exec(job, "mpirun").flags[1].value == 4
-    @test_throws ErrorException  set_execflags!(job, "mpirun", :nasdf => 4)
+    job = Job(testjobpath,  "localhost_test")
+    for c in job.calculations
+        for e in c.execs
+            if e.exec == "pw.x"
+                Calculations.set_flags!(e, :nk => 4)
+                e.dir = "test/test"
+            elseif e.exec == "mpirun"
+                Calculations.set_flags!(e, :np => 4)
+                @test_throws ErrorException Calculations.set_flags!(e, :nasdf => 4)
+            end
+        end
+    end
+    ex = job.calculations[1].execs[2]
+    mpi = job.calculations[1].execs[1]
+    @test ex.dir == "test/test"
+    @test ex.flags[1].symbol == :nk
+    @test ex.flags[1].value == 4
+    @test mpi.flags[1].symbol == :np
+    @test mpi.flags[1].value == 4
 
     save(job)
-    job = Job(testjobpath)
-    @test exec(job, "pw.x").flags[1].symbol == :nk
-    @test exec(job, "pw.x").flags[1].value == 4
-    @test exec(job, "mpirun").flags[1].symbol == :np
-    @test exec(job, "mpirun").flags[1].value == 4
-    
-    rm_execflags!(job, "pw.x", :nk)
-    rm_execflags!(job, "mpirun", :np)
-    @test isempty(exec(job, "pw.x").flags)
-    @test isempty(exec(job, "mpirun").flags)
+    job = Job(testjobpath, "localhost_test")
+    ex = job.calculations[1].execs[2]
+    mpi = job.calculations[1].execs[1]
+    @test ex.flags[1].symbol == :nk
+    @test ex.flags[1].value == 4
+    @test mpi.flags[1].symbol == :np
+    @test mpi.flags[1].value == 4
+
+    for c in job.calculations
+        for e in c.execs
+            if e.exec == "pw.x"
+                Calculations.rm_flags!(e, :nk)
+                e.dir = "test/test"
+            elseif e.exec == "mpirun"
+                Calculations.rm_flags!(e, :np)
+            end
+        end
+    end
+   
+    @test isempty(ex.flags)
+    @test isempty(mpi.flags)
     save(job)
 end
 
 @testset "calculation management" begin
-    job = Job(testjobpath)
+    job = Job(testjobpath, "localhost_test")
     ncalcs = length(job.calculations)
     t = pop!(job, "scf")
     @test length(job.calculations) == ncalcs - 1
@@ -88,12 +108,12 @@ end
     insert!(job, 2, t)
     @test job.calculations[2].name == "scf"
 
-    set_flow!(job, "" => false, "scf" => true)
+    Jobs.set_flow!(job, "" => false, "scf" => true)
     @test job["scf"].run == true
     @test job["nscf"].run == true
     @test job["bands"].run == false
     push!(job.header, "module load testmod")
-    set_headerword!(job, "testmod" => "testmod2")
+    Jobs.set_headerword!(job, "testmod" => "testmod2")
     @test job.header[end] == "module load testmod2"
     
 end

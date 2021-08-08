@@ -11,31 +11,24 @@ flagtype(::Calculation{Wannier90}, flag) = flagtype(Wannier90, flag)
 Generates a Wannier90 calculation to follow on the supplied `nscf` calculation. It uses the projections defined in the `structure`, and starts counting the required amount of bands from `Emin`.
 The `nscf` needs to have a valid output since it will be used in conjunction with `Emin` to find the required amount of bands and energy window for the Wannier90 calculation.
 """
-function gencalc_wan(structure::Structure, Emin, Emax, wanflags...; Epad = 5.0,
+function gencalc_wan(nscf::Calculation{QE}, structure::Structure, bands, Emin, wanflags...; Epad = 5.0,
                      wanexec = Exec(; exec = "wannier90.x", dir = ""))
-    hasoutput_assert(nscf)
-    @assert nscf[:calculation] == "nscf"
     projs = vcat(map(structure.atoms) do x
                      ps = x.projections
                      @assert !isempty(ps) "Please first set projections for all atoms in the Structure."
                      return ps
-                 end)
+                 end...)
 
     Structures.sanitize!(projs, Calculations.issoc(nscf))
 
-    if iscolin(structure)
+    if Structures.iscolin(structure)
         wannames = ["wanup", "wandn"]
         @info "Spin polarized calculation found (inferred from nscf calculation)."
     else
         wannames = ["wan"]
     end
 
-    if flag(nscf, :nosym) != true
-        @info "'nosym' flag was not set in the nscf calculation.
-                If this was not intended please set it and rerun the nscf calculation.
-                This generally gives errors because of omitted kpoints, needed for pw2wannier90.x"
-    end
-    wanflags = wanflags != nothing ? Dict{Symbol,Any}(wanflags) : Dict{Symbol,Any}()
+    wanflags = wanflags !== nothing ? Dict{Symbol,Any}(wanflags) : Dict{Symbol,Any}()
     if issoc(nscf)
         wanflags[:spinors] = true
     end
@@ -44,10 +37,10 @@ function gencalc_wan(structure::Structure, Emin, Emax, wanflags...; Epad = 5.0,
     @info "num_wann=$nwann (inferred from provided projections)."
     wanflags[:num_wann] = nwann
     kpoints = data(nscf, :k_points).data
-    wanflags[:mp_grid] = length.(unique.([[n[i] for n in kgrid] for i in 1:3]))
+    wanflags[:mp_grid] = length.(unique.([[n[i] for n in kpoints] for i in 1:3]))
     @info "mp_grid=$(join(wanflags[:mp_grid]," ")) (inferred from nscf calculation)."
     wanflags[:preprocess] = true
-    isnoncolin(structure) && (wanflags[:spinors] = true)
+    Structures.isnoncolin(structure) && (wanflags[:spinors] = true)
     kdata = InputData(:kpoints, :none, [k[1:3] for k in kpoints])
 
     wancalculations = Calculation{Wannier90}[]
@@ -63,23 +56,8 @@ function gencalc_wan(structure::Structure, Emin, Emax, wanflags...; Epad = 5.0,
         set_flags!(wancalculations[2], :spin => "down")
     end
 
-    map(x -> set_wanenergies!(x, structure, nscf, Emin; Epad = Epad), wancalculations)
+    map(x -> set_wanenergies!(x, structure, bands, Emin; Epad = Epad), wancalculations)
     return wancalculations
-end
-
-"""
-    gencalc_wan(nscf::Calculation{QE}, structure::Structure, projwfc::Calculation{QE}, threshold::Real, wanflags...; kwargs...)
-
-Generates a wannier calculation, that follows on the `nscf` calculation. Instead of passing Emin manually, the output of a projwfc.x run
-can be used together with a `threshold` to determine the minimum energy such that the contribution of the
-projections to the DOS is above the `threshold`.
-"""
-function gencalc_wan(nscf::Calculation{QE}, structure::Structure, projwfc::Calculation{QE},
-                     threshold::Real, args...; kwargs...)
-    hasexec_assert(projwfc, "projwfc.x")
-    hasoutput_assert(projwfc)
-    Emin = Emin_from_projwfc(structure, projwfc, threshold)
-    return gencalc_wan(nscf, structure, Emin, args...; kwargs...)
 end
 
 ## Wannier90

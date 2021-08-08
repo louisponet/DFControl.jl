@@ -41,6 +41,6 @@ end
 flagtype(::Calculation{Elk}, flag::Symbol) = eltype(elk_flaginfo(flag))
 
 infilename(c::Calculation{Elk}) = "elk.in"
-isbandscalc(c::Calculation{Elk}) = c.name == "20"
-isnscfcalc(c::Calculation{Elk}) = c.name == "elk2wannier" #nscf == elk2wan??
-isscfcalc(c::Calculation{Elk}) = c.name ∈ ["0", "1"]
+isbands(c::Calculation{Elk}) = c.name == "20"
+isnscf(c::Calculation{Elk}) = c.name == "elk2wannier" #nscf == elk2wan??
+isscf(c::Calculation{Elk}) = c.name ∈ ["0", "1"]

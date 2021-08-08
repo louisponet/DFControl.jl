@@ -108,16 +108,16 @@ function save(job::Job; kwargs...)
     job.server = "localhost"
     # Here we find the main directory, needed for if a job's local dir is a .versions one
     dir = Jobs.main_job_dir(job)
+    if ispath(joinpath(dir, "job.tt"))
+        tj = load_job(dir, -1)
+        cp(tj, joinpath(tj, Jobs.VERSION_DIR_NAME, "$(tj.version)"); force = true)
+    end
     if dir != job.dir
         # We know for sure it was a previously saved job
         # Now that we have safely stored it we can clean out the directory to then fill
         # it with the files from the job.version
         clean_dir!(dir)
         cp(job, dir; force = true)
-    end
-    if ispath(joinpath(dir, "job.tt"))
-        tj = load_job(dir, -1)
-        cp(tj, joinpath(tj, Jobs.VERSION_DIR_NAME, "$(tj.version)"); force = true)
     end
 
     set_dir!(job, dir) # Needs to be done so the inputs `dir` also changes.

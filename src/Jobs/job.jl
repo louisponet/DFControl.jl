@@ -103,7 +103,7 @@ function Base.pop!(job::Job, name::String)
 end
 
 function Utils.searchdir(job::Job, str::AbstractString)
-    return joinpath.((job,), searchdir(job.dir, str))
+    return searchdir(job.dir, str)
 end
 
 function Base.setindex!(job::Job, value, key::Symbol)
@@ -115,7 +115,7 @@ end
 function Base.getindex(job::Job, flg::Symbol)
     outdict = Dict()
     for i in job.calculations
-        tfl = i[flg]
+        tfl = get(i, flg, nothing)
         if tfl !== nothing
             outdict[i.name] = tfl
         end
@@ -190,17 +190,23 @@ projections.
 """
 function Calculations.gencalc_wan(job::Job, min_window_determinator::Real,
                                   extra_wan_flags...; kwargs...)
-    nscf_calculation = getfirst(x -> Calculations.isnscf(x), job.calculations)
-    projwfc_calculation = getfirst(x -> Calculations.isprojwfc(x), job.calculations)
-    if projwfc_calculation === nothing || !hasoutput(projwfc_calculation)
+    nscf_calc = getfirst(x -> Calculations.isnscf(x), job.calculations)
+    nscf_calc === nothing && "Please first run an nscf calculation."
+    if get(nscf_calc, :nosym, false) != true
+        @info "'nosym' flag was not set in the nscf calculation.
+                If this was not intended please set it and rerun the nscf calculation.
+                This generally gives errors because of omitted kpoints, needed for pw2wannier90.x"
+    end
+    projwfc_calc = getfirst(x -> Calculations.isprojwfc(x), job.calculations)
+    outdat = outputdata(job)
+    if projwfc_calc === nothing || !haskey(outdat, projwfc_calc.name)
         @info "No projwfc calculation found with valid output, using $min_window_determinator as Emin"
-        return gencalc_wan(nscf_calculation, job.structure, min_window_determinator,
-                           extra_wan_flags...; kwargs...)
+        Emin = min_window_determinator
     else
         @info "Valid projwfc output found, using $min_window_determinator as the dos threshold."
-        return gencalc_wan(nscf_calculation, job.structure, projwfc_calculation,
-                           min_window_determinator, extra_wan_flags...; kwargs...)
+        Emin = Calculations.Emin_from_projwfc(job.structure, outdat[projwfc_calc.name][:states], outdat[projwfc_calc.name][:bands], min_window_determinator)
     end
+    return Calculations.gencalc_wan(nscf_calc, job.structure, outdat[nscf_calc.name][:bands], Emin, extra_wan_flags...; kwargs...)
 end
 
 """
@@ -274,21 +280,6 @@ end
 
 #TODO
 """
-    set_wanenergies!(job::Job, nscf::Calculation{QE}, Emin::Real; Epad=5.0)
-
-Will set the energy window limits correctly according to the projections specified in the
-structure of the job and the specified Emin. The output of `nscf` will be used to determine the
-DOS, and what the size of the frozen window needs to be to fit enough bands inside it,
-depending on the projections.
-"""
-function set_wanenergies!(job::Job, nscf::Calculation, Emin::Real; Epad = 5.0)
-    wancalcs = filter(x -> eltype(x) == Wannier90, job.calculations)
-    @assert length(wancalcs) != 0 "Job ($(job.name)) has no Wannier90 calculations, nothing to do."
-    map(x -> set_wanenergies!(x, structure(job), nscf, Emin; Epad = Epad), wancalcs)
-    return job
-end
-
-"""
     set_wanenergies!(job::Job, nscf::Calculation{QE}, projwfc::Calculation{QE}, threshold::Real; Epad=5.0)
 
 Will set the energy window limits correctly according to the projections specified in the
@@ -316,14 +307,14 @@ it will be used as the `Emin` value from which to start counting the number of b
 projections.
 """
 function set_wanenergies!(job::Job, min_window_determinator::Real; kwargs...)
-    nscf_calculation = getfirst(isnscf, job.calculations)
-    projwfc_calculation = getfirst(isprojwfc, job.calculations)
-    if projwfc_calculation === nothing || !hasoutput(projwfc_calculation)
+    nscf_calc = getfirst(Calculations.isnscf, job.calculations)
+    projwfc_calc = getfirst(Calculations.isprojwfc, job.calculations)
+    if projwfc_calc === nothing || !hasoutput(projwfc_calculation)
         @info "No projwfc calculation found with valid output, using $min_window_determinator as Emin"
-        return set_wanenergies!(job, nscf_calculation, min_window_determinator; kwargs...)
+        return set_wanenergies!(job, nscf_calc, min_window_determinator; kwargs...)
     else
         @info "Valid projwfc output found, using $min_window_determinator as the dos threshold."
-        return set_wanenergies!(job, nscf_calculation, projwfc_calculation,
+        return set_wanenergies!(job, nscf_calc, projwfc_calculation,
                                 min_window_determinator; kwargs...)
     end
 end
@@ -335,29 +326,34 @@ Calculates the bandgap (possibly indirect) around the fermi level.
 Uses the first found bands calculation, if there is none it uses the first found nscf calculation.
 """
 function bandgap(job::Job, fermi = nothing)
-    band_calcs = getfirst.([isbands, isnscf, isscf], (job.calculations,))
-    if all(x -> x === nothing, band_calcs)
+    band_calcs = filter(!isnothing, getfirst.([Calculations.isbands, Calculations.isnscf, Calculations.isscf], (job.calculations,)))
+    if isempty(band_calcs)
         error("No valid calculation found to calculate the bandgap.\nMake sure the job has either a valid bands or nscf calculation.")
     end
+
+    outdat = outputdata(job)
     if fermi === nothing
-        fermi_calcs = getfirst.([isnscf, isscf], (job.calculations,))
-        if all(x -> x === nothing, band_calcs)
+        fermi_calcs = filter(!isnothing, getfirst.([Calculations.isnscf, Calculations.isscf], (job.calculations,)))
+        if isempty(fermi_calcs)
             error("No valid calculation found to extract the fermi level.\nPlease supply the fermi level manually.")
         end
-        fermi = maximum(readfermi.(filter(x -> x !== nothing, fermi_calcs)))
+        fermi = maximum(x->get(get(outdat, x.name, Dict()), :fermi, -Inf), fermi_calcs)
     end
 
-    bands = readbands.(filter(x -> x !== nothing, band_calcs))
+    bands = map(x->outdata[x.name][:bands], filter(x -> haskey(outdat, x.name), band_calcs))
     return minimum(bandgap.(bands, fermi))
 end
 
 function readfermi(job::Job)
-    ins = filter(x -> (isscf(x) || isnscf(x)) && hasoutfile(x), job.calculations)
+    ins = filter(x -> (Calculations.isscf(x) || Calculations.isnscf(x)), job.calculations)
     @assert isempty(ins) !== nothing "Job does not have a valid scf or nscf output."
+    outdat = outputdata(job)
     for i in ins
-        o = outputdata(i)
-        if haskey(o, :fermi)
-            return o[:fermi]
+        if haskey(outdat, i.name)
+            o = outdat[i]
+            if haskey(o, :fermi)
+                return o[:fermi]
+            end
         end
     end
     @warn "No output files with fermi level found."
@@ -365,28 +361,29 @@ function readfermi(job::Job)
 end
 
 function readbands(job::Job)
-    calculation = getfirst(x -> isbands(x) && hasoutfile(x), job.calculations)
-    if calculation === nothing
-        calculation = getfirst(x -> isnscf(x) && hasoutfile(x), job.calculations)
-        if calculation === nothing
+    calc = getfirst(x -> Calculations.isbands(x), job.calculations)
+    outdat = outputdata(job)
+    if calc === nothing || !haskey(outdat, calc.name)
+        calc = getfirst(x -> Calculations.isnscf(x), job.calculations)
+        if calc === nothing || !haskey(outdat, calc.name)
             @warn "Job does not have a valid bands output."
             return nothing
         end
         @warn "No bands calculation found, return bands from nscf calculation."
-        return readbands(calculation)
+        return out[calc.name][:bands]
     end
-    return readbands(calculation)
+    return out[calc.name][:bands]
 end
 
 #TODO: only for QE 
 "Reads the pdos for a particular atom. Only works for QE."
 function pdos(job::Job, atsym::Symbol, filter_word = "")
-    projwfc = getfirst(isprojwfc, job.calculations)
+    projwfc = getfirst(Calculations.isprojwfc, job.calculations)
     ats = job.structure[atsym]
     @assert length(ats) > 0 "No atoms found with name $atsym."
-    scf = getfirst(isscf, job.calculations)
-    magnetic = Structures.ismagnetic(job.structure) || ismagnetic(scf)
-    soc = Structures.isnoncolin(job.structure) || issoc(scf)
+    scf = getfirst(Calculations.isscf, job.calculations)
+    magnetic = Structures.ismagnetic(job.structure) || Calculations.ismagnetic(scf)
+    soc = Structures.isnoncolin(job.structure) || Calculations.issoc(scf)
     return pdos(projwfc, atsym, magnetic, soc, filter_word)
 end
 

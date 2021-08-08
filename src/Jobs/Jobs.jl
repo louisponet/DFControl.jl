@@ -1,6 +1,6 @@
 module Jobs
 # This module handles all the Job related functionality
-using Parameters, StructTypes, CodeTracking, JLD2
+using Parameters, StructTypes, CodeTracking, JLD2, Dates
 using ..Calculations
 using ..Structures
 using ..Utils

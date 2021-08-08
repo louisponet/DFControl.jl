@@ -32,7 +32,7 @@ orbital(s::String) = getfirst(x -> x.name == s, ORBITALS)
 orbital(l::Number) = getfirst(x -> x.l == l, ORBITALS)
 
 Base.convert(::Type{String}, x::Orbital) = x.name
-Base.length(o::Orbital) = orbital.size
+Base.length(o::Orbital) = o.size
 
 Base.hash(orbital::Orbital, h::UInt) = hash(orbital.mr, hash(orbital.l, h))
 Base.:(==)(o1::Orbital, o2::Orbital) = o1.l == o2.l && o1.mr == o2.mr
@@ -49,6 +49,7 @@ mutable struct Projection
 end
 Projection() = Projection(Orbital(), 0, 0)
 Projection(o::Orbital) = Projection(o, 0, 0)
+Projection(o::String) = Projection(orbital(o), 0, 0) 
 Projection(o::Orbital, start::Int) = Projection(o, start, start + o.size - 1)
 Projection(ostr::String, start::Int) = (o = orbital(ostr); Projection(o, start))
 StructTypes.StructType(::Type{Projection}) = StructTypes.Struct()
@@ -58,7 +59,7 @@ function sanitize!(projs::Vector{Projection}, soc::Bool)
     for proj in projs
         size = soc ? 2 * proj.orbital.size : proj.orbital.size
         proj.start = id
-        proj.stop = id + size - 1
+        proj.last = id + size - 1
         id += id
     end
     return projs

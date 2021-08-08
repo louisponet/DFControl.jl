@@ -2,7 +2,7 @@ using DFControl, Test, Suppressor
 
 testdir = @__DIR__
 @time begin
-    test_server = Server("localhost_test", "ponet", "localhost", 8081, Servers.Bash, "", "julia", homedir() )
+    test_server = Server("localhost_test", "ponet", "localhost", 8123, Servers.Bash, "", "julia", homedir() )
     if Servers.isalive(test_server)
         try
             Servers.kill_server(test_server)
@@ -30,6 +30,10 @@ testdir = @__DIR__
     @time @testset "Remove defaults" begin
         @suppress include("rmdefaults_tests.jl")
     end
-    @suppress DFControl.Servers.kill_server(test_server)
+    try
+        Servers.kill_server(test_server)
+    catch
+        nothing
+    end
     rm(DFControl.config_path("servers/localhost_test.jld2"))
 end

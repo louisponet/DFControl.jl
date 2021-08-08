@@ -128,6 +128,7 @@ ismagnetic(c::Calculation) = false
 issoc(c::Calculation)      = false
 outfiles(c::Calculation)   = [outpath(c)]
 ispw(c::Calculation)       = false
+isprojwfc(c::Calculation)  = false
 
 """
     set_name!(c::Calculation, name::AbstractString)
@@ -139,7 +140,7 @@ function set_name!(c::Calculation, name::AbstractString; print = true)
     c.name = name
     c.infile = name * splitext(c.infile)[2]
     c.outfile = name * splitext(c.outfile)[2]
-    print && @info "\nname = $name\ninfile = $(c.infile))\noutfile = $(c.outfile)"
+    print && @info "\nname = $name\ninfile = $(c.infile)\noutfile = $(c.outfile)"
     return name
 end
 
@@ -153,7 +154,7 @@ data(calculation::Calculation, n::Symbol) = getfirst(x -> x.name == n, calculati
 #
 # Directory interface
 #
-DFC.Utils.searchdir(i::Calculation, glob) = joinpath.((i,), searchdir(i.dir, glob))
+DFC.Utils.searchdir(i::Calculation, glob) = searchdir(i.dir, glob)
 
 """
     joinpath(calc::Calculation, path...) = joinpath(calc.dir, path...)
