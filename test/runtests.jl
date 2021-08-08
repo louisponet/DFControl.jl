@@ -19,12 +19,12 @@ testdir = @__DIR__
             nothing
         end
     end
-    @async Resource.run(8123)
+    @async DFControl.Resource.run(8123)
     @time @testset "constants" begin
-        @suppress include("constant_tests.jl")
+        include("constant_tests.jl")
     end
     @time @testset "documenation" begin
-        @suppress include("documentation_tests.jl")
+        include("documentation_tests.jl")
     end
     @time @testset "Setting defaults" begin
         include("defaults_tests.jl")
@@ -36,12 +36,7 @@ testdir = @__DIR__
         include("job_control_tests.jl")
     end
     @time @testset "Remove defaults" begin
-        @suppress include("rmdefaults_tests.jl")
+        include("rmdefaults_tests.jl")
     end
-    # try
-    #     Servers.kill_server(test_server)
-    # catch
-    #     nothing
-    # end
     rm(DFControl.config_path("servers/localhost_test.jld2"))
 end
