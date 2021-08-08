@@ -12,6 +12,14 @@ testdir = @__DIR__
     end
     Servers.save(test_server)
     DFControl.Servers.start(test_server)
+    if Servers.isalive(test_server)
+        try
+            Servers.kill_server(test_server)
+        catch
+            nothing
+        end
+    end
+    @async Resource.run(8123)
     @time @testset "constants" begin
         @suppress include("constant_tests.jl")
     end
@@ -30,10 +38,10 @@ testdir = @__DIR__
     @time @testset "Remove defaults" begin
         @suppress include("rmdefaults_tests.jl")
     end
-    try
-        Servers.kill_server(test_server)
-    catch
-        nothing
-    end
+    # try
+    #     Servers.kill_server(test_server)
+    # catch
+    #     nothing
+    # end
     rm(DFControl.config_path("servers/localhost_test.jld2"))
 end
