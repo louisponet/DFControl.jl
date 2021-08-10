@@ -118,6 +118,31 @@ end
     
 end
 
+@testset "versioning" begin
+    job = Job(testjobpath, "localhost_test")
+    job[:nbnd] = 30
+    curver = Client.last_version(job)
+    save(job)
+    @test job.version == curver + 1
+    save(job)
+    @test ispath(joinpath(job, Jobs.VERSION_DIR_NAME))
+    @test ispath(joinpath(job, Jobs.VERSION_DIR_NAME, "$(curver+1)"))
+    job[:nbnd] = 40
+    save(job)
+    @test job.version == curver + 3
+    @test job["scf"][:nbnd] == 40
+    switch_version!(job, curver + 1)
+    @test job.version == curver + 1
+    # @test DFControl.last_version(job) == 2
+    @test job["scf"][:nbnd] == 30
+    rm_version!(job, curver + 1)
+    @test !ispath(joinpath(Jobs.main_job_dir(job), Jobs.VERSION_DIR_NAME,
+                           "$(curver + 1)"))
+    @test ispath(joinpath(Jobs.main_job_dir(job), Jobs.VERSION_DIR_NAME,
+                          "$(curver + 2)"))
+end
+
+
 rm(testjobpath, recursive=true)
 # function copy_outfiles()
 #     for f in readdir(joinpath(testassetspath, "outputs"))
@@ -420,29 +445,6 @@ rm(testjobpath, recursive=true)
 # job.calculations = [job.calculations[2]]
 # set_kpoints!(job["scf"], (6, 6, 6, 1, 1, 1))
 # rm(joinpath(job, DFControl.VERSION_DIR_NAME); recursive = true)
-
-# @testset "versioning" begin
-#     job[:nbnd] = 30
-#     curver = DFControl.last_version(job)
-#     save(job)
-#     @test job.version == curver + 1
-#     save(job)
-#     @test ispath(joinpath(job, DFControl.VERSION_DIR_NAME))
-#     @test ispath(joinpath(job, DFControl.VERSION_DIR_NAME, "$(curver+1)"))
-#     job[:nbnd] = 40
-#     save(job)
-#     @test job.version == curver + 3
-#     @test job["scf"][:nbnd] == 40
-#     switch_version!(job, curver + 1)
-#     @test job.version == curver + 1
-#     # @test DFControl.last_version(job) == 2
-#     @test job["scf"][:nbnd] == 30
-#     rm_version!(job, curver + 1)
-#     @test !ispath(joinpath(DFControl.main_job_dir(job), DFControl.VERSION_DIR_NAME,
-#                            "$(curver + 1)"))
-#     @test ispath(joinpath(DFControl.main_job_dir(job), DFControl.VERSION_DIR_NAME,
-#                           "$(curver + 2)"))
-# end
 
 # rm(joinpath(DFControl.main_job_dir(job), DFControl.VERSION_DIR_NAME); recursive = true)
 # set_dir!(job, DFControl.main_job_dir(job))

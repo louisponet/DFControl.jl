@@ -1,8 +1,5 @@
 function load_job(job_dir::AbstractString, version::Int = -1)
     if ispath(job_dir)
-        if occursin(Jobs.VERSION_DIR_NAME, job_dir)
-            error("It is not allowed to directly load a job version, please use `Job(dir, version=$(splitdir(job_dir)[end]))`")
-        end
         if version != -1
             real_path = Jobs.version_dir(job_dir, version)
             real_version = version
@@ -264,29 +261,32 @@ end
 exists_job(d::AbstractString) = ispath(d) && ispath(joinpath(d, "job.tt"))
 
 "Finds the output files for each of the calculations of a job, and groups all found data into a dictionary."
-function outputdata(job::Job, calculations::Vector{Calculation}; print = true,
-                    onlynew = false)
-    if Jobs.isarchived(job) && ispath(joinpath(job, "results.jld2"))
-        return JLD2.load(joinpath(job, "results.jld2"))["outputdata"]
+function outputdata(job::Job, calculations::Vector{Calculation})
+    if ispath(joinpath(job, "results.jld2"))
+        datadict = JLD2.load(joinpath(job, "results.jld2"))["outputdata"]
+    else
+        datadict = Dict{String,Dict{Symbol,Any}}()
     end
-    datadict = Dict{String,Dict{Symbol,Any}}()
     stime = Jobs.starttime(job)
-    #TODO Think about storing results.jld2
+    files = Dict{String, String}()
     for calculation in calculations
-        #TODO Would I ever not want to do onlynew ?
-        newout = mtime(Calculations.outpath(calculation)) > stime
-        if onlynew && !newout
-            continue
-        end
-        tout = outputdata(calculation; print = print, overwrite = newout)
-        if !isempty(tout)
-            datadict[calculation.name] = tout
+        p = Calculations.outpath(calculation)
+        if mtime(p) > stime
+            tout = outputdata(calculation)
+            if !isempty(tout)
+                datadict[calculation.name] = tout
+                files[calculation.name] = p
+            end
         end
     end
+    JLD2.save(joinpath(job, "results.jld2"), "outputdata", datadict)
+    #TODO Think about storing results.jld2
     tmp = tempname() * ".jld2"
-    out = JLD2.save(tmp, "outputdata", datadict)
+    out = JLD2.save(tmp, "outputdata", datadict, "files", files)
     return tmp
 end
 outputdata(job::Job; kwargs...) = outputdata(job, job.calculations; kwargs...)
 
 verify_exec(e::Exec) = Calculations.verify_exec(e)
+
+rm_version!(job::Job, version::Int) = Jobs.rm_version!(job, version)

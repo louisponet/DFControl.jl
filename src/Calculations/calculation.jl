@@ -32,7 +32,6 @@ StructTypes.StructType(::Type{<:Package}) = StructTypes.Struct()
                               data    ::Vector{InputData} = InputData[],
                               execs   ::Vector{Exec},
                               run     ::Bool = true,
-                              outdata ::AbstractDict = Dict{Symbol, Any}(),
                               infile  ::String = P == Wannier90 ? name * ".win" : name * ".in",
                               outfile ::String = name * ".out")
 
@@ -59,12 +58,11 @@ Creates a new [`Calculation`](@ref) from the `template`, setting the `flags` of 
     data::Vector{InputData} = InputData[]
     execs::Vector{Exec}
     run::Bool = true
-    outdata::Dict{Symbol,Any} = Dict{Symbol,Any}()
     infile::String = P == Wannier90 ? name * ".win" : name * ".in"
     outfile::String = P == Wannier90 ? name * ".wout" : name * ".out"
-    function Calculation{P}(name, dir, flags, data, execs, run, outdata, infile,
+    function Calculation{P}(name, dir, flags, data, execs, run, infile,
                             outfile) where {P<:Package}
-        out = new{P}(name, dir, Dict{Symbol,Any}(), data, execs, run, outdata, infile,
+        out = new{P}(name, dir, Dict{Symbol,Any}(), data, execs, run, infile,
                      outfile)
         set_flags!(out, flags...; print = false)
         for (f, v) in flags

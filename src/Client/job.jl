@@ -1,7 +1,10 @@
 Servers.Server(j::Job) = Server(j.server)
 
-function Jobs.Job(dir::String, s = "localhost"; version::Int = -1)
+function Jobs.Job(dir::AbstractString, s = "localhost"; version::Int = -1)
     server = Servers.maybe_start_server(s)
+    if occursin(Jobs.VERSION_DIR_NAME, dir)
+        error("It is not allowed to directly load a job version, please use `Job($dir, version=$(splitdir(dir)[end]))`")
+    end
     # server = Server(s)
     # dir = dir[1] == '/' ? dir[2:end] : dir
     resp = HTTP.get(server, "/jobs/" * dir, [], JSON3.write(version))
@@ -133,9 +136,10 @@ end
 
 Returs the valid versions of `job`.
 """
-function versions(job::Job)
-    server = Servers.maybe_start_server(job)
-    return JSON3.read(HTTP.get(server, "/job_versions/" * job.dir).body, Vector{Int})
+versions(job::Job) = versions(job.dir, job.server) 
+function versions(dir, s = "localhost")
+    server=Servers.maybe_start_server(s) 
+    return JSON3.read(HTTP.get(server, "/job_versions/" * Jobs.main_job_dir(dir)).body, Vector{Int})
 end
 
 """
@@ -143,9 +147,10 @@ end
 
 Returns the last version number of `job`.
 """
-function last_version(job::Job)
-    server = Servers.maybe_start_server(job)
-    return JSON3.read(HTTP.get(server, "/job_versions/" * job.dir).body, Vector{Int})[end]
+last_version(job::Job) = last_version(job.dir, job.server) 
+function last_version(dir, s="localhost")
+    server = Servers.maybe_start_server(s)
+    return JSON3.read(HTTP.get(server, "/job_versions/" * Jobs.main_job_dir(dir)).body, Vector{Int})[end]
 end
 
 """
@@ -163,13 +168,24 @@ function last_running_calculation(job::Job)
     end
 end
 
-function outputdata(job::Job)
+function outputdata(job::Job; extra_parse_funcs = nothing)
     server = Servers.maybe_start_server(job)
     tmp_path = JSON3.read(HTTP.get(server, "/outputdata", [], JSON3.write(job)).body,
                           String)
     local_temp = tempname() * ".jld2"
     Servers.pull(server, tmp_path, local_temp)
-    return JLD2.load(local_temp)["outputdata"]
+    dat = JLD2.load(local_temp)
+    rm(local_temp)
+    out = dat["outputdata"]
+    if extra_parse_funcs !== nothing
+        for (n, f) in dat["files"]
+            local_f = tempname() * ".txt"
+            Servers.pull(server, f, local_f)
+            FileIO.parse_file(local_f, extra_parse_funcs, out = out[n])
+            rm(local_f)
+        end
+    end
+    return out     
 end
 
 function verify_execs(job::Job, server::Server)
@@ -206,3 +222,40 @@ function abort(job::Job)
         qdel(job)
     end
 end
+
+
+function registered_jobs(fuzzy="", s="localhost")
+    server = Servers.maybe_start_server(s) 
+    resp = HTTP.get(server, "/registered_jobs/" * fuzzy)
+    return reverse(JSON3.read(resp.body, Vector{Tuple{String,DateTime}}))
+end
+
+function switch_version!(job::Job, version::Int)
+    allvers = versions(job)
+    if !(version in allvers)
+        error("Version $version does not exist.")
+    end
+    tj = Job(Jobs.main_job_dir(job.dir), job.server, version=version)
+    for f in fieldnames(Job)
+        setfield!(job, f, getfield(tj, f))
+    end
+    return job
+end
+
+function rm_version!(job::Job, version::Int)
+    server = Servers.maybe_start_server(job.server) 
+    allvers = versions(job)
+    if !(version in allvers)
+        error("Version $version does not exist.")
+    end
+
+    HTTP.put(server, "/rm_version/$version", [], JSON3.write(job))    
+    if version == job.version
+        @warn "Job version is the same as the one to be removed, switching to last known version."
+        lv = last_version(job)
+        if lv == version
+            lv = versions(job)[end-1]
+        end
+        switch_version!(job, lv)
+    end
+end   

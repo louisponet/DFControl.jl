@@ -85,6 +85,9 @@ function switch_version!(job::Job, version::Int)
         version_assert(job, version)
         out = load_job(main_job_dir(job); version = version)
         for f in fieldnames(Job)
+            if f == :server
+                continue
+            end
             setfield!(job, f, getfield(out, f))
         end
     end
@@ -140,26 +143,13 @@ function rm_version!(job::Job, version::Int)
             lv = versions(job)[end-1]
         end
         if lv != 0
-            tj = load_job(md; version = lv)
+            real_path = version_dir(md, lv)
+            tj = Job(;dir=real_path, version = lv, FileIO.read_job_calculations(joinpath(real_path, "job.tt"))...)
             cp(tj, md; force = true)
         end
 
     else
         rm(version_dir(job, version); recursive = true)
-    end
-    if version == job.version
-        @warn "Job version is the same as the one to be removed, switching to last known version."
-        lv = last_version(job)
-        if lv == version
-            lv = versions(job)[end-1]
-        end
-        switch_version!(job, lv)
-    end
-end
-
-function rm_versions!(job::Job, versions::Int...)
-    for v in versions
-        rm_version!(job, v)
     end
 end
 

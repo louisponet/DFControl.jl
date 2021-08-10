@@ -22,7 +22,7 @@ using ..FileIO
         @warn "Package not identified from execs $(x.execs)."
     end
 
-    t = Calculation{p}(x.name, x.dir, x.flags, x.data, x.execs, x.run, x.outdata, x.infile,
+    t = Calculation{p}(x.name, x.dir, x.flags, x.data, x.execs, x.run,  x.infile,
                        x.outfile)
     return pos, t
 end
@@ -33,7 +33,7 @@ using ..Structures: set_pseudos!, element; export set_pseudos!, element
 
 
 include("job.jl")
-export submit, save, isrunning, versions, last_version, outputdata
+export submit, save, isrunning, versions, last_version, switch_version!, rm_version!, registered_jobs, outputdata
 
 include("pseudos.jl")
 export configure_pseudoset, rm_pseudoset!

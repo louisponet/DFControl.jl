@@ -40,16 +40,11 @@ outputdata(job["scf"], extra_parse_funcs = ["number of atoms/cell" => qe_parse_n
 function outputdata(calculation::Calculation;
                     extra_parse_funcs::Vector{<:Pair{String}} = Pair{String}[],
                     print = true, overwrite = true)
-    if ispath(Calculations.outpath(calculation)) || !isempty(calculation.outdata)
-        if !overwrite && !isempty(calculation.outdata)
-            return calculation.outdata
-        else
-            t = FileIO.readoutput(calculation; parse_funcs = extra_parse_funcs)
-            calculation.outdata = t === nothing ?
-                                  FileIO.parse_file(Calculations.outpath(calculation),
-                                                    extra_parse_funcs) : t
-            return calculation.outdata
-        end
+    if ispath(Calculations.outpath(calculation)) 
+        t = FileIO.readoutput(calculation; parse_funcs = extra_parse_funcs)
+        return t === nothing ?
+                              FileIO.parse_file(Calculations.outpath(calculation),
+                                                extra_parse_funcs) : t
     end
     print &&
         (@warn "No output data or output file found for calculation: $(calculation.name).")

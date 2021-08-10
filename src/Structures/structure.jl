@@ -264,7 +264,7 @@ In the case of a structure rather than a set of atoms, the search will
 be performed over all atoms in the structure.
 """
 function polyhedron(at::Atom, atoms::Vector{Atom}, order::Int)
-    return sort(atoms; by = x -> distance(x, at))[1:order]
+    return sort(atoms; by = x -> norm(x.position_cart - at.position_cart))[1:order]
 end
 function polyhedron(at::Atom, str::Structure, order::Int)
     return polyhedron(at, create_supercell(str, -1:1, -1:1, -1:1).atoms, order)

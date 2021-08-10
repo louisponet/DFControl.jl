@@ -13,9 +13,9 @@ include("qe.jl")
 include("wannier.jl")
 include("job.jl")
 
-function parse_file(filename::AbstractString, parse_funcs::Vector{<:Pair{String}};
+function parse_file(filename::AbstractString, parse_funcs::Vector{<:Pair{String}};out = Dict{Symbol,Any}(),
                     extra_parse_funcs::Vector{<:Pair} = Pair{String,Function}[])
-    out = Dict{Symbol,Any}()
+    
     open(filename, "r") do f
         lc = 0
         while !eof(f)

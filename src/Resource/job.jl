@@ -27,6 +27,9 @@ HTTP.@register(ROUTER, "GET", "/registered_jobs/", registered_jobs)
 job_versions(req) = Service.job_versions(job_path(req))
 HTTP.@register(ROUTER, "GET", "/job_versions/*", job_versions)
 
+rm_version!(req) = Service.rm_version!(JSON3.read(req.body, Job), parse(Int, splitpath(req.target)[end]))
+HTTP.@register(ROUTER, "PUT", "/rm_version/*", rm_version!)
+
 last_running_calculation(req) = Service.last_running_calculation(JSON3.read(req.body, Job))
 HTTP.@register(ROUTER, "GET", "/last_running_calculation", last_running_calculation)
 

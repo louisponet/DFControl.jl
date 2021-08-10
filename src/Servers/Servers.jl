@@ -59,8 +59,9 @@ function Server(s::String)
     julia_str = readline()
     julia = isempty(julia_str) ? "julia" : julia_str
 
+    @info "Trying to connect to $username@$domain..."
     dir = remotecall_fetch(homedir,
-                           Distributed.addprocs([("$username" * "@" * "$domain", 1)])[1])
+                           Distributed.addprocs([("$username" * "@" * "$domain", 1)], exename=julia)[1])
     print("Jobs top dir (default: $dir):")
     dir = abspath(readline())
 
