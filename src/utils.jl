@@ -1,4 +1,5 @@
 module Utils
+    using Dates
 #---------------------Parse utils-----------------------------------------------------#
 """
 Searches a directory for all files containing the key.

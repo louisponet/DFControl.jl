@@ -43,45 +43,60 @@ function Server(s::String)
     if load_server(name) !== nothing
         @warn "A server with $name was already configured and will be overwritten."
     end
-    while isempty(username)
-        print("Username:")
-        username = readline()
-    end
-    while isempty(domain)
-        print("Domain:")
-        domain = readline()
-    end
-    print("Port (default: 8080):")
-    port_str = readline()
-    port = isempty(port_str) ? 8080 : parse(Int, port_str)
+    try
+        @info "Trying to pull existing configuratiaon from $username@$domain..."
+        localpath = joinpath(SERVER_DIR, name*".jld2")
+        remotepath = ".julia/config/DFControl/servers/localhost.jld2"
+        run(`scp $(username * "@" * domain):$remotepath $localpath`)
+        tserver = load_server(name)
+        tserver.name = name
+        tserver.username= username
+        tserver.domain=domain
+        println("Server configured as:")
+        println(tserver)
+        save(tserver)
+        return tserver
+    catch
+        while isempty(username)
+            print("Username:")
+            username = readline()
+        end
+        while isempty(domain)
+            print("Domain:")
+            domain = readline()
+        end
+        print("Port (default: 8080):")
+        port_str = readline()
+        port = isempty(port_str) ? 8080 : parse(Int, port_str)
 
-    print("Julia Exec (default: julia):")
-    julia_str = readline()
-    julia = isempty(julia_str) ? "julia" : julia_str
+        print("Julia Exec (default: julia):")
+        julia_str = readline()
+        julia = isempty(julia_str) ? "julia" : julia_str
 
-    @info "Trying to connect to $username@$domain..."
-    dir = remotecall_fetch(homedir,
-                           Distributed.addprocs([("$username" * "@" * "$domain", 1)], exename=julia)[1])
-    print("Jobs top dir (default: $dir):")
-    dir = abspath(readline())
+        @info "Trying to connect to $username@$domain..."
+        dir = remotecall_fetch(homedir,
+                               Distributed.addprocs([("$username" * "@" * "$domain", 1)], exename=julia)[1])
+        print("Jobs top dir (default: $dir):")
+        dir = abspath(readline())
 
-    scheduler_choice = request("Please select scheduler:",
-                               RadioMenu([string.(instances(Scheduler))...]))
-    scheduler_choice == -1 && return
-    scheduler = Scheduler(scheduler_choice)
-    mounted_choice = request("Has the server been mounted?", RadioMenu(["yes", "no"]))
-    mounted_choice == -1 && return
-    if mounted_choice == 1
-        print("Please specify mounting point:")
-        mountpoint = readline()
-    else
-        mountpoint = ""
+        scheduler_choice = request("Please select scheduler:",
+                                   RadioMenu([string.(instances(Scheduler))...]))
+        scheduler_choice == -1 && return
+        scheduler = Scheduler(scheduler_choice)
+        mounted_choice = request("Has the server been mounted?", RadioMenu(["yes", "no"]))
+        mounted_choice == -1 && return
+        if mounted_choice == 1
+            print("Please specify mounting point:")
+            mountpoint = readline()
+        else
+            mountpoint = ""
+        end
+        server = Server(name, username, domain, port, scheduler, mountpoint, julia_str, dir)
+        println("Server configured as:")
+        println(server)
+        save(server)
+        return server
     end
-    server = Server(name, username, domain, port, scheduler, mountpoint, julia_str, dir)
-    println("Server configured as:")
-    println(server)
-    save(server)
-    return server
 end
 
 StructTypes.StructType(::Type{Server}) = StructTypes.Mutable()
@@ -115,9 +130,8 @@ function save(s::Server)
     mkpath(SERVER_DIR)
     if ispath(joinpath(SERVER_DIR, s.name * ".jld2"))
         @info "Updating previously existing configuration for server $s."
-    else
-        JLD2.save(joinpath(SERVER_DIR, s.name * ".jld2"), "server", s)
     end
+    JLD2.save(joinpath(SERVER_DIR, s.name * ".jld2"), "server", s)
 end
 
 ssh_string(s::Server) = s.username * "@" * s.domain
@@ -138,7 +152,7 @@ function Distributed.addprocs(server::Server, nprocs::Int = 1, args...; kwargs..
     if server.domain == "localhost"
         proc = Distributed.addprocs(nprocs, args...; kwargs...)
     else
-        proc = Distributed.addprocs([(ssh_string(server), nprocs)], args...; kwargs...)
+        proc = Distributed.addprocs([(ssh_string(server), nprocs)], args...; exename=`$(server.julia_exec)`, dir=server.default_jobdir, tunnel=true, kwargs...)
     end
     return proc
 end

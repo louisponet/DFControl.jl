@@ -1,5 +1,5 @@
 using Colors
-using ...Plots
+using .Plots
 using LinearAlgebra
 using RecipesBase
 
