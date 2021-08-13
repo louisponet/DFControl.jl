@@ -2,6 +2,9 @@ using Colors
 using .Plots
 using LinearAlgebra
 using RecipesBase
+# using ..Client
+# using ..Jobs
+# using ..Structures
 
 Base.:*(f::Number, r::RGB) = RGB(f * r.r, f * r.b, f * r.g)
 Base.:+(r1::RGB, r2::RGB) = RGB(r1.r + r2.r, r1.b + r2.b, r1.g + r2.g)
@@ -80,15 +83,16 @@ end
     if !any(x -> eltype(x) == QE, job.calculations)
         error("output plotting only implemented for QE jobs.")
     end
-    frmi = readfermi(job)
+    outdat = Client.outputdata(job)
+    frmi = Jobs.readfermi(job, outdat)
     fermi --> frmi
-    bands = readbands(job)
+    bands = Jobs.readbands(job, outdat)
     if bands === nothing
         error("No bands found in job $(job.name).")
     end
 
     # Bands part
-    ks = high_symmetry_kpoints(job.structure)
+    ks = Structures.high_symmetry_kpoints(job.structure)
     tick_vals = Int[]
     tick_syms = String[]
     kpoints = bands isa NamedTuple ? bands.up[1].k_points_cryst : bands[1].k_points_cryst
@@ -142,7 +146,7 @@ end
     end
 
     # PDOS part
-    projwfc = getfirst(x -> isprojwfc(x) && hasoutfile(x), job.calculations)
+    projwfc = getfirst(x -> Calculations.isprojwfc(x) && haskey(outdat, x.name), job.calculations)
     if projwfc !== nothing
         if bands isa NamedTuple && !overlap_spin
             doswindow = 3

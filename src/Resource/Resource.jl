@@ -1,7 +1,7 @@
 module Resource
 # This module handles all the handling, parsing and transforming HTTP commands,
 # and brokers between HTTP requests and Service that fullfils them. 
-using HTTP, JSON3, Dates
+using HTTP, JSON3, Dates, LoggingExtras
 using ..DFControl, ..Service
 using ..Utils
 using ..Servers
@@ -35,7 +35,7 @@ HTTP.@register(ROUTER, "GET", "/pseudos/*", pseudos)
 pseudo_sets(req) = Service.pseudo_sets()
 HTTP.@register(ROUTER, "GET", "/pseudo_sets/", pseudo_sets)
 
-configure_pseudoset(req) = Service.configure_pseudoset(req.body, job_path(req))
+configure_pseudoset(req) = Service.configure_pseudoset(JSON3.read(req.body,String), job_path(req))
 HTTP.@register(ROUTER, "POST", "/configure_pseudoset/*", configure_pseudoset)
 
 rm_pseudos!(req) = Service.rm_pseudos!(JSON3.read(req.body, String))
@@ -80,6 +80,8 @@ function run(port)
     # Service.start()
     # server = HTTP.Sockets.listen(HTTP.Sockets.InetAddr(parse(IPAddr, "0.0.0.0"), port))
     @async HTTP.serve(requestHandler, "0.0.0.0", port)
-    return Service.main_loop()
+    return with_logger(Service.daemon_logger()) do
+        Service.main_loop()
+    end
 end
 end

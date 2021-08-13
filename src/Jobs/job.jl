@@ -344,10 +344,9 @@ function bandgap(job::Job, fermi = nothing)
     return minimum(bandgap.(bands, fermi))
 end
 
-function readfermi(job::Job)
+function readfermi(job::Job, outdat)
     ins = filter(x -> (Calculations.isscf(x) || Calculations.isnscf(x)), job.calculations)
     @assert isempty(ins) !== nothing "Job does not have a valid scf or nscf output."
-    outdat = outputdata(job)
     for i in ins
         if haskey(outdat, i.name)
             o = outdat[i]
@@ -360,7 +359,7 @@ function readfermi(job::Job)
     return 0.0
 end
 
-function readbands(job::Job)
+function readbands(job::Job, outdat)
     calc = getfirst(x -> Calculations.isbands(x), job.calculations)
     outdat = outputdata(job)
     if calc === nothing || !haskey(outdat, calc.name)
@@ -376,28 +375,6 @@ function readbands(job::Job)
 end
 
 #TODO: only for QE 
-"Reads the pdos for a particular atom. Only works for QE."
-function pdos(job::Job, atsym::Symbol, filter_word = "")
-    projwfc = getfirst(Calculations.isprojwfc, job.calculations)
-    ats = job.structure[atsym]
-    @assert length(ats) > 0 "No atoms found with name $atsym."
-    scf = getfirst(Calculations.isscf, job.calculations)
-    magnetic = Structures.ismagnetic(job.structure) || Calculations.ismagnetic(scf)
-    soc = Structures.isnoncolin(job.structure) || Calculations.issoc(scf)
-    return pdos(projwfc, atsym, magnetic, soc, filter_word)
-end
-
-pdos(job::Job, atom::Atom, args...) = pdos(job, atom.name, args...)
-
-function pdos(job::Job, atoms::Vector{Atom} = job.structure.atoms, args...)
-    t_energies, t_pdos = pdos(job, atoms[1], args...)
-    for i in 2:length(atoms)
-        t1, t2 = pdos(job, atoms[i], args...)
-        t_pdos .+= t2
-    end
-    return (energies = t_energies, pdos = t_pdos)
-end
-
 """
     set_present!(job::Job, func::Function)
     set_present!(job::Job, func::String)

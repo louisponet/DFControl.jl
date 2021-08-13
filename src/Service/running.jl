@@ -1,8 +1,8 @@
 function main_loop()
-    running_jobs = ispath(RUNNING_JOBS_FILE) ? readlines(RUNNING_JOBS_FILE) : String[]
+    running_jobs = ispath(RUNNING_JOBS_FILE) ? filter(!isempty, readlines(RUNNING_JOBS_FILE)) : String[]
     job_dirs_procs = Dict{String,Tuple{Int,Future}}()
     for j in running_jobs
-        if DFControl.exists_job(j)
+        if exists_job(j)
             tjob = load_job(j)
             job_dirs_procs[j] = spawn_worker(tjob)
         end
@@ -30,11 +30,25 @@ function spawn_worker(job::Job)
         proc = addprocs(1)[1]
         remotecall_fetch(cd, proc, job.dir)
         if s.scheduler == Servers.Bash
-            cmd = Cmd(`bash job.tt`)
+            cmd = `bash job.tt`
         else
-            cmd = Cmd(`sbatch job.tt`)
+            cmd = `sbatch job.tt`
         end
-        f = remotecall(run, proc, cmd)
+        to_run = """begin
+        using DFControl: Service
+        using DFControl.Service: outputdata
+        job = Service.load_job(".")
+        if !Service.isrunning(job.dir)
+            @async run($cmd)
+        end
+        while Service.isrunning(job.dir)
+            sleep(10)
+        end
+        end
+        """
+            
+        Distributed.remotecall_eval(Distributed.Main, proc, Base.Meta.parse(to_run))
+        f = remotecall(outputdata, proc, job) 
         return proc, f
     end
 end
@@ -70,11 +84,13 @@ save_running_jobs(job_dirs_procs) = write(RUNNING_JOBS_FILE, join(keys(job_dirs_
 function handle_job_submission!(job_dirs_procs)
     if ispath(PENDING_JOBS_FILE)
         pending_job_submissions = readlines(PENDING_JOBS_FILE)
-        for j in pending_job_submissions
-            job = load_job(j)
-            job_dirs_procs[job.dir] = spawn_worker(job)
+        if !isempty(pending_job_submissions)
+            for j in pending_job_submissions
+                job = load_job(j)
+                job_dirs_procs[job.dir] = spawn_worker(job)
+            end
+            write(PENDING_JOBS_FILE, "")
         end
-        write(PENDING_JOBS_FILE, "")
     end
 end
 
@@ -104,6 +120,7 @@ function run_queue(job::Job, ctx::Dict; sleep_time = 10)
             while isrunning(job)
                 sleep(sleep_time)
             end
+            Service.outputdata(job)
             mv(step_file, joinpath(fd, f); force = true)
         end
     end

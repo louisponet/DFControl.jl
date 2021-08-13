@@ -577,7 +577,7 @@ function qe_read_pw_output(filename::String;
         end
     end
     out[:converged] = get(out, :converged, false) ? true :
-                      get(out, :scf_converged, false) && !haskey(out, :total_force)
+                      get(out, :scf_converged, false) && length(get(out, :total_force, Float64[])) < 2
     if haskey(out, :scf_iteration)
         out[:n_scf] = length(findall(i -> out[:scf_iteration][i+1] < out[:scf_iteration][i],
                                      1:length(out[:scf_iteration])-1))
@@ -633,29 +633,55 @@ function qe_read_pdos(filename::String)
     return energies, values
 end
 
-function qe_read_projwfc_output(c::Calculation{QE}, args...; kwargs...)
+function qe_read_projwfc_output(c::Calculation{QE}, args...)
     out = Dict{Symbol,Any}()
-    pdos_files = searchdir(c, ".pdos_")
-    if get(c, :kresolveddos, false) 
-        out[:heatmaps]  = Vector{Matrix{Float64}}()
-        out[:ytickvals] = Vector{Vector{Float64}}()
-        out[:yticks]    = Vector{Vector{Float64}}()
-        for f in pdos_files
-            th, vals, ticks = qe_read_kpdos(f, args...)
-            push!(out[:heatmaps], th)
-            push!(out[:ytickvals], vals)
-            push!(out[:yticks], ticks)
-        end
-    else
-        out[:pdos] = NamedTuple{(:energies, :values),
-                                Tuple{Vector{Float64},Matrix{Float64}}}[]
-        for f in pdos_files
-            energs, vals = qe_read_pdos(f, args...)
-            push!(out[:pdos], (energies = energs, values = vals))
-        end
-    end
     out[:states], out[:bands] = qe_read_projwfc(Calculations.outpath(c))
+    out[:energies], out[:pdos] = pdos(c) 
     return out
+end
+
+function pdos(c::Calculation{QE})
+    @assert isprojwfc(c) "Please specify a valid projwfc calculation."
+    kresolved = haskey(c, :kresolveddos) && c[:kresolveddos]
+    files = filter(x -> occursin("#", x), searchdir(c.dir, "pdos"))
+
+    if isempty(files)
+        return (Float64[], Dict{Symbol, Array})
+    end
+
+    atsyms = unique(map(x -> x[findfirst(isequal("("), x)+1:findfirst(isequal(")"), x)-1],files))
+    magnetic = (x->occursin("ldosup",x) && occursin("ldosdown",x))(readline(files[1]))
+    soc = occursin(".5", files[1])
+    @assert !isempty(files) "No pdos files found in calculation directory $(c.dir)"
+    files = joinpath.((c,), files)
+    energies, = kresolved ? FileIO.qe_read_kpdos(files[1]) : FileIO.qe_read_pdos(files[1])
+    totdos = Dict{Symbol, Array}()
+    for atsym in atsyms
+        atdos = magnetic && !soc ? zeros(size(energies, 1), 2) : zeros(size(energies, 1))
+        if kresolved
+            for f in filter(x->occursin(atsym, x), files)
+                if magnetic && !occursin(".5", f)
+                    tu = FileIO.qe_read_kpdos(f, 2)[2]
+                    td = FileIO.qe_read_kpdos(f, 3)[2]
+                    atdos[:, 1] .+= reduce(+, tu; dims = 2) ./ size(tu, 2)
+                    atdos[:, 2] .+= reduce(+, td; dims = 2) ./ size(tu, 2)
+                else
+                    t = FileIO.qe_read_kpdos(f, 1)[2]
+                    atdos .+= (reshape(reduce(+, t; dims = 2), size(atdos, 1)) ./ size(t, 2))
+                end
+            end
+        else
+            for f in files
+                if magnetic && !occursin(".5", f)
+                    atdos .+= FileIO.qe_read_pdos(f)[2][:, 1:2]
+                else
+                    atdos .+= FileIO.qe_read_pdos(f)[2][:, 1]
+                end
+            end
+        end
+        totdos[atsym] = atdos
+    end
+    return (energies = energies, pdos = totdos)
 end
 
 """

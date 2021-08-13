@@ -267,7 +267,7 @@ function outputdata(job::Job, calculations::Vector{Calculation})
     else
         datadict = Dict{String,Dict{Symbol,Any}}()
     end
-    stime = Jobs.starttime(job)
+    stime = isempty(datadict) ? DateTime(0) : Jobs.starttime(job)
     files = Dict{String, String}()
     for calculation in calculations
         p = Calculations.outpath(calculation)
@@ -280,7 +280,6 @@ function outputdata(job::Job, calculations::Vector{Calculation})
         end
     end
     JLD2.save(joinpath(job, "results.jld2"), "outputdata", datadict)
-    #TODO Think about storing results.jld2
     tmp = tempname() * ".jld2"
     out = JLD2.save(tmp, "outputdata", datadict, "files", files)
     return tmp

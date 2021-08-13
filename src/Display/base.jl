@@ -2,10 +2,8 @@
 import Base: show
 
 show(io::IO, block::InputData) = df_show(io, block)
-show(io::IO, data::Vector{InputData}) = map(x -> df_show(io, x), data)
 
 show(io::IO, band::Band) = df_show(io, band)
-show(io::IO, bands::Vector{Band}) = map(x -> df_show(io, x), bands)
 
 show(io::IO, job::Job) = df_show(io, job)
 show(io::IO, c::Calculation) = df_show(io, c)
