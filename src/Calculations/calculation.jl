@@ -426,7 +426,6 @@ function sanitize_flags!(cs::Vector{<:Calculation}, str::Structure, name, outdir
             end
         end
         push!(flags_to_set, :noncolin => true)
-        pop!(c, :nspin, nothing)
     elseif ismagcalc
         for m in mags
             push!.((θs, ϕs), 0.0)

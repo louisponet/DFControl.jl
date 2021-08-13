@@ -146,7 +146,7 @@ end
     end
 
     # PDOS part
-    projwfc = getfirst(x -> Calculations.isprojwfc(x) && haskey(outdat, x.name), job.calculations)
+    projwfc = Utils.getfirst(x -> Calculations.isprojwfc(x) && haskey(outdat, x.name), job.calculations)
     if projwfc !== nothing
         if bands isa NamedTuple && !overlap_spin
             doswindow = 3
@@ -155,7 +155,7 @@ end
             doswindow = 2
             layout --> (1, 2)
         end
-        states, projbands = qe_read_projwfc(Calculations.outpath(projwfc))
+        states, projbands = outdat[projwfc.name][:states], outdat[projwfc.name][:bands]
         # First we find the amount that all the states appear in the window
         state_occupations = zeros(length(states))
         for ib in 1:(bands isa NamedTuple ? 2 : 1)
@@ -175,7 +175,7 @@ end
         # ats_orbs = unique(map(x -> (job.structure.atoms[x.atom_id].name, orbital(x.l).name), states[sorted_occ][goodids]))
         goodids = findall(i -> state_occupations[i] > occupy_ratio * max_occ,
                           1:length(state_occupations))
-        ats_orbs = unique(map(x -> (job.structure.atoms[x.atom_id].name, orbital(x.l).name),
+        ats_orbs = unique(map(x -> (job.structure.atoms[x.atom_id].name, Structures.orbital(x.l)),
                               states[goodids]))
         @info "Found $(length(ats_orbs)) atomic orbitals that satisfy the minimum occupation:\n$ats_orbs"
 
@@ -190,7 +190,7 @@ end
 
         @info "Reading pdos files and generating band coloring..."
         for (ia, (atsym, orb)) in enumerate(ats_orbs)
-            energies, pd = pdos(job, atsym, "(" * string(orb))
+            energies, pd =outdat[projwfc.name][:energies], outdat[projwfc.name][:pdos][atsym][orb]
 
             #Plots PDOS
             if size(pd, 2) == 2

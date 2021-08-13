@@ -37,7 +37,7 @@ end
 
 function qe_read_output(c::Calculation{QE}, args...; kwargs...)
     if Calculations.isprojwfc(c)
-        return qe_read_projwfc_output(c, args...; kwargs...)
+        return qe_read_projwfc_output(c, args...)
     elseif Calculations.ishp(c)
         return qe_read_hp_output(c, args...; kwargs...)
     elseif Calculations.ispw(c)
@@ -641,25 +641,30 @@ function qe_read_projwfc_output(c::Calculation{QE}, args...)
 end
 
 function pdos(c::Calculation{QE})
-    @assert isprojwfc(c) "Please specify a valid projwfc calculation."
+    @assert Calculations.isprojwfc(c) "Please specify a valid projwfc calculation."
     kresolved = haskey(c, :kresolveddos) && c[:kresolveddos]
     files = filter(x -> occursin("#", x), searchdir(c.dir, "pdos"))
 
     if isempty(files)
         return (Float64[], Dict{Symbol, Array})
     end
-
-    atsyms = unique(map(x -> x[findfirst(isequal("("), x)+1:findfirst(isequal(")"), x)-1],files))
+    atsyms = Symbol.(unique(map(x -> x[findfirst("(", x)[1]+1:findfirst(")", x)[1]-1],files)))
     magnetic = (x->occursin("ldosup",x) && occursin("ldosdown",x))(readline(files[1]))
     soc = occursin(".5", files[1])
     @assert !isempty(files) "No pdos files found in calculation directory $(c.dir)"
     files = joinpath.((c,), files)
     energies, = kresolved ? FileIO.qe_read_kpdos(files[1]) : FileIO.qe_read_pdos(files[1])
-    totdos = Dict{Symbol, Array}()
+    totdos = Dict{Symbol, Dict{Structures.Orbital, Array}}()
     for atsym in atsyms
-        atdos = magnetic && !soc ? zeros(size(energies, 1), 2) : zeros(size(energies, 1))
+        totdos[atsym] = Dict{Structures.Orbital, Array}()
         if kresolved
             for f in filter(x->occursin(atsym, x), files)
+                id1 = findlast("(", f) + 1
+                orb = soc ? Structures.orbital(f[id1, findnext("_", f, id1+1)-1]) : Structures.orbital(f[id1, findnext(")", f, id1+1)-1])
+                if !haskey(totdos[atsym], orb)
+                    totdos[atsym][orb] = magnetic && !soc ? zeros(size(energies, 1), 2) : zeros(size(energies, 1))
+                end
+                atdos = totdos[atsym][orb]
                 if magnetic && !occursin(".5", f)
                     tu = FileIO.qe_read_kpdos(f, 2)[2]
                     td = FileIO.qe_read_kpdos(f, 3)[2]
@@ -672,6 +677,12 @@ function pdos(c::Calculation{QE})
             end
         else
             for f in files
+                id1 = findlast("(", f)[1] + 1
+                orb = soc ? Structures.orbital(f[id1:findnext("_", f, id1+1)[1]-1]) : Structures.orbital(f[id1:findnext(")", f, id1+1)[1]-1])
+                if !haskey(totdos[atsym], orb)
+                    totdos[atsym][orb] = magnetic && !soc ? zeros(size(energies, 1), 2) : zeros(size(energies, 1))
+                end
+                atdos = totdos[atsym][orb]
                 if magnetic && !occursin(".5", f)
                     atdos .+= FileIO.qe_read_pdos(f)[2][:, 1:2]
                 else
@@ -679,7 +690,6 @@ function pdos(c::Calculation{QE})
                 end
             end
         end
-        totdos[atsym] = atdos
     end
     return (energies = energies, pdos = totdos)
 end

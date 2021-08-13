@@ -349,7 +349,7 @@ function readfermi(job::Job, outdat)
     @assert isempty(ins) !== nothing "Job does not have a valid scf or nscf output."
     for i in ins
         if haskey(outdat, i.name)
-            o = outdat[i]
+            o = outdat[i.name]
             if haskey(o, :fermi)
                 return o[:fermi]
             end
@@ -369,9 +369,9 @@ function readbands(job::Job, outdat)
             return nothing
         end
         @warn "No bands calculation found, return bands from nscf calculation."
-        return out[calc.name][:bands]
+        return outdat[calc.name][:bands]
     end
-    return out[calc.name][:bands]
+    return outdat[calc.name][:bands]
 end
 
 #TODO: only for QE 

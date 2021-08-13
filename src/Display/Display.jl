@@ -5,6 +5,7 @@ using ..Calculations
 using ..Jobs
 using ..Client
 using ..DFControl: Band, TimingData
+using ..Utils
 
 include("printing.jl")
 

@@ -267,7 +267,7 @@ function outputdata(job::Job, calculations::Vector{Calculation})
     else
         datadict = Dict{String,Dict{Symbol,Any}}()
     end
-    stime = isempty(datadict) ? DateTime(0) : Jobs.starttime(job)
+    stime = isempty(datadict) ? 0.0 : Jobs.starttime(job)
     files = Dict{String, String}()
     for calculation in calculations
         p = Calculations.outpath(calculation)

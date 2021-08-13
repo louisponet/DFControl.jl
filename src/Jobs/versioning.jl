@@ -144,10 +144,10 @@ function rm_version!(job::Job, version::Int)
         end
         if lv != 0
             real_path = version_dir(md, lv)
-            tj = Job(;dir=real_path, version = lv, FileIO.read_job_calculations(joinpath(real_path, "job.tt"))...)
-            cp(tj, md; force = true)
+            for f in readdir(real_path)
+                cp(joinpath(real_path, f), joinpath(md, f), force=true)
+            end
         end
-
     else
         rm(version_dir(job, version); recursive = true)
     end
