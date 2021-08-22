@@ -1,3 +1,12 @@
+const EXEC_FILE = DFC.config_path("registered_execs.jld2")
+
+function load_execs()
+    return JLD2.load(EXEC_FILE)["execs"]
+end
+function write_execs(execs)
+    return JLD2.save(EXEC_FILE, "execs", execs)
+end
+
 mutable struct ExecFlag{T}
     symbol      :: Symbol
     name        :: String
@@ -35,9 +44,10 @@ Will first transform `flags` into a `Vector{ExecFlag}`, and construct the [`Exec
     exec::String = ""
     dir::String = ""
     flags::Vector{ExecFlag} = ExecFlag[]
+    modules::Vector{AbstractString} = String[]
 end
 
-function Exec(exec::String, dir::String, flags::Pair...)
+function Exec(exec::String, dir::String, flags::Pair...; modules=String[])
     _flags = ExecFlag[]
     ismpi = occursin("mpi", exec)
     for (f, v) in flags
@@ -47,7 +57,7 @@ function Exec(exec::String, dir::String, flags::Pair...)
         end
         push!(_flags, ExecFlag(f => v))
     end
-    return Exec(exec, dir, _flags)
+    return Exec(exec, dir, _flags, modules)
 end
 
 StructTypes.StructType(::Type{Exec}) = StructTypes.Mutable()
@@ -124,6 +134,23 @@ function rm_flags!(exec::Exec, flags...)
         end
     end
     return exec.flags
+end
+
+function verify_exec(e::Exec)
+    if !isempty(e.dir) && ispath(joinpath(e.dir, e.exec))
+        try
+            run(`source /etc/profile '&''&' module load $(join(e.modules, " "))`)
+        catch
+            return false
+        end
+        return true
+    else
+        return Sys.which(e.exec) !== nothing
+    end
+end
+
+function registered_execs()
+    
 end
 
 #### MPI Exec Functionality ###
@@ -269,13 +296,6 @@ has_parseable_exec(l::String) = occursin(">", l) && any(occursin.(parseable_exec
 
 isparseable(exec::Exec) = exec.exec ∈ parseable_execs()
 
-function verify_exec(e::Exec)
-    if !isempty(e.dir) && ispath(joinpath(e.dir, e.exec))
-        return true
-    else
-        return Sys.which(e.exec) !== nothing
-    end
-end
 
 function parse_generic_flags(flags::Vector{<:SubString})
     out = ExecFlag[]

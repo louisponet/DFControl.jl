@@ -180,17 +180,17 @@ function read_job_line(line)
             continue
         end
         if occursin("mpi", e)
-            push!(execs, Exec(efile, dir, Calculations.parse_mpi_flags(flags)))
+            push!(execs, Exec(efile, dir, Calculations.parse_mpi_flags(flags), String[]))
         elseif efile == "wannier90.x"
-            push!(execs, Exec(efile, dir, Calculations.parse_wan_execflags(flags)))
+            push!(execs, Exec(efile, dir, Calculations.parse_wan_execflags(flags), String[]))
         elseif any(occursin.(Calculations.QE_EXECS, (efile,)))
-            push!(execs, Exec(efile, dir, Calculations.parse_qe_execflags(flags)))
+            push!(execs, Exec(efile, dir, Calculations.parse_qe_execflags(flags), String[]))
         elseif any(occursin.(Calculations.ELK_EXECS, (efile,)))
             calculation = "elk.in"
             output = "elk.out"
             push!(execs, Exec(; exec = efile, dir = dir))
         else
-            push!(execs, Exec(efile, dir, Calculations.parse_generic_flags(flags)))
+            push!(execs, Exec(efile, dir, Calculations.parse_generic_flags(flags), String[]))
         end
     end
     return execs, calculation, output, run
@@ -292,6 +292,16 @@ function read_job_calculations(job_file::String)
         structure = Structure()
         @warn "No valid structures could be read from calculation files."
     end
+
+    module_line_ids = findall(x -> occursin("module", x), header)
+    
+    if module_line_ids !== nothing
+        module_lines = header[module_line_ids]
+        # deleteat!(header, module_lines)
+        modules = map(x -> split(x)[end], module_lines)
+    end
+        
+    
     return (; name, header, calculations = cs, structure)
 end
 

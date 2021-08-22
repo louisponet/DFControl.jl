@@ -254,4 +254,39 @@ function push(filename::String, server::Server, server_file::String)
     end
 end
 
+function server_command(s::Server, cmd)
+    out = Pipe()
+    err = Pipe()
+    if s.domain == "localhost"
+        process = run(pipeline(ignorestatus(cmd), stdout=out, stderr=err))
+    else
+        process = run(pipeline(ignorestatus(`ssh $(ssh_string(s)) source /etc/profile '&''&' $cmd`), stdout=out, stderr=err))
+    end
+    close(out.in)
+    close(err.in)
+
+    stdout = String(read(out))
+    stderr = String(read(err))
+    return (
+      stdout = stdout,
+      stderr = stderr,
+      code = process.exitcode
+    )            
+end
+
+function has_modules(s::Server)
+    try 
+        server_command(s, `module avail`).code == 0
+    catch
+        false
+    end
+end
+
+function available_modules(s::Server)
+    if has_modules(s)
+        return server_command(s, `module avail`)
+    else
+        return String[]
+    end
+end
 end
