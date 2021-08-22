@@ -35,3 +35,7 @@ HTTP.@register(ROUTER, "GET", "/last_running_calculation", last_running_calculat
 
 outputdata(req) = Service.outputdata(JSON3.read(req.body, Job))
 HTTP.@register(ROUTER, "GET", "/outputdata", outputdata)
+
+running_jobs(req) = Service.running_jobs(job_path(req))
+HTTP.@register(ROUTER, "GET", "/running_jobs/", running_jobs)
+HTTP.@register(ROUTER, "GET", "/running_jobs/*", running_jobs)

@@ -175,7 +175,10 @@ Base.getindex(job::Job, el::Element) = job.structure[el]
 Returns the main directory of the job, also when the job's version is not the one
 in the main directory.
 """
-main_job_dir(dir::AbstractString) = split(dir, Jobs.VERSION_DIR_NAME)[1]
+function main_job_dir(dir::AbstractString)
+    d = split(dir, Jobs.VERSION_DIR_NAME)[1]
+    return d[end] == '/' ? d[1:end-1] : d
+end
 main_job_dir(job::Job) = main_job_dir(job.dir)
 
 """

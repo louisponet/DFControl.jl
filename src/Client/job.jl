@@ -223,11 +223,16 @@ function abort(job::Job)
     end
 end
 
-
 function registered_jobs(fuzzy="", s="localhost")
     server = Servers.maybe_start_server(s) 
     resp = HTTP.get(server, "/registered_jobs/" * fuzzy)
     return reverse(JSON3.read(resp.body, Vector{Tuple{String,DateTime}}))
+end
+
+function running_jobs(fuzzy="", s="localhost")
+    server = Servers.maybe_start_server(s) 
+    resp = HTTP.get(server, "/running_jobs/" * fuzzy)
+    return reverse(JSON3.read(resp.body, Vector{String}))
 end
 
 function switch_version!(job::Job, version::Int)

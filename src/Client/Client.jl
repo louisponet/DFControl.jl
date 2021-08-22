@@ -31,9 +31,9 @@ using ..DFControl: set_dir!; export set_dir!
 using ..Calculations: set_name!, set_kpoints!, data; export set_name!, set_kpoints!, data
 using ..Structures: set_pseudos!, element; export set_pseudos!, element
 
-
 include("job.jl")
-export submit, save, isrunning, versions, last_version, switch_version!, rm_version!, registered_jobs, outputdata
+export submit, save, isrunning, versions, last_version, switch_version!, rm_version!, outputdata,
+       registered_jobs, running_jobs
 
 include("pseudos.jl")
 export configure_pseudoset, rm_pseudoset!

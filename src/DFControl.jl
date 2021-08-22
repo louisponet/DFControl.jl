@@ -60,7 +60,6 @@ include("Display/Display.jl")
 @reexport using .Client
 
 function __init__()
-    Jobs.init_job_registry()
     Servers.maybe_create_localhost()
     # Client.maybe_start_server("localhost")
     # if !haskey(ENV, "IS_DAEMON")
