@@ -151,7 +151,7 @@ function last_running_calculation(job::Job)
     for (i, c) in enumerate(reverse(job.calculations))
         p = Calculations.outpath(c)
         if ispath(p) && mtime(p) > t
-            return i
+            return length(job.calculations) - i + 1
         end
     end
 end

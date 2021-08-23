@@ -18,12 +18,14 @@ end
 
 function maybe_register_job(abspath::AbstractString)
     if ispath(abspath)
-        REG = occursin(".archived", abspath) ? readlines(JOB_REGISTRY.archived) :
-              readlines(JOB_REGISTRY.in_progress)
+        n = occursin(".archived", abspath) ? JOB_REGISTRY.archived :
+              JOB_REGISTRY.in_progress
+        REG = readlines(n)
         jid = findfirst(isequal(abspath), REG)
         if jid === nothing
             push!(REG, abspath)
-            cleanup_job_registry!()
+            write(n, join(REG, "\n"))
+            # cleanup_job_registry!()
         end
     end
 end

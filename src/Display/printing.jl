@@ -82,7 +82,7 @@ function df_show(io::IO, job::Job)
         dfprintln(io, reset, "(", crayon"green", "scheduled", reset, ", ", crayon"red",
                   "not scheduled", reset, ")")
         ln = maximum(length.(string.(map(x -> x.name, is))))
-        for (si, i) in enumerate(is)
+        for i in is
             n = i.name
             cr = i.run ? crayon"green" : crayon"red"
             dfprint(io, cr,
