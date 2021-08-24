@@ -48,6 +48,7 @@ Base.isempty(p::Pseudo) = isempty(p.name) && isempty(p.dir)
 
 Base.:(==)(p1::Pseudo, p2::Pseudo) = p1.name == p2.name && p1.dir == p2.dir
 
+Base.hash(e::Pseudo, h::UInt) = hash(e.name, hash(e.dir,  h))
 path(p::Pseudo) = joinpath(p.dir, p.name)
 
 """

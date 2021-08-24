@@ -80,6 +80,8 @@ function Base.:(==)(e1::Exec, e2::Exec)
     end
 end
 
+Base.hash(e::Exec, h::UInt) = hash(e.exec, hash(e.dir, hash(e.modules, hash(e.flags, h))))
+
 function Base.string(e::Exec)
     direxec = joinpath(e.dir, e.exec)
     str = "$direxec"
