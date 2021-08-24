@@ -263,27 +263,26 @@ exists_job(d::AbstractString) = ispath(d) && ispath(joinpath(d, "job.tt"))
 
 "Finds the output files for each of the calculations of a job, and groups all found data into a dictionary."
 function outputdata(job::Job, calculations::Vector{Calculation})
-    if ispath(joinpath(job, "results.jld2"))
-        datadict = JLD2.load(joinpath(job, "results.jld2"))["outputdata"]
+    respath = joinpath(job, "results.jld2")
+    if ispath(respath)
+        datadict = JLD2.load(respath)["outputdata"]
     else
         datadict = Dict{String,Dict{Symbol,Any}}()
     end
-    stime = isempty(datadict) ? 0.0 : Jobs.starttime(job)
-    files = Dict{String, String}()
+    stime = isempty(datadict) ? 0.0 : mtime(respath)
+    new_data = false
     for calculation in calculations
         p = Calculations.outpath(calculation)
         if mtime(p) > stime
             tout = outputdata(calculation)
             if !isempty(tout)
                 datadict[calculation.name] = tout
-                files[calculation.name] = p
+                new_data = true
             end
         end
     end
-    JLD2.save(joinpath(job, "results.jld2"), "outputdata", datadict)
-    tmp = tempname() * ".jld2"
-    out = JLD2.save(tmp, "outputdata", datadict, "files", files)
-    return tmp
+    new_data && JLD2.save(respath, "outputdata", datadict)
+    return respath
 end
 outputdata(job::Job; kwargs...) = outputdata(job, job.calculations; kwargs...)
 

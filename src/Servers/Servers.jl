@@ -1,5 +1,5 @@
 module Servers
-using StructTypes, JLD2, Distributed, HTTP, REPL.TerminalMenus, Parameters
+using StructTypes, Distributed, JSON3, HTTP, REPL.TerminalMenus, Parameters
 using ..DFControl
 using ..Utils
 
@@ -45,8 +45,8 @@ function Server(s::String)
     end
     try
         @info "Trying to pull existing configuratiaon from $username@$domain..."
-        localpath = joinpath(SERVER_DIR, name*".jld2")
-        remotepath = ".julia/config/DFControl/servers/localhost.jld2"
+        localpath = joinpath(SERVER_DIR, name*".json")
+        remotepath = ".julia/config/DFControl/servers/localhost.json"
         run(`scp $(username * "@" * domain):$remotepath $localpath`)
         tserver = load_server(name)
         tserver.name = name
@@ -105,7 +105,7 @@ Base.joinpath(s::Server, p...) = joinpath(s.default_jobdir, p...)
 
 function known_servers(fuzzy = "")
     if ispath(SERVER_DIR)
-        servers = [JLD2.load(joinpath(SERVER_DIR, s))["server"]
+        servers = [JSON3.read(read(joinpath(SERVER_DIR, s), String), Server)
                    for s in filter(x -> occursin(fuzzy, x), readdir(SERVER_DIR))]
     else
         servers = Server[]
@@ -128,10 +128,10 @@ end
 
 function save(s::Server)
     mkpath(SERVER_DIR)
-    if ispath(joinpath(SERVER_DIR, s.name * ".jld2"))
+    if ispath(joinpath(SERVER_DIR, s.name * ".json"))
         @info "Updating previously existing configuration for server $s."
     end
-    JLD2.save(joinpath(SERVER_DIR, s.name * ".jld2"), "server", s)
+    JSON3.write(joinpath(SERVER_DIR, s.name * ".json"),  s)
 end
 
 ssh_string(s::Server) = s.username * "@" * s.domain
@@ -158,8 +158,8 @@ function Distributed.addprocs(server::Server, nprocs::Int = 1, args...; kwargs..
 end
 
 function remove_server!(name::String)
-    return ispath(joinpath(SERVER_DIR, name * ".jld2")) &&
-           rm(joinpath(SERVER_DIR, name * ".jld2"))
+    return ispath(joinpath(SERVER_DIR, name * ".json")) &&
+           rm(joinpath(SERVER_DIR, name * ".json"))
 end
 
 function isalive(s::Server)
@@ -254,4 +254,39 @@ function push(filename::String, server::Server, server_file::String)
     end
 end
 
+function server_command(s::Server, cmd)
+    out = Pipe()
+    err = Pipe()
+    if s.domain == "localhost"
+        process = run(pipeline(ignorestatus(cmd), stdout=out, stderr=err))
+    else
+        process = run(pipeline(ignorestatus(`ssh $(ssh_string(s)) source /etc/profile '&''&' $cmd`), stdout=out, stderr=err))
+    end
+    close(out.in)
+    close(err.in)
+
+    stdout = String(read(out))
+    stderr = String(read(err))
+    return (
+      stdout = stdout,
+      stderr = stderr,
+      code = process.exitcode
+    )            
+end
+
+function has_modules(s::Server)
+    try 
+        server_command(s, `module avail`).code == 0
+    catch
+        false
+    end
+end
+
+function available_modules(s::Server)
+    if has_modules(s)
+        return server_command(s, `module avail`)
+    else
+        return String[]
+    end
+end
 end

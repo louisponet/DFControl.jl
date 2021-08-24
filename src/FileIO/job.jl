@@ -7,6 +7,17 @@ function write_job_header(f, job::Job)
             write(f, line * "\n")
         end
     end
+    modules = AbstractString[] 
+    for e in vcat(map(x->x.execs, job.calculations)...)
+        for m in e.modules
+            if !(m ∈ modules)
+                push!(modules, m)
+            end
+        end
+    end
+    if !isempty(modules)
+        write(f, """module load $(join(modules, " "))\n""")
+    end
 end
 
 function writetojob(f, job, calculations::Vector{Calculation{Abinit}}; kwargs...)
@@ -180,17 +191,17 @@ function read_job_line(line)
             continue
         end
         if occursin("mpi", e)
-            push!(execs, Exec(efile, dir, Calculations.parse_mpi_flags(flags)))
+            push!(execs, Exec(efile, dir, Calculations.parse_mpi_flags(flags), String[]))
         elseif efile == "wannier90.x"
-            push!(execs, Exec(efile, dir, Calculations.parse_wan_execflags(flags)))
+            push!(execs, Exec(efile, dir, Calculations.parse_wan_execflags(flags), String[]))
         elseif any(occursin.(Calculations.QE_EXECS, (efile,)))
-            push!(execs, Exec(efile, dir, Calculations.parse_qe_execflags(flags)))
+            push!(execs, Exec(efile, dir, Calculations.parse_qe_execflags(flags), String[]))
         elseif any(occursin.(Calculations.ELK_EXECS, (efile,)))
             calculation = "elk.in"
             output = "elk.out"
             push!(execs, Exec(; exec = efile, dir = dir))
         else
-            push!(execs, Exec(efile, dir, Calculations.parse_generic_flags(flags)))
+            push!(execs, Exec(efile, dir, Calculations.parse_generic_flags(flags), String[]))
         end
     end
     return execs, calculation, output, run
@@ -292,6 +303,38 @@ function read_job_calculations(job_file::String)
         structure = Structure()
         @warn "No valid structures could be read from calculation files."
     end
+
+    module_line_ids = findall(x -> occursin("module", x), header)
+    
+    if module_line_ids !== nothing
+        module_lines = header[module_line_ids]
+        deleteat!(header, module_lines)
+        modules = map(x -> split(x)[end], module_lines)
+    end
+    #TODO cleanup
+    known_es = Calculations.load_execs()
+    execs = filter(x -> !any(y -> y.dir == x.dir && y.exec == x.exec, known_es), unique(vcat(map(x->x.execs, cs)...)))
+    for e in execs
+        i = 1
+        runnable = Calculations.isrunnable(e)
+        while length(e.modules) < length(modules) && !runnable
+            push!(e.modules, modules[i])
+            runnable = Calculations.isrunnable(e)
+            i+=1
+        end
+        if runnable
+            Calculations.maybe_register(e)
+        end
+    end
+    for c in cs
+        for e1 in c.execs
+            for e in execs
+                if e.dir == e1.dir && e.exec == e1.exec
+                    e1.modules = e.modules
+                end
+            end
+        end
+    end
+    
     return (; name, header, calculations = cs, structure)
 end
-

@@ -1,3 +1,12 @@
+const EXEC_FILE = DFC.config_path("registered_execs.json")
+
+function load_execs()
+    return ispath(EXEC_FILE) ? JSON3.read(read(EXEC_FILE, String), Vector{Exec}) : Exec[]
+end
+function write_execs(execs)
+    return JSON3.write(EXEC_FILE, execs)
+end
+
 mutable struct ExecFlag{T}
     symbol      :: Symbol
     name        :: String
@@ -35,9 +44,10 @@ Will first transform `flags` into a `Vector{ExecFlag}`, and construct the [`Exec
     exec::String = ""
     dir::String = ""
     flags::Vector{ExecFlag} = ExecFlag[]
+    modules::Vector{AbstractString} = String[]
 end
 
-function Exec(exec::String, dir::String, flags::Pair...)
+function Exec(exec::String, dir::String, flags::Pair...; modules=String[])
     _flags = ExecFlag[]
     ismpi = occursin("mpi", exec)
     for (f, v) in flags
@@ -47,7 +57,7 @@ function Exec(exec::String, dir::String, flags::Pair...)
         end
         push!(_flags, ExecFlag(f => v))
     end
-    return Exec(exec, dir, _flags)
+    return Exec(exec, dir, _flags, modules)
 end
 
 StructTypes.StructType(::Type{Exec}) = StructTypes.Mutable()
@@ -65,9 +75,8 @@ function Base.:(==)(e1::Exec, e2::Exec)
         for f in e1.flags
             f2 = getfirst(isequal(f), e2.flags)
             f2 === nothing && return false
-            f == f2 && return true
         end
-        return true
+        return all(x->x ∈ e1.modules, e2.modules)
     end
 end
 
@@ -124,6 +133,63 @@ function rm_flags!(exec::Exec, flags...)
         end
     end
     return exec.flags
+end
+
+function isrunnable(e::Exec)
+    # To find the path to then ldd on
+    fullpath = !isempty(e.dir) ? joinpath(e.dir, e.exec) : Sys.which(e.exec)
+    if fullpath !== nothing && ispath(fullpath)
+        out = Pipe()
+        err = Pipe()
+        #by definition by submitting something with modules this means the server has them
+        if !isempty(e.modules)
+            cmd = `echo "source /etc/profile && module load $(join(e.modules, " ")) && ldd $fullpath"`
+        else
+            cmd = `echo "source /etc/profile && ldd $fullpath"`
+        end
+        run(pipeline(pipeline(cmd, stdout=ignorestatus(`bash`)),stdout = out, stderr=err))
+        close(out.in)
+        close(err.in)
+
+        stderr = String(read(err))
+        stdout = String(read(out))
+        # This basically means that the executable would run
+        return !occursin("not found", stdout) && !occursin("not found", stderr)
+    else
+        return false
+    end
+end
+
+"Verifies the validity of an executable and also registers it if it wasn't known before."
+function verify_exec(e::Exec)
+    valid = isrunnable(e)
+    if valid
+        maybe_register(e)
+    end
+    return valid
+end
+
+function maybe_register(e::Exec)
+    known_execs = load_execs()
+    preexisting = getfirst(x-> x.dir == e.dir && x.exec == e.exec,  known_execs)
+    if preexisting === nothing
+        empty!(e.flags)
+        push!(known_execs, e)
+    elseif length(preexisting.modules) > length(e.modules)
+        preexisting.modules = e.modules
+    end
+    write_execs(known_execs)
+end
+
+"Finds all executables that are known with the same exec name."
+function known_execs(exec::AbstractString)
+    out = Exec[] 
+    for e in load_execs()
+        if e.exec == exec
+            push!(out, e)
+        end
+    end
+    return out
 end
 
 #### MPI Exec Functionality ###
@@ -269,13 +335,6 @@ has_parseable_exec(l::String) = occursin(">", l) && any(occursin.(parseable_exec
 
 isparseable(exec::Exec) = exec.exec ∈ parseable_execs()
 
-function verify_exec(e::Exec)
-    if !isempty(e.dir) && ispath(joinpath(e.dir, e.exec))
-        return true
-    else
-        return Sys.which(e.exec) !== nothing
-    end
-end
 
 function parse_generic_flags(flags::Vector{<:SubString})
     out = ExecFlag[]

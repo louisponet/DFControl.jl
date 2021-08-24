@@ -37,18 +37,19 @@ function spawn_worker(job::Job)
         to_run = """begin
         using DFControl: Service
         using DFControl.Service: outputdata
-        job = Service.load_job(".")
-        if !Service.isrunning(job.dir)
-            @async run($cmd)
-        end
-        while Service.isrunning(job.dir)
-            sleep(10)
-        end
         end
         """
-            
         Distributed.remotecall_eval(Distributed.Main, proc, Base.Meta.parse(to_run))
-        f = remotecall(outputdata, proc, job) 
+        @everywhere function run_job(job)
+            if !Service.isrunning(job.dir)
+                run($cmd)
+            end
+            while Service.isrunning(job.dir)
+                sleep(10)
+            end
+            outputdata(job)
+        end
+        f = remotecall(Distributed.Main.run_job, proc, job)
         return proc, f
     end
 end
@@ -83,7 +84,7 @@ save_running_jobs(job_dirs_procs) = write(RUNNING_JOBS_FILE, join(keys(job_dirs_
 # Additional files are packaged with the job
 function handle_job_submission!(job_dirs_procs)
     if ispath(PENDING_JOBS_FILE)
-        pending_job_submissions = readlines(PENDING_JOBS_FILE)
+        pending_job_submissions = filter(!isempty, readlines(PENDING_JOBS_FILE))
         if !isempty(pending_job_submissions)
             for j in pending_job_submissions
                 job = load_job(j)
