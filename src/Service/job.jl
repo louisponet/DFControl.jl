@@ -265,7 +265,7 @@ exists_job(d::AbstractString) = ispath(d) && ispath(joinpath(d, "job.tt"))
 function outputdata(job::Job, calculations::Vector{Calculation})
     respath = joinpath(job, "results.jld2")
     if ispath(respath)
-        @time datadict = JLD2.load(respath)["outputdata"]
+        datadict = JLD2.load(respath)["outputdata"]
     else
         datadict = Dict{String,Dict{Symbol,Any}}()
     end
