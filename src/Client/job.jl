@@ -5,8 +5,6 @@ function Jobs.Job(dir::AbstractString, s = "localhost"; version::Int = -1)
     if occursin(Jobs.VERSION_DIR_NAME, dir)
         error("It is not allowed to directly load a job version, please use `Job($dir, version=$(splitdir(dir)[end]))`")
     end
-    # server = Server(s)
-    # dir = dir[1] == '/' ? dir[2:end] : dir
     resp = HTTP.get(server, "/jobs/" * dir, [], JSON3.write(version))
     # Supplied dir was not a valid path, so we ask
     # previously registered jobs on the server that
@@ -16,7 +14,6 @@ function Jobs.Job(dir::AbstractString, s = "localhost"; version::Int = -1)
         dir === nothing && return
         resp = HTTP.get(server, "/jobs/" * dir, [], JSON3.write(version))
     end
-    # @show String(resp.body)
     job = JSON3.read(resp.body, Job)
     job.server = server.name
     if haskey(job.metadata, :timestamp)
@@ -197,13 +194,13 @@ function outputdata(job::Job; extra_parse_funcs = nothing)
 end
 
 function verify_execs(job::Job, server::Server)
-    for e in unique(vcat(map(x->x.execs, job.calculations)...))
+    for e in unique(map(x->x.exec, job.calculations))
         if !JSON3.read(HTTP.get(server, "/verify_exec/", [], JSON3.write(e)).body, Bool)
             possibilities = JSON3.read(HTTP.get(server, "/known_execs/" * e.exec).body, Vector{Calculations.Exec})
             replacement = length(possibilities) == 1 ? possibilities[1] : getfirst(x -> x.dir == e.dir, possibilities)
             if replacement !== nothing
                 @warn "Modules mismatched, but found a matching replacement executable on the server with the correct modules.\nUsing that one..."
-                for e1 in vcat(map(x->x.execs, job.calculations)...)
+                for e1 in map(x->x.exec, job.calculations)
                     if e1.exec == replacement.exec
                         e1.modules = replacement.modules
                         e1.dir = replacement.dir

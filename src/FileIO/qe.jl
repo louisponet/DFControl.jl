@@ -988,7 +988,7 @@ end
 Reads a Quantum Espresso calculation file. The `QE_EXEC` inside execs gets used to find which flags are allowed in this calculation file, and convert the read values to the correct Types.
 Returns a `Calculation{QE}` and the `Structure` that is found in the calculation.
 """
-function qe_read_calculation(filename; execs = [Exec(; exec = "pw.x")], run = true,
+function qe_read_calculation(filename; exec = Exec(; exec = "pw.x"), run = true,
                              structure_name = "noname")
     @assert ispath(filename) "$filename is not a valid path."
     t_lines = read(filename) |>
@@ -1150,7 +1150,7 @@ function qe_read_calculation(filename; execs = [Exec(; exec = "pw.x")], run = tr
     pop!.((parsed_flags,), [:prefix, :outdir], nothing)
     dir, file = splitdir(filename)
     return Calculation{QE}(; name = splitext(file)[1], dir = dir, flags = parsed_flags,
-                           data = datablocks, execs = execs, run = run), structure
+                           data = datablocks, exec = exec, run = run), structure
 end
 
 function qe_writeflag(f, flag, value)
@@ -1195,7 +1195,7 @@ function save(calculation::Calculation{QE}, structure,
                                                         "_" => "-"); print = false)
     end
     open(filename, "w") do f
-        if findfirst(x -> x.exec == "ph.x", calculation.execs) !== nothing
+        if x.exec.exec == "ph.x"
             write(f, "--\n")
         end
         writeflag(flag_data) = qe_writeflag(f, flag_data[1], flag_data[2])
@@ -1236,7 +1236,7 @@ function save(calculation::Calculation{QE}, structure,
             map(writeflag, [(flag, data) for (flag, data) in flags])
             write(f, "/\n\n")
         end
-        if findfirst(x -> x.exec == "pw.x", calculation.execs) !== nothing
+        if calculation.exec.exec == "pw.x"
             write_structure(f, calculation, structure)
         end
         for dat in calculation.data
@@ -1324,5 +1324,5 @@ function qe_generate_pw2wancalculation(c::Calculation{Wannier90}, nscf::Calculat
     run = get(c, :preprocess, false) && c.run
     return Calculation{QE}(; name = "pw2wan_$(flags[:seedname])", dir = c.dir,
                            flags = flags, data = InputData[],
-                           execs = [runexecs[1], pw2wanexec], run = run)
+                           exec = pw2wanexec, run = run)
 end

@@ -1,4 +1,5 @@
-function write_job_header(f, job::Job)
+function write_job_header(f, job::Job, runtime_enviroment)
+    runtime_enviroment !== nothing && write(f, runtime_enviroment)
     job_header = job.header
     for line in job_header
         if occursin("\n", line)
@@ -8,7 +9,7 @@ function write_job_header(f, job::Job)
         end
     end
     modules = AbstractString[] 
-    for e in vcat(map(x->x.execs, job.calculations)...)
+    for e in map(x->x.exec, job.calculations)
         for m in e.modules
             if !(m ∈ modules)
                 push!(modules, m)
@@ -20,50 +21,56 @@ function write_job_header(f, job::Job)
     end
 end
 
-function writetojob(f, job, calculations::Vector{Calculation{Abinit}}; kwargs...)
-    abinit_jobfiles = write_abi_datasets(calculations, job.dir; kwargs...)
-    abifiles = String[]
-    num_abi = 0
-    for (filename, pseudos, runcommand) in abinit_jobfiles
-        push!(abifiles, filename)
-        file, ext = splitext(filename)
-        write(f,
-              "$runcommand << !EOF\n$filename\n$(file * ".out")\n$(job.name * "_Xi$num_abi")\n$(job.name * "_Xo$num_abi")\n$(job.name * "_Xx$num_abi")\n")
-        for pp in pseudos
-            write(f, "$pp\n")
-        end
-        write(f, "!EOF\n")
-        num_abi += 1
-    end
-    return abifiles
-end
+# function writetojob(f, job, calculations::Vector{Calculation{Abinit}}, runtime_enviroment; kwargs...)
+#     abinit_jobfiles = write_abi_datasets(calculations, job.dir; kwargs...)
+#     abifiles = String[]
+#     num_abi = 0
+#     for (filename, pseudos, runcommand) in abinit_jobfiles
+#         push!(abifiles, filename)
+#         file, ext = splitext(filename)
+#         write(f,
+#               "$runcommand << !EOF\n$filename\n$(file * ".out")\n$(job.name * "_Xi$num_abi")\n$(job.name * "_Xo$num_abi")\n$(job.name * "_Xx$num_abi")\n")
+#         for pp in pseudos
+#             write(f, "$pp\n")
+#         end
+#         write(f, "!EOF\n")
+#         num_abi += 1
+#     end
+#     return abifiles
+# end
 
-function writetojob(f, job, calculations::Vector{Calculation{Elk}}; kwargs...)
+function writetojob(f, job, calculations::Vector{Calculation{Elk}}, runtime_enviroment; kwargs...)
     save(calculations, job.structure; kwargs...)
     should_run = any(map(x -> x.run, calculations))
     if !should_run
         write(f, "#")
     end
-    writeexec.((f,), calculations[1].execs)
+    writeexec(f, calculations[1].exec, runtime_enviroment)
     write(f, "< $(calculations[1].infile) > $(calculations[1].outfile)\n")
     return calculations
 end
 
-writeexec(f, exec::Exec) = write(f, string(exec) * " ")
+function writeexec(f, exec::Exec, runtime_enviroment)
+    if exec.parallel
+        @assert runtime_enviroment !== nothing "Exec $(exec.exec) flagged as parallel but no valid runtime_environment was supplied."
+        write(f, runtime_enviroment.MPI_command * " ")
+    end
+    write(f, string(exec) * " ")
+end
 
-function writetojob(f, job, calculation::Calculation; kwargs...)
+function writetojob(f, job, calculation::Calculation, runtime_environment; kwargs...)
     filename   = calculation.infile
     should_run = calculation.run
     save(calculation, job.structure; kwargs...)
     if !should_run
         write(f, "#")
     end
-    writeexec.((f,), calculation.execs)
+    writeexec(f, calculation.exec, runtime_environment)
     write(f, "< $filename > $(calculation.outfile)\n")
     return (calculation,)
 end
 
-function writetojob(f, job, _calculation::Calculation{Wannier90}; kwargs...)
+function writetojob(f, job, _calculation::Calculation{Wannier90}, runtime_enviroment; kwargs...)
     filename   = _calculation.outfile
     should_run = _calculation.run
     id         = findfirst(isequal(_calculation), job.calculations)
@@ -71,7 +78,7 @@ function writetojob(f, job, _calculation::Calculation{Wannier90}; kwargs...)
 
     nscf_calc = getfirst(x -> Calculations.isnscf(x), job.calculations)
     if nscf_calc !== nothing
-        runexec = nscf_calc.execs
+        runexec = nscf_calc.exec
         # For elk the setup necessary for the wan_calc needs to be done before writing the wan calculation
         # because it's inside elk.in
         if eltype(nscf_calc) == QE
@@ -83,12 +90,12 @@ function writetojob(f, job, _calculation::Calculation{Wannier90}; kwargs...)
             if !preprocess || !should_run
                 write(f, "#")
             end
-            writeexec.((f,), _calculation.execs)
+            writeexec(f, _calculation.exec, runtime_enviroment)
             write(f,
                   "-pp $filename > $(joinpath(_calculation.dir, _calculation.outfile))\n")
 
             save(_calculation, job.structure; kwargs...)
-            writetojob(f, job, pw2wancalculation; kwargs...)
+            writetojob(f, job, pw2wancalculation, runtime_enviroment; kwargs...)
             _calculation[:preprocess] = preprocess
             wannier_plot !== nothing && (_calculation[:wannier_plot] = wannier_plot)
         elseif eltype(nscf_calc) == Elk
@@ -99,7 +106,7 @@ function writetojob(f, job, _calculation::Calculation{Wannier90}; kwargs...)
     if !should_run
         write(f, "#")
     end
-    writeexec.((f,), _calculation.execs)
+    writeexec(f, _calculation.exec, runtime_enviroment)
     write(f, "$filename > $(joinpath(_calculation.dir, _calculation.outfile))\n")
     return (_calculation,)
 end
@@ -132,9 +139,18 @@ Kwargs will be passed down to various writetojob functions.
 """
 function writejobfiles(job::Job; kwargs...)
     # rm.(joinpath.(Ref(job.dir), searchdir(job.dir, ".in")))
+    if job.runtime_environment != ""
+        runtime_environment = Jobs.load_runtime_environment(job.runtime_environment)
+        @assert runtime_enviroment === nothing "RuntimeEnvironment with name $(job.runtime_enviroment) not found!"
+        write(f, runtime_enviroment)
+    else
+        runtime_enviroment = nothing
+    end
+
     open(joinpath(job.dir, "job.tt"), "w") do f
         write(f, "#!/bin/bash\n")
         write(f, "#SBATCH -J $(job.name) \n")
+        runtime_enviroment !== nothing && write(f, runtime_enviroment)
         write_job_header(f, job)
         write_job_preamble(f, job)
         written_calculations = Calculation[]
@@ -238,7 +254,7 @@ function calculationparser(exec::Exec)
     end
 end
 
-function read_job_calculations(job_file::String)
+function read_job_script(job_file::String)
     dir = splitdir(job_file)[1]
     name = ""
     header = Vector{String}()
@@ -259,9 +275,15 @@ function read_job_calculations(job_file::String)
                     c = (nothing, nothing)
                 else
                     command = getfirst(Calculations.isparseable, execs)
-                    c = command != nothing ?
-                        calculationparser(command)(inpath; execs = execs, run = run) :
-                        (nothing, nothing)
+                    if command !== nothing
+                        #TODO HACK: length(execs)==1 to say it's not parallel?
+                        if length(execs) == 1
+                            command.parallel = false
+                        end
+                        c = calculationparser(command)(inpath; exec = command, run = run)
+                    else
+                        c = (nothing, nothing)
+                    end
                 end
                 if c[1] !== nothing
                     c[1].outfile = output
@@ -284,9 +306,8 @@ function read_job_calculations(job_file::String)
                     end
                 end
             elseif occursin("#SBATCH", line)
-                if occursin("-J", line)
-                    name = split(line)[end]
-                    name = name == "-J" ? "noname" : name
+                if occursin("-J", line) || occursin("--job-name", line)
+                    name = split(split(line, "=")[end])[end]
                 else
                     push!(header, line)
                 end
@@ -313,7 +334,7 @@ function read_job_calculations(job_file::String)
     end
     #TODO cleanup
     known_es = Calculations.load_execs()
-    execs = filter(x -> !any(y -> y.dir == x.dir && y.exec == x.exec, known_es), unique(vcat(map(x->x.execs, cs)...)))
+    execs = filter(x -> !any(y -> y.dir == x.dir && y.exec == x.exec, known_es), unique(map(x->x.exec, cs)))
     for e in execs
         i = 1
         runnable = Calculations.isrunnable(e)
@@ -327,14 +348,24 @@ function read_job_calculations(job_file::String)
         end
     end
     for c in cs
-        for e1 in c.execs
-            for e in [execs; known_es]
-                if e.dir == e1.dir && e.exec == e1.exec
-                    e1.modules = e.modules
-                end
+        e1 = c.exec
+        for e in [execs; known_es]
+            if e.dir == e1.dir && e.exec == e1.exec
+                e1.modules = e.modules
             end
         end
     end
+
+    runtime = Jobs.environment_from_jobscript(job_file)
+    name = Jobs.environment_name(runtime)
+    if name !== nothing
+        runtime_environment = name
+        #TODO only works with slurm!!!
+        deleteat!(header, findall(x -> x[1:7] == "#SBATCH", header))
+        deleteat!(header, findall(x -> x[1:6] == "export", header))
+    else
+        runtime_environment = ""
+    end
     
-    return (; name, header, calculations = cs, structure)
+    return (; name, header, calculations = cs, structure, runtime_environment)
 end

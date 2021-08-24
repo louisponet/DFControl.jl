@@ -78,7 +78,7 @@ push!(QECalculationInfos,
                         QEDataBlockInfo[]))
 
 function qe_calculation_info(calculation::Calculation{QE})
-    return getfirst(x -> occursin(x.exec, calculation.execs[end].exec), QECalculationInfos)
+    return getfirst(x -> occursin(x.exec, calculation.exec.exec), QECalculationInfos)
 end
 function qe_calculation_info(exec::AbstractString)
     return getfirst(x -> occursin(x.exec, exec), QECalculationInfos)
@@ -151,11 +151,11 @@ function qe_block_variable(exec::AbstractString, flagname)
 end
 
 function qe_exec(calculation::Calculation{QE})
-    exec = getfirst(x -> x.exec ∈ QE_EXECS, calculation.execs)
-    if exec === nothing
+    exec = 
+    if !(calculation.exec ∈ QE_EXECS)
         error("Calculation $calculation does not have a valid QE executable, please set it first.")
     end
-    return exec
+    return calculation.exec
 end
 
 function qe_block_variable(calculation::Calculation, flagname)
@@ -172,8 +172,8 @@ isnscf(c::Calculation{QE})    = get(c, :calculation, nothing) == "nscf"
 isscf(c::Calculation{QE})     = get(c, :calculation, nothing) == "scf"
 isvcrelax(c::Calculation{QE}) = get(c, :calculation, nothing) == "vc-relax"
 isrelax(c::Calculation{QE})   = get(c, :calculation, nothing) == "relax"
-isprojwfc(c::Calculation{QE}) = findfirst(x -> x.exec == "projwfc.x", c.execs) !== nothing
-ishp(c::Calculation{QE}) = findfirst(x -> x.exec == "hp.x", c.execs) !== nothing
+isprojwfc(c::Calculation{QE}) = c.exec.exec == "projwfc.x"
+ishp(c::Calculation{QE}) = c.exec.exec == "hp.x"
 
 function ispw(c::Calculation{QE})
     return isbands(c) || isnscf(c) || isscf(c) || isvcrelax(c) || isrelax(c)
@@ -188,7 +188,7 @@ end
 function outfiles(c::Calculation{QE})
     files = [outpath(c)]
     for (is, fuzzies) in zip(("projwfc.x", "hp.x"), (("pdos",), ("Hubbard_parameters",)))
-        if any(x -> x.exec == is, c.execs)
+        if c.exec.exec == is
             for f in fuzzies
                 append!(files, searchdir(c, f))
             end
@@ -355,14 +355,9 @@ function gencalc_projwfc(template::Calculation{QE}, Emin, Emax, DeltaE, extrafla
     end
     tdegaussflag = get(template, :degauss, nothing)
     degauss = tdegaussflag !== nothing ? tdegaussflag : 0.0
-    if length(template.execs) == 2
-        excs = [template.execs[1],
-                Exec(; exec = "projwfc.x", dir = template.execs[end].dir)]
-    else
-        excs = [Exec(; exec = "projwfc.x", dir = template.execs[end].dir)]
-    end
+    exec = Exec(deepcopy(template.exec), exec = "projwfc.x")
 
-    out = Calculation(deepcopy(template); name = name, execs = excs, data = InputData[])
+    out = Calculation(deepcopy(template); name = name, exec = exec, data = InputData[])
     set_name!(out, "projwfc")
     empty!(out.flags)
     set_flags!(out, :Emin => Emin, :Emax => Emax, :DeltaE => DeltaE, :ngauss => ngauss,

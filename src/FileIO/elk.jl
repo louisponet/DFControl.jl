@@ -66,7 +66,7 @@ end
 Reads an Elk calculation file. The `ELK_EXEC` inside execs gets used to find which flags are allowed in this calculation file, and convert the read values to the correct Types.
 Returns a `Calculation{Elk}` and the `Structure` that is found in the calculation.
 """
-function elk_read_calculation(fn::String; execs = [Exec(; exec = "elk")], run = true,
+function elk_read_calculation(fn::String; exec = Exec(; exec = "elk"), run = true,
                               structure_name = "noname")
     blocknames_flaglines = Dict{Symbol,Any}()
     atoms = Atom[]
@@ -143,7 +143,7 @@ function elk_read_calculation(fn::String; execs = [Exec(; exec = "elk")], run = 
         # flags[:elk2wan_tasks] = wan_tasks
         push!(calculations,
               Calculation{Elk}(; name = "elk2wannier", dir = dir, flags = flags,
-                               execs = execs, run = true))
+                               exec = exec, run = true))
     end
     for f in (:ngrid, :vkloff, :plot1d, :plot2d, :plot3d)
         haskey(blocknames_flaglines, f) && pop!(blocknames_flaglines, f)
@@ -180,13 +180,13 @@ function find_data(flags, blocknames_flaglines)
     return data
 end
 
-function calculation_from_task(task, blocknames_flaglines, dir, execs, run)
+function calculation_from_task(task, blocknames_flaglines, dir, exec, run)
     if task ∈ ["0", "1", "2", "3", "5"]
         data = find_data((:ngridk, :vkloff), blocknames_flaglines)
     elseif task ∈ ["20", "21"]
         data = find_data((:plot1d, :plot2d, :plot3d), blocknames_flaglines)
     end
-    return Calculation{Elk}(; name = task, dir = dir, data = data, execs = execs, run = run)
+    return Calculation{Elk}(; name = task, dir = dir, data = data, exec = exec, run = run)
 end
 
 function parse(::Type{UnitRange{Int}}, l::AbstractString)

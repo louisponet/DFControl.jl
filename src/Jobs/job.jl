@@ -9,7 +9,8 @@ const TEMP_CALC_DIR = "outputs"
           metadata          ::Dict = Dict(),
           version           ::Int = last_job_version(dir),
           copy_temp_folders ::Bool = false, 
-          server            ::String = getdefault_server())
+          server            ::String = getdefault_server(),
+          runtime_environment::String ="")
 
 A [`Job`](@ref) embodies a set of [`Calculations`](@ref Calculation) to be ran in directory `dir`, with the [`Structure`](@ref) as the subject.
 ## Keywords/further attributes
@@ -20,6 +21,7 @@ A [`Job`](@ref) embodies a set of [`Calculations`](@ref Calculation) to be ran i
 - `version`: the current version of the job.
 - `copy_temp_folders`: whether or not the temporary directory associated with intermediate calculation results should be copied when storing a job version. *CAUTION* These can be quite large.
 - `server`: [`Server`](@ref) where to run the [`Job`](@ref).
+- `runtime_environment`: [`RuntimeEnvironment`](@ref) to be used for running the [`Job`](@ref).
  
     Job(job_name::String, structure::Structure, calculations::Vector{<:Calculation}, common_flags::Pair{Symbol, <:Any}...; kwargs...)
 
@@ -42,8 +44,9 @@ The `kwargs...` will be passed to the [`Job`](@ref) constructor.
     version::Int = -1
     copy_temp_folders::Bool = false
     server::String = "localhost"
+    runtime_enviroment::String = ""
     function Job(name, structure, calculations, dir, header, metadata, version,
-                 copy_temp_folders, server)
+                 copy_temp_folders, server, runtime_enviroment)
         if dir[end] == '/'
             dir = dir[1:end-1]
         end
@@ -60,7 +63,7 @@ The `kwargs...` will be passed to the [`Job`](@ref) constructor.
             end
         end
         out = new(name, structure, calculations, dir, header, metadata, version,
-                  copy_temp_folders, server)
+                  copy_temp_folders, server, runtime_enviroment)
         return out
     end
 end

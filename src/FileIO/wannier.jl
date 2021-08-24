@@ -220,7 +220,7 @@ wan_read_calculation(f::IO) = wan_read_calculation(Float64, f)
 Reads a `Calculation{Wannier90}` and the included `Structure` from a WANNIER90 calculation file.
 """
 function wan_read_calculation(filename::String, T = Float64;
-                              execs = [Exec(; exec = "wannier90.x")], run = true,
+                              exec = Exec(; exec = "wannier90.x"), run = true,
                               structure_name = "NoName")
     flags       = Dict{Symbol,Any}()
     data        = InputData[]
@@ -236,7 +236,7 @@ function wan_read_calculation(filename::String, T = Float64;
     flags[:preprocess] = Calculations.hasflag(getfirst(x -> x.exec == "wannier90.x", execs),
                                               :pp) ? true : false
     return Calculation{Wannier90}(; name = splitext(file)[1], dir = dir, flags = flags,
-                                  data = data, execs = execs, run = run), structure
+                                  data = data, exec = exec, run = run), structure
 end
 
 function wan_parse_array_value(eltyp, value_str)

@@ -111,7 +111,7 @@ function df_show(io::IO, c::Calculation)
     df_show_type(io, c)
     s = """name  = $(c.name)
     dir   = $(c.dir)
-    execs = $(join([e.exec for e in c.execs],", "))
+    exec = $(c.exec.exec)
     run   = $(c.run)
     data  = $([e.name for e in c.data])
     flags:"""

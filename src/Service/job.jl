@@ -1,3 +1,6 @@
+
+
+
 function load_job(job_dir::AbstractString, version::Int = -1)
     if ispath(job_dir)
         if version != -1
@@ -11,7 +14,7 @@ function load_job(job_dir::AbstractString, version::Int = -1)
         end
         job = Job(;
                   merge((dir = real_path, version = real_version),
-                        FileIO.read_job_calculations(joinpath(real_path, "job.tt")))...)
+                        FileIO.read_job_script(joinpath(real_path, "job.tt")))...)
         Jobs.maybe_register_job(job)
         return job
     else
@@ -177,7 +180,7 @@ function isrunning(job_dir::String)
         i = last_running_calculation(job)
         i === nothing && return false
         l = job[i]
-        codeexec = l.execs[end].exec
+        codeexec = l.exec.exec
         try
             pids = parse.(Int, split(read(`pgrep $codeexec`, String)))
             if isempty(pids)
