@@ -308,7 +308,7 @@ function read_job_calculations(job_file::String)
     
     if module_line_ids !== nothing
         module_lines = header[module_line_ids]
-        deleteat!(header, module_lines)
+        deleteat!(header, module_line_ids)
         modules = map(x -> split(x)[end], module_lines)
     end
     #TODO cleanup
@@ -328,7 +328,7 @@ function read_job_calculations(job_file::String)
     end
     for c in cs
         for e1 in c.execs
-            for e in execs
+            for e in [execs; known_es]
                 if e.dir == e1.dir && e.exec == e1.exec
                     e1.modules = e.modules
                 end
