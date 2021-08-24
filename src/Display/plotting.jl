@@ -180,9 +180,9 @@ end
         @info "Found $(length(ats_orbs)) atomic orbitals that satisfy the minimum occupation:\n$ats_orbs"
 
         atom_colors = bands isa NamedTuple ?
-                      [plt_colors[1:2:2*length(ats_orbs)],
-                       plt_colors[2:2:2*length(ats_orbs)]] :
-                      [plt_colors[1:length(ats_orbs)]]
+                      [plt_colors[2:length(ats_orbs)+1],
+                       plt_colors[length(ats_orbs)+2:2*length(ats_orbs)+1]] :
+                      [plt_colors[2:length(ats_orbs)+1]]
 
         bands = bands isa NamedTuple ? bands : [bands]
         band_contribs = [[[zeros(length(ats_orbs)) for i in 1:length(kpoints)]
@@ -191,11 +191,10 @@ end
         @info "Reading pdos files and generating band coloring..."
         for (ia, (atsym, orb)) in enumerate(ats_orbs)
             energies, pd =outdat[projwfc.name][:energies], outdat[projwfc.name][:pdos][atsym][orb]
-
             #Plots PDOS
             if size(pd, 2) == 2
                 @series begin
-                    label --> "$(atsym)_$(orb)_up"
+                    label --> "$(atsym)_$(orb.name)_up"
                     yguide --> ""
                     subplot := doswindow
                     seriescolor := atom_colors[1][ia]
@@ -203,7 +202,7 @@ end
                     pd[:, 1], energies .- frmi
                 end
                 @series begin
-                    label --> "$(atsym)_$(orb)_down"
+                    label --> "$(atsym)_$(orb.name)_down"
                     yguide --> ""
                     subplot := doswindow
                     seriescolor := atom_colors[2][ia]
@@ -212,7 +211,7 @@ end
                 end
             else
                 @series begin
-                    label --> "$(atsym)_$(orb)"
+                    label --> "$(atsym)_$(orb.name)"
                     yguide --> ""
                     subplot := doswindow
                     seriescolor := atom_colors[1][ia]
@@ -232,7 +231,11 @@ end
             end
         end
         for contribs in band_contribs
-            contribs .= map(x -> normalize.(x), contribs)
+            for ib in contribs
+                for ik in 1:length(ib)
+                    ib[ik] .= normalize(ib[ik])
+                end
+            end
         end
         band_colors = [[[blend_color(band_contribs[i][ib][ik], atom_colors[i])
                          for ik in 1:length(kpoints)] for ib in 1:length(window_ids[i])]

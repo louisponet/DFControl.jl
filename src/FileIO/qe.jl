@@ -649,7 +649,7 @@ function pdos(c::Calculation{QE})
         return (Float64[], Dict{Symbol, Array})
     end
     atsyms = Symbol.(unique(map(x -> x[findfirst("(", x)[1]+1:findfirst(")", x)[1]-1],files)))
-    magnetic = (x->occursin("ldosup",x) && occursin("ldosdown",x))(readline(files[1]))
+    magnetic = (x->occursin("ldosup",x) && occursin("ldosdw",x))(readline(files[1]))
     soc = occursin(".5", files[1])
     @assert !isempty(files) "No pdos files found in calculation directory $(c.dir)"
     files = joinpath.((c,), files)
@@ -658,7 +658,7 @@ function pdos(c::Calculation{QE})
     for atsym in atsyms
         totdos[atsym] = Dict{Structures.Orbital, Array}()
         if kresolved
-            for f in filter(x->occursin(atsym, x), files)
+            for f in filter(x->occursin("("*string(atsym)*")", x), files)
                 id1 = findlast("(", f) + 1
                 orb = soc ? Structures.orbital(f[id1, findnext("_", f, id1+1)-1]) : Structures.orbital(f[id1, findnext(")", f, id1+1)-1])
                 if !haskey(totdos[atsym], orb)
@@ -676,7 +676,7 @@ function pdos(c::Calculation{QE})
                 end
             end
         else
-            for f in files
+            for f in filter(x->occursin("("*string(atsym)*")", x), files)
                 id1 = findlast("(", f)[1] + 1
                 orb = soc ? Structures.orbital(f[id1:findnext("_", f, id1+1)[1]-1]) : Structures.orbital(f[id1:findnext(")", f, id1+1)[1]-1])
                 if !haskey(totdos[atsym], orb)

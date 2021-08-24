@@ -178,11 +178,19 @@ function outputdata(job::Job; extra_parse_funcs = nothing)
     rm(local_temp)
     out = dat["outputdata"]
     if extra_parse_funcs !== nothing
-        for (n, f) in dat["files"]
-            local_f = tempname() * ".txt"
-            Servers.pull(server, f, local_f)
-            FileIO.parse_file(local_f, extra_parse_funcs, out = out[n])
-            rm(local_f)
+        for c in job.calculations
+            n = c.name
+            if haskey(out, n)
+                # try
+                    f = Calculations.outpath(c)
+                    local_f = tempname()
+                    Servers.pull(server, f, local_f)
+                    FileIO.parse_file(local_f, extra_parse_funcs, out = out[n])
+                    rm(local_f)
+                # catch
+                #     nothing
+                # end
+            end
         end
     end
     return out     
