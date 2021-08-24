@@ -204,8 +204,9 @@ function verify_execs(job::Job, server::Server)
             if replacement !== nothing
                 @warn "Modules mismatched, but found a matching replacement executable on the server with the correct modules.\nUsing that one..."
                 for e1 in vcat(map(x->x.execs, job.calculations)...)
-                    if e1.exec == replacement.exec && e1.dir == replacement.dir
+                    if e1.exec == replacement.exec
                         e1.modules = replacement.modules
+                        e1.dir = replacement.dir
                     end
                 end
             else
