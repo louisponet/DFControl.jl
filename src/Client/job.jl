@@ -191,7 +191,18 @@ end
 function verify_execs(job::Job, server::Server)
     for e in unique(vcat(map(x->x.execs, job.calculations)...))
         if !JSON3.read(HTTP.get(server, "/verify_exec/", [], JSON3.write(e)).body, Bool)
-            error("$e is not a valid executable on server $(server.name)")
+            possibilities = JSON3.read(HTTP.get(server, "/known_execs/" * e.exec).body, Vector{Calculations.Exec})
+            replacement = getfirst(x -> x.dir == e.dir, possibilities)
+            if replacement !== nothing
+                @warn "Modules mismatched, but found a matching replacement executable on the server with the correct modules.\nUsing that one..."
+                for e1 in vcat(map(x->x.execs, job.calculations)...)
+                    if e1.name == replacement.name && e1.dir == replacement.dir
+                        e1.modules = replacement.modules
+                    end
+                end
+            else
+                error("$e is not a valid executable on server $(server.name).\nReplace it with one of the following ones:\n$possibilities")
+            end
         end
     end
 end

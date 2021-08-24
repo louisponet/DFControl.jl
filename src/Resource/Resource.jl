@@ -44,6 +44,9 @@ HTTP.@register(ROUTER, "PUT", "/rm_pseudos", rm_pseudos!)
 verify_exec(req) = Service.verify_exec(JSON3.read(req.body, Exec))
 HTTP.@register(ROUTER, "GET", "/verify_exec", verify_exec)
 
+known_execs(req) = Service.known_execs(splitpath(req.target)[end])
+HTTP.@register(ROUTER, "GET", "/known_execs/*", known_execs)
+
 # RUNNING
 
 function requestHandler(req)

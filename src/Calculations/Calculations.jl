@@ -1,6 +1,6 @@
 module Calculations
 # This module handles all interactions with calculations
-using Parameters, StructTypes, LinearAlgebra
+using Parameters, StructTypes, LinearAlgebra, JSON3 
 using ..DFControl
 using ..Utils
 using ..Structures

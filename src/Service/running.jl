@@ -44,11 +44,10 @@ function spawn_worker(job::Job)
         while Service.isrunning(job.dir)
             sleep(10)
         end
-        end
+        outputdata(job)
         """
             
-        Distributed.remotecall_eval(Distributed.Main, proc, Base.Meta.parse(to_run))
-        f = remotecall(outputdata, proc, job) 
+        f = Distributed.remotecall_eval(Distributed.Main, proc, Base.Meta.parse(to_run))
         return proc, f
     end
 end

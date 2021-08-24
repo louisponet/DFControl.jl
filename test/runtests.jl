@@ -38,5 +38,5 @@ testdir = @__DIR__
     @time @testset "Remove defaults" begin
         include("rmdefaults_tests.jl")
     end
-    rm(DFControl.config_path("servers/localhost_test.jld2"))
+    rm(DFControl.config_path("servers/localhost_test.json"))
 end

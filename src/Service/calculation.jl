@@ -51,3 +51,4 @@ function outputdata(calculation::Calculation;
     return Dict{Symbol,Any}()
 end
 
+known_execs(args...) = Calculations.known_execs(args...)
