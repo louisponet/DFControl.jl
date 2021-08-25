@@ -983,7 +983,7 @@ function separate(f, A::AbstractVector{T}) where {T}
 end
 
 """
-    qe_read_calculation(filename, T=Float64; execs=[Exec(exec="pw.x")], run=true, structure_name="noname")
+    qe_read_calculation(filename, T=Float64; exec=Exec(exec="pw.x"), run=true, structure_name="noname")
 
 Reads a Quantum Espresso calculation file. The `QE_EXEC` inside execs gets used to find which flags are allowed in this calculation file, and convert the read values to the correct Types.
 Returns a `Calculation{QE}` and the `Structure` that is found in the calculation.
@@ -1003,8 +1003,6 @@ function qe_read_calculation(filename; exec = Exec(; exec = "pw.x"), run = true,
                       x -> filter(y -> !occursin("&", y), x) |>
                            x -> filter(y -> !(occursin("/", y) && length(y) == 1), x) |>
                                 x -> filter(!isempty, x)
-
-    exec = getfirst(x -> x.exec ∈ Calculations.QE_EXECS, execs)
 
     flaglines, lines = separate(x -> occursin("=", x), lines)
     flaglines = strip_split.(flaglines, "=")
@@ -1195,7 +1193,7 @@ function save(calculation::Calculation{QE}, structure,
                                                         "_" => "-"); print = false)
     end
     open(filename, "w") do f
-        if x.exec.exec == "ph.x"
+        if calculation.exec.exec == "ph.x"
             write(f, "--\n")
         end
         writeflag(flag_data) = qe_writeflag(f, flag_data[1], flag_data[2])

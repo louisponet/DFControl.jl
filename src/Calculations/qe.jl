@@ -151,8 +151,7 @@ function qe_block_variable(exec::AbstractString, flagname)
 end
 
 function qe_exec(calculation::Calculation{QE})
-    exec = 
-    if !(calculation.exec ∈ QE_EXECS)
+    if !(calculation.exec.exec ∈ QE_EXECS)
         error("Calculation $calculation does not have a valid QE executable, please set it first.")
     end
     return calculation.exec

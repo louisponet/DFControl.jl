@@ -1,5 +1,5 @@
-function write_job_header(f, job::Job, runtime_enviroment)
-    runtime_enviroment !== nothing && write(f, runtime_enviroment)
+function write_job_header(f, job::Job, environment)
+    environment !== nothing && write(f, environment)
     job_header = job.header
     for line in job_header
         if occursin("\n", line)
@@ -21,7 +21,7 @@ function write_job_header(f, job::Job, runtime_enviroment)
     end
 end
 
-# function writetojob(f, job, calculations::Vector{Calculation{Abinit}}, runtime_enviroment; kwargs...)
+# function writetojob(f, job, calculations::Vector{Calculation{Abinit}}, environment; kwargs...)
 #     abinit_jobfiles = write_abi_datasets(calculations, job.dir; kwargs...)
 #     abifiles = String[]
 #     num_abi = 0
@@ -39,38 +39,38 @@ end
 #     return abifiles
 # end
 
-function writetojob(f, job, calculations::Vector{Calculation{Elk}}, runtime_enviroment; kwargs...)
+function writetojob(f, job, calculations::Vector{Calculation{Elk}}, environment; kwargs...)
     save(calculations, job.structure; kwargs...)
     should_run = any(map(x -> x.run, calculations))
     if !should_run
         write(f, "#")
     end
-    writeexec(f, calculations[1].exec, runtime_enviroment)
+    writeexec(f, calculations[1].exec, environment)
     write(f, "< $(calculations[1].infile) > $(calculations[1].outfile)\n")
     return calculations
 end
 
-function writeexec(f, exec::Exec, runtime_enviroment)
+function writeexec(f, exec::Exec, environment)
     if exec.parallel
-        @assert runtime_enviroment !== nothing "Exec $(exec.exec) flagged as parallel but no valid runtime_environment was supplied."
-        write(f, runtime_enviroment.MPI_command * " ")
+        @assert environment !== nothing "Exec $(exec.exec) flagged as parallel but no valid environment was supplied."
+        write(f, environment.MPI_command * " ")
     end
     write(f, string(exec) * " ")
 end
 
-function writetojob(f, job, calculation::Calculation, runtime_environment; kwargs...)
+function writetojob(f, job, calculation::Calculation, environment; kwargs...)
     filename   = calculation.infile
     should_run = calculation.run
     save(calculation, job.structure; kwargs...)
     if !should_run
         write(f, "#")
     end
-    writeexec(f, calculation.exec, runtime_environment)
+    writeexec(f, calculation.exec, environment)
     write(f, "< $filename > $(calculation.outfile)\n")
     return (calculation,)
 end
 
-function writetojob(f, job, _calculation::Calculation{Wannier90}, runtime_enviroment; kwargs...)
+function writetojob(f, job, _calculation::Calculation{Wannier90}, environment; kwargs...)
     filename   = _calculation.outfile
     should_run = _calculation.run
     id         = findfirst(isequal(_calculation), job.calculations)
@@ -90,12 +90,12 @@ function writetojob(f, job, _calculation::Calculation{Wannier90}, runtime_enviro
             if !preprocess || !should_run
                 write(f, "#")
             end
-            writeexec(f, _calculation.exec, runtime_enviroment)
+            writeexec(f, _calculation.exec, environment)
             write(f,
                   "-pp $filename > $(joinpath(_calculation.dir, _calculation.outfile))\n")
 
             save(_calculation, job.structure; kwargs...)
-            writetojob(f, job, pw2wancalculation, runtime_enviroment; kwargs...)
+            writetojob(f, job, pw2wancalculation, environment; kwargs...)
             _calculation[:preprocess] = preprocess
             wannier_plot !== nothing && (_calculation[:wannier_plot] = wannier_plot)
         elseif eltype(nscf_calc) == Elk
@@ -106,7 +106,7 @@ function writetojob(f, job, _calculation::Calculation{Wannier90}, runtime_enviro
     if !should_run
         write(f, "#")
     end
-    writeexec(f, _calculation.exec, runtime_enviroment)
+    writeexec(f, _calculation.exec, environment)
     write(f, "$filename > $(joinpath(_calculation.dir, _calculation.outfile))\n")
     return (_calculation,)
 end
@@ -132,40 +132,38 @@ function write_job_postamble(f, job::Job) end
 # end
 
 """
-    writejobfiles(job::Job; kwargs...)
+    write_job_files(job::Job; kwargs...)
 
 Writes all the calculation files and job file that are linked to a Job.
 Kwargs will be passed down to various writetojob functions.
 """
-function writejobfiles(job::Job; kwargs...)
+function write_job_files(job::Job; kwargs...)
     # rm.(joinpath.(Ref(job.dir), searchdir(job.dir, ".in")))
-    if job.runtime_environment != ""
-        runtime_environment = Jobs.load_runtime_environment(job.runtime_environment)
-        @assert runtime_enviroment === nothing "RuntimeEnvironment with name $(job.runtime_enviroment) not found!"
-        write(f, runtime_enviroment)
-    else
-        runtime_enviroment = nothing
-    end
 
+    if job.environment != ""
+        environment = Jobs.load_environment(job.environment)
+        @assert environment !== nothing "Environment with name $(job.environment) not found!"
+    else
+        environment = nothing
+    end
     open(joinpath(job.dir, "job.tt"), "w") do f
         write(f, "#!/bin/bash\n")
         write(f, "#SBATCH -J $(job.name) \n")
-        runtime_enviroment !== nothing && write(f, runtime_enviroment)
-        write_job_header(f, job)
+        write_job_header(f, job, environment)
         write_job_preamble(f, job)
         written_calculations = Calculation[]
         abicalculations = filter(x -> eltype(x) == Abinit, job.calculations)
-        !isempty(abicalculations) && writetojob(f, job, abicalculations; kwargs...)
+        !isempty(abicalculations) && writetojob(f, job, abicalculations, environment; kwargs...)
         elkcalculations = filter(x -> eltype(x) == Elk, job.calculations)
         !isempty(elkcalculations) &&
-            append!(written_calculations, writetojob(f, job, elkcalculations; kwargs...))
+            append!(written_calculations, writetojob(f, job, elkcalculations, environment; kwargs...))
 
         for i in job.calculations
             if i.run
                 rm.(filter(ispath, Calculations.outfiles(i)))
             end
             if i ∉ written_calculations
-                append!(written_calculations, writetojob(f, job, i; kwargs...))
+                append!(written_calculations, writetojob(f, job, i, environment; kwargs...))
             end
         end
         return write_job_postamble(f, job)
@@ -207,17 +205,17 @@ function read_job_line(line)
             continue
         end
         if occursin("mpi", e)
-            push!(execs, Exec(efile, dir, Calculations.parse_mpi_flags(flags), String[]))
+            push!(execs, Exec(exec=efile, dir=dir, flags=Calculations.parse_mpi_flags(flags)))
         elseif efile == "wannier90.x"
-            push!(execs, Exec(efile, dir, Calculations.parse_wan_execflags(flags), String[]))
+            push!(execs, Exec(exec=efile, dir=dir, flags=Calculations.parse_wan_execflags(flags)))
         elseif any(occursin.(Calculations.QE_EXECS, (efile,)))
-            push!(execs, Exec(efile, dir, Calculations.parse_qe_execflags(flags), String[]))
+            push!(execs, Exec(exec=efile, dir=dir, flags=Calculations.parse_qe_execflags(flags)))
         elseif any(occursin.(Calculations.ELK_EXECS, (efile,)))
             calculation = "elk.in"
             output = "elk.out"
             push!(execs, Exec(; exec = efile, dir = dir))
         else
-            push!(execs, Exec(efile, dir, Calculations.parse_generic_flags(flags), String[]))
+            push!(execs, Exec(exec=efile, dir=dir, flags=Calculations.parse_generic_flags(flags)))
         end
     end
     return execs, calculation, output, run
@@ -357,15 +355,15 @@ function read_job_script(job_file::String)
     end
 
     runtime = Jobs.environment_from_jobscript(job_file)
-    name = Jobs.environment_name(runtime)
-    if name !== nothing
-        runtime_environment = name
+    ename = Jobs.environment_name(runtime)
+    if ename !== nothing
+        environment = ename
         #TODO only works with slurm!!!
         deleteat!(header, findall(x -> x[1:7] == "#SBATCH", header))
         deleteat!(header, findall(x -> x[1:6] == "export", header))
     else
-        runtime_environment = ""
+        environment = ""
     end
     
-    return (; name, header, calculations = cs, structure, runtime_environment)
+    return (; name, header, calculations = cs, structure, environment)
 end

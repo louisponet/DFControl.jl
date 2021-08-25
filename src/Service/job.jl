@@ -1,6 +1,3 @@
-
-
-
 function load_job(job_dir::AbstractString, version::Int = -1)
     if ispath(job_dir)
         if version != -1
@@ -127,7 +124,7 @@ function save(job::Job; kwargs...)
     job.version = Jobs.last_version(job) + 1
     timestamp!(job, now())
     save_metadata(job)
-    FileIO.writejobfiles(job; kwargs...)
+    FileIO.write_job_files(job; kwargs...)
     Jobs.maybe_register_job(job)
     return job
 end
@@ -289,6 +286,13 @@ function outputdata(job::Job, calculations::Vector{Calculation})
 end
 outputdata(job::Job; kwargs...) = outputdata(job, job.calculations; kwargs...)
 
-verify_exec(e::Exec) = Calculations.verify_exec(e)
-
 rm_version!(job::Job, version::Int) = Jobs.rm_version!(job, version)
+
+add_environment(env::Environment, name::AbstractString) = Jobs.save(env, name)
+function get_environment(name::AbstractString)
+    out = Jobs.load_environment(name)
+    if out === nothing
+        error("No Environment found with name $name")
+    end
+    return out
+end

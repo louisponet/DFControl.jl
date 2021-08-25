@@ -280,4 +280,23 @@ function rm_version!(job::Job, version::Int)
         end
         switch_version!(job, lv)
     end
-end   
+end
+
+function environment_from_jobscript(scriptpath, s="localhost")
+    server = Servers.maybe_start_server(s)
+    tmp = tempname()
+    Servers.pull(server, scriptpath, tmp)
+    return Jobs.environment_from_jobscript(tmp)
+end
+    
+function get_environment(name, s="localhost")
+    server = Servers.maybe_start_server(s)
+    return JSON3.read(HTTP.get(server, "/environment/$name").body, Environment)    
+end
+    
+function add_environment(env::Environment, name::String, s="localhost")
+    server = Servers.maybe_start_server(s)
+    return HTTP.post(server, "/environment/$name", [], JSON3.write(env))
+end
+    
+    

@@ -10,13 +10,13 @@ using ..FileIO
 
 @inline function JSON3.read(::StructTypes.Mutable, buf, pos, len, b, ::Type{Calculation};
                             kw...)
-    x = Calculation{Calculations.NoPackage}(""; execs = Exec[])
+    x = Calculation{Calculations.NoPackage}(""; exec = Exec())
     pos, x = JSON3.read!(StructTypes.Mutable(), buf, pos, len, b, Calculation, x; kw...)
-    if x.exec ∈ Calculations.WAN_EXECS
+    if x.exec.exec ∈ Calculations.WAN_EXECS
         p = Wannier90
-    elseif x.exec ∈ Calculations.QE_EXECS
+    elseif x.exec.exec ∈ Calculations.QE_EXECS
         p = QE
-    elseif x.exec ∈ Calculations.ELK_EXECS
+    elseif x.exec.exec ∈ Calculations.ELK_EXECS
         p = ELK
     else
         @warn "Package not identified from execs $(x.exec)."
@@ -33,7 +33,8 @@ using ..Structures: set_pseudos!, element; export set_pseudos!, element
 
 include("job.jl")
 export submit, save, isrunning, versions, last_version, switch_version!, rm_version!, outputdata,
-       registered_jobs, running_jobs
+       registered_jobs, running_jobs,
+       environment_from_jobscript, get_environment, add_environment
 
 include("pseudos.jl")
 export configure_pseudoset, rm_pseudoset!
