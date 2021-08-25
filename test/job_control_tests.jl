@@ -4,39 +4,39 @@ testassetspath = joinpath(testdir, "testassets")
 testjobpath = joinpath(testassetspath, "test_job")
 
 @testset "Structure manipulation" begin
-    job = DFJob(testjobpath)
+    job = Job(testjobpath, "localhost_test")
 
-    @test length(symmetry_operators(job)[1]) == 48
+    @test length(Structures.symmetry_operators(job.structure)[1]) == 48
     
-    job.structure = create_supercell(job, 1, 0, 0, make_afm = true)
-    @test length(symmetry_operators(job)[1]) == 12
+    job.structure = Structures.create_supercell(job.structure, 1, 0, 0, make_afm = true)
+    @test length(Structures.symmetry_operators(job.structure)[1]) == 12
     @test length(job.structure) == 2 
-    @test isapprox(magnetization(atoms(job, :Ni1)[1]), [0,0,-0.1])
-    @test isapprox(magnetization(atoms(job, :Ni)[1]), [0,0,0.1])
-    @test isapprox(magnetization.(atoms(job, element(:Ni))), [[0,0,0.1], [0,0,-0.1]])
-    ngl = niggli_reduce(job.structure)
-    @test volume(job.structure) == volume(ngl)
-    @test cell(job.structure) != cell(ngl)
-    prev = atoms(job, element(:Ni))[1].position_cryst[1]
-    prev_vol = volume(job.structure)
-    scale_cell!(job, diagm(0=>[2,1,1]))
-    @test atoms(job, element(:Ni))[1].position_cryst[1] == 0.5prev
-    @test 2*prev_vol == volume(job)
+    @test isapprox(job.structure[:Ni1][1].magnetization, [0,0,-0.1])
+    @test isapprox(job.structure[:Ni][1].magnetization, [0,0,0.1])
+    @test isapprox(map(x->x.magnetization, job.structure[Structures.element(:Ni)]), [[0,0,0.1], [0,0,-0.1]])
+    ngl = Structures.niggli_reduce(job.structure)
+    @test Structures.volume(job.structure) == Structures.volume(ngl)
+    @test job.structure.cell != ngl.cell
+    prev = job.structure[Structures.element(:Ni)][1].position_cryst[1]
+    prev_vol = Structures.volume(job.structure)
+    Structures.scale_cell!(job.structure, diagm(0=>[2,1,1]))
+    @test job.structure[Structures.element(:Ni)][1].position_cryst[1] == 0.5prev
+    @test 2*prev_vol == Structures.volume(job.structure)
 
-    out_str = outputdata(job["scf"])[:initial_structure]
-    update_geometry!(job, out_str)
+    out_str = outputdata(job)["scf"][:initial_structure]
+    Structures.update_geometry!(job.structure, out_str)
     @test out_str == job.structure
 end
 
 @testset "supercell" begin
-    job = DFJob(testjobpath)
-    struct2 = DFControl.create_supercell(job.structure, 1, 2, 1)
-    newpositions = [position_cart(at) for at in atoms(struct2)]
-    oldposition = atoms(job.structure)[1].position_cart
-    cell_ = cell(job.structure)
+    job = Job(testjobpath, "localhost_test")
+    struct2 = Structures.create_supercell(job.structure, 1, 2, 1)
+    newpositions = [at.position_cart for at in struct2.atoms]
+    oldposition = job.structure.atoms[1].position_cart
+    cell_ = job.structure.cell
 
-    @test atoms(job.structure)[1].position_cart ==
-          job.structure.cell' * atoms(job.structure)[1].position_cryst
+    @test job.structure.atoms[1].position_cart ==
+          job.structure.cell' * job.structure.atoms[1].position_cryst
     @test oldposition == newpositions[1]
     @test oldposition + cell_[:, 1] ∈ newpositions
     @test oldposition + 2 * cell_[:, 2] ∈ newpositions
@@ -45,42 +45,61 @@ end
 end
 
 @testset "registry" begin
-    job = DFJob(testjobpath)
+    job = Job(testjobpath,  "localhost_test")
     rm(testjobpath, recursive=true)
-    prevlen = length(registered_jobs())
+    prevlen = length(Jobs.registered_jobs())
     save(job)
-    @test length(registered_jobs()) == prevlen + 1
-    @test registered_jobs()[end] == job.local_dir
+    @test length(Jobs.registered_jobs()) == prevlen + 1
+    @test Jobs.registered_jobs()[end][1] == job.dir
 end
 
-@testset "execs" begin
-    job = DFJob(testjobpath)
-    set_execdir!(job, "pw.x", "test/test")
-    @test job.calculations[1].execs[2].dir == "test/test"
-    set_execflags!(job, "pw.x", :nk => 4)
-    set_execflags!(job, "mpirun", :np => 4)
-    @test exec(job, "pw.x").flags[1].symbol == :nk
-    @test exec(job, "pw.x").flags[1].value == 4
-    @test exec(job, "mpirun").flags[1].symbol == :np
-    @test exec(job, "mpirun").flags[1].value == 4
-    @test_throws ErrorException  set_execflags!(job, "mpirun", :nasdf => 4)
+# @testset "execs" begin
+#     job = Job(testjobpath,  "localhost_test")
+#     for c in job.calculations
+#         e = c.exec
+#         if e.exec == "pw.x"
+#             Calculations.set_flags!(e, :nk => 4)
+#             e.dir = "test/test"
+#         elseif e.exec == "mpirun"
+#             Calculations.set_flags!(e, :np => 4)
+#             @test_throws ErrorException Calculations.set_flags!(e, :nasdf => 4)
+#         end
+#     end
+#     ex = job.calculations[1].execs[2]
+#     mpi = job.calculations[1].execs[1]
+#     @test ex.dir == "test/test"
+#     @test ex.flags[1].symbol == :nk
+#     @test ex.flags[1].value == 4
+#     @test mpi.flags[1].symbol == :np
+#     @test mpi.flags[1].value == 4
 
-    save(job)
-    job = DFJob(testjobpath)
-    @test exec(job, "pw.x").flags[1].symbol == :nk
-    @test exec(job, "pw.x").flags[1].value == 4
-    @test exec(job, "mpirun").flags[1].symbol == :np
-    @test exec(job, "mpirun").flags[1].value == 4
-    
-    rm_execflags!(job, "pw.x", :nk)
-    rm_execflags!(job, "mpirun", :np)
-    @test isempty(exec(job, "pw.x").flags)
-    @test isempty(exec(job, "mpirun").flags)
-    save(job)
-end
+#     save(job)
+#     job = Job(testjobpath, "localhost_test")
+#     ex = job.calculations[1].execs[2]
+#     mpi = job.calculations[1].execs[1]
+#     @test ex.flags[1].symbol == :nk
+#     @test ex.flags[1].value == 4
+#     @test mpi.flags[1].symbol == :np
+#     @test mpi.flags[1].value == 4
+
+#     for c in job.calculations
+#         for e in c.execs
+#             if e.exec == "pw.x"
+#                 Calculations.rm_flags!(e, :nk)
+#                 e.dir = "test/test"
+#             elseif e.exec == "mpirun"
+#                 Calculations.rm_flags!(e, :np)
+#             end
+#         end
+#     end
+   
+#     @test isempty(ex.flags)
+#     @test isempty(mpi.flags)
+#     save(job)
+# end
 
 @testset "calculation management" begin
-    job = DFJob(testjobpath)
+    job = Job(testjobpath, "localhost_test")
     ncalcs = length(job.calculations)
     t = pop!(job, "scf")
     @test length(job.calculations) == ncalcs - 1
@@ -88,15 +107,40 @@ end
     insert!(job, 2, t)
     @test job.calculations[2].name == "scf"
 
-    set_flow!(job, "" => false, "scf" => true)
+    Jobs.set_flow!(job, "" => false, "scf" => true)
     @test job["scf"].run == true
     @test job["nscf"].run == true
     @test job["bands"].run == false
     push!(job.header, "module load testmod")
-    set_headerword!(job, "testmod" => "testmod2")
+    Jobs.set_headerword!(job, "testmod" => "testmod2")
     @test job.header[end] == "module load testmod2"
     
 end
+
+@testset "versioning" begin
+    job = Job(testjobpath, "localhost_test")
+    job[:nbnd] = 30
+    curver = Client.last_version(job)
+    save(job)
+    @test job.version == curver + 1
+    save(job)
+    @test ispath(joinpath(job, Jobs.VERSION_DIR_NAME))
+    @test ispath(joinpath(job, Jobs.VERSION_DIR_NAME, "$(curver+1)"))
+    job[:nbnd] = 40
+    save(job)
+    @test job.version == curver + 3
+    @test job["scf"][:nbnd] == 40
+    switch_version!(job, curver + 1)
+    @test job.version == curver + 1
+    # @test DFControl.last_version(job) == 2
+    @test job["scf"][:nbnd] == 30
+    rm_version!(job, curver + 1)
+    @test !ispath(joinpath(Jobs.main_job_dir(job), Jobs.VERSION_DIR_NAME,
+                           "$(curver + 1)"))
+    @test ispath(joinpath(Jobs.main_job_dir(job), Jobs.VERSION_DIR_NAME,
+                          "$(curver + 2)"))
+end
+
 
 rm(testjobpath, recursive=true)
 # function copy_outfiles()
@@ -107,8 +151,8 @@ rm(testjobpath, recursive=true)
 
 # copy_outfiles()
 
-# job = DFJob(testjobpath);
-# job4 = DFJob(testjobpath)
+# job = Job(testjobpath);
+# job4 = Job(testjobpath)
 
 # #output stuff
 # out = outputdata(job; print = false, onlynew = false);
@@ -117,7 +161,7 @@ rm(testjobpath, recursive=true)
 
 # @test isconverged(job["scf"])
 # nscf = DFControl.calculation(job, "nscf")
-# nscf2 = DFCalculation(nscf, "nscf2";
+# nscf2 = Calculation(nscf, "nscf2";
 #                       data = [:testdata => (:testoption, "test"),
 #                               :k_points => (:blabla, [1, 1, 1, 1, 1, 1])])
 
@@ -202,7 +246,7 @@ rm(testjobpath, recursive=true)
 # @test job.calculations[3].run
 
 # save(job)
-# job2 = DFJob(local_dir)
+# job2 = Job(dir)
 # begin
 #     for (calc, calc2) in zip(job.calculations, job2.calculations)
 #         for (f, v) in calc.flags
@@ -236,7 +280,7 @@ rm(testjobpath, recursive=true)
 
 # testorbs = ["s", "p"]
 # set_projections!(job, :Pt => testorbs)
-# @test convert.(String, [p.orb for p in Iterators.flatten(projections.(atoms(job, :Pt)))]) ==
+# @test convert.(String, [p.orb for p in Iterators.flatten(projections.(job.structure.atoms :Pt)))]) ==
 #       testorbs
 # set_wanenergies!(job, nscf, fermi - 7.0; Epad = 3.0)
 
@@ -253,7 +297,7 @@ rm(testjobpath, recursive=true)
 # @test execs(job["nscf"])[2].dir == joinpath(homedir(), "bin")
 
 # set_name!(job["nscf"], "test")
-# @test DFControl.inpath(job, "test") == joinpath(job.local_dir, "test.in")
+# @test DFControl.inpath(job, "test") == joinpath(job.dir, "test.in")
 # set_name!(job["test"], "nscf")
 
 # set_serverdir!(job, "localhost")
@@ -265,7 +309,7 @@ rm(testjobpath, recursive=true)
 # report = progressreport(job; onlynew = false, print = false)
 # @test report[:fermi] == 17.4572
 # @test length(report[:accuracy]) == 9
-# oldat = atoms(job)[1]
+# oldat = job.structure.atoms[1]
 # copy_outfiles()
 # newatompos = outputdata(job, "vc_relax"; onlynew = false)[:final_structure]
 # job.structure = newatompos
@@ -275,8 +319,8 @@ rm(testjobpath, recursive=true)
 #    joinpath(testdir, "testassets", "pseudos_copy"); force = true)
 # set_pseudos!(job, :Si => Pseudo("Si.UPF", joinpath(testdir, "testassets", "pseudos_copy")))
 # save(job)
-# @test ispath(joinpath(job.local_dir, "Si.UPF"))
-# @test atoms(job, :Si)[1].pseudo == Pseudo("Si.UPF", job.local_dir)
+# @test ispath(joinpath(job.dir, "Si.UPF"))
+# @test job.structure.atoms :Si)[1].pseudo == Pseudo("Si.UPF", job.dir)
 # rm(joinpath(testdir, "testassets", "pseudos_copy"); recursive = true)
 
 # job["nscf"][:occupations] = "smearing"
@@ -288,42 +332,42 @@ rm(testjobpath, recursive=true)
 # @test projwfc[:ngauss] == 1
 
 # set_Hubbard_U!(job, :Si => 1.0)
-# @test atoms(job, :Si)[1].dftu.U == 1.0
+# @test job.structure.atoms :Si)[1].dftu.U == 1.0
 
-# prev_a = cell(job)[1, :]
-# prev_b = cell(job)[2, :]
-# prev_c = cell(job)[3, :]
-# prev_pos = position_cart.(atoms(job))
+# prev_a = job.structure.cell[1, :]
+# prev_b = job.structure.cell[2, :]
+# prev_c = job.structure.cell[3, :]
+# prev_pos = position_cart.(job.structure.atoms)
 # scale_cell!(job, [2 0 0; 0 2 0; 0 0 2])
-# @test prev_a .* 2 == cell(job)[1, :]
-# @test prev_b .* 2 == cell(job)[2, :]
-# @test prev_c .* 2 == cell(job)[3, :]
-# for (p, at) in zip(prev_pos, atoms(job))
+# @test prev_a .* 2 == job.structure.cell[1, :]
+# @test prev_b .* 2 == job.structure.cell[2, :]
+# @test prev_c .* 2 == job.structure.cell[3, :]
+# for (p, at) in zip(prev_pos, job.structure.atoms)
 #     @test round.(DFControl.ustrip.(p * 2), digits = 3) ==
-#           round.(DFControl.ustrip.(position_cart(at)), digits = 3)
+#           round.(DFControl.ustrip.(at.position_cart), digits = 3)
 # end
 
 # set_magnetization!(job, :Pt => [1.0, 0.0, 0.0])
-# @test magnetization(atoms(job, :Pt)[1]) == DFControl.Vec3(1.0, 0.0, 0.0)
+# @test magnetization(job.structure.atoms :Pt)[1]) == DFControl.Vec3(1.0, 0.0, 0.0)
 
-# at             = atoms(job)[1]
-# c              = cell(job)
-# orig_pos_cart  = position_cart(at)
-# orig_pos_cryst = position_cryst(at)
+# at             = job.structure.atoms[1]
+# c              = job.structure.cell
+# orig_pos_cart  = at.position_cart
+# orig_pos_cryst = at.position_cryst
 
 # set_position!(at, orig_pos_cart .+ c * [0.1, 0.1, 0.1], c)
-# @test isapprox(position_cryst(at), orig_pos_cryst .+ [0.1, 0.1, 0.1])
+# @test isapprox(at.position_cryst, orig_pos_cryst .+ [0.1, 0.1, 0.1])
 
 # set_position!(at, orig_pos_cryst .+ [0.1, 0.1, 0.1], c)
-# @test position_cart(at) == c * position_cryst(at)
+# @test at.position_cart == c * at.position_cryst
 
-# at2 = atoms(job)[2]
-# p1, p2 = position_cart(at), position_cart(at2)
+# at2 = job.structure.atoms[2]
+# p1, p2 = at.position_cart, at.position_cart)
 # mid = (p1 + p2) / 2
 # bondlength = distance(at, at2)
 # scale_bondlength!(at, at2, 0.5, c)
 
-# @test isapprox((position_cart(at) + position_cart(at2)) / 2, mid)
+# @test isapprox((at.position_cart + at.position_cart)) / 2, mid)
 # @test isapprox(distance(at, at2), bondlength / 2)
 # copy_outfiles()
 # @test isapprox(bandgap(job), 2.6701999999999995)
@@ -341,10 +385,10 @@ rm(testjobpath, recursive=true)
 # DFControl.sanitize_flags!(job)
 # set_Hubbard_U!(job, :Pt => 2.3)
 # DFControl.sanitize_magnetization!(job)
-# DFControl.set_hubbard_flags!.(filter(x -> DFControl.package(x) == QE,
-#                                      DFControl.calculations(job)), (job.structure,))
-# DFControl.set_starting_magnetization_flags!.(filter(x -> DFControl.package(x) == QE,
-#                                                     DFControl.calculations(job)),
+# DFControl.set_hubbard_flags!.(filter(x -> eltype(x) == QE,
+#                                      job.calculations), (job.structure,))
+# DFControl.set_starting_magnetization_flags!.(filter(x -> eltype(x) == QE,
+#                                                     job.calculations),
 #                                              (job.structure,))
 # @test job["scf"][:lda_plus_u]
 # @test job["scf"][:noncolin]
@@ -354,41 +398,41 @@ rm(testjobpath, recursive=true)
 # set_magnetization!(job, :Pt => [0.0, 0.0, 0.5])
 # DFControl.sanitize_flags!(job)
 # DFControl.sanitize_magnetization!(job)
-# DFControl.set_hubbard_flags!.(filter(x -> DFControl.package(x) == QE,
-#                                      DFControl.calculations(job)), (job.structure,))
-# DFControl.set_starting_magnetization_flags!.(filter(x -> DFControl.package(x) == QE,
-#                                                     DFControl.calculations(job)),
+# DFControl.set_hubbard_flags!.(filter(x -> eltype(x) == QE,
+#                                      job.calculations), (job.structure,))
+# DFControl.set_starting_magnetization_flags!.(filter(x -> eltype(x) == QE,
+#                                                     job.calculations),
 #                                              (job.structure,))
 # @test job["scf"][:nspin] == 2
 
 # using LinearAlgebra
 # new_str = create_supercell(structure(job), 1, 0, 0)
-# prevcell = cell(job)
-# @test norm(cell(new_str)[:, 1]) == norm(prevcell[:, 1]) * 2
-# prevlen = length(atoms(job))
-# @test length(atoms(new_str)) == 2 * prevlen
-# prevlen_Pt = length(atoms(job, :Pt))
+# prevcell = job.structure.cell
+# @test norm(new_str.cell[:, 1]) == norm(prevcell[:, 1]) * 2
+# prevlen = length(job.structure.atoms)
+# @test length(new_str.atoms) == 2 * prevlen
+# prevlen_Pt = length(job.structure.atoms :Pt))
 
 # set_magnetization!(job, :Pt => [0, 0, 1])
-# orig_projs = projections(atoms(job, :Pt)[1])
+# orig_projs = projections(job.structure.atoms :Pt)[1])
 
 # job.structure = create_supercell(structure(job), 1, 0, 0; make_afm = true)
 # DFControl.sanitize_magnetization!(job)
-# DFControl.set_starting_magnetization_flags!.(filter(x -> DFControl.package(x) == QE,
-#                                                     DFControl.calculations(job)),
+# DFControl.set_starting_magnetization_flags!.(filter(x -> eltype(x) == QE,
+#                                                     job.calculations),
 #                                              (job.structure,))
-# @test length(atoms(job, :Pt)) == prevlen_Pt
-# @test length(atoms(job, :Pt1)) == prevlen_Pt
+# @test length(job.structure.atoms :Pt)) == prevlen_Pt
+# @test length(job.structure.atoms :Pt1)) == prevlen_Pt
 
-# @test magnetization(atoms(job, :Pt)[1]) == [0, 0, 1]
-# @test magnetization(atoms(job, :Pt1)[1]) == [0, 0, -1]
+# @test magnetization(job.structure.atoms :Pt)[1]) == [0, 0, 1]
+# @test magnetization(job.structure.atoms :Pt1)[1]) == [0, 0, -1]
 
 # DFControl.sanitize_projections!(job)
-# @test projections(atoms(job, :Pt)[1]) != projections(atoms(job, :Pt1)[1])
+# @test projections(job.structure.atoms :Pt)[1]) != projections(job.structure.atoms :Pt1)[1])
 
 # # job4.server_dir = "/tmp"
 # # save(job4)
-# # job3 = DFJob(job4.local_dir)
+# # job3 = Job(job4.dir)
 
 # # @test job3.server_dir == "/tmp"
 # set_data_option!(job["scf"], :k_points, :blabla; print = false)
@@ -401,35 +445,12 @@ rm(testjobpath, recursive=true)
 # set_kpoints!(job["scf"], (6, 6, 6, 1, 1, 1))
 # rm(joinpath(job, DFControl.VERSION_DIR_NAME); recursive = true)
 
-# @testset "versioning" begin
-#     job[:nbnd] = 30
-#     curver = DFControl.last_version(job)
-#     save(job)
-#     @test job.version == curver + 1
-#     save(job)
-#     @test ispath(joinpath(job, DFControl.VERSION_DIR_NAME))
-#     @test ispath(joinpath(job, DFControl.VERSION_DIR_NAME, "$(curver+1)"))
-#     job[:nbnd] = 40
-#     save(job)
-#     @test job.version == curver + 3
-#     @test job["scf"][:nbnd] == 40
-#     switch_version!(job, curver + 1)
-#     @test job.version == curver + 1
-#     # @test DFControl.last_version(job) == 2
-#     @test job["scf"][:nbnd] == 30
-#     rm_version!(job, curver + 1)
-#     @test !ispath(joinpath(DFControl.main_job_dir(job), DFControl.VERSION_DIR_NAME,
-#                            "$(curver + 1)"))
-#     @test ispath(joinpath(DFControl.main_job_dir(job), DFControl.VERSION_DIR_NAME,
-#                           "$(curver + 2)"))
-# end
-
 # rm(joinpath(DFControl.main_job_dir(job), DFControl.VERSION_DIR_NAME); recursive = true)
-# set_localdir!(job, DFControl.main_job_dir(job))
+# set_dir!(job, DFControl.main_job_dir(job))
 # rm.(DFControl.inpath.(job.calculations))
 
 # rm(joinpath(job, "job.tt"))
 # rm(joinpath(job, ".metadata.jld2"))
 # rm(joinpath(job, "pw2wan_wandn.in"))
 # rm(joinpath(job, "pw2wan_wanup.in"))
-# rm.(joinpath.((job.local_dir,), filter(x -> occursin("UPF", x), readdir(job.local_dir))))
+# rm.(joinpath.((job.dir,), filter(x -> occursin("UPF", x), readdir(job.dir))))

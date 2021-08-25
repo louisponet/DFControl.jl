@@ -27,10 +27,10 @@ job[2]
 ```
 
 ```@docs
-Base.push!(::DFJob, ::DFCalculation)
+Base.push!(::DFJob, ::Calculation)
 Base.append!(::DFJob, ::Any...)
 Base.pop!(::DFJob)
-Base.insert!(::DFJob, ::Int, ::DFCalculation)
+Base.insert!(::DFJob, ::Int, ::Calculation)
 ```
 
 ## Scheduling, submission and monitoring

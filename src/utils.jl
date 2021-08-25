@@ -1,8 +1,11 @@
+module Utils
+    using Dates
 #---------------------Parse utils-----------------------------------------------------#
 """
 Searches a directory for all files containing the key.
 """
-searchdir(path::String, key) = filter(x -> occursin(key, x), readdir(path))
+searchdir(path::String, key) = joinpath.((path,), filter(x -> occursin(key, x), readdir(path)))
+export searchdir
 
 """
 Parse an array of strings into an array of a type.
@@ -10,16 +13,19 @@ Parse an array of strings into an array of a type.
 function parse_string_array(T::Type, array)
     return map(x -> (v = tryparse(T, x); v == nothing ? 0.0 : v), array)
 end
+export parse_string_array
 
 """
 Parse a line for occurrences of type T.
 """
 parse_line(T::Type, line::String) = parse_string_array(T, split(line))
+export parse_line
 
 """
 Splits a line using arguments, then strips spaces from the splits.
 """
 strip_split(line, args...) = strip.(split(line, args...))
+export strip_split
 
 function replace_multiple(str, replacements::Pair{String,String}...)
     tstr = deepcopy(str)
@@ -28,6 +34,7 @@ function replace_multiple(str, replacements::Pair{String,String}...)
     end
     return tstr
 end
+export replace_multiple
 
 function cut_after(line, c)
     t = findfirst(isequal(c), line)
@@ -39,84 +46,9 @@ function cut_after(line, c)
         return line[1:t-1]
     end
 end
+export cut_after
 
 #--------------------------------------------------------------------------------------#
-"""
-Mutatatively applies the fermi level to all eigvals in the band. If fermi is a quantum espresso scf output file it will try to find it in there.
-"""
-function apply_fermi_level!(band::Band, fermi::Union{String,AbstractFloat})
-    if typeof(fermi) == String
-        fermi = qe_read_fermi_from_output(fermi)
-    end
-    for i in 1:size(band.eigvals)[1]
-        band.eigvals[i] -= fermi
-    end
-end
-
-#TODO: there is probably a slightly more optimal way for the frozen window, by checking max and min
-#      such that every k-point has nbands inbetween.
-function Emax(Emin, nbnd, bands)
-    nbndfound = 0
-    max = 0
-    for b in bands
-        if maximum(b.eigvals) >= Emin && nbndfound <= nbnd
-            nbndfound += 1
-            #maximum of allowed frozen window is the minimum of the first band>nbnd
-            max = minimum(b.eigvals) - 0.005
-        end
-    end
-
-    nbndfound < nbnd &&
-        error("Number of needed bands for the projections ($nbnd) exceeds the amount of bands starting from \nEmin=$Emin ($nbndfound).\nRerun nscf with nbnd=$(length(bands) + nbnd - nbndfound).")
-    return max
-end
-
-function wanenergyranges(Emin, nbnd, bands, Epad = 5)
-    max = Emax(Emin, nbnd, bands)
-    return (Emin - Epad, Emin, max, max + Epad)
-end
-
-"""
-Applies the fermi level to all eigvals in the band. If fermi is a quantum espresso scf output file it will try to find it in there.
-"""
-function apply_fermi_level(band::Band, fermi)
-    T = typeof(band.eigvals[1])
-    if typeof(fermi) == String
-        fermi = qe_read_fermi_from_output(fermi)
-    end
-    out = deepcopy(band)
-    for i1 in 1:size(band.eigvals)[1]
-        out.eigvals[i1] = band.eigvals[i1] - T(fermi)
-    end
-    return out
-end
-
-"""
-    kgrid(na, nb, nc, calculation)
-
-Returns an array of k-grid points that are equally spaced, calculation can be either `:wan` or `:nscf`, the returned grids are appropriate as calculations for wannier90 or an nscf calculation respectively.
-"""
-function kgrid(na, nb, nc, ::Type{QE})
-    return reshape([(a, b, c, 1 / (na * nb * nc))
-                    for a in collect(range(0; stop = 1, length = na + 1))[1:end-1],
-                        b in collect(range(0; stop = 1, length = nb + 1))[1:end-1],
-                        c in collect(range(0; stop = 1, length = nc + 1))[1:end-1]],
-                   (na * nb * nc))
-end
-function kgrid(na, nb, nc, ::Type{Wannier90})
-    return reshape([(a, b, c)
-                    for a in collect(range(0; stop = 1, length = na + 1))[1:end-1],
-                        b in collect(range(0; stop = 1, length = nb + 1))[1:end-1],
-                        c in collect(range(0; stop = 1, length = nc + 1))[1:end-1]],
-                   (na * nb * nc))
-end
-function kgrid(na, nb, nc, calculation::Symbol)
-    return calculation == :wan ? kgrid(na, nb, nc, Wannier90) : kgrid(na, nb, nc, QE)
-end
-kgrid(na, nb, nc, calculation::DFCalculation{T}) where {T} = kgrid(na, nb, nc, T)
-
-kakbkc(kgrid) = length.(unique.([[n[i] for n in kgrid] for i in 1:3]))
-
 function fort2julia(f_type)
     f_type = lowercase(f_type)
     if f_type == "real"
@@ -139,6 +71,7 @@ function fort2julia(f_type)
         return Nothing
     end
 end
+export fort2julia
 
 """
 It's like filter()[1].
@@ -150,6 +83,7 @@ function getfirst(f::Function, A)
         end
     end
 end
+export getfirst
 
 """
     parse_block(f, types...; to_strip=',')
@@ -192,20 +126,14 @@ function parse_block(f, types...; to_strip = ',')
     end
     return output
 end
-
-function verify_or_create(dir)
-    if !ispath(dir)
-        mkpath(dir)
-        @info "$dir did not exist, it was created."
-    end
-end
+export parse_block
 
 yesterday() = today() - Day(1)
 lastweek()  = today() - Week(1)
 lastmonth() = today() - Month(1)
 
 username() = read(`whoami`, String)
-
+export yesterday, lastweek, lastmonth, username
 
 function loaded_modules_string()
     all = string.(values(Base.loaded_modules))
@@ -218,4 +146,6 @@ function loaded_modules_string()
     end
     return """using $(join(valid, ", "))\n"""
 end
-    
+export loaded_modules_string
+
+end

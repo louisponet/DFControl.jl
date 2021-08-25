@@ -16,13 +16,13 @@ pw_execs = [Exec("mpirun", "", :np => 4), Exec("pw.x", "/opt/qe/bin/", :nk => 4)
 # Then we generate the first calculation for our job, we name it scf, pass the executables to be used
 # and set some specific flags.
 # Afterwards the kpoints can also be set
-scf_calculation = DFCalculation{QE}("scf", pw_execs, :calculation => "scf")
+scf_calculation = Calculation{QE}("scf", pw_execs, :calculation => "scf")
 set_kpoints!(scf_calculation, (6, 6, 6, 1, 1, 1))
 # Or
 
-scf_calculation = DFCalculation{QE}("scf", pw_execs, :calculation => "scf";
-                                    data = [InputData(:k_points, :automatic,
-                                                      (6, 6, 6, 1, 1, 1))])
+scf_calculation = Calculation{QE}("scf", pw_execs, :calculation => "scf";
+                                  data = [InputData(:k_points, :automatic,
+                                                    (6, 6, 6, 1, 1, 1))])
 
 # Using these we can now define our job, if we would have more calculations they would be added
 # to the list [scf_calculation].

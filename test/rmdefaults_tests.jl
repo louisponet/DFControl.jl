@@ -1,7 +1,5 @@
 using DFControl, Test
 
-DFControl.removedefault_pseudos(:test)
+Client.rm_pseudoset!("test", "localhost_test")
 
-@test DFControl.getdefault_pseudo(:Si, :test) == nothing
-
-setdefault_server(prevdefault)
+@test_throws ErrorException Client.pseudos("localhost_test", "test")
