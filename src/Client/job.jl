@@ -298,5 +298,10 @@ function add_environment(env::Environment, name::String, s="localhost")
     server = Servers.maybe_start_server(s)
     return HTTP.post(server, "/environment/$name", [], JSON3.write(env))
 end
+
+function rm_environment!(name::String, s="localhost")
+    server = Servers.maybe_start_server(s)
+    return HTTP.put(server, "/environment/$name")
+end
     
     

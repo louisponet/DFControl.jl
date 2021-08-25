@@ -52,12 +52,15 @@ HTTP.@register(ROUTER, "POST", "/environment/*", add_environment)
 get_environment(req) = Service.get_environment(splitpath(req.target)[end])
 HTTP.@register(ROUTER, "GET", "/environment/*", get_environment)
 
+rm_environment!(req) = Service.rm_environment!(splitpath(req.target)[end])
+HTTP.@register(ROUTER, "PUT", "/environment/*", rm_environment!)
+
 # RUNNING
 
 function requestHandler(req)
     start = Dates.now()
     @info (timestamp = start, event = "ServiceRequestBegin", tid = Threads.threadid(),
-           method = req.method, target = req.target, body = req.body)
+           method = req.method, target = req.target)
     local resp
     try
         # DFC.Revise.revise()

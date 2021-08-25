@@ -296,3 +296,5 @@ function get_environment(name::AbstractString)
     end
     return out
 end
+
+rm_environment!(args...) = Jobs.rm_environment!(args...)
