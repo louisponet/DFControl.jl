@@ -10,7 +10,7 @@ testjobpath = joinpath(testdir, "testassets", "test_job")
     name = "Ni"
     dir = testjobpath
     bin_dir = joinpath(homedir(), "Software/qe/bin")
-    pw_excs = [Exec("mpirun", "", :np => 4), Exec("pw.x", bin_dir, :nk => 4)]
+    pw_exec = Exec("pw.x", bin_dir, :nk => 4)
 
     pseudoset = :test
 
@@ -19,10 +19,10 @@ testjobpath = joinpath(testdir, "testassets", "test_job")
     str = Structure(joinpath(testdir, "testassets/Ni.cif"))
 
     calculations = [Calculation{QE}("vcrelax", :calculation => "vc-relax", :verbosity => "high", :ion_dynamics => "bfgs", :cell_dynamics => "bfgs";
-                                      execs = pw_excs,
+                                      exec = pw_exec,
                                       data = [InputData(:k_points, :automatic,
                                                         [6, 6, 6, 1, 1, 1])]),
-                    Calculation{QE}(; name = "scf", execs = pw_excs,
+                    Calculation{QE}(; name = "scf", exec = pw_exec,
                                       flags = Dict(:calculation => "scf", :verbosity => "high"),
                                       data = [InputData(:k_points, :automatic,
                                                         [4, 4, 4, 1, 1, 1])])]
@@ -55,8 +55,8 @@ testjobpath = joinpath(testdir, "testassets", "test_job")
     @test job.version == 1
     @test length(job) == 5
     @test data(job["scf"], :k_points).data == [6,6,6,1,1,1]
-    @test job["nscf"].execs == pw_excs
-    @test job["projwfc"].execs == [pw_excs[1], Exec("projwfc.x", pw_excs[2].dir)]
+    @test job["nscf"].exec == pw_exec
+    @test job["projwfc"].exec == Exec("projwfc.x", pw_exec.dir)
     @test show(job) == nothing
     job[:ecutwfc] = 40.0
     for c in job.calculations

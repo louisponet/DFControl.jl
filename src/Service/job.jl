@@ -11,7 +11,7 @@ function load_job(job_dir::AbstractString, version::Int = -1)
         end
         job = Job(;
                   merge((dir = real_path, version = real_version),
-                        FileIO.read_job_calculations(joinpath(real_path, "job.tt")))...)
+                        FileIO.read_job_script(joinpath(real_path, "job.tt")))...)
         Jobs.maybe_register_job(job)
         return job
     else
@@ -124,7 +124,7 @@ function save(job::Job; kwargs...)
     job.version = Jobs.last_version(job) + 1
     timestamp!(job, now())
     save_metadata(job)
-    FileIO.writejobfiles(job; kwargs...)
+    FileIO.write_job_files(job; kwargs...)
     Jobs.maybe_register_job(job)
     return job
 end
@@ -177,7 +177,7 @@ function isrunning(job_dir::String)
         i = last_running_calculation(job)
         i === nothing && return false
         l = job[i]
-        codeexec = l.execs[end].exec
+        codeexec = l.exec.exec
         try
             pids = parse.(Int, split(read(`pgrep $codeexec`, String)))
             if isempty(pids)
@@ -286,6 +286,15 @@ function outputdata(job::Job, calculations::Vector{Calculation})
 end
 outputdata(job::Job; kwargs...) = outputdata(job, job.calculations; kwargs...)
 
-verify_exec(e::Exec) = Calculations.verify_exec(e)
-
 rm_version!(job::Job, version::Int) = Jobs.rm_version!(job, version)
+
+add_environment(env::Environment, name::AbstractString) = Jobs.save(env, name)
+function get_environment(name::AbstractString)
+    out = Jobs.load_environment(name)
+    if out === nothing
+        error("No Environment found with name $name")
+    end
+    return out
+end
+
+rm_environment!(args...) = Jobs.rm_environment!(args...)

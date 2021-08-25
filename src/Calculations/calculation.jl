@@ -27,18 +27,18 @@ StructTypes.StructType(::Type{<:Package}) = StructTypes.Struct()
 
 """
     Calculation{P<:Package}(name    ::String;
-                              dir     ::String = "",
-                              flags   ::AbstractDict = Dict{Symbol, Any}(),
-                              data    ::Vector{InputData} = InputData[],
-                              execs   ::Vector{Exec},
-                              run     ::Bool = true,
-                              infile  ::String = P == Wannier90 ? name * ".win" : name * ".in",
-                              outfile ::String = name * ".out")
+                            dir     ::String = "",
+                            flags   ::AbstractDict = Dict{Symbol, Any}(),
+                            data    ::Vector{InputData} = InputData[],
+                            exec    ::Exec,
+                            run     ::Bool = true,
+                            infile  ::String = P == Wannier90 ? name * ".win" : name * ".in",
+                            outfile ::String = name * ".out")
 
 The representation of a *DFT* calculation of package `P`,
 holding the `flags` that will be written to the `infile`,
-the executables in `execs` and the output written by the calculation to the `outfile`.
-It essentially represents a line in a job script similar to `exec1 exec2 < infile.in > outfile.out`. 
+the executable `exec` and the output written by the calculation to the `outfile`.
+It essentially represents a line in a job script similar to `exec < infile.in > outfile.out`. 
 `outdata` stores the parsed calculation output after it was read at least once.
 The `run` field indicates whether the calculation should be actually performed,
 e.g. if `run=false` the corresponding line will be commented out in the job script.
@@ -47,7 +47,7 @@ e.g. if `run=false` the corresponding line will be commented out in the job scri
 
 Create a [`Calculation`](@ref) from `name` and `flags`, other `kwargs...` will be passed to the constructor.
 
-    Calculation(template::Calculation, name::AbstractString, flags::Pair{Symbol, Any}...; excs=deepcopy(template.execs), run=true, data=nothing, dir=copy(template.dir))
+    Calculation(template::Calculation, name::AbstractString, flags::Pair{Symbol, Any}...; excs=deepcopy(template.exec), run=true, data=nothing, dir=copy(template.dir))
 
 Creates a new [`Calculation`](@ref) from the `template`, setting the `flags` of the newly created one to the specified ones.
 """
@@ -56,13 +56,13 @@ Creates a new [`Calculation`](@ref) from the `template`, setting the `flags` of 
     dir::String = ""
     flags::Dict{Symbol,Any} = Dict{Symbol,Any}()
     data::Vector{InputData} = InputData[]
-    execs::Vector{Exec}
+    exec::Exec
     run::Bool = true
     infile::String = P == Wannier90 ? name * ".win" : name * ".in"
     outfile::String = P == Wannier90 ? name * ".wout" : name * ".out"
-    function Calculation{P}(name, dir, flags, data, execs, run, infile,
+    function Calculation{P}(name, dir, flags, data, exec, run, infile,
                             outfile) where {P<:Package}
-        out = new{P}(name, dir, Dict{Symbol,Any}(), data, execs, run, infile,
+        out = new{P}(name, dir, Dict{Symbol,Any}(), data, exec, run, infile,
                      outfile)
         set_flags!(out, flags...; print = false)
         for (f, v) in flags
@@ -73,8 +73,8 @@ Creates a new [`Calculation`](@ref) from the `template`, setting the `flags` of 
         return out
     end
 end
-function Calculation{P}(name, dir, flags, data, execs, run) where {P<:Package}
-    return Calculation{P}(name, abspath(dir), flags, data, execs, run, Dict{Symbol,Any}(),
+function Calculation{P}(name, dir, flags, data, exec, run) where {P<:Package}
+    return Calculation{P}(name, abspath(dir), flags, data, exec, run, Dict{Symbol,Any}(),
                           P == Wannier90 ? name * ".win" : name * ".in",
                           P == Wannier90 ? name * ".wout" : name * ".out")
 end
@@ -84,13 +84,13 @@ function Calculation{P}(name, flags...; kwargs...) where {P<:Package}
 end
 
 function Calculation(template::Calculation, name, newflags...;
-                     excs = deepcopy(template.execs), run  = true, data = nothing,
+                     excs = deepcopy(template.exec), run  = true, data = nothing,
                      dir  = copy(template.dir))
     newflags = Dict(newflags...)
 
     calculation       = deepcopy(template)
     calculation.name  = name
-    calculation.execs = excs
+    calculation.exec = excs
     calculation.run   = run
     calculation.dir   = dir
     set_flags!(calculation, newflags...; print = false)
@@ -242,7 +242,7 @@ function convert_flags!(calculation::Calculation)
     for (flag, value) in calculation.flags
         flagtype_ = flagtype(calculation, flag)
         if flagtype_ == Nothing
-            @warn "Flag $flag was not found in allowed flags for exec $(calculation.execs[2]). Removing flag."
+            @warn "Flag $flag was not found in allowed flags for exec $(calculation.exec). Removing flag."
             rm_flags!(calculation, flag)
             continue
         end
