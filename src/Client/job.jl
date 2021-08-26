@@ -110,7 +110,21 @@ function sanitize_pseudos!(job::Job)
             end
             return pseudo_paths
         else
-            @warn "Some pseudos could not be found locally, and neither on the remote server."
+            # Find if the pseudos are part of a pseudoset
+            if length(uni_dirs)==1
+                for set in list_pseudosets(s)
+                    pseudos = pseudos(s, set)
+                    dir = values(pseudos)[1].dir
+                    pseudo_names = map(x -> x.name, values(pseudos))
+                    if splitpath(uni_dirs[1])[end] == splitpath(dir)[end] && all(x -> x.name ∈ pseudo_names, uni_pseudos)
+                        @warn "Matching pseudoset found on Server: $set."
+                        set_pseudos!(job, set)
+                        return String[]
+                    end
+                end
+            else
+                @warn "Some pseudos could not be found locally, and neither on the remote server."
+            end
         end
     end
     return String[]

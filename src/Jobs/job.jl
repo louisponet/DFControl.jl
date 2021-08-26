@@ -126,6 +126,14 @@ function Base.getindex(job::Job, flg::Symbol)
     return outdict
 end
 
+function Base.pop!(job::Job, args...)
+    out = Dict{String, Any}()
+    for c in job.calculations
+        out[c.name] = pop!(c, args...)
+    end
+    return out
+end
+
 """
     insert!(job::Job, i::Int, calculation::Calculation) = insert!(job.calculations, i, calculation)
 """
@@ -516,3 +524,4 @@ function sanitize_cutoffs!(job::Job)
             Calculations.set_flags!(i, ρflag => ρcut; print = false)
     end
 end
+
