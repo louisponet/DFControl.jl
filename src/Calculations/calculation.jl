@@ -438,7 +438,6 @@ function sanitize_flags!(cs::Vector{<:Calculation}, str::Structure, name, outdir
     end
     append!(flags_to_set, [:starting_magnetization => starts, :angle1 => θs, :angle2 => ϕs])
     ismagcalc && !isnc && push!(flags_to_set, :nspin => 2)
-    pseudo_dir = str.atoms[1].pseudo.dir # Pseudos should be all sanitized by now
     for c in cs
         set_flags!(c, :prefix => "$name", :outdir => "$outdir"; print = false)
         if ispw(c)
@@ -456,7 +455,7 @@ function sanitize_flags!(cs::Vector{<:Calculation}, str::Structure, name, outdir
             #TODO add all the required flags
             @assert hasflag(c, :calculation) "Please set the flag for calculation with name: $(name(c))"
 
-            set_flags!(c, :pseudo_dir => pseudo_dir; print = false)
+            set_flags!(c, :pseudo_dir => "."; print = false)
         end
         convert_flags!(c)
     end

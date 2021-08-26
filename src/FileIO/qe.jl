@@ -167,9 +167,9 @@ function qe_parse_cart_positions(out, line, f)
 end
 
 function qe_parse_pseudo(out, line, f)
-    !haskey(out, :pseudos) && (out[:pseudos] = Dict{Symbol,Pseudo}())
-    pseudopath = readline(f) |> strip |> splitdir
-    return out[:pseudos][Symbol(split(line)[5])] = Pseudo(name=pseudopath[2], dir=pseudopath[1])
+    !haskey(out, :pseudos) && (out[:pseudos] = Dict{Symbol,String}())
+    pseudopath = readline(f) |> strip
+    return out[:pseudos][Symbol(split(line)[5])] = read(pseudopath, String)
 end
 
 function qe_parse_fermi(out, line, f)
@@ -943,8 +943,7 @@ function extract_atoms!(parsed_flags, atsyms, atom_block, pseudo_block, cell::Ma
         else
             elkey = getfirst(x -> x != at_sym && Structures.element(x) == Structures.element(at_sym),
                              keys(pseudo_block.data))
-            pseudo = elkey !== nothing ? pseudo_block.data[elkey] :
-                     (@warn "No Pseudo found for atom '$at_sym'.\nUsing Pseudo()."; Pseudo())
+            pseudo = elkey !== nothing ? pseudo_block.data[elkey] : ""
         end
         speciesid = findfirst(isequal(at_sym), atsyms)
         push!(atoms,
@@ -1037,14 +1036,15 @@ function qe_read_calculation(filename; exec = Exec(; exec = "pw.x"), run = true,
         nat  = parsed_flags[:nat]
         ntyp = parsed_flags[:ntyp]
 
-        pseudos = InputData(:atomic_species, :none, Dict{Symbol,Pseudo}())
+        pseudos = InputData(:atomic_species, :none, Dict{Symbol,String}())
         pseudo_dir = string(pop!(parsed_flags, :pseudo_dir, "./"))
         atsyms = Symbol[]
         for k in 1:ntyp
             push!(used_lineids, i_species + k)
             sline = strip_split(lines[i_species+k])
             atsym = Symbol(sline[1])
-            pseudos.data[atsym] = Pseudo(name=sline[end], dir=pseudo_dir)
+            ppath = joinpath(pseudo_dir,sline[end])
+            pseudos.data[atsym] = ispath(ppath) ? read(ppath, String) : ""
             push!(atsyms, atsym)
         end
 
@@ -1282,7 +1282,7 @@ function write_structure(f, calculation::Calculation{QE}, structure)
     unique_at = unique(structure.atoms)
     write(f, "ATOMIC_SPECIES\n")
     write(f,
-          join(map(at -> "$(at.name) $(at.element.atomic_weight) $(at.pseudo.name)",
+          join(map(at -> "$(at.name) $(at.element.atomic_weight) $(at.element.symbol).UPF",
                    unique_at), "\n"))
     write(f, "\n\n")
     write(f, "CELL_PARAMETERS (angstrom)\n")

@@ -31,6 +31,7 @@ Returs the valid versions of `job`.
 """
 versions(job::Job) = job_versions(main_job_dir(job))
 version(job::Job) = job.version
+version(dir::AbstractString) = occursin(VERSION_DIR_NAME, dir) ? parse(Int, splitpath(dir)[end]) : main_job_version(dir)
 
 function last_job_version(dir::AbstractString)
     versions = job_versions(dir)

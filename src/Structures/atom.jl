@@ -31,27 +31,6 @@ end
 StructTypes.StructType(::Type{DFTU}) = StructTypes.Mutable()
 
 """
-    Pseudo(name::String, dir::String)
-
-A pseudo potential file.
-"""
-@with_kw mutable struct Pseudo
-    name::String = ""
-    dir::String = ""
-    ψ_cutoff::Float64 = 0.0
-    ρ_cutoff::Float64 = 0.0
-    Pseudo(name::AbstractString, dir::AbstractString, x, y) = new(name, abspath(dir), x, y)
-end
-StructTypes.StructType(::Type{Pseudo}) = StructTypes.Mutable()
-
-Base.isempty(p::Pseudo) = isempty(p.name) && isempty(p.dir)
-
-Base.:(==)(p1::Pseudo, p2::Pseudo) = p1.name == p2.name && p1.dir == p2.dir
-
-Base.hash(e::Pseudo, h::UInt) = hash(e.name, hash(e.dir,  h))
-path(p::Pseudo) = joinpath(p.dir, p.name)
-
-"""
     Element(symbol::Symbol, Z::Int, name::String, atomic_weight::Float64, color::NTuple{3, Float64})
     
 Represents an element. Most conveniently used trough the function [`element`](@ref).
@@ -106,7 +85,7 @@ element(z::Int) = getfirst(x -> x.Z == z, ELEMENTS)
 #We use angstrom everywhere
 """
     Atom(name::Symbol, element::Element, position_cart::Point3{Length}, position_cryst::Point3;
-         pseudo::Pseudo = Pseudo(),
+         pseudo::String = "",
          projections::Vector{Projection} = Projection[],
          magnetization::Vec3 = Vec3(0.0, 0.0, 0.0),
          dftu::DFTU = DFTU())
@@ -117,14 +96,14 @@ The `name` of the `atom` is used as an identifier for the `atom` type, in the se
 
 `position_cart` should have a valid `Unitful.Length` type such as `Ang`.
 
-See documentation for [`Element`](@ref) and [`Pseudo`](@ref) for further information on these attributes.
+See documentation for [`Element`](@ref) for further information on this attribute.
 """
 @with_kw_noshow mutable struct Atom
     name::Symbol
     position_cart::Point3{typeof(0.0Ang)}
     position_cryst::Point3{Float64}
     element::Element = element(name)
-    pseudo::Pseudo = Pseudo()
+    pseudo::String = ""
     projections::Vector{Projection} = Projection[]
     magnetization::Vec3{Float64} = zero(Vec3{Float64})
     dftu::DFTU = DFTU()

@@ -1,10 +1,23 @@
-function pseudos(server, pseudoset, fuzzy = "")
+function pseudos(server, pseudoset, atsyms::Vector{Symbol}, fuzzy = "")
     s = Servers.maybe_start_server(server)
     resp = HTTP.get(s, "/pseudos/$pseudoset", [], JSON3.write(fuzzy))
     if resp.status == 204
         error("No pseudoset $pseudoset found on Server $(s.name). Please first configure it using configure_pseudoset.")
     end
-    return JSON3.read(resp.body, Dict{Symbol,Pseudo})
+    pseudo_paths = JSON3.read(resp.body, Dict{Symbol,String})
+    ps = Dict{Symbol,String}()
+    for a in atsyms
+        path = get(pseudo_paths, a, nothing)
+        if path === nothing
+            error("No pseudo for atom $atsym found in set $pseudoset.")
+        end
+        t = tempname()
+        pull(s, path, t)
+        ps[atsym] = read(t, String)
+        rm(t)
+    end
+        
+    return ps
 end
 
 """
@@ -65,6 +78,7 @@ Convenience function that allows to set pseudopotentials for multiple atom types
 e.g. `set_pseudos!(job, :Si => getdefault_pseudo(:Si, :sssp)
 """
 function Structures.set_pseudos!(job::Job, set, specifier::String = ""; kwargs...)
-    return Structures.set_pseudos!(job.structure, pseudos(job.server, set, specifier);
+    atsyms = unique(map(x -> x.element.symbol, job.structure.atoms))
+    return Structures.set_pseudos!(job.structure, pseudos(job.server, set, atsyms, specifier);
                                    kwargs...)
 end

@@ -2,10 +2,10 @@ Servers.Server(j::Job) = Server(j.server)
 
 function Jobs.Job(dir::AbstractString, s = "localhost"; version::Int = -1)
     server = Servers.maybe_start_server(s)
-    if occursin(Jobs.VERSION_DIR_NAME, dir)
-        error("It is not allowed to directly load a job version, please use `Job($dir, version=$(splitdir(dir)[end]))`")
+    if !occursin(Jobs.VERSION_DIR_NAME, dir) && version != -1
+        dir = Jobs.version_dir(Jobs.main_job_dir(dir), version)
     end
-    resp = HTTP.get(server, "/jobs/" * dir, [], JSON3.write(version))
+    resp = HTTP.get(server, "/jobs/" * dir)
     # Supplied dir was not a valid path, so we ask
     # previously registered jobs on the server that
     # contain dir.
@@ -66,15 +66,10 @@ function save(job::Job)
 
 
     Jobs.sanitize_cutoffs!(job)
-    files_to_copy = sanitize_pseudos!(job)
 
     curver = job.version
     resp_job = JSON3.read(HTTP.post(server, "/jobs/" * job.dir, [], JSON3.write(job)).body,
                           Job)
-    for f in files_to_copy
-        Servers.push(f, server, joinpath(job.dir, splitdir(f)[end]))
-    end
-
     @info "Job version: $(curver) => $(resp_job.version)."
     for f in fieldnames(Job)
         if f == :server
@@ -94,40 +89,6 @@ function submit(job::Job)
     verify_execs(job, server)
     save(job)
     return HTTP.put(server, "/jobs/" * job.dir)
-end
-
-function sanitize_pseudos!(job::Job)
-    all_pseudos = map(x -> x.pseudo, job.structure.atoms)
-    uni_dirs = unique(map(x -> x.dir, all_pseudos))
-    uni_pseudos = unique(all_pseudos)
-    s = Server(job)
-    pseudo_paths = Structures.path.(uni_pseudos)
-    if !all(x -> JSON3.read(HTTP.get(s, "/get_ispath/" * x).body, Bool), pseudo_paths)
-        if all(ispath, pseudo_paths)
-            @info "Some Pseudos could not be found on Server $(s.name), pushing them from local storage to job dir."
-            for p in all_pseudos
-                p.dir = job.dir
-            end
-            return pseudo_paths
-        else
-            # Find if the pseudos are part of a pseudoset
-            if length(uni_dirs)==1
-                for set in list_pseudosets(s)
-                    pseudos = pseudos(s, set)
-                    dir = values(pseudos)[1].dir
-                    pseudo_names = map(x -> x.name, values(pseudos))
-                    if splitpath(uni_dirs[1])[end] == splitpath(dir)[end] && all(x -> x.name ∈ pseudo_names, uni_pseudos)
-                        @warn "Matching pseudoset found on Server: $set."
-                        set_pseudos!(job, set)
-                        return String[]
-                    end
-                end
-            else
-                @warn "Some pseudos could not be found locally, and neither on the remote server."
-            end
-        end
-    end
-    return String[]
 end
 
 """
@@ -171,7 +132,7 @@ Returns the last `Calculation` for which an output file was created.
 """
 function last_running_calculation(job::Job)
     server = Servers.maybe_start_server(job)
-    resp = HTTP.get(server, "/last_running_calculation", [], JSON3.write(job))
+    resp = HTTP.get(server, "/last_running_calculation/" * job.dir)
     if resp.status == 204
         return nothing
     else

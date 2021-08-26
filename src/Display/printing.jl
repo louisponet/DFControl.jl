@@ -207,6 +207,7 @@ function df_show(io::IO, at::Atom)
     dfprintln(io, crayon"cyan", "Atom")
     dfprintln(io, crayon"red", "    name: ", crayon"reset", "$(at.name)")
     for f in fieldnames(typeof(at))[3:end-1]
+        f == :pseudo && continue
         fld = getfield(at, f)
         if f in (:position_cart, :position_cryst)
             dfprintln(io, crayon"red", "    $f: ", crayon"reset", "$((fld...,))")

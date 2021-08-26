@@ -1,22 +1,14 @@
-function load_job(job_dir::AbstractString, version::Int = -1)
-    if ispath(job_dir)
-        if version != -1
-            real_path = Jobs.version_dir(job_dir, version)
-            real_version = version
-        elseif ispath(joinpath(job_dir, "job.tt"))
-            real_path = job_dir
-            real_version = Jobs.main_job_version(job_dir)
-        else
-            error("No valid job found in $job_dir.")
-        end
-        job = Job(;
-                  merge((dir = real_path, version = real_version),
-                        FileIO.read_job_script(joinpath(real_path, "job.tt")))...)
-        Jobs.maybe_register_job(job)
-        return job
+function load_job(job_dir::AbstractString)
+    if ispath(joinpath(job_dir, "job.tt"))
+        version = Jobs.version(job_dir)
     else
-        return nothing
+        error("No valid job found in $job_dir.")
     end
+    job = Job(;
+              merge((dir = job_dir, version = version),
+                    FileIO.read_job_script(joinpath(job_dir, "job.tt")))...)
+    Jobs.maybe_register_job(job)
+    return job
 end
 
 job_versions(args...) = Jobs.job_versions(args...)
@@ -107,7 +99,7 @@ function save(job::Job; kwargs...)
     # Here we find the main directory, needed for if a job's local dir is a .versions one
     dir = Jobs.main_job_dir(job)
     if ispath(joinpath(dir, "job.tt"))
-        tj = load_job(dir, -1)
+        tj = load_job(dir)
         cp(tj, joinpath(tj, Jobs.VERSION_DIR_NAME, "$(tj.version)"); force = true)
     end
     if dir != job.dir
@@ -142,18 +134,15 @@ function submit(job_dir::String)
 end
 
 """
-    last_running_calculation(job::Job)
+    last_running_calculation(path::String)
 
 Returns the last `Calculation` for which an output file was created.
 """
-function last_running_calculation(job::Job)
+function last_running_calculation(path::String)
+    scrpath = joinpath(path, "job.tt")
+    job = load_job(path)
     t = mtime(Jobs.scriptpath(job))
-    for (i, c) in enumerate(reverse(job.calculations))
-        p = Calculations.outpath(c)
-        if ispath(p) && mtime(p) > t
-            return length(job.calculations) - i + 1
-        end
-    end
+    return findmax(map(x -> (o = Calculations.outpath(x); ispath(o) ? mtime(o) : 0.0), job.calculations))[2]
 end
 
 is_slurm_job(job::Job) = haskey(job.metadata, :slurmid)
@@ -167,14 +156,14 @@ running.
 """
 function isrunning(job_dir::String)
     !ispath(joinpath(job_dir, "job.tt")) && return false
-    job = load_job(job_dir, -1)
+    job = load_job(job_dir)
     server = Server(job)
     n = now()
     if server.scheduler == Servers.Slurm
         return slurm_isrunning(job)
     else
         u = username()
-        i = last_running_calculation(job)
+        i = last_running_calculation(job_dir)
         i === nothing && return false
         l = job[i]
         codeexec = l.exec.exec

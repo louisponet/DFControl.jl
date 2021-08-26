@@ -146,6 +146,12 @@ function write_job_files(job::Job; kwargs...)
     else
         environment = nothing
     end
+    if any(x ->eltype(x) == QE, job.calculations)
+        for a in unique(job.structure.atoms)
+            write(joinpath(job, "$(a.element.symbol).UPF"), a.pseudo)
+        end
+    end
+            
     open(joinpath(job.dir, "job.tt"), "w") do f
         write(f, "#!/bin/bash\n")
         write(f, "#SBATCH -J $(job.name) \n")
