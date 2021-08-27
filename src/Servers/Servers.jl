@@ -182,9 +182,9 @@ end
 function isalive(s::Server)
     try
         if s.local_port != 0
-            run(pipeline(`nc -vz localhost $(s.local_port)`, stdout = nothing, stderr=nothing))
+            run(pipeline(`nc -vz localhost $(s.local_port)`, stdout = Pipe(), stderr=Pipe()))
         else
-            run(pipeline(`nc -vz  $(s.domain) $(s.port)`, stdout = nothing, stderr=nothing))
+            run(pipeline(`nc -vz  $(s.domain) $(s.port)`, stdout = Pipe(), stderr=Pipe()))
         end
         HTTP.get(s, "/server_config")
         return true
@@ -208,7 +208,7 @@ function start(s::Server)
         sleep(1)
     end
 
-    if s.local_port != 0
+    if s.local_port == 0
         @info "Daemon on Server $(s.name) started, listening on port $(s.port)."
     else
         @info "Daemon on Server $(s.name) started, listening on local port $(s.local_port)."

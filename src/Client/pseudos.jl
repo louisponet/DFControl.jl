@@ -12,8 +12,8 @@ function pseudos(server, pseudoset, atsyms::Vector{Symbol}, fuzzy = "")
             error("No pseudo for atom $atsym found in set $pseudoset.")
         end
         t = tempname()
-        pull(s, path, t)
-        ps[atsym] = read(t, String)
+        Servers.pull(s, path, t)
+        ps[a] = read(t, String)
         rm(t)
     end
         

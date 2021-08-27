@@ -44,7 +44,7 @@ function configure_pseudoset(set_name::String, dir::String)
         for pseudo_string in files
             element = Symbol(titlecase(String(split(split(pseudo_string, ".")[1], "_")[1])))
             if haskey(pseudos[set_name], element)
-                push!(pseudos[set_name][element], pseudo_string)
+                push!(pseudos[set_name][element], joinpath(dir, pseudo_string))
             end
         end
         return length(files)
