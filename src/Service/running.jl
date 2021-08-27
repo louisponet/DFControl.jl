@@ -85,12 +85,12 @@ save_running_jobs(job_dirs_procs) = write(RUNNING_JOBS_FILE, join(keys(job_dirs_
 function handle_job_submission!(job_dirs_procs)
     if ispath(PENDING_JOBS_FILE)
         pending_job_submissions = filter(!isempty, readlines(PENDING_JOBS_FILE))
+        write(PENDING_JOBS_FILE, "")
         if !isempty(pending_job_submissions)
             for j in pending_job_submissions
                 job = load_job(j)
                 job_dirs_procs[job.dir] = spawn_worker(job)
             end
-            write(PENDING_JOBS_FILE, "")
         end
     end
 end
