@@ -69,7 +69,6 @@ function environment_name(env::Environment)
 end
 
 function Base.write(f::IO, env::Environment)
-    @show "ping"
     for flag in env.scheduler_flags
         write(f, "#SBATCH $flag\n")
     end
