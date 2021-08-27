@@ -107,7 +107,7 @@ function Server(s::String)
         else
             mountpoint = ""
         end
-        server = Server(name, username, domain, port, scheduler, mountpoint, julia_str, dir)
+        server = Server(name, username, domain, port, scheduler, mountpoint, julia_str, dir, 0)
         println("Server configured as:")
         println(server)
         save(server)
@@ -246,7 +246,7 @@ function maybe_create_localhost()
         end
         julia_exec = joinpath(Sys.BINDIR, "julia")
         out = Server("localhost", ENV["USER"], "localhost", port, scheduler, "", julia_exec,
-                     dir)
+                     dir, 0)
         save(out)
         return out
     else
