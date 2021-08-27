@@ -29,7 +29,7 @@ end
 
 "Reads the script file and tries to understand what the runtime environment is."
 function environment_from_jobscript(scriptpath::String)
-    lines = strip.(readlines(scriptpath))
+    lines = filter(!isempty, strip.(readlines(scriptpath)))
     id = findfirst(l -> any(x -> occursin(x, l), Calculations.RUN_EXECS), lines)
     if id !== nothing
         sline = split(replace(lines[id], "#" => ""))

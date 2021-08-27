@@ -9,6 +9,7 @@ const SERVER_DIR = DFControl.config_path("servers")
 
 @enum Scheduler Slurm=1 Bash=2
 
+#TODO: there is some disconnect between domain and ssh configuration to be used... 
 @with_kw mutable struct Server
     name::String           = "nothing"
     username::String       = "nothing"
@@ -18,6 +19,7 @@ const SERVER_DIR = DFControl.config_path("servers")
     mountpoint::String     = ""
     julia_exec::String     = "julia"
     default_jobdir::String = homedir()
+    local_port = 0
 end
 
 function Server(s::String)
@@ -44,14 +46,28 @@ function Server(s::String)
         @warn "A server with $name was already configured and will be overwritten."
     end
     try
-        @info "Trying to pull existing configuratiaon from $username@$domain..."
+        @info "Trying to pull existing configuration from $username@$domain..."
+        
         localpath = joinpath(SERVER_DIR, name*".json")
         remotepath = ".julia/config/DFControl/servers/localhost.json"
         run(`scp $(username * "@" * domain):$remotepath $localpath`)
+        try
+            run(`nc -vz $domain 22`)
+            local_port = 0
+        catch
+            port_str = ""
+            while isempty(port_str)
+                print("Local tunnel port:")
+                port_str = readline()
+            end
+            local_port = parse(Int, port_str)
+        end
+             
         tserver = load_server(name)
         tserver.name = name
         tserver.username= username
         tserver.domain=domain
+        tserver.local_port = local_port
         println("Server configured as:")
         println(tserver)
         save(tserver)
@@ -99,7 +115,7 @@ function Server(s::String)
     end
 end
 
-StructTypes.StructType(::Type{Server}) = StructTypes.Mutable()
+StructTypes.StructType(::Type{Server}) = StructTypes.Struct()
 
 Base.joinpath(s::Server, p...) = joinpath(s.default_jobdir, p...)
 
@@ -135,7 +151,7 @@ function save(s::Server)
 end
 
 ssh_string(s::Server) = s.username * "@" * s.domain
-http_string(s::Server) = "http://$(s.domain):$(s.port)"
+http_string(s::Server) = s.local_port != 0 ? "http://localhost:$(s.local_port)" : "http://$(s.domain):$(s.port)"
 
 function HTTP.request(method::String, s::Server, url, args...; kwargs...)
     return HTTP.request(method, string(http_string(s), url), args...; kwargs...)
@@ -164,6 +180,11 @@ end
 
 function isalive(s::Server)
     try
+        if s.local_port != 0
+            run(pipeline(`nc -vz localhost $(s.local_port)`, stdout = nothing, stderr=nothing))
+        else
+            run(pipeline(`nc -vz  $(s.domain) $(s.port)`, stdout = nothing, stderr=nothing))
+        end
         HTTP.get(s, "/server_config")
         return true
     catch
@@ -173,6 +194,9 @@ end
 
 function start(s::Server)
     @info "Starting:\n$s"
+    if s.local_port != 0
+        run(`ssh -f -N -L $(s.local_port):localhost:$(s.port) $(ssh_string(s))`)
+    end
     cmd = Cmd(`$(s.julia_exec) --startup-file=no -t auto -e "using DFControl; DFControl.Resource.run($(s.port))"`;
               detach = true)
     proc = addprocs(s)[1]
@@ -183,14 +207,16 @@ function start(s::Server)
         sleep(1)
     end
 
-    @info "Daemon on Server $(s.name) started, listening on port $(s.port)."
+    if s.local_port != 0
+        @info "Daemon on Server $(s.name) started, listening on port $(s.port)."
+    else
+        @info "Daemon on Server $(s.name) started, listening on local port $(s.local_port)."
+    end
     return rmprocs(proc)
 end
 
 function maybe_start_server(s::Server)
-    try
-        HTTP.get(s, "/server_config")
-    catch
+    if !isalive(s)
         start(s)
     end
     return s
