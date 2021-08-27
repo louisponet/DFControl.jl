@@ -51,6 +51,7 @@ function Server(s::String)
         localpath = joinpath(SERVER_DIR, name*".json")
         remotepath = ".julia/config/DFControl/servers/localhost.json"
         run(`scp $(username * "@" * domain):$remotepath $localpath`)
+        local_port = 0 
         try
             run(`nc -vz $domain 22`)
             local_port = 0
