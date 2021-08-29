@@ -110,9 +110,14 @@ function save(job::Job; kwargs...)
         cp(job, dir; force = true)
     end
 
+    
     set_dir!(job, dir) # Needs to be done so the inputs `dir` also changes.
     mkpath(dir)
 
+    for f in searchdir(job, "slurm")
+        rm(f)
+    end
+    
     job.version = Jobs.last_version(job) + 1
     timestamp!(job, now())
     save_metadata(job)

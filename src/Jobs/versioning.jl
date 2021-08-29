@@ -47,12 +47,7 @@ last_version(job::Job) = last_job_version(main_job_dir(job))
 
 function version_dir(dir::AbstractString, version::Int)
     tpath = joinpath(dir, VERSION_DIR_NAME, "$version")
-    ispath(tpath) && return tpath
-
-    if main_job_version(dir) == version
-        return dir
-    end
-    return error("Version $version not found.")
+    return tpath
 end
 version_dir(job::Job) = version_dir(main_job_dir(job), job.version)
 version_dir(job::Job, version::Int) = version_dir(main_job_dir(job), version)

@@ -33,7 +33,8 @@ function environment_from_jobscript(scriptpath::String)
     id = findfirst(l -> any(x -> occursin(x, l), Calculations.RUN_EXECS), lines)
     if id !== nothing
         sline = split(replace(lines[id], "#" => ""))
-        MPI_command = join(sline[1:findnext(x->x[1]!='-', sline, 2)-1], " ")
+
+        MPI_command = join(sline[1:findnext(x -> splitdir(x)[end] ∈ Calculations.allexecs() , sline, 2)-1], " ")
     else
         MPI_command = ""
     end
