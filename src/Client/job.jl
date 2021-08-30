@@ -2,7 +2,11 @@ Servers.Server(j::Job) = Server(j.server)
 
 function Jobs.Job(dir::AbstractString, s = "localhost"; version::Int = -1)
     server = Servers.maybe_start_server(s)
-    if version == versions(dir, server)[end]
+    if !JSON3.read(HTTP.get(server, "/get_ispath/" * dir).body, Bool)
+        dir = request_job_dir(dir, server)
+        dir === nothing && return
+    end
+    if version == last_version(dir, server)
         dir = Jobs.main_job_dir(dir)
     elseif !occursin(Jobs.VERSION_DIR_NAME, dir) && version != -1
         dir = Jobs.version_dir(Jobs.main_job_dir(dir), version)
@@ -11,11 +15,6 @@ function Jobs.Job(dir::AbstractString, s = "localhost"; version::Int = -1)
     # Supplied dir was not a valid path, so we ask
     # previously registered jobs on the server that
     # contain dir.
-    if resp.status == 204
-        dir = request_job_dir(dir, server)
-        dir === nothing && return
-        resp = HTTP.get(server, "/jobs/" * dir, [], JSON3.write(version))
-    end
     job = JSON3.read(resp.body, Job)
     job.server = server.name
     if haskey(job.metadata, :timestamp)
@@ -123,8 +122,8 @@ Returns the last version number of `job`.
 """
 last_version(job::Job) = last_version(job.dir, job.server) 
 function last_version(dir, s="localhost")
-    server = Servers.maybe_start_server(s)
-    return JSON3.read(HTTP.get(server, "/job_versions/" * Jobs.main_job_dir(dir)).body, Vector{Int})[end]
+    t = versions(dir, s)
+    return isempty(t) ? 0 : t[end]
 end
 
 """

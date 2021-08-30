@@ -147,7 +147,8 @@ function last_running_calculation(path::String)
     scrpath = joinpath(path, "job.tt")
     job = load_job(path)
     t = mtime(Jobs.scriptpath(job))
-    return findmax(map(x -> (o = Calculations.outpath(x); ispath(o) ? mtime(o) : 0.0), job.calculations))[2]
+    times = map(x -> (o = Calculations.outpath(x); ispath(o) ? mtime(o) : 0.0), job.calculations)
+    return isempty(times) ? nothing : findmax(times)[2]
 end
 
 is_slurm_job(job::Job) = haskey(job.metadata, :slurmid)
