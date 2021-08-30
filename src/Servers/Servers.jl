@@ -196,6 +196,11 @@ end
 function start(s::Server)
     @info "Starting:\n$s"
     if s.local_port != 0
+        t = getfirst(x->occursin("ssh -f -N", x), split(read(pipeline(`ps aux` , stdout = `grep $(s.local_port)`), String), "\n"))
+        
+        if t !== nothing
+            run(`kill $(split(t)[2])`)
+        end
         run(`ssh -f -N -L $(s.local_port):localhost:$(s.port) $(ssh_string(s))`)
     end
     cmd = Cmd(`$(s.julia_exec) --startup-file=no -t auto -e "using DFControl; DFControl.Resource.run($(s.port))"`;

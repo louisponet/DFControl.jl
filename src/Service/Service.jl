@@ -13,7 +13,7 @@ using ..Servers
 const RUNNING_JOBS_FILE = config_path("running_jobs.txt")
 const PENDING_JOBS_FILE = config_path("pending_jobs.txt")
 const SERVICE_LOG = config_path("daemon.log")
-const SLEEP_TIME = 1.0
+const SLEEP_TIME = 10.0
 
 daemon_logger() = FileLogger(SERVICE_LOG; append = true)
 
