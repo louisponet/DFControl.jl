@@ -276,8 +276,14 @@ function outputdata(job::Job, calculations::Vector{Calculation})
             end
         end
     end
-    new_data && JLD2.save(respath, "outputdata", datadict)
-    return respath
+    if new_data
+        JLD2.save(respath, "outputdata", datadict)
+        return respath
+    elseif ispath(respath)
+        return respath
+    else
+        return nothing
+    end
 end
 outputdata(job::Job; kwargs...) = outputdata(job, job.calculations; kwargs...)
 
