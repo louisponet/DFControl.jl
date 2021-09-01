@@ -54,7 +54,7 @@ function slurm_isrunning(job::Job)
     try
         if id != -1
             result = readlines(`squeue -j $id`)
-            st_id = findfirst(x -> x=="ST", result)
+            st_id = findfirst(x -> x=="ST", split(result[1]))
             return split(result[2])[st_id] ∈ ("R", "PD", "CF", "CG")
         else
             @warn "No jobid found. Was your job submitted through slurm?"
