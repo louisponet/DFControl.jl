@@ -17,20 +17,20 @@ function slurm_history_jobdir(startdate = yesterday()) #format of startdate = yy
 end
 
 """
-    slurm_jobid(job::Job, startdate=yesterday())
+    slurm_jobid(job::Job)
 
 Looks through the jobs since the `startdate` and returns the job ID if found.
 Returns -1 if the jobID was not found in the list of jobs since `startdate`.
 """
-function slurm_jobid(job::Job, startdate = yesterday())
+function slurm_jobid(job::Job)
     if haskey(job.metadata, :slurmid)
         return job.metadata[:slurmid]
     end
     id_dir = filter(x -> length(x) == 2,
-                    split.(slurm_process_command(`sacct --starttime $startdate --format=JobID,Workdir%100`)))
+                    split.(slurm_process_command(`sacct --format=JobID,Workdir%100`)))
     id_ = -1
     for (id, dir) in id_dir
-        if dir == job.dir[1:end-1]
+        if occursin(job.dir, dir) || occursin(dir, job.dir)
             id_ = parse(Int, id)
             break
         end
@@ -55,7 +55,7 @@ function slurm_isrunning(job::Job)
         if id != -1
             result = slurm_process_command(`scontrol show job $id`)
             line = getfirst(x -> occursin("JobState", x), result)
-            return split(split(line)[1], "=")[2] ∈ ("RUNNING", "PENDING", "CONFIGURING")
+            return split(split(line)[1], "=")[2] ∈ ("RUNNING", "PENDING", "CONFIGURING", "COMPLETING")
         else
             @warn "No jobid found. Was your job submitted through slurm?"
             return false

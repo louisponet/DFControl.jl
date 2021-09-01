@@ -145,7 +145,7 @@ function outputdata(job::Job; extra_parse_funcs = nothing)
     server = Servers.maybe_start_server(job)
     resp = HTTP.get(server, "/outputdata", [], JSON3.write(job))
     if resp.status == 204
-        return nothing
+        error("No outputdata found yet. Is the job running?")
     end
     tmp_path = JSON3.read(resp.body,
                           String)
