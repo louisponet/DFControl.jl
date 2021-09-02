@@ -36,8 +36,7 @@ function slurm_jobid(job::Job)
         end
     end
     if id_ == -1
-        @info "Job in directory $(job.dir) was not found in the slurm jobs since
-        $startdate"
+        @info "Job in directory $(job.dir) was not found in the slurm jobs."
     else
         job.metadata[:slurmid] = id_
     end
