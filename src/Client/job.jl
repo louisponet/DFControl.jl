@@ -159,15 +159,15 @@ function outputdata(job::Job; extra_parse_funcs = nothing)
         for c in job.calculations
             n = c.name
             if haskey(out, n)
-                # try
+                try
                     f = Calculations.outpath(c)
                     local_f = tempname()
                     Servers.pull(server, f, local_f)
                     FileIO.parse_file(local_f, extra_parse_funcs, out = out[n])
                     rm(local_f)
-                # catch
-                #     nothing
-                # end
+                catch
+                    nothing
+                end
             end
         end
     end
