@@ -433,6 +433,15 @@ function qe_parse_starting_simplified_dftu(out, line, f)
     end
 end
 
+function qe_parse_Hubbard_energy(out, line, f)
+    if !haskey(out, :Hubbard_energy)
+        out[:Hubbard_energy] = parse(Float64, split(line)[3])
+    else
+        push!(out[:Hubbard_energy], parse(Float64, split(line)[3]))
+    end
+end
+        
+
 const QE_PW_PARSE_FUNCTIONS = ["C/m^2" => qe_parse_polarization,
                                "lattice parameter" => qe_parse_lattice_parameter,
                                "number of Kohn-Sham states" => qe_parse_n_KS,
@@ -465,6 +474,7 @@ const QE_PW_PARSE_FUNCTIONS = ["C/m^2" => qe_parse_polarization,
                                "Begin final coordinates" => (x, y, z) -> x[:converged] = true,
                                "atom number" => qe_parse_magnetization,
                                "--- enter write_ns ---" => qe_parse_Hubbard,
+                               "Hubbard energy" => qe_parse_Hubbard_energy,
                                "init_run" => qe_parse_timing,
                                "Starting magnetic structure" => qe_parse_starting_magnetization,
                                "Simplified LDA+U calculation" => qe_parse_starting_simplified_dftu]
