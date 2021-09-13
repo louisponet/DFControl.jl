@@ -35,21 +35,18 @@ function spawn_worker(job::Job)
             cmd = `sbatch job.tt`
         end
         to_run = """begin
+        run($cmd)
         using DFControl: Service
         using DFControl.Service: outputdata
+        job = Job($(job.dir)) 
+       
+        while Service.isrunning(job.dir)
+            sleep(10)
+        end
+        outputdata(job)
         end
         """
-        Distributed.remotecall_eval(Distributed.Main, proc, Base.Meta.parse(to_run))
-        @everywhere function run_job(job)
-            if !Service.isrunning(job.dir)
-                run($cmd)
-            end
-            while Service.isrunning(job.dir)
-                sleep(10)
-            end
-            outputdata(job)
-        end
-        f = remotecall(Distributed.Main.run_job, proc, job)
+        f = Distributed.remotecall(Core.eval, proc,Distributed.main, Base.Meta.parse(to_run))
         return proc, f
     end
 end
