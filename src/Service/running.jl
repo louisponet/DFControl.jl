@@ -38,7 +38,7 @@ function spawn_worker(job::Job)
         run($cmd)
         using DFControl: Service
         using DFControl.Service: outputdata
-        job = Job($(job.dir)) 
+        job = Job(".") 
        
         while Service.isrunning(job.dir)
             sleep(10)
