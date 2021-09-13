@@ -218,6 +218,8 @@ function set_flags!(c::Calculation{T}, flags...; print = true) where {T}
                 if isa(value, AbstractVector{<:AbstractVector}) &&
                    flag_type <: AbstractVector
                     value = [convert.(eltype(flag_type), v) for v in value]
+                elseif flag == :starting_ns_eigenvalue
+                    value = convert.(Float32, reshape(value, (7,4,4)))
                 else
                     value = convert(flag_type, value)
                 end
