@@ -203,8 +203,9 @@ function start(s::Server)
         end
         run(`ssh -f -N -L $(s.local_port):localhost:$(s.port) $(ssh_string(s))`)
     end
-    cmd = Cmd(`$(s.julia_exec) --startup-file=no -t auto -e "using DFControl; DFControl.Resource.run($(s.port))"`;
-              detach = true)
+    #TODO: little hack here
+    cmd = pipeline(Cmd(`$(s.julia_exec) --startup-file=no -t auto -e "using DFControl; DFControl.Resource.run($(s.port))"`;
+              detach = true), stderr = "$(s.default_jobdir)/.julia/config/DFControl/errors.log")
     proc = addprocs(s)[1]
 
     p = remotecall(run, proc, cmd; wait = false)

@@ -46,7 +46,7 @@ function spawn_worker(job::Job)
         outputdata(job)
         end
         """
-        f = Distributed.remotecall(Core.eval, proc,Distributed.main, Base.Meta.parse(to_run))
+        f = Distributed.remotecall(Core.eval, proc,Distributed.Main, Base.Meta.parse(to_run))
         return proc, f
     end
 end
