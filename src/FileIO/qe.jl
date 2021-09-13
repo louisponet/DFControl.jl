@@ -435,7 +435,7 @@ end
 
 function qe_parse_Hubbard_energy(out, line, f)
     if !haskey(out, :Hubbard_energy)
-        out[:Hubbard_energy] = parse(Float64, split(line)[3])
+        out[:Hubbard_energy] = [parse(Float64, split(line)[3])]
     else
         push!(out[:Hubbard_energy], parse(Float64, split(line)[3]))
     end
