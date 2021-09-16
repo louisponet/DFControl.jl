@@ -75,9 +75,9 @@ end
 
 @recipe function f(job::Job, ymin, ymax, occupy_ratio = 0.2; overlap_spin = false)
     palette_ = ismissing(Plots.default(:palette)) ? :default : Plots.default(:palette)
-    plt_colors = repeat(Plots.plot_color(pop!(plotattributes, :seriescolor,
-                                              RGB.(Plots.color_list(Plots.palette(palette_))))),
-                        4)
+    tc = Plots.plot_color(pop!(plotattributes, :seriescolor,
+                                              RGB.(Plots.color_list(Plots.palette(palette_)))))
+    plt_colors = tc isa Colorant ? repeat([tc], 4) : repeat(tc, 4)
     ylims --> [ymin, ymax]
     gridalpha --> 0.9
     if !any(x -> eltype(x) == QE, job.calculations)
@@ -272,7 +272,7 @@ end
             end
         else
             for (ib, b) in enumerate(bands[window_ids[1]])
-                plot_band(b, PLOT_COLORS[mod1(ib, length(PLOT_COLORS))], "", 1)
+                plot_band(b, plt_colors[mod1(ib, length(plt_colors))], "", 1)
             end
         end
     end

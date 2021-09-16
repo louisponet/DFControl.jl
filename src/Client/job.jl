@@ -180,7 +180,7 @@ function verify_execs(job::Job, server::Server)
             possibilities = JSON3.read(HTTP.get(server, "/known_execs/" * e.exec).body, Vector{Calculations.Exec})
             replacement = length(possibilities) == 1 ? possibilities[1] : getfirst(x -> x.dir == e.dir, possibilities)
             if replacement !== nothing
-                @warn "Modules mismatched, but found a matching replacement executable on the server with the correct modules.\nUsing that one..."
+                @warn "Executable ($(e.exec)) in dir ($(e.dir)) not runnable,\n but found a matching replacement executable in dir ($(replacement.dir)).\nUsing that one..."
                 for e1 in map(x->x.exec, job.calculations)
                     if e1.exec == replacement.exec
                         e1.modules = replacement.modules

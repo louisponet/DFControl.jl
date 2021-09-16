@@ -312,7 +312,9 @@ const QE_EXECFLAGS = ExecFlag[ExecFlag(:nk, "kpoint-pools",
                               ExecFlag(:ndiag, "diag",
                                        "Number of processes for linear algebra", 0, 1),
                               ExecFlag(:ni, "images",
-                                       "Number of processes used for the images", 0, 1)]
+                                       "Number of processes used for the images", 0, 1),
+                               ExecFlag(:npool, "pools",
+                                       "Number of processes used for the pools", 0, 1)]
 
 qe_execflag(flag::AbstractString) = getfirst(x -> x.name == flag, QE_EXECFLAGS)
 qe_execflag(flag::Symbol) = getfirst(x -> x.symbol == flag, QE_EXECFLAGS)

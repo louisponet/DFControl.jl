@@ -9,7 +9,7 @@ function pseudos(server, pseudoset, atsyms::Vector{Symbol}, fuzzy = "")
     for a in atsyms
         path = get(pseudo_paths, a, nothing)
         if path === nothing
-            error("No pseudo for atom $atsym found in set $pseudoset.")
+            error("No pseudo for atom $a found in set $pseudoset.")
         end
         t = tempname()
         Servers.pull(s, path, t)

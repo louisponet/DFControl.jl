@@ -63,8 +63,6 @@ function requestHandler(req)
            method = req.method, target = req.target)
     local resp
     try
-        # DFC.Revise.revise()
-        # obj = Base.invokelatest(HTTP.handle,ROUTER, req)
         obj = HTTP.handle(ROUTER, req)
         if obj === nothing
             resp = HTTP.Response(204)
@@ -88,8 +86,6 @@ end
 function run(port)
     cd(Server("localhost").default_jobdir)
     Service.global_logger(Service.daemon_logger())
-    # Service.start()
-    # server = HTTP.Sockets.listen(HTTP.Sockets.InetAddr(parse(IPAddr, "0.0.0.0"), port))
     @async HTTP.serve(requestHandler, "0.0.0.0", port)
     return with_logger(Service.daemon_logger()) do
         Service.main_loop()

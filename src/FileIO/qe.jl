@@ -169,7 +169,7 @@ end
 function qe_parse_pseudo(out, line, f)
     !haskey(out, :pseudos) && (out[:pseudos] = Dict{Symbol,String}())
     pseudopath = readline(f) |> strip
-    return out[:pseudos][Symbol(split(line)[5])] = read(pseudopath, String)
+    return out[:pseudos][Symbol(split(line)[5])] = ispath(pseudopath) ? read(pseudopath, String) : ""
 end
 
 function qe_parse_fermi(out, line, f)
@@ -434,10 +434,12 @@ function qe_parse_starting_simplified_dftu(out, line, f)
 end
 
 function qe_parse_Hubbard_energy(out, line, f)
+    sline = split(line)
+    val = sline[3] == "=" ? parse(Float64, sline[4]) : parse(Float64, sline[3])
     if !haskey(out, :Hubbard_energy)
-        out[:Hubbard_energy] = [parse(Float64, split(line)[3])]
+        out[:Hubbard_energy] = [val]
     else
-        push!(out[:Hubbard_energy], parse(Float64, split(line)[3]))
+        push!(out[:Hubbard_energy], val)
     end
 end
         
@@ -1000,8 +1002,7 @@ Returns a `Calculation{QE}` and the `Structure` that is found in the calculation
 function qe_read_calculation(filename; exec = Exec(; exec = "pw.x"), run = true,
                              structure_name = "noname")
     @assert ispath(filename) "$filename is not a valid path."
-    t_lines = read(filename) |>
-              String |>
+    t_lines = read(filename, String) |>
               x -> split(x, "\n") .|> x -> cut_after(x, '!') .|> x -> cut_after(x, '#')
     lines = join(t_lines, "\n") |>
             # x -> replace(x, "," => "\n")  |>
