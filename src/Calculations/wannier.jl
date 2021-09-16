@@ -46,7 +46,7 @@ function gencalc_wan(nscf::Calculation{QE}, structure::Structure, bands, Emin, w
     wancalculations = Calculation{Wannier90}[]
     for wanfil in wannames
         push!(wancalculations,
-              Calculation{Wannier90}(; name = wanfil, dir = nscf.dir,
+              Calculation{Wannier90}(; name = wanfil,
                                      flags = copy(wanflags), data = [kdata],
                                      execs = [wanexec], run = true))
     end
@@ -169,12 +169,12 @@ function Emin_from_projwfc(structure::Structure, states, bands::Vector{DFC.Band}
     return Emin
 end
 
-for f in (:cp, :mv)
-    @eval function Base.$f(i::Calculation{Wannier90}, dest::String; kwargs...)
-        for glob in ("$(i.name)", "UNK") # seedname should also cover generated pw2wannier90 files
-            for file in searchdir(i, glob)
-                $f(file, joinpath(dest, splitdir(f)[end]); kwargs...)
-            end
-        end
-    end
-end
+# for f in (:cp, :mv)
+#     @eval function Base.$f(i::Calculation{Wannier90}, dest::String; kwargs...)
+#         for glob in ("$(i.name)", "UNK") # seedname should also cover generated pw2wannier90 files
+#             for file in searchdir(i, glob)
+#                 $f(file, joinpath(dest, splitdir(f)[end]); kwargs...)
+#             end
+#         end
+#     end
+# end

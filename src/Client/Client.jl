@@ -22,7 +22,7 @@ using ..FileIO
         @warn "Package not identified from execs $(x.exec)."
     end
 
-    t = Calculation{p}(x.name, x.dir, x.flags, x.data, x.exec, x.run,  x.infile,
+    t = Calculation{p}(x.name, x.flags, x.data, x.exec, x.run,  x.infile,
                        x.outfile)
     return pos, t
 end

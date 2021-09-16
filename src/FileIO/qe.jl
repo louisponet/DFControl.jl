@@ -1,7 +1,7 @@
 import Base: parse
 
-function readoutput(c::Calculation{QE}; kwargs...)
-    return qe_read_output(c; kwargs...)
+function readoutput(c::Calculation{QE}, file; kwargs...)
+    return qe_read_output(c, file; kwargs...)
 end
 
 #this is all pretty hacky with regards to the new structure and atom api. can for sure be a lot better!
@@ -35,13 +35,13 @@ function qe_parse_time(str::AbstractString)
     return t
 end
 
-function qe_read_output(c::Calculation{QE}, args...; kwargs...)
+function qe_read_output(c::Calculation{QE}, file, args...; kwargs...)
     if Calculations.isprojwfc(c)
-        return qe_read_projwfc_output(c, args...)
+        return qe_read_projwfc_output(file, args...)
     elseif Calculations.ishp(c)
-        return qe_read_hp_output(c, args...; kwargs...)
+        return qe_read_hp_output(file, args...; kwargs...)
     elseif Calculations.ispw(c)
-        return qe_read_pw_output(Calculations.outpath(c), args...; kwargs...)
+        return qe_read_pw_output(file, args...; kwargs...)
     end
 end
 
@@ -645,17 +645,19 @@ function qe_read_pdos(filename::String)
     return energies, values
 end
 
-function qe_read_projwfc_output(c::Calculation{QE}, args...)
+function qe_read_projwfc_output(file, args...)
     out = Dict{Symbol,Any}()
-    out[:states], out[:bands] = qe_read_projwfc(Calculations.outpath(c))
-    out[:energies], out[:pdos] = pdos(c) 
+    out[:states], out[:bands] = qe_read_projwfc(file)
+    out[:energies], out[:pdos] = pdos(file) 
     return out
 end
 
-function pdos(c::Calculation{QE})
-    @assert Calculations.isprojwfc(c) "Please specify a valid projwfc calculation."
-    kresolved = haskey(c, :kresolveddos) && c[:kresolveddos]
-    files = filter(x -> occursin("#", x), searchdir(c.dir, "pdos"))
+function pdos(file)
+
+    kresolved = occursin("ik", readline(file))
+    
+    dir = splitdir(file)[1] 
+    files = filter(x -> occursin("#", x), searchdir(dir, "pdos"))
 
     if isempty(files)
         return (Float64[], Dict{Symbol, Array})
@@ -664,7 +666,7 @@ function pdos(c::Calculation{QE})
     magnetic = (x->occursin("ldosup",x) && occursin("ldosdw",x))(readline(files[1]))
     soc = occursin(".5", files[1])
     @assert !isempty(files) "No pdos files found in calculation directory $(c.dir)"
-    files = joinpath.((c,), files)
+    files = joinpath.((dir,), files)
     energies, = kresolved ? FileIO.qe_read_kpdos(files[1]) : FileIO.qe_read_pdos(files[1])
     totdos = Dict{Symbol, Dict{Structures.Orbital, Array}}()
     for atsym in atsyms
@@ -845,10 +847,17 @@ end
 const QE_HP_PARSE_FUNCS = ["will be perturbed" => qe_parse_pert_at,
                            "Hubbard U parameters:" => qe_parse_Hubbard_U]
 
-function qe_read_hp_output(c::Calculation{QE}; parse_funcs = Pair{String,<:Function}[])
-    out = parse_file(Calculations.outpath(c), QE_HP_PARSE_FUNCS; extra_parse_funcs = parse_funcs)
-
-    hubbard_file = joinpath(c.dir, """$(get(c, :prefix, "pwscf")).Hubbard_parameters.dat""")
+function qe_read_hp_output(file; parse_funcs = Pair{String,<:Function}[])
+    out = parse_file(file, QE_HP_PARSE_FUNCS; extra_parse_funcs = parse_funcs)
+    dir = splitdir(file)[1]
+    hub_files = searchdir(dir, ".Hubbard_parameters.dat")
+    if length(hub_files) > 1
+        @warn "Found multiple .Hubbard_parameters.dat files. Using $(hub_files[1]) (remove and read again if this is undesired)"
+    elseif isempty(hub_files)
+        error("No .Hubbard_parameters.dat file found in $dir.")
+    end
+        
+    hubbard_file = hub_files[1]
     if ispath(hubbard_file)
         merge(out,
               parse_file(hubbard_file, QE_HP_PARSE_FUNCS; extra_parse_funcs = parse_funcs))
@@ -1161,7 +1170,7 @@ function qe_read_calculation(filename; exec = Exec(; exec = "pw.x"), run = true,
 
     pop!.((parsed_flags,), [:prefix, :outdir], nothing)
     dir, file = splitdir(filename)
-    return Calculation{QE}(; name = splitext(file)[1], dir = dir, flags = parsed_flags,
+    return Calculation{QE}(; name = splitext(file)[1],flags = parsed_flags,
                            data = datablocks, exec = exec, run = run), structure
 end
 
@@ -1334,7 +1343,7 @@ function qe_generate_pw2wancalculation(c::Calculation{Wannier90}, nscf::Calculat
     end
     pw2wanexec = Exec("pw2wannier90.x", runexec.dir)
     run = get(c, :preprocess, false) && c.run
-    return Calculation{QE}(; name = "pw2wan_$(flags[:seedname])", dir = c.dir,
+    return Calculation{QE}(; name = "pw2wan_$(flags[:seedname])", 
                            flags = flags, data = InputData[],
                            exec = pw2wanexec, run = run)
 end

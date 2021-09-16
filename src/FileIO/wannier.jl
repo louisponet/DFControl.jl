@@ -1,5 +1,5 @@
-function readoutput(calculation::Calculation{Wannier90}; kwargs...)
-    return wan_read_output(Calculations.outpath(calculation); kwargs...)
+function readoutput(calculation::Calculation{Wannier90}, file; kwargs...)
+    return wan_read_output(file; kwargs...)
 end
 
 #THIS IS THE MOST HORRIBLE FUNCTION I HAVE EVER CREATED!!!
@@ -235,7 +235,7 @@ function wan_read_calculation(filename::String, T = Float64;
     dir, file = splitdir(filename)
     flags[:preprocess] = Calculations.hasflag(exec,
                                               :pp) ? true : false
-    return Calculation{Wannier90}(; name = splitext(file)[1], dir = dir, flags = flags,
+    return Calculation{Wannier90}(; name = splitext(file)[1], flags = flags,
                                   data = data, exec = exec, run = run), structure
 end
 
@@ -430,10 +430,9 @@ function wan_read_output(filename::AbstractString;
 end
 
 function outfiles(c::Calculation{Wannier90})
-    files = [Calculations.outpath(c)]
-    append!(files, filter(x -> x != Calculations.inpath(c), searchdir(c, c.name)))#should include pw2wannier
+    files = [c.name]
     if get(c, :wannier_plot, false)
-        append!(files, searchdir(c, "UNK"))
+        push!(files, "UNK")
     end
-    return filter(ispath, unique(files))
+    return unique(files)
 end

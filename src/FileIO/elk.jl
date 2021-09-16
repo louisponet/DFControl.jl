@@ -142,7 +142,7 @@ function elk_read_calculation(fn::String; exec = Exec(; exec = "elk"), run = tru
         flags = pop!(blocknames_flaglines, :wannier)
         # flags[:elk2wan_tasks] = wan_tasks
         push!(calculations,
-              Calculation{Elk}(; name = "elk2wannier", dir = dir, flags = flags,
+              Calculation{Elk}(; name = "elk2wannier", flags = flags,
                                exec = exec, run = true))
     end
     for f in (:ngrid, :vkloff, :plot1d, :plot2d, :plot3d)
@@ -186,7 +186,7 @@ function calculation_from_task(task, blocknames_flaglines, dir, exec, run)
     elseif task ∈ ["20", "21"]
         data = find_data((:plot1d, :plot2d, :plot3d), blocknames_flaglines)
     end
-    return Calculation{Elk}(; name = task, dir = dir, data = data, exec = exec, run = run)
+    return Calculation{Elk}(; name = task, data = data, exec = exec, run = run)
 end
 
 function parse(::Type{UnitRange{Int}}, l::AbstractString)
@@ -325,7 +325,7 @@ function elk_write_DFTU(f::IO, structure::DFC.Structure, dftu_vals::Vector)
     return write(f, "\n")
 end
 
-function save(calculations::Vector{Calculation{Elk}}, structure::Structure)
+function save(calculations::Vector{Calculation{Elk}}, structure::Structure, dir)
     tasks = map(x -> x.run ? "$(x.name)" : "!$(x.name)",
                 filter(x -> x.name != "elk2wannier", calculations))
     elk2wan_calculation = getfirst(x -> x.name == "elk2wannier", calculations)
@@ -333,7 +333,7 @@ function save(calculations::Vector{Calculation{Elk}}, structure::Structure)
         append!(tasks, pop!(elk2wan_calculation.flags, :elk2wan_tasks))
     end
     flags = construct_flag_blocks(calculations)
-    open(joinpath(calculations[1].dir, "elk.in"), "w") do f
+    open(joinpath(dir, "elk.in"), "w") do f
         write(f, "tasks\n")
         for t in tasks
             write(f, "\t$t\n")

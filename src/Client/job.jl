@@ -160,7 +160,7 @@ function outputdata(job::Job; extra_parse_funcs = nothing)
             n = c.name
             if haskey(out, n)
                 try
-                    f = Calculations.outpath(c)
+                    f = joinpath(job, c.outfile)
                     local_f = tempname()
                     Servers.pull(server, f, local_f)
                     FileIO.parse_file(local_f, extra_parse_funcs, out = out[n])
@@ -238,7 +238,7 @@ function switch_version!(job::Job, version::Int)
     if !(version in allvers)
         error("Version $version does not exist.")
     end
-    tj = Job(Jobs.main_job_dir(job.dir), job.server, version=version)
+    tj = Job(Jobs.main_job_dir(job), job.server, version=version)
     for f in fieldnames(Job)
         setfield!(job, f, getfield(tj, f))
     end

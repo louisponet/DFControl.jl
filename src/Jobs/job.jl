@@ -282,13 +282,8 @@ function DFC.set_dir!(job::Job, dir::AbstractString; copy = false)
     end
     if copy
         error("TODO: Implement for server side copying")
-        # mkpath(dir)
-        # cp(job, dir; temp = true)
     end
     job.dir = dir
-    for i in job.calculations
-        set_dir!(i, dir)
-    end
     return job
 end
 

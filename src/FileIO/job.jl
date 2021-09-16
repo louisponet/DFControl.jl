@@ -107,7 +107,7 @@ function writetojob(f, job, _calculation::Calculation{Wannier90}, environment; k
         write(f, "#")
     end
     writeexec(f, _calculation.exec, environment)
-    write(f, "$filename > $(joinpath(_calculation.dir, _calculation.outfile))\n")
+    write(f, "$filename > $(joinpath(job, _calculation.outfile))\n")
     return (_calculation,)
 end
 
@@ -138,7 +138,6 @@ Writes all the calculation files and job file that are linked to a Job.
 Kwargs will be passed down to various writetojob functions.
 """
 function write_job_files(job::Job; kwargs...)
-    # rm.(joinpath.(Ref(job.dir), searchdir(job.dir, ".in")))
 
     if job.environment != ""
         environment = Jobs.load_environment(job.environment)
@@ -152,7 +151,7 @@ function write_job_files(job::Job; kwargs...)
         end
     end
             
-    open(joinpath(job.dir, "job.tt"), "w") do f
+    open(joinpath(job, "job.tt"), "w") do f
         write(f, "#!/bin/bash\n")
         write(f, "#SBATCH -J $(job.name) \n")
         write_job_header(f, job, environment)
@@ -166,7 +165,9 @@ function write_job_files(job::Job; kwargs...)
 
         for i in job.calculations
             if i.run
-                rm.(filter(ispath, Calculations.outfiles(i)))
+                for glob in Calculations.outfiles(i)
+                    rm.(filter(x -> ispath(x) && splitdir(x)[2] != i.infile, searchdir(job, glob)))
+                end
             end
             if i ∉ written_calculations
                 append!(written_calculations, writetojob(f, job, i, environment; kwargs...))

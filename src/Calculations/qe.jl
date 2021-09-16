@@ -185,38 +185,17 @@ function ismagnetic(c::Calculation{QE})
 end
 
 function outfiles(c::Calculation{QE})
-    files = [outpath(c)]
+    files = [c.outfile]
     for (is, fuzzies) in zip(("projwfc.x", "hp.x"), (("pdos",), ("Hubbard_parameters",)))
         if c.exec.exec == is
-            for f in fuzzies
-                append!(files, searchdir(c, f))
-            end
+            append!(files, fuzzies)
         end
     end
-    return filter(ispath, unique(files))
+    return unique(files)
 end
 
 ψ_cutoff_flag(::Calculation{QE}) = :ecutwfc
 ρ_cutoff_flag(::Calculation{QE}) = :ecutrho
-
-for f in (:cp, :mv)
-    @eval function Base.$f(i::Calculation{QE}, dest::String; kwargs...)
-        $f(inpath(i), joinpath(dest, i.infile); kwargs...)
-        if hasoutfile(i)
-            $f(outpath(i), joinpath(dest, i.outfile); kwargs...)
-        end
-        if isprojwfc(i)
-            for file in searchdir(i, "pdos")
-                $f(file, joinpath(dest, splitdir(f)[end]); kwargs...)
-            end
-        elseif ishp(i)
-            for file in searchdir(i, "Hubbard_parameters")
-                $f(file, joinpath(dest, splitdir(f)[end]); kwargs...)
-            end
-        end
-        #TODO add ph.x outfiles
-    end
-end
 
 function kgrid(na, nb, nc, ::Type{QE})
     return reshape([(a, b, c, 1 / (na * nb * nc))

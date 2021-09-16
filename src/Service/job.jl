@@ -147,7 +147,7 @@ function last_running_calculation(path::String)
     scrpath = joinpath(path, "job.tt")
     job = load_job(path)
     t = mtime(Jobs.scriptpath(job))
-    times = map(x -> (o = Calculations.outpath(x); ispath(o) ? mtime(o) : 0.0), job.calculations)
+    times = map(x -> (o = joinpath(job, x.outfile); ispath(o) ? mtime(o) : 0.0), job.calculations)
     return isempty(times) ? nothing : findmax(times)[2]
 end
 
@@ -267,9 +267,9 @@ function outputdata(job::Job, calculations::Vector{Calculation})
     stime = isempty(datadict) ? 0.0 : mtime(respath)
     new_data = false
     for calculation in calculations
-        p = Calculations.outpath(calculation)
+        p = joinpath(job, calculation.outfile)
         if mtime(p) > stime
-            tout = outputdata(calculation)
+            tout = outputdata(calculation, p)
             if !isempty(tout)
                 datadict[calculation.name] = tout
                 new_data = true

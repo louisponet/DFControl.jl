@@ -27,7 +27,6 @@ StructTypes.StructType(::Type{<:Package}) = StructTypes.Struct()
 
 """
     Calculation{P<:Package}(name    ::String;
-                            dir     ::String = "",
                             flags   ::AbstractDict = Dict{Symbol, Any}(),
                             data    ::Vector{InputData} = InputData[],
                             exec    ::Exec,
@@ -47,22 +46,21 @@ e.g. if `run=false` the corresponding line will be commented out in the job scri
 
 Create a [`Calculation`](@ref) from `name` and `flags`, other `kwargs...` will be passed to the constructor.
 
-    Calculation(template::Calculation, name::AbstractString, flags::Pair{Symbol, Any}...; excs=deepcopy(template.exec), run=true, data=nothing, dir=copy(template.dir))
+    Calculation(template::Calculation, name::AbstractString, flags::Pair{Symbol, Any}...; excs=deepcopy(template.exec), run=true, data=nothing)
 
 Creates a new [`Calculation`](@ref) from the `template`, setting the `flags` of the newly created one to the specified ones.
 """
 @with_kw_noshow mutable struct Calculation{P<:Package}
     name::String
-    dir::String = ""
     flags::Dict{Symbol,Any} = Dict{Symbol,Any}()
     data::Vector{InputData} = InputData[]
     exec::Exec
     run::Bool = true
     infile::String = P == Wannier90 ? name * ".win" : name * ".in"
     outfile::String = P == Wannier90 ? name * ".wout" : name * ".out"
-    function Calculation{P}(name, dir, flags, data, exec, run, infile,
+    function Calculation{P}(name, flags, data, exec, run, infile,
                             outfile) where {P<:Package}
-        out = new{P}(name, dir, Dict{Symbol,Any}(), data, exec, run, infile,
+        out = new{P}(name, Dict{Symbol,Any}(), data, exec, run, infile,
                      outfile)
         set_flags!(out, flags...; print = false)
         for (f, v) in flags
@@ -73,8 +71,8 @@ Creates a new [`Calculation`](@ref) from the `template`, setting the `flags` of 
         return out
     end
 end
-function Calculation{P}(name, dir, flags, data, exec, run) where {P<:Package}
-    return Calculation{P}(name, abspath(dir), flags, data, exec, run, Dict{Symbol,Any}(),
+function Calculation{P}(name, flags, data, exec, run) where {P<:Package}
+    return Calculation{P}(name, flags, data, exec, run, Dict{Symbol,Any}(),
                           P == Wannier90 ? name * ".win" : name * ".in",
                           P == Wannier90 ? name * ".wout" : name * ".out")
 end
@@ -84,15 +82,13 @@ function Calculation{P}(name, flags...; kwargs...) where {P<:Package}
 end
 
 function Calculation(template::Calculation, name, newflags...;
-                     excs = deepcopy(template.exec), run  = true, data = nothing,
-                     dir  = copy(template.dir))
+                     excs = deepcopy(template.exec), run  = true, data = nothing)
     newflags = Dict(newflags...)
 
     calculation       = deepcopy(template)
     calculation.name  = name
     calculation.exec = excs
     calculation.run   = run
-    calculation.dir   = dir
     set_flags!(calculation, newflags...; print = false)
 
     if data !== nothing
@@ -112,9 +108,6 @@ end
 # Calculation() = Calculation{NoPackage}(package=NoPackage())
 StructTypes.StructType(::Type{<:Calculation}) = StructTypes.Mutable()
 
-DFC.set_dir!(c::Calculation, dir) = (c.dir = dir)
-inpath(c::Calculation)        = joinpath(c, c.infile)
-outpath(c::Calculation)       = joinpath(c, c.outfile)
 
 # Interface Functions
 isbands(c::Calculation)    = false
@@ -124,7 +117,7 @@ isvcrelax(c::Calculation)  = false
 isrelax(c::Calculation)    = false
 ismagnetic(c::Calculation) = false
 issoc(c::Calculation)      = false
-outfiles(c::Calculation)   = [outpath(c)]
+outfiles(c::Calculation)   = [c.outfile]
 ispw(c::Calculation)       = false
 isprojwfc(c::Calculation)  = false
 
