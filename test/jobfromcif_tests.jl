@@ -11,7 +11,7 @@ testjobpath = joinpath(testdir, "testassets", "test_job")
     dir = testjobpath
     bin_dir = joinpath(homedir(), "Software/qe/bin")
     pw_exec = Exec("pw.x", bin_dir, :nk => 4)
-
+    @test !isempty(pw_exec.flags)
     pseudoset = :test
 
     header = ["#SBATCH -N 1"]
@@ -43,6 +43,7 @@ testjobpath = joinpath(testdir, "testassets", "test_job")
     push!(job, Calculations.gencalc_nscf(job["scf"], (5,5,5)))
 
     push!(job, Calculations.gencalc_projwfc(job["nscf"], 2.0, 20.0, 0.1))
+    @show isempty(job["projwfc"].exec.flags)
 
     @test all(values(job[:ecutwfc]) .== 40.0)
     for c in job.calculations
@@ -66,7 +67,6 @@ testjobpath = joinpath(testdir, "testassets", "test_job")
     save(job)
 
     job2 = Job(abspath(job), "localhost_test")
-    empty!(job["projwfc"].exec.flags)
     for (c1, c2) in zip(job2.calculations, job.calculations)
         @test c2 == c1
     end
@@ -78,7 +78,6 @@ refjobpath =joinpath(testdir, "testassets", "reference_job")
 @testset "reference comparison" begin
     job = Job(testjobpath, "localhost_test")
     
-    empty!(job["projwfc"].exec.flags)
     orig_job = deepcopy(job)
     job.structure = Structures.create_supercell(job.structure, 1, 0, 0, make_afm = true)
     
@@ -103,7 +102,6 @@ refjobpath =joinpath(testdir, "testassets", "reference_job")
     save(job)
     @test !ispath(joinpath(job, "scf.out"))
     job = Job(testjobpath, "localhost_test")
-    empty!(job["projwfc"].exec.flags)
     
     for (c1, c2) in zip(job2.calculations, job.calculations)
         @test c2 == c1
