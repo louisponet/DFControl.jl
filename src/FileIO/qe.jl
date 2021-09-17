@@ -854,7 +854,7 @@ function qe_read_hp_output(file; parse_funcs = Pair{String,<:Function}[])
     if length(hub_files) > 1
         @warn "Found multiple .Hubbard_parameters.dat files. Using $(hub_files[1]) (remove and read again if this is undesired)"
     elseif isempty(hub_files)
-        error("No .Hubbard_parameters.dat file found in $dir.")
+        return out 
     end
         
     hubbard_file = hub_files[1]
