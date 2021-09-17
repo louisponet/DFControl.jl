@@ -50,15 +50,6 @@ function configure_pseudoset(set_name::String, dir::String)
         return length(files)
     end
 end
-function pseudo_cutoffs(str::String)
-    lines = split(str, "\n")
-    id = findfirst(x->occursin("Suggested minimum cutoff for wavefunctions:", x), lines)
-    if id !== nothing
-        return parse(Float64, split(lines[id])[end-1]), parse(Float64, split(lines[id+1])[end-1])
-    else
-        return 0.0, 0.0
-    end
-end
 
 """
     pseudo_sets()

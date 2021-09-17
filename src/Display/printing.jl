@@ -44,7 +44,7 @@ function df_show(io::IO, job::Job)
         push!(fs, string(round(job.metadata[:timestamp], Second)))
     end
     push!(fns, "running")
-    is_running = Jobs.main_job_dir(job) != job.dir ? false : Client.isrunning(job)
+    is_running = Jobs.main_job_dir(job) != abspath(job) ? false : Client.isrunning(job)
     push!(fs, string(is_running))
     lfns = maximum(length.(fns)) + maximum(length.(fs)) + 4
     line = "+"

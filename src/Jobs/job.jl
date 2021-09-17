@@ -50,9 +50,6 @@ The `kwargs...` will be passed to the [`Job`](@ref) constructor.
         if dir[end] == '/'
             dir = dir[1:end-1]
         end
-        if !isabspath(dir)
-            dir = abspath(dir)
-        end
         if isempty(metadata)
             mpath = joinpath(dir, ".metadata.jld2")
             if ispath(mpath)
@@ -82,19 +79,22 @@ end
 StructTypes.StructType(::Type{Job}) = StructTypes.Mutable()
 
 #-------------------BEGINNING GENERAL SECTION-------------#
-scriptpath(job::Job) = joinpath(job.dir, "job.tt")
+scriptpath(job::Job) = joinpath(job, "job.tt")
 starttime(job::Job)  = mtime(scriptpath(job))
 
 runslocal(job::Job) = job.server == "localhost"
 isarchived(job::Job) = occursin(".archived", job.dir)
 
+Base.abspath(job::Job) = isabspath(job.dir) ? job.dir : joinpath(Server(job.server), job.dir)
+    
 """
     joinpath(job::Job, args...)
 
 `joinpath(job.dir, args...)`.
 """
-Base.joinpath(job::Job, args...) = joinpath(job.dir, args...)
-
+Base.joinpath(job::Job, args...) = joinpath(abspath(job), args...)
+Base.readdir(job::Job) = readdir(abspath(job))
+    
 function Base.pop!(job::Job, name::String)
     i = findfirst(x -> x.name == name, job.calculations)
     if i === nothing
@@ -106,7 +106,7 @@ function Base.pop!(job::Job, name::String)
 end
 
 function Utils.searchdir(job::Job, str::AbstractString)
-    return searchdir(job.dir, str)
+    return searchdir(abspath(job), str)
 end
 
 function Base.setindex!(job::Job, value, key::Symbol)
@@ -190,7 +190,7 @@ function main_job_dir(dir::AbstractString)
     d = split(dir, Jobs.VERSION_DIR_NAME)[1]
     return d[end] == '/' ? d[1:end-1] : d
 end
-main_job_dir(job::Job) = main_job_dir(job.dir)
+main_job_dir(job::Job) = isabspath(job.dir) ? main_job_dir(job.dir) : joinpath(Server(job), job.dir)
 
 """
     gencalc_wan(job::Job, min_window_determinator::Real, extra_wan_flags...; kwargs...)
@@ -262,28 +262,6 @@ function set_headerword!(job::Job, old_new::Pair{String,String}; print = true)
             print && (@info s)
         end
     end
-    return job
-end
-
-"""
-    set_dir!(job::Job, dir::AbstractString; copy=false)
-    
-Sets `job.dir` to `dir`. If necessary the directory will be created upon saving the job.
-If `copy` is set to `true`, all previous calculations and output files of the current job version
-(i.e. those in the main job directory) will be copied to the new directory, including the
-`outputs` directory with temporary files created during jobs runs.
-"""
-function DFC.set_dir!(job::Job, dir::AbstractString; copy = false)
-    if !isabspath(dir)
-        dir = joinpath(Server(job), dir)
-    end
-    if dir[end] == '/'
-        dir = dir[1:end-1]
-    end
-    if copy
-        error("TODO: Implement for server side copying")
-    end
-    job.dir = dir
     return job
 end
 
@@ -448,7 +426,7 @@ function archive(job::Job, archive_directory::AbstractString, description::Strin
     tj = deepcopy(job)
     switch_version!(tj, version)
     cp(tj, final_dir)
-    set_dir!(tj, final_dir)
+    tj.dir = final_dir
 
     JLD2.save(joinpath(final_dir, "results.jld2"), "outputdata", out)
 
@@ -474,7 +452,7 @@ for (f, strs) in zip((:cp, :mv), (("copy", "Copies"), ("move", "Moves")))
             if !ispath(dest)
                 mkpath(dest)
             end
-            for file in readdir(job.dir)
+            for file in readdir(job)
                 if !all
                     if file == VERSION_DIR_NAME
                         continue
@@ -491,6 +469,16 @@ for (f, strs) in zip((:cp, :mv), (("copy", "Copies"), ("move", "Moves")))
     end
 end
 
+function pseudo_cutoffs(str::String)
+    lines = split(str, "\n")
+    id = findfirst(x->occursin("Suggested minimum cutoff for wavefunctions:", x), lines)
+    if id !== nothing
+        return parse(Float64, split(lines[id])[end-1]), parse(Float64, split(lines[id+1])[end-1])
+    else
+        return 0.0, 0.0
+    end
+end
+
 function sanitize_cutoffs!(job::Job)
     ψcut, ρcut = 0.0, 0.0
     # the assumption is that the most important cutoff calculation is the scf/vcrelax that is ran first 
@@ -499,8 +487,9 @@ function sanitize_cutoffs!(job::Job)
         ψcut = ψ_cut_calc[Calculations.ψ_cutoff_flag(ψ_cut_calc)]
     else
         pseudos = unique(map(x -> x.pseudo, job.structure.atoms))
-        ψcut = maximum(x -> x.ψ_cutoff, pseudos)
-        ρcut = maximum(x -> x.ρ_cutoff, pseudos)
+        all_cuts = map(x -> pseudo_cutoffs(x), pseudos) 
+        ψcut = maximum(x -> x[1], all_cuts)
+        ρcut = maximum(x -> x[2], all_cuts)
         @assert ψcut != 0.0 "No energy cutoff was specified in any calculation, and the calculated cutoff from the pseudopotentials was 0.0.\nPlease manually set one."
         @info "No energy cutoff was specified in the scf calculation.\nCalculated ψcut=$ψcut."
     end

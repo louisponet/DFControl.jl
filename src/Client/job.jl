@@ -55,7 +55,7 @@ function save(job::Job)
     @assert !isrunning(job) "Can't save a job in a directory where another is running."
 
     @assert !Jobs.isarchived(job)
-    "Not allowed to save a job in a archived directory, please specify a different directory with `set_dir!"
+    "Not allowed to save a job in a archived directory, please specify a different directory."
 
     if isempty(job.name)
         @warn "Job had no name, changed it to: noname"
@@ -69,7 +69,7 @@ function save(job::Job)
     Jobs.sanitize_cutoffs!(job)
 
     curver = job.version
-    resp_job = JSON3.read(HTTP.post(server, "/jobs/" * job.dir, [], JSON3.write(job)).body,
+    resp_job = JSON3.read(HTTP.post(server, "/jobs/" * abspath(job), [], JSON3.write(job)).body,
                           Job)
     @info "Job version: $(curver) => $(resp_job.version)."
     for f in fieldnames(Job)
@@ -89,7 +89,7 @@ function submit(job::Job)
     server = Servers.maybe_start_server(job)
     verify_execs(job, server)
     save(job)
-    return HTTP.put(server, "/jobs/" * job.dir)
+    return HTTP.put(server, "/jobs/" * abspath(job))
 end
 
 """
@@ -101,7 +101,7 @@ running.
 """
 function isrunning(job::Job)
     server = Servers.maybe_start_server(job)
-    return JSON3.read(HTTP.get(server, "/job_isrunning/" * job.dir).body, Bool)
+    return JSON3.read(HTTP.get(server, "/job_isrunning/" * abspath(job)).body, Bool)
 end
 
 """
@@ -109,7 +109,7 @@ end
 
 Returs the valid versions of `job`.
 """
-versions(job::Job) = versions(job.dir, job.server) 
+versions(job::Job) = versions(abspath(job), job.server) 
 function versions(dir, s = "localhost")
     server=Servers.maybe_start_server(s) 
     return JSON3.read(HTTP.get(server, "/job_versions/" * Jobs.main_job_dir(dir)).body, Vector{Int})
@@ -120,7 +120,7 @@ end
 
 Returns the last version number of `job`.
 """
-last_version(job::Job) = last_version(job.dir, job.server) 
+last_version(job::Job) = last_version(abspath(job), job.server) 
 function last_version(dir, s="localhost")
     t = versions(dir, s)
     return isempty(t) ? 0 : t[end]
@@ -133,7 +133,7 @@ Returns the last `Calculation` for which an output file was created.
 """
 function last_running_calculation(job::Job)
     server = Servers.maybe_start_server(job)
-    resp = HTTP.get(server, "/last_running_calculation/" * job.dir)
+    resp = HTTP.get(server, "/last_running_calculation/" * abspath(job))
     if resp.status == 204
         return nothing
     else

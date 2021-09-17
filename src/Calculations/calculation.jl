@@ -147,11 +147,6 @@ data(calculation::Calculation, n::Symbol) = getfirst(x -> x.name == n, calculati
 #
 DFC.Utils.searchdir(i::Calculation, glob) = searchdir(i.dir, glob)
 
-"""
-    joinpath(calc::Calculation, path...) = joinpath(calc.dir, path...)
-"""
-Base.joinpath(c::Calculation, path...) = joinpath(c.dir, path...)
-
 Base.eltype(::Calculation{T}) where {T} = T
 
 #

@@ -102,7 +102,7 @@ function save(job::Job; kwargs...)
         tj = load_job(dir)
         cp(tj, joinpath(tj, Jobs.VERSION_DIR_NAME, "$(tj.version)"); force = true)
     end
-    if dir != job.dir
+    if !occursin(job.dir, dir)
         # We know for sure it was a previously saved job
         # Now that we have safely stored it we can clean out the directory to then fill
         # it with the files from the job.version
@@ -111,7 +111,7 @@ function save(job::Job; kwargs...)
     end
 
     
-    set_dir!(job, dir) # Needs to be done so the inputs `dir` also changes.
+    job.dir= dir # Needs to be done so the inputs `dir` also changes.
     mkpath(dir)
 
     for f in searchdir(job, "slurm")

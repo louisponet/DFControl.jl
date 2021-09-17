@@ -297,7 +297,6 @@ rm(testjobpath, recursive=true)
 # @test execs(job["nscf"])[2].dir == joinpath(homedir(), "bin")
 
 # set_name!(job["nscf"], "test")
-# @test DFControl.inpath(job, "test") == joinpath(job.dir, "test.in")
 # set_name!(job["test"], "nscf")
 
 # set_serverdir!(job, "localhost")
@@ -441,15 +440,12 @@ rm(testjobpath, recursive=true)
 # @test data(job["scf"], :k_points).option == :test
 
 # rm.(DFControl.inpath.(job.calculations))
-# job.calculations = [job.calculations[2]]
 # set_kpoints!(job["scf"], (6, 6, 6, 1, 1, 1))
 # rm(joinpath(job, DFControl.VERSION_DIR_NAME); recursive = true)
 
 # rm(joinpath(DFControl.main_job_dir(job), DFControl.VERSION_DIR_NAME); recursive = true)
-# set_dir!(job, DFControl.main_job_dir(job))
 # rm.(DFControl.inpath.(job.calculations))
 
-# rm(joinpath(job, "job.tt"))
 # rm(joinpath(job, ".metadata.jld2"))
 # rm(joinpath(job, "pw2wan_wandn.in"))
 # rm(joinpath(job, "pw2wan_wanup.in"))

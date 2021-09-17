@@ -2,7 +2,7 @@ using DFControl, Test, Suppressor
 
 testdir = @__DIR__
 @time begin
-    test_server = Server("localhost_test", "ponet", "localhost", 8123, Servers.Bash, "", "julia", homedir() )
+    test_server = Server("localhost_test", "ponet", "localhost", 8123, Servers.Bash, "", "julia", homedir(), 0)
     if Servers.isalive(test_server)
         try
             Servers.kill_server(test_server)
@@ -39,4 +39,5 @@ testdir = @__DIR__
         include("rmdefaults_tests.jl")
     end
     rm(DFControl.config_path("servers/localhost_test.json"))
+    rm(DFControl.config_path("environments/test_default.json"))
 end

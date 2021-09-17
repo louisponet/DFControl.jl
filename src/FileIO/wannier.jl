@@ -302,13 +302,13 @@ function wan_write_projections(f::IO, atoms::Vector{Atom})
 end
 
 """
-    save(calculation::Calculation{Wannier90}, structure, filename::String=inpath(calculation))
+    save(calculation::Calculation{Wannier90}, structure, filename::String)
 
 Writes the `Calculation{Wannier90}` and `structure` to a file, that can be interpreted by WANNIER90.
 The atoms in the structure must have projections defined.
 """
 function save(calculation::Calculation{Wannier90}, structure,
-              filename::String = Calculations.inpath(calculation))
+              filename::String)
     open(filename, "w") do f
         for (flag, value) in calculation.flags
             write_flag_line(f, flag, value)

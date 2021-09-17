@@ -1204,12 +1204,12 @@ function qe_writeflag(f, flag, value)
 end
 
 """
-    save(calculation::Calculation{QE}, structure, filename::String=inpath(calculation))
+    save(calculation::Calculation{QE}, structure, filename::String)
 
 Writes a Quantum Espresso calculation file.
 """
 function save(calculation::Calculation{QE}, structure,
-              filename::String = Calculations.inpath(calculation))
+              filename::String)
     if Calculations.hasflag(calculation, :calculation)
         Calculations.set_flags!(calculation,
                                 :calculation => replace(calculation[:calculation],

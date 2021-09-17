@@ -2,8 +2,8 @@
   prefix = 'Ni'
   verbosity = 'high'
   calculation = 'nscf'
-  outdir = '/home/ponet/.julia/environments/DFControlDEV/Demo/Ni/outputs'
-  pseudo_dir = '/home/ponet/Documents/pseudos/pslibrary_pbesol/PSEUDOPOTENTIALS'
+  outdir = './outputs'
+  pseudo_dir = '../pseudos/'
 /
 
 &system

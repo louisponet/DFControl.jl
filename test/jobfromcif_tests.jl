@@ -32,7 +32,7 @@ testjobpath = joinpath(testdir, "testassets", "test_job")
 
 
     set_pseudos!(job, :test)
-
+    job.environment = "test_default"
 
     set_kpoints!(job["scf"], (6, 6, 6, 1, 1, 1))
 
@@ -56,7 +56,8 @@ testjobpath = joinpath(testdir, "testassets", "test_job")
     @test length(job) == 5
     @test data(job["scf"], :k_points).data == [6,6,6,1,1,1]
     @test job["nscf"].exec == pw_exec
-    @test job["projwfc"].exec == Exec("projwfc.x", pw_exec.dir)
+    @test job["projwfc"].exec.exec == "projwfc.x"
+    @test job["projwfc"].exec.dir == pw_exec.dir
     @test show(job) == nothing
     job[:ecutwfc] = 40.0
     for c in job.calculations
@@ -64,7 +65,8 @@ testjobpath = joinpath(testdir, "testassets", "test_job")
     end
     save(job)
 
-    job2 = Job(job.dir, "localhost_test")
+    job2 = Job(abspath(job), "localhost_test")
+    empty!(job["projwfc"].exec.flags)
     for (c1, c2) in zip(job2.calculations, job.calculations)
         @test c2 == c1
     end
@@ -75,6 +77,8 @@ refjobpath =joinpath(testdir, "testassets", "reference_job")
 
 @testset "reference comparison" begin
     job = Job(testjobpath, "localhost_test")
+    
+    empty!(job["projwfc"].exec.flags)
     orig_job = deepcopy(job)
     job.structure = Structures.create_supercell(job.structure, 1, 0, 0, make_afm = true)
     
@@ -99,6 +103,7 @@ refjobpath =joinpath(testdir, "testassets", "reference_job")
     save(job)
     @test !ispath(joinpath(job, "scf.out"))
     job = Job(testjobpath, "localhost_test")
+    empty!(job["projwfc"].exec.flags)
     
     for (c1, c2) in zip(job2.calculations, job.calculations)
         @test c2 == c1

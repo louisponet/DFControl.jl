@@ -42,8 +42,6 @@ include("utils.jl")
 
 # Common functions
 
-set_dir!() = nothing
-
 include("Structures/Structures.jl")
 include("Calculations/Calculations.jl")
 include("Jobs/Jobs.jl")

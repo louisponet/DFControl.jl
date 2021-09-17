@@ -11,7 +11,7 @@ function main_job_version(dir::AbstractString)
     end
     return 0
 end
-main_job_version(job::Job) = main_job_version(job.dir)
+main_job_version(job::Job) = main_job_version(abspath(job))
 
 function job_versions(dir::AbstractString)
     versions = Int[]
@@ -126,7 +126,7 @@ Removes the specified `versions` from the `job` if they exist.
 function rm_version!(job::Job, version::Int)
     version_assert(job, version)
     if version == main_job_version(job)
-        for f in readdir(job.dir)
+        for f in readdir(job)
             if occursin(".workflow", f) || f == VERSION_DIR_NAME || splitext(f)[2] == ".jl"
                 continue
             else

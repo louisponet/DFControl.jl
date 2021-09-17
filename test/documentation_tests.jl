@@ -1,8 +1,6 @@
 foundflags = Calculations.documentation(QE, "noncollinear")
 @test length(foundflags) == 2
 
-show(foundflags[1])
-
 @test eltype(Calculations.documentation(QE, :electron_maxstep)) == Int
 
 @test length(Calculations.documentation(Elk, "magnetism")) == 2

@@ -48,7 +48,7 @@ function gencalc_wan(nscf::Calculation{QE}, structure::Structure, bands, Emin, w
         push!(wancalculations,
               Calculation{Wannier90}(; name = wanfil,
                                      flags = copy(wanflags), data = [kdata],
-                                     execs = [wanexec], run = true))
+                                     exec  = wanexec, run = true))
     end
 
     if length(wancalculations) > 1

@@ -17,6 +17,9 @@ function cleanup_job_registry!()
 end
 
 function maybe_register_job(abspath::AbstractString)
+    if abspath[end] == '/'
+        abspath = abspath[1:end-1]
+    end
     if ispath(abspath)
         n = occursin(".archived", abspath) ? JOB_REGISTRY.archived :
               JOB_REGISTRY.in_progress
@@ -29,7 +32,7 @@ function maybe_register_job(abspath::AbstractString)
         end
     end
 end
-maybe_register_job(job::Job) = maybe_register_job(main_job_dir(job.dir))
+maybe_register_job(job::Job) = maybe_register_job(main_job_dir(abspath(job)))
 
 """
     registered_jobs(fuzzy::AbstractString = "")

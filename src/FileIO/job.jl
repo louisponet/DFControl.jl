@@ -40,7 +40,7 @@ end
 # end
 
 function writetojob(f, job, calculations::Vector{Calculation{Elk}}, environment; kwargs...)
-    save(calculations, job.structure; kwargs...)
+    save(calculations, job.structure, job.dir; kwargs...)
     should_run = any(map(x -> x.run, calculations))
     if !should_run
         write(f, "#")
@@ -61,7 +61,7 @@ end
 function writetojob(f, job, calculation::Calculation, environment; kwargs...)
     filename   = calculation.infile
     should_run = calculation.run
-    save(calculation, job.structure; kwargs...)
+    save(calculation, job.structure, joinpath(job, calculation.infile); kwargs...)
     if !should_run
         write(f, "#")
     end
@@ -92,9 +92,9 @@ function writetojob(f, job, _calculation::Calculation{Wannier90}, environment; k
             end
             writeexec(f, _calculation.exec, environment)
             write(f,
-                  "-pp $filename > $(joinpath(_calculation.dir, _calculation.outfile))\n")
+                  "-pp $filename > $(joinpath(job, _calculation.outfile))\n")
 
-            save(_calculation, job.structure; kwargs...)
+            save(_calculation, job.structure, joinpath(job, _calculation.infile); kwargs...)
             writetojob(f, job, pw2wancalculation, environment; kwargs...)
             _calculation[:preprocess] = preprocess
             wannier_plot !== nothing && (_calculation[:wannier_plot] = wannier_plot)

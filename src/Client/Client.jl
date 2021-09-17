@@ -27,7 +27,6 @@ using ..FileIO
     return pos, t
 end
 
-using ..DFControl: set_dir!; export set_dir!
 using ..Calculations: set_name!, set_kpoints!, data; export set_name!, set_kpoints!, data
 using ..Structures: set_pseudos!, element; export set_pseudos!, element
 
