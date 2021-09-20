@@ -190,7 +190,7 @@ function main_job_dir(dir::AbstractString)
     d = split(dir, Jobs.VERSION_DIR_NAME)[1]
     return d[end] == '/' ? d[1:end-1] : d
 end
-main_job_dir(job::Job) = isabspath(job.dir) ? main_job_dir(job.dir) : joinpath(Server(job), job.dir)
+main_job_dir(job::Job) = isabspath(job.dir) ? main_job_dir(job.dir) : main_job_dir(joinpath(Server(job), job.dir))
 
 """
     gencalc_wan(job::Job, min_window_determinator::Real, extra_wan_flags...; kwargs...)

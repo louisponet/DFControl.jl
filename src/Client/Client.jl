@@ -33,7 +33,8 @@ using ..Structures: set_pseudos!, element; export set_pseudos!, element
 include("job.jl")
 export submit, save, isrunning, versions, last_version, switch_version!, rm_version!, outputdata,
        registered_jobs, running_jobs,
-       environment_from_jobscript, get_environment, add_environment, rm_environment!
+       environment_from_jobscript, get_environment, add_environment, rm_environment!,
+       known_execs
 
 include("pseudos.jl")
 export configure_pseudoset, rm_pseudoset!

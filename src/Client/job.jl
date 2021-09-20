@@ -174,10 +174,17 @@ function outputdata(job::Job; extra_parse_funcs = nothing)
     return out     
 end
 
+
+function known_execs(e::String, server)
+    s = Servers.maybe_start_server(server)
+    return JSON3.read(HTTP.get(s, "/known_execs/" * e).body, Vector{Calculations.Exec})
+end
+known_execs(e::Calculations.Exec, args...) = known_execs(e.exec, args...)
+
 function verify_execs(job::Job, server::Server)
     for e in unique(map(x->x.exec, job.calculations))
         if !JSON3.read(HTTP.get(server, "/verify_exec/", [], JSON3.write(e)).body, Bool)
-            possibilities = JSON3.read(HTTP.get(server, "/known_execs/" * e.exec).body, Vector{Calculations.Exec})
+            possibilities = known_execs(e, server) 
             replacement = length(possibilities) == 1 ? possibilities[1] : getfirst(x -> x.dir == e.dir, possibilities)
             if replacement !== nothing
                 @warn "Executable ($(e.exec)) in dir ($(e.dir)) not runnable,\n but found a matching replacement executable in dir ($(replacement.dir)).\nUsing that one..."

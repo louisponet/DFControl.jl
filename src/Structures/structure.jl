@@ -81,6 +81,7 @@ function update_geometry!(str1::Structure, str2::Structure)
     return str1
 end
 Base.length(str::Structure) = length(str.atoms)
+Base.iterate(str::Structure, args...) = iterate(str.atoms, args...)
 
 ### CELL ###
 """
