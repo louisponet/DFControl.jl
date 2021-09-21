@@ -265,6 +265,7 @@ exists_job(d::AbstractString) = ispath(d) && ispath(joinpath(d, "job.tt"))
 "Finds the output files for each of the calculations of a job, and groups all found data into a dictionary."
 function outputdata(jobdir::String, calculations::Vector{String})
     job = load_job(jobdir)
+    calculations = isempty(calculations) ? map(x->x.name, job.calculations) : calculations
     respath = joinpath(job, "results.jld2")
     if ispath(respath)
         datadict = JLD2.load(respath)["outputdata"]

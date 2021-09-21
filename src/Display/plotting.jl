@@ -86,7 +86,11 @@ end
         error("output plotting only implemented for QE jobs.")
     end
     outdat = Client.outputdata(job)
-    frmi = Jobs.readfermi(job, outdat)
+    if !haskey(plotattributes, :fermi)
+        frmi = Jobs.readfermi(job, outdat)
+    else
+        frmi = pop!(plotattributes, :fermi)
+    end
     fermi --> frmi
     bands = Jobs.readbands(job, outdat)
     if bands === nothing

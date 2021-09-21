@@ -141,9 +141,13 @@ function last_running_calculation(job::Job)
     end
 end
 
-function outputdata(job::Job, calcs::Vector{String}=[c.name for c in job.calculations]; extra_parse_funcs = nothing)
-    server = Servers.maybe_start_server(job)
-    resp = HTTP.get(server, "/outputdata/" * abspath(job), [], JSON3.write(calcs))
+outputdata(job::Job, calcs::Vector{String}=String[]; kwargs...) =
+    outputdata(job.dir, job.server, calcs; kwargs...)
+    
+function outputdata(jobdir::String, s::String = "localhost", calcs::Vector{String}=String[]; extra_parse_funcs = nothing)
+    server = Servers.maybe_start_server(s)
+    jobdir = isabspath(jobdir) ? jobdir : joinpath(server, jobdir)
+    resp = HTTP.get(server, "/outputdata/" * jobdir, [], JSON3.write(calcs))
     if resp.status == 204
         error("No outputdata found yet. Is the job running?")
     end
@@ -156,11 +160,11 @@ function outputdata(job::Job, calcs::Vector{String}=[c.name for c in job.calcula
     rm(local_temp)
     out = dat["outputdata"]
     if extra_parse_funcs !== nothing
-        for c in job.calculations
-            n = c.name
-            if haskey(out, n)
+        for k in keys(out)
+            if k ∈ calcs
+                n = c.name
                 try
-                    f = joinpath(job, c.outfile)
+                    f = joinpath(jobdir, c.outfile)
                     local_f = tempname()
                     Servers.pull(server, f, local_f)
                     FileIO.parse_file(local_f, extra_parse_funcs, out = out[n])
@@ -173,7 +177,6 @@ function outputdata(job::Job, calcs::Vector{String}=[c.name for c in job.calcula
     end
     return out     
 end
-
 
 function known_execs(e::String, server)
     s = Servers.maybe_start_server(server)
