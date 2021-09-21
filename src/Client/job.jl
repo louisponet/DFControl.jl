@@ -26,12 +26,12 @@ end
 function request_job_dir(dir::String, server::Server)
     resp = HTTP.get(server, "/registered_jobs/" * dir)
     matching_jobs = reverse(JSON3.read(resp.body, Vector{Tuple{String,DateTime}}))
+    choices = ["$j -- $t" for (j, t) in matching_jobs]
     if length(matching_jobs) == 1
         return matching_jobs[1][1]
     elseif length(matching_jobs) == 0
         error("No jobs found matching $dir")
     elseif isdefined(Base, :active_repl)
-        choices = ["$j -- $t" for (j, t) in matching_jobs]
         menu = RadioMenu(choices)
         choice = request("Multiple matching jobs were found, choose one:", menu)
         if choice != -1
