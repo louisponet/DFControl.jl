@@ -185,7 +185,7 @@ function isrunning(job_dir::String)
                 return false
             end
             pwd = split(strip(read(`pwdx $(pids[end])`, String)))[end]
-            return abspath(pwd) == job.dir
+            return abspath(pwd) == abspath(job)
         catch
             return false
         end
