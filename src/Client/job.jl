@@ -141,9 +141,9 @@ function last_running_calculation(job::Job)
     end
 end
 
-function outputdata(job::Job; extra_parse_funcs = nothing)
+function outputdata(job::Job, calcs::Vector{String}=[c.name for c in job.calculations]; extra_parse_funcs = nothing)
     server = Servers.maybe_start_server(job)
-    resp = HTTP.get(server, "/outputdata", [], JSON3.write(job))
+    resp = HTTP.get(server, "/outputdata/" * abspath(job), [], JSON3.write(calcs))
     if resp.status == 204
         error("No outputdata found yet. Is the job running?")
     end

@@ -263,7 +263,8 @@ end
 exists_job(d::AbstractString) = ispath(d) && ispath(joinpath(d, "job.tt"))
 
 "Finds the output files for each of the calculations of a job, and groups all found data into a dictionary."
-function outputdata(job::Job, calculations::Vector{Calculation})
+function outputdata(jobdir::String, calculations::Vector{String})
+    job = load_job(jobdir)
     respath = joinpath(job, "results.jld2")
     if ispath(respath)
         datadict = JLD2.load(respath)["outputdata"]
@@ -272,7 +273,8 @@ function outputdata(job::Job, calculations::Vector{Calculation})
     end
     stime = isempty(datadict) ? 0.0 : mtime(respath)
     new_data = false
-    for calculation in calculations
+    for c in calculations
+        calculation = job[c]
         p = joinpath(job, calculation.outfile)
         if mtime(p) > stime
             tout = outputdata(calculation, p)
@@ -291,9 +293,8 @@ function outputdata(job::Job, calculations::Vector{Calculation})
         return nothing
     end
 end
-outputdata(job::Job; kwargs...) = outputdata(job, job.calculations; kwargs...)
 
-rm_version!(job::Job, version::Int) = Jobs.rm_version!(job, version)
+rm_version!(jobdir::String, version::Int) = Jobs.rm_version!(load_job(job), version)
 
 add_environment(env::Environment, name::AbstractString) = Jobs.save(env, name)
 function get_environment(name::AbstractString)

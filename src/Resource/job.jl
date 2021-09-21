@@ -27,14 +27,14 @@ HTTP.@register(ROUTER, "GET", "/registered_jobs/", registered_jobs)
 job_versions(req) = Service.job_versions(job_path(req))
 HTTP.@register(ROUTER, "GET", "/job_versions/*", job_versions)
 
-rm_version!(req) = Service.rm_version!(JSON3.read(req.body, Job), parse(Int, splitpath(req.target)[end]))
+rm_version!(req) = Service.rm_version!(job_path(req), JSON3.read(req.body, Int))
 HTTP.@register(ROUTER, "PUT", "/rm_version/*", rm_version!)
 
 last_running_calculation(req) = Service.last_running_calculation(job_path(req))
 HTTP.@register(ROUTER, "GET", "/last_running_calculation/*", last_running_calculation)
 
-outputdata(req) = Service.outputdata(JSON3.read(req.body, Job))
-HTTP.@register(ROUTER, "GET", "/outputdata", outputdata)
+outputdata(req) = Service.outputdata(job_path(req), JSON3.read(req.body, Vector{String}))
+HTTP.@register(ROUTER, "GET", "/outputdata/*", outputdata)
 
 running_jobs(req) = Service.running_jobs(job_path(req))
 HTTP.@register(ROUTER, "GET", "/running_jobs/", running_jobs)
