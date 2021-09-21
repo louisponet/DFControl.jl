@@ -209,10 +209,14 @@ function start(s::Server)
             
         end
     else
-        run(Cmd(`$julia_cmd`, detach=true))
+        scrpt = "using DFControl; DFControl.Resource.run($(s.port))"
+        e = s.julia_exec
+        julia_cmd = `$(e) --startup-file=no -t auto -e $(scrpt) '&''>' '~'/.julia/config/DFControl/errors.log '&'`
+        run(Cmd(julia_cmd, detach=true), wait=false)
     end
         
     #TODO: little hack here
+
     while !isalive(s)
         sleep(1)
     end
