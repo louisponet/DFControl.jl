@@ -1,5 +1,6 @@
 include(joinpath(DFC.DEPS_DIR, "wannier90flags.jl"))
 const WAN_FLAGS = _WAN_FLAGS()
+issoc(c::Calculation{Wannier90}) = get(c, :spinors, false) 
 flagtype(::Type{Wannier90}, flag) = haskey(WAN_FLAGS, flag) ? WAN_FLAGS[flag] : Nothing
 flagtype(::Calculation{Wannier90}, flag) = flagtype(Wannier90, flag)
 

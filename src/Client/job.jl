@@ -188,7 +188,7 @@ function verify_execs(job::Job, server::Server)
     for e in unique(map(x->x.exec, job.calculations))
         if !JSON3.read(HTTP.get(server, "/verify_exec/", [], JSON3.write(e)).body, Bool)
             possibilities = known_execs(e, server) 
-            replacement = length(possibilities) == 1 ? possibilities[1] : getfirst(x -> x.dir == e.dir, possibilities)
+            replacement = length(possibilities) == 1 ? possibilities[1] : getfirst(x -> splitdir(x.dir)[end] == splitdir(e.dir)[end], possibilities)
             if replacement !== nothing
                 @warn "Executable ($(e.exec)) in dir ($(e.dir)) not runnable,\n but found a matching replacement executable in dir ($(replacement.dir)).\nUsing that one..."
                 for e1 in map(x->x.exec, job.calculations)

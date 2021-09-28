@@ -54,15 +54,13 @@ end
     else
         ks = collect(1:length(band.k_points_cart))
     end
-    if fermi != 0
-        band = apply_fermi_level(band, fermi)
-    end
+    eigvals = band.eigvals .- fermi
+        
     linewidth --> linewidth
     title --> "Eigenvalues"
     yguide --> "Energy (eV)"
     legend --> false
-    out = band.eigvals
-    return ks, out
+    return ks, eigvals
 end
 
 @recipe function f(bands::Vector{<:Band}, ks = nothing)

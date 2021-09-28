@@ -212,7 +212,7 @@ function isnoncolin(str::Structure)
 end
 
 function sanitize!(str::Structure)
-    magnetic_ats = filter(a -> norm(a.magnetization) != 0, str.atoms)
+    magnetic_ats = filter(a -> norm(a.magnetization) != 0 || a.dftu.U != 0.0, str.atoms)
     magnetic_elements = map(x -> x.element, magnetic_ats)
     for e in magnetic_elements
         magnetizations = Vec3[]
