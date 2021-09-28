@@ -77,8 +77,8 @@ If `atsym` is used, only the pseudos of the atoms with that name will be set.
 Convenience function that allows to set pseudopotentials for multiple atom types at the same time.
 e.g. `set_pseudos!(job, :Si => getdefault_pseudo(:Si, :sssp)
 """
-function Structures.set_pseudos!(job::Job, set, specifier::String = ""; kwargs...)
+function Structures.set_pseudos!(job::Job, set, server=job.server; specifier::String = "", kwargs...)
     atsyms = unique(map(x -> x.element.symbol, job.structure.atoms))
-    return Structures.set_pseudos!(job.structure, pseudos(job.server, set, atsyms, specifier);
+    return Structures.set_pseudos!(job.structure, pseudos(server, set, atsyms, specifier);
                                    kwargs...)
 end

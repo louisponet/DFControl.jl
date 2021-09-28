@@ -1,12 +1,18 @@
 function load_job(job_dir::AbstractString)
+    s = Server("localhost")
+    if !isabspath(job_dir)
+        job_dir = joinpath(s, job_dir)
+    end
     if ispath(joinpath(job_dir, "job.tt"))
         version = Jobs.version(job_dir)
     else
         error("No valid job found in $job_dir.")
     end
+    scriptpath = joinpath(job_dir, "job.tt")
+    job_dir = strip(split(job_dir, s.default_jobdir)[2], '/')
     job = Job(;
               merge((dir = job_dir, version = version),
-                    FileIO.read_job_script(joinpath(job_dir, "job.tt")))...)
+                    FileIO.read_job_script(scriptpath))...)
     Jobs.maybe_register_job(job)
     return job
 end
@@ -111,7 +117,7 @@ function save(job::Job; kwargs...)
     end
 
     
-    job.dir= dir # Needs to be done so the inputs `dir` also changes.
+    job.dir = strip(split(dir, Server("localhost").default_jobdir)[2], '/') # Needs to be done so the inputs `dir` also changes.
     mkpath(dir)
 
     for f in searchdir(job, "slurm")
@@ -179,7 +185,7 @@ function isrunning(job_dir::String)
                 return false
             end
             pwd = split(strip(read(`pwdx $(pids[end])`, String)))[end]
-            return abspath(pwd) == job.dir
+            return abspath(pwd) == abspath(job)
         catch
             return false
         end
@@ -257,7 +263,9 @@ end
 exists_job(d::AbstractString) = ispath(d) && ispath(joinpath(d, "job.tt"))
 
 "Finds the output files for each of the calculations of a job, and groups all found data into a dictionary."
-function outputdata(job::Job, calculations::Vector{Calculation})
+function outputdata(jobdir::String, calculations::Vector{String})
+    job = load_job(jobdir)
+    calculations = isempty(calculations) ? map(x->x.name, job.calculations) : calculations
     respath = joinpath(job, "results.jld2")
     if ispath(respath)
         datadict = JLD2.load(respath)["outputdata"]
@@ -266,7 +274,8 @@ function outputdata(job::Job, calculations::Vector{Calculation})
     end
     stime = isempty(datadict) ? 0.0 : mtime(respath)
     new_data = false
-    for calculation in calculations
+    for c in calculations
+        calculation = job[c]
         p = joinpath(job, calculation.outfile)
         if mtime(p) > stime
             tout = outputdata(calculation, p)
@@ -285,9 +294,8 @@ function outputdata(job::Job, calculations::Vector{Calculation})
         return nothing
     end
 end
-outputdata(job::Job; kwargs...) = outputdata(job, job.calculations; kwargs...)
 
-rm_version!(job::Job, version::Int) = Jobs.rm_version!(job, version)
+rm_version!(jobdir::String, version::Int) = Jobs.rm_version!(load_job(job), version)
 
 add_environment(env::Environment, name::AbstractString) = Jobs.save(env, name)
 function get_environment(name::AbstractString)

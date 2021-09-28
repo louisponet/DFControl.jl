@@ -195,20 +195,27 @@ end
 
 function start(s::Server)
     @info "Starting:\n$s"
-    if s.local_port != 0
-        t = getfirst(x->occursin("ssh -f -N", x), split(read(pipeline(`ps aux` , stdout = `grep $(s.local_port)`), String), "\n"))
-        
-        if t !== nothing
-            run(`kill $(split(t)[2])`)
+    julia_cmd = """$(s.julia_exec) --startup-file=no -t auto -e "using DFControl; DFControl.Resource.run($(s.port))" &> ~/.julia/config/DFControl/errors.log"""
+    if s.domain != "localhost"
+        if s.local_port != 0
+            t = getfirst(x->occursin("ssh -f -N", x), split(read(pipeline(`ps aux` , stdout = `grep $(s.local_port)`), String), "\n"))
+            
+            if t !== nothing
+                run(`kill $(split(t)[2])`)
+            end
+            run(Cmd(`ssh -f -L $(s.local_port):localhost:$(s.port) $(ssh_string(s)) $julia_cmd`, detach=true))
+        else
+            run(Cmd(`ssh -f $(ssh_string(s)) $julia_cmd`, detach=true))
+            
         end
-        run(`ssh -f -N -L $(s.local_port):localhost:$(s.port) $(ssh_string(s))`)
+    else
+        scrpt = "using DFControl; DFControl.Resource.run($(s.port))"
+        e = s.julia_exec
+        julia_cmd = `$(e) --startup-file=no -t auto -e $(scrpt) '&''>' '~'/.julia/config/DFControl/errors.log '&'`
+        run(Cmd(julia_cmd, detach=true), wait=false)
     end
+        
     #TODO: little hack here
-    cmd = pipeline(Cmd(`$(s.julia_exec) --startup-file=no -t auto -e "using DFControl; DFControl.Resource.run($(s.port))"`;
-              detach = true), stderr = "$(s.default_jobdir)/.julia/config/DFControl/errors.log")
-    proc = addprocs(s)[1]
-
-    p = remotecall(run, proc, cmd; wait = false)
 
     while !isalive(s)
         sleep(1)
@@ -219,7 +226,7 @@ function start(s::Server)
     else
         @info "Daemon on Server $(s.name) started, listening on local port $(s.local_port)."
     end
-    return rmprocs(proc)
+    return 
 end
 
 function maybe_start_server(s::Server)

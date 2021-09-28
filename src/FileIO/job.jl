@@ -71,7 +71,7 @@ function writetojob(f, job, calculation::Calculation, environment; kwargs...)
 end
 
 function writetojob(f, job, _calculation::Calculation{Wannier90}, environment; kwargs...)
-    filename   = _calculation.outfile
+    filename   = _calculation.infile
     should_run = _calculation.run
     id         = findfirst(isequal(_calculation), job.calculations)
     seedname   = _calculation.name
@@ -92,7 +92,7 @@ function writetojob(f, job, _calculation::Calculation{Wannier90}, environment; k
             end
             writeexec(f, _calculation.exec, environment)
             write(f,
-                  "-pp $filename > $(joinpath(job, _calculation.outfile))\n")
+                  "-pp $filename > $(_calculation.outfile)\n")
 
             save(_calculation, job.structure, joinpath(job, _calculation.infile); kwargs...)
             writetojob(f, job, pw2wancalculation, environment; kwargs...)
@@ -107,7 +107,7 @@ function writetojob(f, job, _calculation::Calculation{Wannier90}, environment; k
         write(f, "#")
     end
     writeexec(f, _calculation.exec, environment)
-    write(f, "$filename > $(joinpath(job, _calculation.outfile))\n")
+    write(f, "$filename > $(_calculation.outfile)\n")
     return (_calculation,)
 end
 

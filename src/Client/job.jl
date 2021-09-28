@@ -26,12 +26,12 @@ end
 function request_job_dir(dir::String, server::Server)
     resp = HTTP.get(server, "/registered_jobs/" * dir)
     matching_jobs = reverse(JSON3.read(resp.body, Vector{Tuple{String,DateTime}}))
+    choices = ["$j -- $t" for (j, t) in matching_jobs]
     if length(matching_jobs) == 1
         return matching_jobs[1][1]
     elseif length(matching_jobs) == 0
         error("No jobs found matching $dir")
     elseif isdefined(Base, :active_repl)
-        choices = ["$j -- $t" for (j, t) in matching_jobs]
         menu = RadioMenu(choices)
         choice = request("Multiple matching jobs were found, choose one:", menu)
         if choice != -1
@@ -141,9 +141,13 @@ function last_running_calculation(job::Job)
     end
 end
 
-function outputdata(job::Job; extra_parse_funcs = nothing)
-    server = Servers.maybe_start_server(job)
-    resp = HTTP.get(server, "/outputdata", [], JSON3.write(job))
+outputdata(job::Job, calcs::Vector{String}=String[]; kwargs...) =
+    outputdata(job.dir, job.server, calcs; kwargs...)
+    
+function outputdata(jobdir::String, s::String = "localhost", calcs::Vector{String}=String[]; extra_parse_funcs = nothing)
+    server = Servers.maybe_start_server(s)
+    jobdir = isabspath(jobdir) ? jobdir : joinpath(server, jobdir)
+    resp = HTTP.get(server, "/outputdata/" * jobdir, [], JSON3.write(calcs))
     if resp.status == 204
         error("No outputdata found yet. Is the job running?")
     end
@@ -156,11 +160,11 @@ function outputdata(job::Job; extra_parse_funcs = nothing)
     rm(local_temp)
     out = dat["outputdata"]
     if extra_parse_funcs !== nothing
-        for c in job.calculations
-            n = c.name
-            if haskey(out, n)
+        for k in keys(out)
+            if k ∈ calcs
+                n = c.name
                 try
-                    f = joinpath(job, c.outfile)
+                    f = joinpath(jobdir, c.outfile)
                     local_f = tempname()
                     Servers.pull(server, f, local_f)
                     FileIO.parse_file(local_f, extra_parse_funcs, out = out[n])
@@ -174,11 +178,17 @@ function outputdata(job::Job; extra_parse_funcs = nothing)
     return out     
 end
 
+function known_execs(e::String, server)
+    s = Servers.maybe_start_server(server)
+    return JSON3.read(HTTP.get(s, "/known_execs/" * e).body, Vector{Calculations.Exec})
+end
+known_execs(e::Calculations.Exec, args...) = known_execs(e.exec, args...)
+
 function verify_execs(job::Job, server::Server)
     for e in unique(map(x->x.exec, job.calculations))
         if !JSON3.read(HTTP.get(server, "/verify_exec/", [], JSON3.write(e)).body, Bool)
-            possibilities = JSON3.read(HTTP.get(server, "/known_execs/" * e.exec).body, Vector{Calculations.Exec})
-            replacement = length(possibilities) == 1 ? possibilities[1] : getfirst(x -> x.dir == e.dir, possibilities)
+            possibilities = known_execs(e, server) 
+            replacement = length(possibilities) == 1 ? possibilities[1] : getfirst(x -> splitdir(x.dir)[end] == splitdir(e.dir)[end], possibilities)
             if replacement !== nothing
                 @warn "Executable ($(e.exec)) in dir ($(e.dir)) not runnable,\n but found a matching replacement executable in dir ($(replacement.dir)).\nUsing that one..."
                 for e1 in map(x->x.exec, job.calculations)

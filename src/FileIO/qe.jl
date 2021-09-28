@@ -836,11 +836,13 @@ function qe_parse_Hubbard_U(out, line, f)
     out[:Hubbard_U] = []
     readline(f)
     readline(f)
-    for i in 1:length(out[:pert_at])
-        sline = split(readline(f))
+    line = readline(f)
+    while !isempty(line)
+        sline = split(line)
         push!(out[:Hubbard_U],
               (orig_name = Symbol(sline[3]), new_name = Symbol(sline[6]),
                U = parse(Float64, sline[7])))
+        line = readline(f)
     end
 end
 
@@ -854,13 +856,12 @@ function qe_read_hp_output(file; parse_funcs = Pair{String,<:Function}[])
     if length(hub_files) > 1
         @warn "Found multiple .Hubbard_parameters.dat files. Using $(hub_files[1]) (remove and read again if this is undesired)"
     elseif isempty(hub_files)
-        error("No .Hubbard_parameters.dat file found in $dir.")
+        return out 
     end
         
     hubbard_file = hub_files[1]
     if ispath(hubbard_file)
-        merge(out,
-              parse_file(hubbard_file, QE_HP_PARSE_FUNCS; extra_parse_funcs = parse_funcs))
+        parse_file(hubbard_file, QE_HP_PARSE_FUNCS; extra_parse_funcs = parse_funcs, out = out)
     end
     return out
 end

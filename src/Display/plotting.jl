@@ -54,15 +54,13 @@ end
     else
         ks = collect(1:length(band.k_points_cart))
     end
-    if fermi != 0
-        band = apply_fermi_level(band, fermi)
-    end
+    eigvals = band.eigvals .- fermi
+        
     linewidth --> linewidth
     title --> "Eigenvalues"
     yguide --> "Energy (eV)"
     legend --> false
-    out = band.eigvals
-    return ks, out
+    return ks, eigvals
 end
 
 @recipe function f(bands::Vector{<:Band}, ks = nothing)
@@ -77,6 +75,8 @@ end
     palette_ = ismissing(Plots.default(:palette)) ? :default : Plots.default(:palette)
     tc = Plots.plot_color(pop!(plotattributes, :seriescolor,
                                               RGB.(Plots.color_list(Plots.palette(palette_)))))
+
+    bands_label = get(plotattributes, :label, "")
     plt_colors = tc isa Colorant ? repeat([tc], 4) : repeat(tc, 4)
     ylims --> [ymin, ymax]
     gridalpha --> 0.9
@@ -84,7 +84,11 @@ end
         error("output plotting only implemented for QE jobs.")
     end
     outdat = Client.outputdata(job)
-    frmi = Jobs.readfermi(job, outdat)
+    if !haskey(plotattributes, :fermi)
+        frmi = Jobs.readfermi(job, outdat)
+    else
+        frmi = pop!(plotattributes, :fermi)
+    end
     fermi --> frmi
     bands = Jobs.readbands(job, outdat)
     if bands === nothing
@@ -135,12 +139,12 @@ end
         end
         @series begin
             xticks --> (tick_vals, tick_syms)
-            title := tit
+            title --> tit
             yguide := subplot == 1 ? "Energy (eV)" : ""
-            label := label
+            serieslabel := label
             subplot := subplot
             seriescolor := color
-            legend := false
+            legend --> false
             1:length(kpoints), band.eigvals .- frmi
         end
     end
@@ -242,13 +246,15 @@ end
                        for i in 1:length(band_contribs)]
         @info "Plotting bands..."
         for (iplt, (bnds, colors)) in enumerate(zip(bands, band_colors))
-            if length(bands) == 2
-                lab = iplt == 1 ? "up" : "down"
-            else
-                lab = ""
+            if bands_label == ""
+                if length(bands) == 2
+                    bands_label = iplt == 1 ? "up" : "down"
+                else
+                    bands_label = ""
+                end
             end
             for (ib, (b, c)) in enumerate(zip(bnds[window_ids[iplt]], colors))
-                plot_band(b, c, ib == 1 ? lab : "", overlap_spin ? 1 : iplt)
+                plot_band(b, c, ib == 1 ? bands_label : "", overlap_spin ? 1 : iplt)
             end
         end
 

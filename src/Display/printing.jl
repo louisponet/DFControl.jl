@@ -110,7 +110,6 @@ end
 function df_show(io::IO, c::Calculation)
     df_show_type(io, c)
     s = """name  = $(c.name)
-    dir   = $(c.dir)
     exec = $(c.exec.exec)
     run   = $(c.run)
     data  = $([e.name for e in c.data])

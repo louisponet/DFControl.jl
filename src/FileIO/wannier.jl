@@ -309,6 +309,15 @@ The atoms in the structure must have projections defined.
 """
 function save(calculation::Calculation{Wannier90}, structure,
               filename::String)
+
+    projs = vcat(map(structure.atoms) do x
+                     ps = x.projections
+                     @assert !isempty(ps) "Please first set projections for all atoms in the Structure."
+                     return ps
+                 end...)
+
+    Structures.sanitize!(projs, Calculations.issoc(calculation))
+    
     open(filename, "w") do f
         for (flag, value) in calculation.flags
             write_flag_line(f, flag, value)

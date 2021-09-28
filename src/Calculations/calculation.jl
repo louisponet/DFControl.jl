@@ -158,7 +158,7 @@ Base.eltype(::Calculation{T}) where {T} = T
 
 Returns the flag with given symbol.
 
-    getindex(job::DFJob, flag::Symbol)
+    getindex(job::Job, flag::Symbol)
     
 Searches through the job's calculations for the requested flag.
 A `Dict` will be returned with calculation names as the keys and the flags as values.
@@ -177,7 +177,7 @@ hasflag(c::Calculation, s) = false
 
 Sets flags.
 
-    setindex!(job::DFJob, value, flag::Symbol)
+    setindex!(job::Job, value, flag::Symbol)
 
 Set `flag` in all the appropriate calculations to the `value`.
 """
@@ -188,8 +188,8 @@ Base.setindex!(c::Calculation, dat, key) = set_flags!(c, key => dat)
 
 Sets multiple flags in one go. Flag validity and type are verified.
 
-    set_flags!(job::DFJob, calculations::Vector{<:Calculation}, flags::Pair{Symbol,<:Any}...; print=true)
-    set_flags!(job::DFJob, flags::Pair{Symbol,<:Any}...; print=true)
+    set_flags!(job::Job, calculations::Vector{<:Calculation}, flags::Pair{Symbol,<:Any}...; print=true)
+    set_flags!(job::Job, flags::Pair{Symbol,<:Any}...; print=true)
 
 Sets the flags in the names to the flags specified.
 This only happens if the specified flags are valid for the names.
