@@ -23,6 +23,9 @@ HTTP.@register(ROUTER, "GET", "/server_config", get_server_config)
 get_ispath(req) = ispath(job_path(req))
 HTTP.@register(ROUTER, "GET", "/get_ispath/*", get_ispath)
 
+get_readdir(req) = readdir(job_path(req))
+HTTP.@register(ROUTER, "GET", "/readdir/*", get_readdir)
+
 # PSEUDOS
 
 function pseudos(req)

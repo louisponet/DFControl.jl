@@ -181,11 +181,15 @@ end
 
 function isalive(s::Server)
     try
+        p1 = Pipe()
+        p2 = Pipe()
         if s.local_port != 0
-            run(pipeline(`nc -vz localhost $(s.local_port)`, stdout = Pipe(), stderr=Pipe()))
+            run(pipeline(`nc -vz localhost $(s.local_port)`, stdout = p1, stderr=p2))
         else
-            run(pipeline(`nc -vz  $(s.domain) $(s.port)`, stdout = Pipe(), stderr=Pipe()))
+            run(pipeline(`nc -vz  $(s.domain) $(s.port)`, stdout = p2, stderr=p1))
         end
+        close(p1.in)
+        close(p2.in)
         HTTP.get(s, "/server_config")
         return true
     catch
@@ -329,5 +333,12 @@ function available_modules(s::Server)
         return String[]
     end
 end
+
+function Base.readdir(s::Server, dir::String)
+    maybe_start_server(s)
+    resp = HTTP.get(s, "/readdir/" * dir)
+    return JSON3.read(resp.body, Vector{String})
+end
+    
 
 end

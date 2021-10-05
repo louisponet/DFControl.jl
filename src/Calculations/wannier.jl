@@ -34,7 +34,7 @@ function gencalc_wan(nscf::Calculation{QE}, structure::Structure, bands, Emin, w
         wanflags[:spinors] = true
     end
 
-    nwann = sum(length, projs)
+    nwann = issoc(nscf) ? 2*sum(length, projs) : sum(length, projs)
     @info "num_wann=$nwann (inferred from provided projections)."
     wanflags[:num_wann] = nwann
     kpoints = data(nscf, :k_points).data
@@ -91,7 +91,8 @@ Automatically calculates and sets the wannier energies. This uses the projection
 """
 function set_wanenergies!(calculation::Calculation{Wannier90}, structure::Structure, bands,
                           Emin::Real; Epad = 5.0)
-    nwann = sum(x -> sum(length.(x.projections)), structure.atoms)
+    nprojs = sum(x -> sum(length.(x.projections)), structure.atoms)
+    nwann = Calculations.issoc(calculation) ? 2*nprojs : nprojs
     @assert nwann != 0 "Please specify projections first."
     @info "num_wann=$nwann (inferred from provided projections)."
 
