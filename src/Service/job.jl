@@ -117,7 +117,8 @@ function save(job::Job; kwargs...)
     end
 
     
-    job.dir = strip(split(dir, Server("localhost").default_jobdir)[2], '/') # Needs to be done so the inputs `dir` also changes.
+    # Needs to be done so the inputs `dir` also changes.
+    job.dir = occursin(Server("localhost").default_jobdir, dir) ? strip(split(dir, Server("localhost").default_jobdir)[2], '/') : dir
     mkpath(dir)
 
     for f in searchdir(job, "slurm")
