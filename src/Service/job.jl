@@ -1,5 +1,5 @@
 function load_job(job_dir::AbstractString)
-    orig_dir = copy(job_dir)
+    orig_dir = job_dir
     s = Server("localhost")
     if !isabspath(job_dir)
         job_dir = joinpath(s, job_dir)
