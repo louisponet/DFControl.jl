@@ -9,7 +9,7 @@ function load_job(job_dir::AbstractString)
         error("No valid job found in $job_dir.")
     end
     scriptpath = joinpath(job_dir, "job.tt")
-    job_dir = strip(splitdir(job_dir, s.default_jobdir)[2], '/')
+    job_dir = strip(split(job_dir, s.default_jobdir)[2], '/')
     job = Job(;
               merge((dir = job_dir, version = version),
                     FileIO.read_job_script(scriptpath))...)
