@@ -193,8 +193,8 @@ function verify_execs(job::Job, server::Server)
                 possibilities = filter(x -> all(splitpath(x.dir)[end-curn:end] .== splitpath(e.dir)[end-curn:end]), possibilities)
                 curn += 1
             end
-            replacement = possibilities[1]
-            if replacement !== nothing
+            if !isempty(possibilities)
+                replacement = possibilities[1]
                 @warn "Executable ($(e.exec)) in dir ($(e.dir)) not runnable,\n but found a matching replacement executable in dir ($(replacement.dir)).\nUsing that one..."
                 for e1 in map(x->x.exec, job.calculations)
                     if e1.exec == replacement.exec
