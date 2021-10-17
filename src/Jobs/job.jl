@@ -82,7 +82,7 @@ StructTypes.StructType(::Type{Job}) = StructTypes.Mutable()
 scriptpath(job::Job) = joinpath(job, "job.tt")
 starttime(job::Job)  = mtime(scriptpath(job))
 
-runslocal(job::Job) = job.server == "localhost"
+runslocal(job::Job) = Servers.islocal(Server(job.server))
 isarchived(job::Job) = occursin(".archived", job.dir)
 
 Base.abspath(job::Job) = isabspath(job.dir) ? job.dir : joinpath(Server(job.server), job.dir)

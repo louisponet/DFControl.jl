@@ -51,6 +51,7 @@ include("Servers/Servers.jl")
 include("Service/Service.jl")
 include("Resource/Resource.jl")
 include("Client/Client.jl")
+include("AiiDA/AiiDA.jl")
 
 
 include("Display/Display.jl")
