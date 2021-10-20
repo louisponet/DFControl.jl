@@ -49,6 +49,8 @@ function cif2structure(cif_file::String; structure_name = "NoName")
     return structure
 end
 
+Base.length(::Type{<:Real}) = 1
+
 function Base.parse(::Type{NamedTuple{names,types}},
                     spl::Vector{<:AbstractString}) where {names,types}
     @assert sum(length.(types.parameters)) == length(spl)

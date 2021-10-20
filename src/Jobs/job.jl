@@ -93,7 +93,7 @@ Base.abspath(job::Job) = isabspath(job.dir) ? job.dir : joinpath(Server(job.serv
 `joinpath(job.dir, args...)`.
 """
 Base.joinpath(job::Job, args...) = joinpath(abspath(job), args...)
-Base.readdir(job::Job) = readdir(abspath(job))
+Base.readdir(job::Job) = runslocal(job) ? readdir(abspath(job)) : readdir(Server(job.server), job.dir)
     
 function Base.pop!(job::Job, name::String)
     i = findfirst(x -> x.name == name, job.calculations)
@@ -332,7 +332,7 @@ function bandgap(job::Job, fermi = nothing)
 end
 
 function readfermi(job::Job, outdat)
-    ins = filter(x -> (Calculations.isscf(x) || Calculations.isnscf(x)), job.calculations)
+    ins = filter(x -> (Calculations.isvcrelax(x) || Calculations.isscf(x) || Calculations.isnscf(x)), job.calculations)
     @assert isempty(ins) !== nothing "Job does not have a valid scf or nscf output."
     for i in ins
         if haskey(outdat, i.name)

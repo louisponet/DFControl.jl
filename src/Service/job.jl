@@ -1,17 +1,17 @@
 function load_job(job_dir::AbstractString)
+    orig_dir = job_dir
     s = Server("localhost")
     if !isabspath(job_dir)
         job_dir = joinpath(s, job_dir)
     end
-    if ispath(joinpath(job_dir, "job.tt"))
+    scriptpath = joinpath(job_dir, "job.tt")
+    if ispath(scriptpath)
         version = Jobs.version(job_dir)
     else
         error("No valid job found in $job_dir.")
     end
-    scriptpath = joinpath(job_dir, "job.tt")
-    job_dir = strip(split(job_dir, s.default_jobdir)[2], '/')
     job = Job(;
-              merge((dir = job_dir, version = version),
+              merge((dir = orig_dir, version = version),
                     FileIO.read_job_script(scriptpath))...)
     Jobs.maybe_register_job(job)
     return job
@@ -117,7 +117,8 @@ function save(job::Job; kwargs...)
     end
 
     
-    job.dir = strip(split(dir, Server("localhost").default_jobdir)[2], '/') # Needs to be done so the inputs `dir` also changes.
+    # Needs to be done so the inputs `dir` also changes.
+    job.dir = occursin(Server("localhost").default_jobdir, dir) ? strip(split(dir, Server("localhost").default_jobdir)[2], '/') : dir
     mkpath(dir)
 
     for f in searchdir(job, "slurm")

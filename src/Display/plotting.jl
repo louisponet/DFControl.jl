@@ -71,7 +71,7 @@ end
     end
 end
 
-@recipe function f(job::Job, ymin, ymax, occupy_ratio = 0.2; overlap_spin = false)
+@recipe function f(job::Job, ymin, ymax, occupy_ratio = 0.2; overlap_spin = false, plot_pdos=true)
     palette_ = ismissing(Plots.default(:palette)) ? :default : Plots.default(:palette)
     tc = Plots.plot_color(pop!(plotattributes, :seriescolor,
                                               RGB.(Plots.color_list(Plots.palette(palette_)))))
@@ -151,7 +151,7 @@ end
 
     # PDOS part
     projwfc = Utils.getfirst(x -> Calculations.isprojwfc(x) && haskey(outdat, x.name), job.calculations)
-    if projwfc !== nothing
+    if projwfc !== nothing && plot_pdos
         if bands isa NamedTuple && !overlap_spin
             doswindow = 3
             layout --> (1, 3)

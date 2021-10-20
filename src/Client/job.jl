@@ -187,9 +187,14 @@ known_execs(e::Calculations.Exec, args...) = known_execs(e.exec, args...)
 function verify_execs(job::Job, server::Server)
     for e in unique(map(x->x.exec, job.calculations))
         if !JSON3.read(HTTP.get(server, "/verify_exec/", [], JSON3.write(e)).body, Bool)
-            possibilities = known_execs(e, server) 
-            replacement = length(possibilities) == 1 ? possibilities[1] : getfirst(x -> splitdir(x.dir)[end] == splitdir(e.dir)[end], possibilities)
-            if replacement !== nothing
+            possibilities = known_execs(e, server)
+            curn = 0
+            while length(possibilities) > 1
+                possibilities = filter(x -> all(splitpath(x.dir)[end-curn:end] .== splitpath(e.dir)[end-curn:end]), possibilities)
+                curn += 1
+            end
+            if !isempty(possibilities)
+                replacement = possibilities[1]
                 @warn "Executable ($(e.exec)) in dir ($(e.dir)) not runnable,\n but found a matching replacement executable in dir ($(replacement.dir)).\nUsing that one..."
                 for e1 in map(x->x.exec, job.calculations)
                     if e1.exec == replacement.exec
@@ -231,12 +236,26 @@ function abort(job::Job)
     end
 end
 
-function registered_jobs(fuzzy="", s="localhost")
-    server = Servers.maybe_start_server(s) 
+function registered_jobs(fuzzy::String, server::Server)
+    server = Servers.maybe_start_server(server) 
     resp = HTTP.get(server, "/registered_jobs/" * fuzzy)
     return reverse(JSON3.read(resp.body, Vector{Tuple{String,DateTime}}))
 end
 
+registered_jobs(fuzzy::String, server::String) = 
+    registered_jobs(fuzzy, Servers.Server(server))
+
+function registered_jobs(fuzzy::String = "")
+    all_jobs = Dict{String,Vector{Tuple{String, DateTime}}}()
+    for s in Servers.known_servers()
+        jobs = registered_jobs(fuzzy, s)
+        if !isempty(jobs)
+            all_jobs[s.name] = jobs
+        end
+    end
+    return all_jobs
+end
+        
 function running_jobs(fuzzy="", s="localhost")
     server = Servers.maybe_start_server(s) 
     resp = HTTP.get(server, "/running_jobs/" * fuzzy)
@@ -294,5 +313,4 @@ function rm_environment!(name::String, s="localhost")
     server = Servers.maybe_start_server(s)
     return HTTP.put(server, "/environment/$name")
 end
-    
-    
+ 

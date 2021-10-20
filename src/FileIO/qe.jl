@@ -45,6 +45,14 @@ function qe_read_output(c::Calculation{QE}, file, args...; kwargs...)
     end
 end
 
+function qe_parse_Hubbard(out, line, f)
+    if !haskey(out, :Hubbard)
+        out[:Hubbard] = [parse_Hubbard_block(f)]
+    else
+        push!(out[:Hubbard], parse_Hubbard_block(f))
+    end
+end
+
 function parse_Hubbard_block(f)
     # Each of these will have n Hubbard typ elements at the end
     ids = Int[]
@@ -52,7 +60,7 @@ function parse_Hubbard_block(f)
     eigvals = (up = Vector{Float64}[], down = Vector{Float64}[])
     eigvec = (up = Matrix{Float64}[], down = Matrix{Float64}[])
     occupations = (up = Matrix{Float64}[], down = Matrix{Float64}[])
-    magmoms = Float64[]
+    magmoms = []
     line = readline(f)
     cur_spin = :up
     while strip(line) != "--- exit write_ns ---"
@@ -64,24 +72,44 @@ function parse_Hubbard_block(f)
                   NamedTuple{(:up, :down, :total)}(parse.(Float64,
                                                           (sline[end-2], sline[end-1],
                                                            sline[end]))))
-            for spin in (:up, :down)
-                readline(f) #should be spin1
-                readline(f)# should be eigvals
-                push!(eigvals[spin], parse.(Float64, split(readline(f))))
-                dim = length(eigvals[spin][1])
-                readline(f) #eigvectors
-                tmat = zeros(dim, dim)
-                for i in 1:dim
+            if occursin("spin", readline(f))
+                for spin in (:up, :down)
+                    readline(f)# should be eigvals
+                    push!(eigvals[spin], parse.(Float64, split(readline(f))))
+                    dim = length(eigvals[spin][1])
+                    readline(f) #eigvectors
+                    tmat = zeros(dim, dim)
+                    for i in 1:dim
+                        tmat[i, :] = parse.(Float64, split(readline(f)))
+                    end
+                    push!(eigvec[spin], tmat)
+                    readline(f) #occupations
+                    for i in 1:dim
+                        tmat[i, :] = parse.(Float64, split(readline(f)))
+                    end
+                    push!(occupations[spin], tmat)
+                end
+                push!(magmoms, parse(Float64, split(readline(f))[end]))
+            else
+                alleig = parse.(Float64, split(readline(f)))
+                push!(eigvals.up, alleig[1:2:end])
+                push!(eigvals.down, alleig[2:2:end])
+                dim = length(eigvals.up[1])
+                tmat = zeros(2dim, 2dim)
+                readline(f)
+                for i in 1:2dim
                     tmat[i, :] = parse.(Float64, split(readline(f)))
                 end
-                push!(eigvec[spin], tmat)
-                readline(f) #occupations
-                for i in 1:dim
+                push!(eigvec.up, tmat[:,1:2:end])
+                push!(eigvec.down, tmat[:,1:2:end])
+                readline(f)
+                for i in 1:2dim
                     tmat[i, :] = parse.(Float64, split(readline(f)))
                 end
-                push!(occupations[spin], tmat)
+                push!(occupations.up, tmat[:,1:2:end])
+                push!(occupations.down, tmat[:,1:2:end])
+                push!(magmoms, parse.(Float64, split(readline(f))[end-2:end]))
             end
-            push!(magmoms, parse(Float64, split(readline(f))[end]))
         end
     end
     return [(id = i, trace = t, eigvals = (up = val_up, down = val_down),
@@ -351,14 +379,6 @@ function qe_parse_magnetization(out, line, f)
         push!(out[:magnetization], parse(Vec3{Float64}, split(readline(f))[3:5]))
     else
         out[:magnetization][atom_number] = parse(Vec3{Float64}, split(readline(f))[3:5])
-    end
-end
-
-function qe_parse_Hubbard(out, line, f)
-    if !haskey(out, :Hubbard)
-        out[:Hubbard] = [parse_Hubbard_block(f)]
-    else
-        push!(out[:Hubbard], parse_Hubbard_block(f))
     end
 end
 
