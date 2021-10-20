@@ -293,7 +293,7 @@ end
 Uses the information from the template and supplied `kpoints` to generate a bands calculation.
 Extra flags can be supplied which will be set for the generated calculation.
 """
-function gencalc_bands(template::Calculation{QE}, kpoints::Vector{<:NTuple{4}}, newflags...;
+function gencalc_bands(template::Calculation{QE}, kpoints::Vector, newflags...;
                        name = "bands")
     return calculation_from_kpoints(template, name, kpoints, :calculation => "bands",
                                     newflags...)

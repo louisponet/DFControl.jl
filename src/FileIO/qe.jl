@@ -1344,9 +1344,9 @@ end
 function qe_generate_pw2wancalculation(c::Calculation{Wannier90}, nscf::Calculation{QE},
                                        runexec)
     flags = Dict()
-    flags[:prefix] = nscf[:prefix]
+    flags[:prefix] = get(nscf, :prefix, "")
     flags[:seedname] = "$(c.name)"
-    flags[:outdir] = nscf[:outdir]
+    flags[:outdir] = get(nscf, :outdir, "")
     flags[:wan_mode] = "standalone"
     flags[:write_mmn] = true
     flags[:write_amn] = true

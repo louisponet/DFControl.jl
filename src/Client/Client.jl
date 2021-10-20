@@ -1,8 +1,8 @@
 module Client
 using HTTP, JSON3, StructTypes, Dates, JLD2, Distributed, REPL.TerminalMenus, Reexport
 using ..DFControl
-using ..Utils
 using ..FileIO
+@reexport using ..Utils
 @reexport using ..Servers
 @reexport using ..Structures
 @reexport using ..Calculations
