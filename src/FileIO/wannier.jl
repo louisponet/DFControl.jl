@@ -209,7 +209,7 @@ function wan_read_calculation(::Type{T}, f::IO) where {T}
         end
         line = readline(f)
     end
-    return flags, data, atoms_block, cell_block, proj_block
+    return (flags=flags, data=data, atoms=atoms_block, cell=cell_block, projections=proj_block)
 end
 
 wan_read_calculation(f::IO) = wan_read_calculation(Float64, f)

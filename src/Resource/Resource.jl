@@ -8,10 +8,12 @@ using ..Servers
 using ..Jobs
 using ..Calculations
 using ..Structures
+using ..FileIO
 
 const ROUTER = HTTP.Router()
 
 include("job.jl")
+include("fileio.jl")
 
 # GENERAL
 kill_server(req) = exit()
@@ -36,7 +38,7 @@ end
 HTTP.@register(ROUTER, "GET", "/pseudos/*", pseudos)
 
 pseudo_sets(req) = Service.pseudo_sets()
-HTTP.@register(ROUTER, "GET", "/pseudo_sets/", pseudo_sets)
+HTTP.@register(ROUTER, "GET", "/pseudos", pseudo_sets)
 
 configure_pseudoset(req) = Service.configure_pseudoset(JSON3.read(req.body,String), job_path(req))
 HTTP.@register(ROUTER, "POST", "/configure_pseudoset/*", configure_pseudoset)

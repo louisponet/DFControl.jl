@@ -53,3 +53,5 @@ mutable struct TimingData
 end
 StructTypes.StructType(::Type{TimingData}) = StructTypes.Mutable()
 StructTypes.StructType(::Type{Dates.CompoundPeriod}) = StructTypes.Struct()
+StructTypes.StructType(::Type{Dates.Millisecond}) = StructTypes.Struct()
+StructTypes.StructType(::Type{Dates.Second}) = StructTypes.Struct()

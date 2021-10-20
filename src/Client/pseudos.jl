@@ -16,7 +16,6 @@ function pseudos(server, pseudoset, atsyms::Vector{Symbol}, fuzzy = "")
         ps[a] = read(t, String)
         rm(t)
     end
-        
     return ps
 end
 
@@ -27,7 +26,7 @@ Lists the pseudosets that have previously been set up.
 """
 function list_pseudosets(server = "localhost")
     s = Servers.maybe_start_server(server)
-    return JSON3.read(HTTP.get(s, "/pseudo_sets").body, Vector{String})
+    return JSON3.read(HTTP.get(s, "/pseudos").body, Vector{String})
 end
 
 """
