@@ -30,8 +30,11 @@ function cif2structure(cif_file::String)
     tmpdir = dirname(cif_file)
     tmpfile = joinpath(tmpdir, "tmp.in")
     @assert splitext(cif_file)[2] == ".cif" error("Please specify a valid cif calculation file")
-    run(`$(DFControl.PYTHONPATH) $(DFControl.CIF2CELLPATH) $cif_file --no-reduce -p quantum-espresso -o $tmpfile`)
-
+    if Sys.which("cif2cell") === nothing 
+        run(`$(DFControl.PYTHONPATH) $(DFControl.CIF2CELLPATH) $cif_file --no-reduce -p quantum-espresso -o $tmpfile`)
+    else
+        run(`cif2cell $cif_file --no-reduce -p quantum-espresso -o $tmpfile`)
+    end
     bla, structure = DFC.FileIO.qe_read_calculation(tmpfile)
     rm(tmpfile)
     return structure
