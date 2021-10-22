@@ -17,7 +17,7 @@ end
 
 
 if Sys.which("cif2cell") === nothing
-    relpath = x -> joinpath(@__DIR__, x)
+    relpath(args...) = joinpath(@__DIR__, args...)
 
     pythonpath = relpath("python2")
     prevpythfound = false
@@ -68,9 +68,8 @@ if Sys.which("cif2cell") === nothing
                     windows_verbatim = true))
         end
 
-        tarpath = relpath("cif2cell.tar.gz")
-        download("https://sourceforge.net/projects/cif2cell/files/latest/download", tarpath)
-        run(unpack_cmd("cif2cell.tar.gz", @__DIR__, ".gz", ".tar"))
+        tarpath = relpath("external", "cif2cell.tar.gz")
+        run(unpack_cmd(tarpath, @__DIR__, ".gz", ".tar"))
         cif2celldir = relpath("cif2cell-1.2.10")
         cd(cif2celldir)
         pyex = Sys.iswindows() ? joinpath(pythonpath, "python") :
@@ -86,7 +85,6 @@ if Sys.which("cif2cell") === nothing
                              "filestream = urlopen(filename)" => "filestream = urlopen('file:' + filename)")
         write(starfile, starsource)
         #
-        rm(tarpath)
         rm(relpath("cif2cell-1.2.10"); recursive = true)
         rm(relpath("downloads"); recursive = true)
     end

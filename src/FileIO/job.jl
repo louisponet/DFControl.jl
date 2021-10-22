@@ -372,5 +372,5 @@ function read_job_script(job_file::String)
         environment = ""
     end
     
-    return (; name, header, calculations = cs, structure, environment)
+    return (name=name, header=header, calculations = cs, structure=structure, environment=environment)
 end

@@ -13,7 +13,7 @@ function cleanup_job_registry!()
         end
         write(JOB_REGISTRY[ir], join(REG, "\n"))
     end
-    return (; in_progress, archived)
+    return (in_progress=in_progress, archived=archived)
 end
 
 function maybe_register_job(abspath::AbstractString)
