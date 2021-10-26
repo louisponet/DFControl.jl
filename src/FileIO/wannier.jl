@@ -12,7 +12,7 @@ function extract_atoms(atoms_block, proj_block, cell::Mat3, spinors = false)
     atoms = atoms_block.data
     t_start = 1
     out_ats = Atom[]
-    if projections_ != nothing
+    if projections_ !== nothing
         t_ats = Atom[]
         for (proj_at, projs) in projections_
             for (pos_at, pos) in atoms
@@ -56,7 +56,7 @@ function extract_atoms(atoms_block, proj_block, cell::Mat3, spinors = false)
             for p in pos
                 push!(out_ats,
                       Atom(pos_at; position_cart = cell * p, position_cryst = p,
-                           projections = :random))
+                           projections = Projection[]))
             end
         end
     end

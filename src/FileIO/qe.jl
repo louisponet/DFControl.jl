@@ -56,10 +56,10 @@ end
 function parse_Hubbard_block(f)
     # Each of these will have n Hubbard typ elements at the end
     ids = Int[]
-    traces = NamedTuple{(:up, :down, :total),NTuple{3,Float64}}[]
-    eigvals = (up = Vector{Float64}[], down = Vector{Float64}[])
-    eigvec = (up = Matrix{Float64}[], down = Matrix{Float64}[])
-    occupations = (up = Matrix{Float64}[], down = Matrix{Float64}[])
+    traces = []
+    eigvals = []
+    eigvec = []
+    occupations = []
     magmoms = []
     line = readline(f)
     cur_spin = :up
@@ -68,13 +68,20 @@ function parse_Hubbard_block(f)
         if line[1:4] == "atom"
             sline = split(line)
             push!(ids, parse(Int, sline[2]))
-            push!(traces,
-                  NamedTuple{(:up, :down, :total)}(parse.(Float64,
-                                                          (sline[end-2], sline[end-1],
-                                                           sline[end]))))
+            if occursin("up, down, total", line)
+                push!(traces,
+                      NamedTuple{(:up, :down, :total)}(parse.(Float64,
+                                                              (sline[end-2], sline[end-1],
+                                                               sline[end]))))
+            else
+                push!(traces, (total = parse(Float64, sline[end]),))
+            end
             if occursin("spin", readline(f))
                 for spin in (:up, :down)
-                    readline(f)# should be eigvals
+                    t = readline(f)# should be eigvals
+                    if strip(t)[1:4]  == "spin"
+                        readline(f)
+                    end
                     push!(eigvals[spin], parse.(Float64, split(readline(f))))
                     dim = length(eigvals[spin][1])
                     readline(f) #eigvectors
@@ -92,32 +99,46 @@ function parse_Hubbard_block(f)
                 push!(magmoms, parse(Float64, split(readline(f))[end]))
             else
                 alleig = parse.(Float64, split(readline(f)))
-                push!(eigvals.up, alleig[1:2:end])
-                push!(eigvals.down, alleig[2:2:end])
-                dim = length(eigvals.up[1])
-                tmat = zeros(2dim, 2dim)
+                dim = length(alleig)
+                if iseven(dim)
+                    push!(eigvals, (up = alleig[1:2:end], down = alleig[2:2:end]))
+                else
+                    push!(eigvals, alleig)
+                end
+                   
+                tmat = zeros(dim, dim)
                 readline(f)
-                for i in 1:2dim
+                for i in 1:dim
                     tmat[i, :] = parse.(Float64, split(readline(f)))
                 end
-                push!(eigvec.up, tmat[:,1:2:end])
-                push!(eigvec.down, tmat[:,1:2:end])
+                if iseven(dim)
+                    push!(eigvec, (up = tmat[:,1:2:end], down = tmat[:,2:2:end]))
+                else
+                    push!(eigvec, copy(tmat))
+                end
+                    
                 readline(f)
-                for i in 1:2dim
+                for i in 1:dim
                     tmat[i, :] = parse.(Float64, split(readline(f)))
                 end
-                push!(occupations.up, tmat[:,1:2:end])
-                push!(occupations.down, tmat[:,1:2:end])
-                push!(magmoms, parse.(Float64, split(readline(f))[end-2:end]))
+                if iseven(dim)
+                    push!(occupations, (up = tmat[:,1:2:end], down = tmat[:,2:2:end]))
+                else
+                    push!(occupations, copy(tmat))
+                end
+                if iseven(dim)
+                    push!(magmoms, parse.(Float64, split(readline(f))[end-2:end]))
+                else
+                    push!(magmoms, parse.(Float64, split(readline(f))[end]))
+                end
             end
         end
     end
-    return [(id = i, trace = t, eigvals = (up = val_up, down = val_down),
-             eigvecs = (up = vec_up, down = vec_down),
-             occupations = (up = occ_up, down = occ_down), magmom = m)
-            for (i, t, val_up, val_down, vec_up, vec_down, occ_up, occ_down, m) in
-                zip(ids, traces, eigvals.up, eigvals.down, eigvec.up, eigvec.down,
-                    occupations.up, occupations.down, magmoms)]
+    return [(id = i, trace = t, eigvals = val,
+             eigvecs = vec,
+             occupations = occ, magmom = m)
+            for (i, t, val, vec, occ, m) in
+                zip(ids, traces, eigvals, eigvec, occupations, magmoms)]
 end
 
 function qe_parse_polarization(out, line, f)
