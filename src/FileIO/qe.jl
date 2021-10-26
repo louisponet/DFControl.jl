@@ -77,26 +77,31 @@ function parse_Hubbard_block(f)
                 push!(traces, (total = parse(Float64, sline[end]),))
             end
             if occursin("spin", readline(f))
-                for spin in (:up, :down)
+                vals = [zeros(4), zeros(4)]  
+                vecs = [zeros(4,4), zeros(4,4)]  
+                occ  = [zeros(4,4), zeros(4,4)]  
+                for (is, spin) in enumerate((:up, :down))
                     t = readline(f)# should be eigvals
                     if strip(t)[1:4]  == "spin"
                         readline(f)
                     end
-                    push!(eigvals[spin], parse.(Float64, split(readline(f))))
-                    dim = length(eigvals[spin][1])
+                    vals[is] = parse.(Float64, split(readline(f)))
+                    dim = length(vals[is])
                     readline(f) #eigvectors
-                    tmat = zeros(dim, dim)
+                    vecs[is] = zeros(dim, dim)
                     for i in 1:dim
-                        tmat[i, :] = parse.(Float64, split(readline(f)))
+                        vecs[is][i, :] = parse.(Float64, split(readline(f)))
                     end
-                    push!(eigvec[spin], tmat)
                     readline(f) #occupations
+                    occ[is] = zeros(dim, dim)
                     for i in 1:dim
-                        tmat[i, :] = parse.(Float64, split(readline(f)))
+                        occ[is][i, :] = parse.(Float64, split(readline(f)))
                     end
-                    push!(occupations[spin], tmat)
                 end
                 push!(magmoms, parse(Float64, split(readline(f))[end]))
+                push!(eigvals, (up = vals[1], down=vals[2]))
+                push!(eigvec, (up = vecs[1], down=vecs[2]))
+                push!(occupations, (up = occ[1], down=occ[2]))
             else
                 alleig = parse.(Float64, split(readline(f)))
                 dim = length(alleig)
