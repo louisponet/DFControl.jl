@@ -117,8 +117,12 @@ function Server(s::String)
 end
 
 StructTypes.StructType(::Type{Server}) = StructTypes.Struct()
+islocal(s::Server) = s.domain == "localhost"
 
 Base.joinpath(s::Server, p...) = joinpath(s.default_jobdir, p...)
+Base.ispath(s::Server, p...) = islocal(s) ? ispath(p...) : JSON3.read(HTTP.get(s, "/get_ispath/" * joinpath(p...)).body, Bool)
+
+Utils.searchdir(s::Server, dir, str) = joinpath.(dir, filter(x->occursin(str, x), readdir(s, dir))) 
 
 function known_servers(fuzzy = "")
     if ispath(SERVER_DIR)
@@ -166,7 +170,7 @@ for f in (:get, :put, :post, :head)
 end
 
 function Distributed.addprocs(server::Server, nprocs::Int = 1, args...; kwargs...)
-    if server.domain == "localhost"
+    if islocal(server)
         proc = Distributed.addprocs(nprocs, args...; kwargs...)
     else
         proc = Distributed.addprocs([(ssh_string(server), nprocs)], args...; exename=`$(server.julia_exec)`, dir=server.default_jobdir, tunnel=true, kwargs...)
@@ -278,7 +282,7 @@ end
 Pulls `server_file` from the server the `local_file`.
 """
 function pull(server::Server, server_file::String, filename::String)
-    if server.domain == "localhost"
+    if islocal(server)
         cp(server_file, filename; force = true)
     else
         run(`scp $(ssh_string(server) * ":" * server_file) $filename`)
@@ -291,7 +295,7 @@ end
 Pushes the `local_file` to the `server_file` on the server.
 """
 function push(filename::String, server::Server, server_file::String)
-    if server.domain == "localhost"
+    if islocal(server)
         cp(filename, server_file; force = true)
     else
         run(`scp $filename $(ssh_string(server) * ":" * server_file)`)
@@ -301,7 +305,7 @@ end
 function server_command(s::Server, cmd)
     out = Pipe()
     err = Pipe()
-    if s.domain == "localhost"
+    if islocal(s)
         process = run(pipeline(ignorestatus(cmd), stdout=out, stderr=err))
     else
         process = run(pipeline(ignorestatus(`ssh $(ssh_string(s)) source /etc/profile '&''&' $cmd`), stdout=out, stderr=err))

@@ -333,7 +333,7 @@ function gencalc_projwfc(template::Calculation{QE}, Emin, Emax, DeltaE, extrafla
     end
     tdegaussflag = get(template, :degauss, nothing)
     degauss = tdegaussflag !== nothing ? tdegaussflag : 0.0
-    exec = Exec(deepcopy(template.exec), exec = "projwfc.x")
+    exec = Exec(dir = template.exec.dir, exec = "projwfc.x", modules = template.exec.modules, flags = template.exec.flags)
     empty!(exec.flags)
     out = Calculation(deepcopy(template); name = name, exec = exec, data = InputData[])
     set_name!(out, "projwfc")

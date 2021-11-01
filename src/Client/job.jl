@@ -2,7 +2,7 @@ Servers.Server(j::Job) = Server(j.server)
 
 function Jobs.Job(dir::AbstractString, s = "localhost"; version::Int = -1)
     server = Servers.maybe_start_server(s)
-    if !JSON3.read(HTTP.get(server, "/get_ispath/" * dir).body, Bool)
+    if !ispath(server, dir)
         dir = request_job_dir(dir, server)
         dir === nothing && return
     end

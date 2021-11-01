@@ -85,7 +85,12 @@ starttime(job::Job)  = mtime(scriptpath(job))
 runslocal(job::Job) = job.server == "localhost"
 isarchived(job::Job) = occursin(".archived", job.dir)
 
-Base.abspath(job::Job) = isabspath(job.dir) ? job.dir : joinpath(Server(job.server), job.dir)
+Base.abspath(job::Job) =
+    isabspath(job.dir) ? job.dir : joinpath(Server(job.server), job.dir)
+    
+Base.ispath(job::Job, p...) =
+    runslocal(job) ? joinpath(job, p...) : ispath(Servers.maybe_start_server(Server(job.server)), joinpath(job, p...))
+
     
 """
     joinpath(job::Job, args...)
@@ -106,7 +111,11 @@ function Base.pop!(job::Job, name::String)
 end
 
 function Utils.searchdir(job::Job, str::AbstractString)
-    return searchdir(abspath(job), str)
+    if runslocal(job)
+        return searchdir(abspath(job), str)
+    else
+        return searchdir(Server(job.server), abspath(job), str)
+    end
 end
 
 function Base.setindex!(job::Job, value, key::Symbol)
@@ -509,3 +518,7 @@ function sanitize_cutoffs!(job::Job)
     end
 end
 
+function Servers.pull(j::Job, f, t)
+    @assert ispath(j, f) "File $f not found in jobdir."
+    Servers.pull(Server(j.server), joinpath(j, f), t)
+end

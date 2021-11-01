@@ -1388,7 +1388,7 @@ function qe_generate_pw2wancalculation(c::Calculation{Wannier90}, nscf::Calculat
     if any(get(c, :berry_task, []) .== ("morb"))
         flags[:write_uHu] = true
     end
-    pw2wanexec = Exec("pw2wannier90.x", runexec.dir)
+    pw2wanexec = Exec(exec ="pw2wannier90.x", dir=runexec.dir, modules = nscf.exec.modules, flags = nscf.exec.flags)
     run = get(c, :preprocess, false) && c.run
     return Calculation{QE}(; name = "pw2wan_$(flags[:seedname])", 
                            flags = flags, data = InputData[],
