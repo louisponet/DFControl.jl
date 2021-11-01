@@ -2,6 +2,7 @@ module Servers
 using StructTypes, Distributed, JSON3, HTTP, REPL.TerminalMenus, Parameters
 using ..DFControl
 using ..Utils
+using ..Jobs
 
 export Server
 
@@ -289,6 +290,11 @@ function pull(server::Server, server_file::String, filename::String)
     end
 end
 
+function pull(j::Job, f, t)
+    @assert ispath(j, f) "File $f not found in jobdir."
+    pull(Server(j.server), joinpath(j, f), t)
+end
+
 """
     push(local_file::String, server::Server, server_file::String)
 
@@ -343,6 +349,7 @@ function Base.readdir(s::Server, dir::String)
     resp = HTTP.get(s, "/readdir/" * dir)
     return JSON3.read(resp.body, Vector{String})
 end
+
     
 
 end

@@ -89,7 +89,7 @@ Base.abspath(job::Job) =
     isabspath(job.dir) ? job.dir : joinpath(Server(job.server), job.dir)
     
 Base.ispath(job::Job, p...) =
-    runslocal(job) ? joinpath(job, p...) : ispath(Servers.maybe_start_server(Server(job.server)), joinpath(job, p...))
+    runslocal(job) ? joinpath(job, p...) : ispath(DFC.Servers.maybe_start_server(DFC.Server(job.server)), joinpath(job, p...))
 
     
 """
@@ -518,7 +518,3 @@ function sanitize_cutoffs!(job::Job)
     end
 end
 
-function Servers.pull(j::Job, f, t)
-    @assert ispath(j, f) "File $f not found in jobdir."
-    Servers.pull(Server(j.server), joinpath(j, f), t)
-end
