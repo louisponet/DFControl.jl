@@ -577,7 +577,7 @@ function qe_read_pw_output(filename::String;
         if haskey(out, :alat)
             tmp_flags[:A] = out[:alat] == :angstrom ? 1.0 :
                             (out[:alat] == :crystal ? out[:in_alat] :
-                             uconvert(Ang, out[:alat] * 1UnitfulAtomic.bohr))
+                             uconvert(Ang, out[:alat] * 1bohr))
         else
             tmp_flags[:A] = 1.0
         end
@@ -1165,6 +1165,10 @@ function qe_read_calculation(filename; exec = Exec(; exec = "pw.x"), run = true,
                         #7 and 4 are the largest possible, and in the end if they are not filled
                         #they won't be written in the new input anyway
                         parsed_flags[sym] = zeros(eltype(typ), 7, 4, nat)
+                    elseif sym == :Hubbard_occupations
+                        #7 and 4 are the largest possible, and in the end if they are not filled
+                        #they won't be written in the new input anyway
+                        parsed_flags[sym] = zeros(eltype(typ), 7, 7, 4, nat)
                     end
                 end
                 parsed_flags[sym][ids...] = length(parsedval) == 1 ? parsedval[1] :

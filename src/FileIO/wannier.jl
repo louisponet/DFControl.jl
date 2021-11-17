@@ -1,3 +1,4 @@
+
 function readoutput(calculation::Calculation{Wannier90}, file; kwargs...)
     return wan_read_output(file; kwargs...)
 end
@@ -69,7 +70,7 @@ function extract_structure(name, cell_block, atoms_block, projections_block,
         return nothing
     end
     if cell_block.option == :bohr
-        cell = cell_block.data' .* 1a₀
+        cell = cell_block.data' .* 1bohr
     else
         cell = cell_block.data' .* 1Ang
     end

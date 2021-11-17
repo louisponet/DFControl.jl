@@ -65,7 +65,6 @@ function save(job::Job)
     Calculations.sanitize_flags!(job.calculations, job.structure, job.name,
                                  joinpath(job, Jobs.TEMP_CALC_DIR))
 
-
     Jobs.sanitize_cutoffs!(job)
 
     curver = job.version

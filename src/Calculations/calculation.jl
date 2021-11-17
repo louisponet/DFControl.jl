@@ -213,6 +213,13 @@ function set_flags!(c::Calculation{T}, flags...; print = true) where {T}
                         nat = div(length(value), 7*4)
                         value = convert.(Float32, reshape(value, (7,4,nat)))
                     end
+                elseif flag == :Hubbard_occupations
+                    if length(size(value)) == 4
+                        value = convert.(Float32, value)
+                    else
+                        nat = div(length(value), 7*7*4)
+                        value = convert.(Float32, reshape(value, (7, 7,4,nat)))
+                    end
                 else
                     value = convert(flag_type, value)
                 end
