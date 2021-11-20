@@ -63,7 +63,7 @@ function save(job::Job)
     end
     Structures.sanitize!(job.structure)
     Calculations.sanitize_flags!(job.calculations, job.structure, job.name,
-                                 joinpath(job, Jobs.TEMP_CALC_DIR))
+                                 "./"*Jobs.TEMP_CALC_DIR)
 
     Jobs.sanitize_cutoffs!(job)
 

@@ -206,7 +206,7 @@ function kgrid(na, nb, nc, ::Type{QE})
 end
 
 function set_kpoints!(c::Calculation{QE}, k_grid::NTuple{3,Int}; print = true) #nscf
-    print && !isnscf(c) && (@warn "Expected calculation to be 'nscf'.\nGot $calc.")
+    print && !isnscf(c) && (@warn "Expected calculation to be 'nscf'.\nGot $c.")
     d = data(c, :k_points)
     if d !== nothing
         d.data = kgrid(k_grid..., c)

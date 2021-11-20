@@ -37,13 +37,12 @@ function spawn_worker(job::Job)
         to_run = """begin
         run($cmd)
         using DFControl: Service
-        using DFControl.Service: outputdata
         job = Job(".") 
        
         while Service.isrunning(job.dir)
             sleep(10)
         end
-        outputdata(job)
+        Service.outputdata(abspath(job), map(x->x.name, job.calculations))
         end
         """
         f = Distributed.remotecall(Core.eval, proc,Distributed.Main, Base.Meta.parse(to_run))
@@ -80,13 +79,28 @@ save_running_jobs(job_dirs_procs) = write(RUNNING_JOBS_FILE, join(keys(job_dirs_
 # Jobs are submitted by the daemon, using supplied job jld2 from the caller (i.e. another machine)
 # Additional files are packaged with the job
 function handle_job_submission!(job_dirs_procs)
-    if ispath(PENDING_JOBS_FILE)
-        pending_job_submissions = filter(!isempty, readlines(PENDING_JOBS_FILE))
-        write(PENDING_JOBS_FILE, "")
-        if !isempty(pending_job_submissions)
-            for j in pending_job_submissions
-                job = load_job(j)
-                job_dirs_procs[job.dir] = spawn_worker(job)
+    ncpus = length(Sys.cpu_info())
+    nprocs = length(job_dirs_procs)
+    if ncpus > nprocs # work can be done
+        free_cpus = ncpus - nprocs # how much work can be done
+        if ispath(PENDING_JOBS_FILE)
+            lines = filter(!isempty, readlines(PENDING_JOBS_FILE))
+            write(PENDING_JOBS_FILE, "")
+            if !isempty(lines)
+                if length(lines) > free_cpus
+                    pending_job_submissions = lines[1:free_cpus]
+                    open(PENDING_JOBS_FILE, "w") do f
+                        for l in lines[(ncpus - length(job_dirs_procs))+1:end]
+                            write(f, l * "\n")
+                        end
+                    end
+                else
+                    pending_job_submissions = lines
+                end
+                for j in pending_job_submissions
+                    job = load_job(j)
+                    job_dirs_procs[job.dir] = spawn_worker(job)
+                end
             end
         end
     end
