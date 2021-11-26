@@ -23,7 +23,7 @@ const SERVER_DIR = DFControl.config_path("servers")
     local_port = 0
 end
 
-function Server(s::String)
+function Server(s::String; name="")
     server = load_server(s) #First check if previous server exists
     if server !== nothing
         return server
@@ -32,7 +32,6 @@ function Server(s::String)
     # Create new server 
     if occursin("@", s)
         username, domain = split(s, "@")
-        name = ""
     else
         @info "Server with name $s not found."
         name = s

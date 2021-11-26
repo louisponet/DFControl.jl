@@ -37,7 +37,7 @@ The `kwargs...` will be passed to the [`Job`](@ref) constructor.
 @with_kw_noshow mutable struct Job
     name::String = ""
     structure::Structure = Structure()
-    calculations::Vector{Calculation} = Calculation[]
+    calculations::Vector{<:Calculation} = Calculation[]
     dir::String = pwd()
     header::Vector{String} = String[]
     metadata::Dict{Symbol,Any} = Dict{Symbol,Any}()
