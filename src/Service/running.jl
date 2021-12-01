@@ -74,7 +74,7 @@ function handle_job_submission!(job_dirs_procs)
                 else
                     run(`sbatch job.tt`)
                 end
-                job_dirs_procs[j] = spawn_worker(j)
+                job_dirs_procs[j] = spawn_worker(load_job(j))
             end
             cd(curdir)
         end
