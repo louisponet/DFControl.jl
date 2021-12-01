@@ -14,30 +14,23 @@ function main_loop()
     end
 end
 
-function spawn_worker(job::Job)
-    if ispath(joinpath(job, ".workflow/environment.jld2"))
-        env_dat = JLD2.load(joinpath(job, ".workflow/environment.jld2"))
-        proc = addprocs(1; exeflags = "--project=$(env_dat["project"])")[1]
-        using_expr = Base.Meta.parse("""using $(join(env_dat["modules"], ", "))""")
-        ctx_path = joinpath(job, ".workflow/ctx.jld2")
+function spawn_worker(jobdir::String)
+    # TODO: implement workflows again
+    # if ispath(joinpath(jobdir, ".workflow/environment.jld2"))
+    #     env_dat = JLD2.load(joinpath(jobdir, ".workflow/environment.jld2"))
+    #     proc = addprocs(1; exeflags = "--project=$(env_dat["project"])")[1]
+    #     using_expr = Base.Meta.parse("""using $(join(env_dat["modules"], ", "))""")
+    #     ctx_path = joinpath(jobdir, ".workflow/ctx.jld2")
 
-        Distributed.remotecall_eval(Distributed.Main, proc, using_expr)
-        f = remotecall(DFControl.run_queue, proc, job, JLD2.load(ctx_path)["ctx"];
-                       sleep_time = SLEEP_TIME)
-        return proc, f
-    else
-        s = DFC.Server("localhost")
+    #     Distributed.remotecall_eval(Distributed.Main, proc, using_expr)
+        # f = remotecall(DFControl.run_queue, proc, job, JLD2.load(ctx_path)["ctx"];
+                       # sleep_time = SLEEP_TIME)
+        # return proc, f
+    # else
         proc = addprocs(1)[1]
-        remotecall_fetch(cd, proc, job.dir)
-        if s.scheduler == Servers.Bash
-            cmd = `bash job.tt`
-        else
-            cmd = `sbatch job.tt`
-        end
         to_run = """begin
-        run($cmd)
         using DFControl: Service
-        job = Job(".") 
+        job = Job($jobdir) 
        
         while Service.isrunning(job.dir)
             sleep(10)
@@ -47,7 +40,7 @@ function spawn_worker(job::Job)
         """
         f = Distributed.remotecall(Core.eval, proc,Distributed.Main, Base.Meta.parse(to_run))
         return proc, f
-    end
+    # end
 end
 
 function handle_workflow_runners!(job_dirs_procs)
@@ -98,8 +91,16 @@ function handle_job_submission!(job_dirs_procs)
                     pending_job_submissions = lines
                 end
                 for j in pending_job_submissions
-                    job = load_job(j)
-                    job_dirs_procs[job.dir] = spawn_worker(job)
+                    curdir = pwd()
+                    s = DFC.Server("localhost")
+                    cd(j)
+                    if s.scheduler == Servers.Bash
+                        run(`bash job.tt`)
+                    else
+                        run(`sbatch job.tt`)
+                    end
+                    cd(curdir)
+                    job_dirs_procs[j] = spawn_worker(j)
                 end
             end
         end
