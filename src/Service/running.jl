@@ -1,6 +1,6 @@
 function main_loop()
     running_jobs = ispath(RUNNING_JOBS_FILE) ? filter(!isempty, readlines(RUNNING_JOBS_FILE)) : String[]
-    job_dirs_procs = Dict{String,Tuple{Int,Future}}()
+    job_dirs_procs = Dict{String,Task}()
     for j in running_jobs
         if exists_job(j)
             tjob = load_job(j)
@@ -27,28 +27,22 @@ function spawn_worker(jobdir::String)
                        # sleep_time = SLEEP_TIME)
         # return proc, f
     # else
-        proc = addprocs(1)[1]
-        to_run = """begin
-        using DFControl: Service
-        job = Job("$jobdir") 
+    return Threads.@spawn begin
+        job = load_job(jobdir) 
        
-        while Service.isrunning(job.dir)
+        while isrunning(job.dir)
             sleep(10)
         end
-        Service.outputdata(abspath(job), map(x->x.name, job.calculations))
-        end
-        """
-        f = Distributed.remotecall(Core.eval, proc,Distributed.Main, Base.Meta.parse(to_run))
-        return proc, f
-    # end
+        outputdata(abspath(job), map(x->x.name, job.calculations))
+    end
 end
 
 function handle_workflow_runners!(job_dirs_procs)
     to_rm = String[]
     for (k, t) in job_dirs_procs
-        if isready(t[2])
+        if istaskdone(t)
             try
-                t_ = fetch(t[2])
+                t_ = fetch(t)
                 @info """Workflow for job directory $(k) done."""
                 push!(to_rm, k)
             catch e
@@ -59,9 +53,6 @@ function handle_workflow_runners!(job_dirs_procs)
         end
     end
     if !isempty(to_rm)
-        for r in to_rm
-            rmprocs(job_dirs_procs[r][1])
-        end
         pop!.((job_dirs_procs,), to_rm)
         save_running_jobs(job_dirs_procs)
     end
