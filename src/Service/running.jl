@@ -14,7 +14,7 @@ function main_loop()
     end
 end
 
-function spawn_worker(jobdir::String)
+function spawn_worker(job::Job)
     # TODO: implement workflows again
     # if ispath(joinpath(jobdir, ".workflow/environment.jld2"))
     #     env_dat = JLD2.load(joinpath(jobdir, ".workflow/environment.jld2"))
@@ -28,8 +28,6 @@ function spawn_worker(jobdir::String)
         # return proc, f
     # else
     return Threads.@spawn begin
-        job = load_job(jobdir) 
-       
         while isrunning(job.dir)
             sleep(10)
         end
@@ -63,37 +61,22 @@ save_running_jobs(job_dirs_procs) = write(RUNNING_JOBS_FILE, join(keys(job_dirs_
 # Jobs are submitted by the daemon, using supplied job jld2 from the caller (i.e. another machine)
 # Additional files are packaged with the job
 function handle_job_submission!(job_dirs_procs)
-    ncpus = length(Sys.cpu_info())
-    nprocs = length(job_dirs_procs)
-    if ncpus > nprocs # work can be done
-        free_cpus = ncpus - nprocs # how much work can be done
-        if ispath(PENDING_JOBS_FILE)
-            lines = filter(!isempty, readlines(PENDING_JOBS_FILE))
-            write(PENDING_JOBS_FILE, "")
-            if !isempty(lines)
-                if length(lines) > free_cpus
-                    pending_job_submissions = lines[1:free_cpus]
-                    open(PENDING_JOBS_FILE, "w") do f
-                        for l in lines[(ncpus - length(job_dirs_procs))+1:end]
-                            write(f, l * "\n")
-                        end
-                    end
+    s = DFC.Server("localhost")
+    if ispath(PENDING_JOBS_FILE)
+        lines = filter(!isempty, readlines(PENDING_JOBS_FILE))
+        write(PENDING_JOBS_FILE, "")
+        if !isempty(lines)
+            curdir = pwd()
+            for j in lines
+                cd(j)
+                if s.scheduler == Servers.Bash
+                    run(`bash job.tt`)
                 else
-                    pending_job_submissions = lines
+                    run(`sbatch job.tt`)
                 end
-                for j in pending_job_submissions
-                    curdir = pwd()
-                    s = DFC.Server("localhost")
-                    cd(j)
-                    if s.scheduler == Servers.Bash
-                        run(`bash job.tt`)
-                    else
-                        run(`sbatch job.tt`)
-                    end
-                    cd(curdir)
-                    job_dirs_procs[j] = spawn_worker(j)
-                end
+                job_dirs_procs[j] = spawn_worker(j)
             end
+            cd(curdir)
         end
     end
 end
