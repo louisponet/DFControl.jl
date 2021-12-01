@@ -15,7 +15,7 @@ const PENDING_JOBS_FILE = config_path("pending_jobs.txt")
 const SERVICE_LOG = config_path("daemon.log")
 const SLEEP_TIME = 10.0
 
-daemon_logger() = FileLogger(SERVICE_LOG; append = true)
+daemon_logger() = FileLogger(SERVICE_LOG; append = false)
 
 server_config() = Server("localhost")
 

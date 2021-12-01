@@ -30,7 +30,7 @@ function spawn_worker(jobdir::String)
         proc = addprocs(1)[1]
         to_run = """begin
         using DFControl: Service
-        job = Job($jobdir) 
+        job = Job("$jobdir") 
        
         while Service.isrunning(job.dir)
             sleep(10)
