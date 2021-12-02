@@ -47,10 +47,9 @@ function Server(s::String; name="")
     end
     try
         @info "Trying to pull existing configuration from $username@$domain..."
+
+        tserver = load_remote_config(username, domain)
         
-        localpath = joinpath(SERVER_DIR, name*".json")
-        remotepath = ".julia/config/DFControl/servers/localhost.json"
-        run(`scp $(username * "@" * domain):$remotepath $localpath`)
         local_port = 0 
         try
             run(`nc -vz $domain 22`)
@@ -64,10 +63,8 @@ function Server(s::String; name="")
             local_port = parse(Int, port_str)
         end
              
-        tserver = load_server(name)
-        tserver.name = name
-        tserver.username= username
-        tserver.domain=domain
+        tserver.name       = name
+        tserver.domain     = domain
         tserver.local_port = local_port
         println("Server configured as:")
         println(tserver)
@@ -123,6 +120,16 @@ Base.joinpath(s::Server, p...) = joinpath(s.default_jobdir, p...)
 Base.ispath(s::Server, p...) = islocal(s) ? ispath(p...) : JSON3.read(HTTP.get(s, "/get_ispath/" * joinpath(p...)).body, Bool)
 
 Utils.searchdir(s::Server, dir, str) = joinpath.(dir, filter(x->occursin(str, x), readdir(s, dir))) 
+
+read_server_config(config_file) = 
+    JSON3.read(read(config_file, String), Server)
+
+function load_remote_config(username, domain)
+    localpath = tempname()
+    remotepath = ".julia/config/DFControl/servers/localhost.json"
+    run(`scp $(username * "@" * domain):$remotepath $localpath`)
+    return read_server_config(localpath)
+end
 
 function known_servers(fuzzy = "")
     if ispath(SERVER_DIR)
@@ -203,7 +210,7 @@ end
 
 function start(s::Server)
     @info "Starting:\n$s"
-    julia_cmd = """$(s.julia_exec) --startup-file=no -t auto -e "using DFControl; DFControl.Resource.run($(s.port))" &> ~/.julia/config/DFControl/errors.log"""
+    julia_cmd = """$(s.julia_exec) --startup-file=no -t auto -e "using DFControl; DFControl.Resource.run()" &> ~/.julia/config/DFControl/errors.log"""
     if s.domain != "localhost"
         if s.local_port != 0
             t = getfirst(x->occursin("ssh -f -N", x), split(read(pipeline(`ps aux` , stdout = `grep $(s.local_port)`), String), "\n"))
@@ -217,29 +224,42 @@ function start(s::Server)
             
         end
     else
-        scrpt = "using DFControl; DFControl.Resource.run($(s.port))"
+        scrpt = "using DFControl; DFControl.Resource.run()"
         e = s.julia_exec
         julia_cmd = `$(e) --startup-file=no -t auto -e $(scrpt) '&''>' '~'/.julia/config/DFControl/errors.log '&'`
         run(Cmd(julia_cmd, detach=true), wait=false)
     end
         
     #TODO: little hack here
-
-    while !isalive(s)
+    retries = 0
+    while !isalive(s) && retries < 60
+        tserver = load_remote_config(s.username, s.domain)
+        s.port = tserver.port
         sleep(1)
+        retries += 1
     end
-
-    if s.local_port == 0
-        @info "Daemon on Server $(s.name) started, listening on port $(s.port)."
+    if retries == 60
+        error("Something went wrong starting the server.")
     else
-        @info "Daemon on Server $(s.name) started, listening on local port $(s.local_port)."
+        if s.local_port == 0
+            @info "Daemon on Server $(s.name) started, listening on port $(s.port)."
+        else
+            @info "Daemon on Server $(s.name) started, listening on local port $(s.local_port)."
+        end
     end
     return 
 end
 
+
 function maybe_start_server(s::Server)
     if !isalive(s)
-        start(s)
+        tserver = load_remote_config(s.username, s.domain)
+        s.port = tserver.port
+        if !isalive(s)
+            start(s)
+        else
+            save(s)
+        end
     end
     return s
 end

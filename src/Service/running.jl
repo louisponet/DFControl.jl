@@ -39,15 +39,13 @@ function handle_workflow_runners!(job_dirs_procs)
     to_rm = String[]
     for (k, t) in job_dirs_procs
         if istaskdone(t)
-            try
+            if istaskfailed(t)
+                @error "Task failed with $(t.result)"
+            else
                 t_ = fetch(t)
                 @info """Workflow for job directory $(k) done."""
-                push!(to_rm, k)
-            catch e
-                @warn """Workflow in job directory $(k) failed.
-                See $(joinpath(k, ".workflow/error.log")) for more info."""
-                push!(to_rm, k)
             end
+            push!(to_rm, k)
         end
     end
     if !isempty(to_rm)
