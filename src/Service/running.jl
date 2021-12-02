@@ -28,6 +28,7 @@ function spawn_worker(job::Job)
         # return proc, f
     # else
     return Threads.@spawn begin
+        sleep(10)
         while isrunning(job.dir)
             sleep(10)
         end
