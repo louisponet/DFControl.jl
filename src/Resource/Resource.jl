@@ -96,8 +96,10 @@ function run()
     s.port = port
     Servers.save(s)    
     @async HTTP.serve(requestHandler, "0.0.0.0", port, server=server)
-    return with_logger(Service.daemon_logger()) do
+    with_logger(Service.daemon_logger()) do
         Service.main_loop()
     end
-end
+    close(server)
+    return
+    end
 end

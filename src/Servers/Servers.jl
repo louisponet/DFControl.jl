@@ -121,14 +121,12 @@ Base.ispath(s::Server, p...) = islocal(s) ? ispath(p...) : JSON3.read(HTTP.get(s
 
 Utils.searchdir(s::Server, dir, str) = joinpath.(dir, filter(x->occursin(str, x), readdir(s, dir))) 
 
-read_server_config(config_file) = 
-    JSON3.read(read(config_file, String), Server)
+parse_server_config(config) = JSON3.read(config, Server)
+read_server_config(config_file) = parse_server_config(read(config_file, String))
 
 function load_remote_config(username, domain)
-    localpath = tempname()
-    remotepath = ".julia/config/DFControl/servers/localhost.json"
-    run(`scp $(username * "@" * domain):$remotepath $localpath`)
-    return read_server_config(localpath)
+    cmd = "cat ~/.julia/config/DFControl/servers/localhost.json"
+    return parse_server_config(server_command(username, domain, cmd).stdout)
 end
 
 function known_servers(fuzzy = "")
@@ -327,13 +325,13 @@ function push(filename::String, server::Server, server_file::String)
     end
 end
 
-function server_command(s::Server, cmd)
+function server_command(username, domain, cmd)
     out = Pipe()
     err = Pipe()
-    if islocal(s)
+    if domain == "localhost"
         process = run(pipeline(ignorestatus(cmd), stdout=out, stderr=err))
     else
-        process = run(pipeline(ignorestatus(`ssh $(ssh_string(s)) source /etc/profile '&''&' $cmd`), stdout=out, stderr=err))
+        process = run(pipeline(ignorestatus(`ssh $(username * "@" * domain) source /etc/profile '&''&' $cmd`), stdout=out, stderr=err))
     end
     close(out.in)
     close(err.in)
@@ -344,8 +342,10 @@ function server_command(s::Server, cmd)
       stdout = stdout,
       stderr = stderr,
       code = process.exitcode
-    )            
+    )
 end
+    
+server_command(s::Server, cmd) = server_command(s.username, s.domain, cmd)
 
 function has_modules(s::Server)
     try 
