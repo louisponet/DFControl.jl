@@ -1,10 +1,6 @@
 function pseudos(server, pseudoset, atsyms::Vector{Symbol}, fuzzy = "")
     s = Servers.maybe_start_server(server)
-    resp = HTTP.get(s, "/pseudos/$pseudoset", [], JSON3.write(fuzzy))
-    if resp.status == 204
-        error("No pseudoset $pseudoset found on Server $(s.name). Please first configure it using configure_pseudoset.")
-    end
-    pseudo_paths = JSON3.read(resp.body, Dict{Symbol,String})
+    pseudo_paths = list_pseudoset(s, pseudoset)
     ps = Dict{Symbol,String}()
     for a in atsyms
         path = get(pseudo_paths, a, nothing)
@@ -17,6 +13,15 @@ function pseudos(server, pseudoset, atsyms::Vector{Symbol}, fuzzy = "")
         rm(t)
     end
     return ps
+end
+
+function list_pseudoset(server, pseudoset)
+    s = Servers.maybe_start_server(server)
+    resp = HTTP.get(s, "/pseudos/$pseudoset", [], JSON3.write(fuzzy))
+    if resp.status == 204
+        error("No pseudoset $pseudoset found on Server $(s.name). Please first configure it using configure_pseudoset.")
+    end
+    return JSON3.read(resp.body, Dict{Symbol,String})
 end
 
 """
