@@ -91,7 +91,7 @@ end
 function run()
     cd(Server("localhost").default_jobdir)
     Service.global_logger(Service.daemon_logger())
-    port, server = listenany("0.0.0.0", 8080)
+    port, server = listenany(ip"0.0.0.0", 8080)
     s = Server("localhost")
     s.port = port
     Servers.save(s)    
