@@ -34,8 +34,8 @@ function spawn_worker(job::Job)
         while isrunning(job.dir, true)
             sleep(10)
         end
-        write(joinpath(job, ".state"), "completed")
         outputdata(abspath(job), map(x->x.name, job.calculations))
+        write(joinpath(job, ".state"), "completed")
     end
 end
 
