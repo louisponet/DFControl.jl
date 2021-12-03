@@ -29,7 +29,7 @@ function spawn_worker(job::Job)
     # else
     return Threads.@spawn begin
         write(joinpath(job, ".state"), "submitted")
-        sleep(10)
+        sleep(30)
         write(joinpath(job, ".state"), "running")
         while isrunning(job.dir, true)
             sleep(10)

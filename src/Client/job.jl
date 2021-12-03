@@ -48,11 +48,9 @@ function request_job_dir(dir::String, server::Server)
     end
 end
 
-function save(job::Job)
+function save(job::Job, server::Server = Servers.maybe_start_server(job))
     # First we check whether the job is trying to be saved in a archived directory, absolutely not allowed
-    server = Servers.maybe_start_server(job)
-
-    @assert !isrunning(job) "Can't save a job in a directory where another is running."
+    @assert !isrunning(job, server) "Can't save a job in a directory where another is running."
 
     @assert !Jobs.isarchived(job)
     "Not allowed to save a job in a archived directory, please specify a different directory."
@@ -84,16 +82,6 @@ function save(job::Job)
     return job
 end
 
-function save(jobs::Vector{Job})
-    # These are per server
-    server_names = unique(map(x -> x.server, jobs))
-    buckets = [jobs[findall(x -> x.server == s, jobs)] for s in server_names]
-    servers = Servers.maybe_start_server.(server_names)
-    
-   
-    
-end
-
 function submit(job::Job)
     server = Servers.maybe_start_server(job)
     verify_execs(job, server)
@@ -101,15 +89,44 @@ function submit(job::Job)
     return HTTP.put(server, "/jobs/" * abspath(job))
 end
 
+function submit(jobs::Vector{Job}, run = true)
+    # To verify all execs
+    server_names = unique(map(x -> x.server, jobs))
+    buckets = [jobs[findall(x -> x.server == s, jobs)] for s in server_names]
+    outbuckets = [Vector{Job}(undef, length(b)) for b in buckets]
+    Threads.@threads for i in 1:length(server_names)
+        server = Servers.maybe_start_server(server_names[i])
+        bucket = buckets[i]
+        outbucket = outbuckets[i]
+        execs = unique(vcat([map(x->x.exec, j.calculations) for j in bucket]...))
+        
+        replacements = verify_execs(execs, server)
+        Threads.@threads for ij in 1:length(bucket)
+            job = bucket[ij]
+            for c in job.calculations
+                for (e, rep) in replacements
+                    if c.exec == e
+                        c.exec.dir = rep.dir
+                        c.exec.modules = rep.modules
+                    end
+                end
+            end
+            outbucket[ij] = save(job, server)
+            run && HTTP.put(server, "/jobs/" * abspath(job))
+        end
+    end
+    return outbuckets
+end
+
+
 """
-    isrunning(job::Job)
+    isrunning(job::Job, [server::Server])
 
 Returns whether a job is running or not. If the job was
 submitted using `slurm`, a `QUEUED` status also counts as
 running.
 """
-function isrunning(job::Job)
-    server = Servers.maybe_start_server(job)
+function isrunning(job::Job, server::Server = Servers.maybe_start_server(job))
     return JSON3.read(HTTP.get(server, "/job_isrunning/" * abspath(job)).body, Bool)
 end
 
@@ -194,7 +211,20 @@ end
 known_execs(e::Calculations.Exec, args...) = known_execs(e.exec, args...)
 
 function verify_execs(job::Job, server::Server)
-    for e in unique(map(x->x.exec, job.calculations))
+    replacements = verify_execs(unique(map(x->x.exec, job.calculations)), server)
+    for (e, rep) in replacements
+        for c in job.calculations
+            if c.exec == e
+                c.exec.dir = rep.dir
+                c.exec.modules = rep.modules
+            end
+        end
+    end
+end
+
+function verify_execs(execs::Vector{Exec}, server::Server)
+    replacements = Dict{Exec, Exec}()
+    for e in execs 
         if !JSON3.read(HTTP.get(server, "/verify_exec/", [], JSON3.write(e)).body, Bool)
             possibilities = known_execs(e, server)
             curn = 0
@@ -205,17 +235,13 @@ function verify_execs(job::Job, server::Server)
             if !isempty(possibilities)
                 replacement = possibilities[1]
                 @warn "Executable ($(e.exec)) in dir ($(e.dir)) not runnable,\n but found a matching replacement executable in dir ($(replacement.dir)).\nUsing that one..."
-                for e1 in map(x->x.exec, job.calculations)
-                    if e1.exec == replacement.exec
-                        e1.modules = replacement.modules
-                        e1.dir = replacement.dir
-                    end
-                end
+                replacements[e] = replacement 
             else
-                error("$e is not a valid executable on server $(server.name).\nReplace it with one of the following ones:\n$possibilities")
+                error("$e is not a valid executable on server $(server.name).\nReplace it.")
             end
         end
     end
+    return replacements
 end
 
 #TODO: work this
