@@ -167,9 +167,9 @@ Returns whether a job exists in the `job_dir` and if it is running or not. If th
 submitted using `slurm`, a `QUEUED` status also counts as
 running.
 """
-function isrunning(job_dir::String)
+function isrunning(job_dir::String, long=false)
     !ispath(joinpath(job_dir, "job.tt")) && return false
-    if ispath(joinpath(job_dir, ".state"))
+    if !long && ispath(joinpath(job_dir, ".state"))
         st = read(joinpath(job_dir, ".state"), String)
         return st == "running" || st == "starting"
     end
