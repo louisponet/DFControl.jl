@@ -28,10 +28,13 @@ function spawn_worker(job::Job)
         # return proc, f
     # else
     return Threads.@spawn begin
+        write(joinpath(job, ".state"), "submitted")
         sleep(10)
+        write(joinpath(job, ".state"), "running")
         while isrunning(job.dir)
             sleep(10)
         end
+        write(joinpath(job, ".state"), "completed")
         outputdata(abspath(job), map(x->x.name, job.calculations))
     end
 end

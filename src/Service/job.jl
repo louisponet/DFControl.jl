@@ -169,6 +169,10 @@ running.
 """
 function isrunning(job_dir::String)
     !ispath(joinpath(job_dir, "job.tt")) && return false
+    if ispath(joinpath(job_dir, ".state"))
+        st = read(joinpath(job_dir, ".state"), String)
+        return st == "running" || st == "starting"
+    end
     job = load_job(job_dir)
     server = Server(job)
     n = now()

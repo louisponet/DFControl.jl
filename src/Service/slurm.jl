@@ -44,6 +44,20 @@ function slurm_jobid(job::Job)
 end
 
 """
+    slurm_jobstate(job::Job)
+
+Returns the current state of a job.
+"""
+function slurm_job_state(job::Job)
+    id = slurm_jobid(job)
+    if id != -1
+        return error("Unknown job. Was it submitted to slurm before?")
+    else
+        return slurm_process_command(`sacct -j $id -o State`)[end]
+    end
+end
+
+"""
     slurm_isrunning(job::Job)
 
 Returns whether the job is running.

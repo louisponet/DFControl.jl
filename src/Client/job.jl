@@ -84,6 +84,16 @@ function save(job::Job)
     return job
 end
 
+function save(jobs::Vector{Job})
+    # These are per server
+    server_names = unique(map(x -> x.server, jobs))
+    buckets = [jobs[findall(x -> x.server == s, jobs)] for s in server_names]
+    servers = Servers.maybe_start_server.(server_names)
+    
+   
+    
+end
+
 function submit(job::Job)
     server = Servers.maybe_start_server(job)
     verify_execs(job, server)
