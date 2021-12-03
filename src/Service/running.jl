@@ -31,7 +31,7 @@ function spawn_worker(job::Job)
         write(joinpath(job, ".state"), "submitted")
         sleep(10)
         write(joinpath(job, ".state"), "running")
-        while isrunning(job.dir)
+        while isrunning(job.dir, true)
             sleep(10)
         end
         write(joinpath(job, ".state"), "completed")
