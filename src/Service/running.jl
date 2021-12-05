@@ -94,7 +94,7 @@ function handle_job_submission!(job_dirs_procs)
                     if s.scheduler == Servers.Bash
                         run(`bash job.tt`) 
                     else
-                        j.metadata[:slurmid] = parse(Int, split(read(`sbatch job.tt`, String))[end])
+                        job.metadata[:slurmid] = parse(Int, split(read(`sbatch job.tt`, String))[end])
                     end
                     Jobs.save_metadata(job)
                     job_dirs_procs[j] = spawn_worker(job)
