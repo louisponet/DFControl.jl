@@ -14,7 +14,7 @@ function main_loop()
     end
 end
 
-function spawn_worker(job::Job)
+function spawn_worker(job::Job, scheduler)
     # TODO: implement workflows again
     # if ispath(joinpath(jobdir, ".workflow/environment.jld2"))
     #     env_dat = JLD2.load(joinpath(jobdir, ".workflow/environment.jld2"))
@@ -71,12 +71,21 @@ function handle_job_submission!(job_dirs_procs)
             curdir = pwd()
             for j in lines
                 cd(j)
-                if s.scheduler == Servers.Bash
-                    run(`bash job.tt`)
-                else
-                    run(`sbatch job.tt`)
+                try
+                    if s.scheduler == Servers.Bash
+                        run(`bash job.tt`)
+                    else
+                        run(`sbatch job.tt`)
+                    end
+                catch
+                    sleep(10)
+                    if s.scheduler == Servers.Bash
+                        run(`bash job.tt`)
+                    else
+                        run(`sbatch job.tt`)
+                    end
                 end
-                job_dirs_procs[j] = spawn_worker(load_job(j))
+                job_dirs_procs[j] = spawn_worker(load_job(j), s.scheduler)
             end
             cd(curdir)
         end
