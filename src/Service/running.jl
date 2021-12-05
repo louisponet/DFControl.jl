@@ -75,7 +75,7 @@ function handle_job_submission!(job_dirs_procs)
                 if s.scheduler == Servers.Bash
                     run(detach(ignorestatus(`bash job.tt`)), wait=false)
                 else
-                    run(detach(ignorestatus(`sbatch job.tt`)), wait=false))
+                    run(detach(ignorestatus(`sbatch job.tt`)), wait=false)
                 end
                 job_dirs_procs[j] = spawn_worker(load_job(j))
             end
