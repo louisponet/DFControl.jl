@@ -14,7 +14,28 @@ function main_loop()
     end
 end
 
-function spawn_worker(job::Job, scheduler)
+function handle_workflow_runners!(job_dirs_procs)
+    to_rm = String[]
+    for (k, t) in job_dirs_procs
+        if istaskdone(t)
+            if istaskfailed(t)
+                @error "Task failed with $(t.result)"
+            else
+                t_ = fetch(t)
+                @info """Workflow for job directory $(k) done."""
+            end
+            push!(to_rm, k)
+        end
+    end
+    if !isempty(to_rm)
+        pop!.((job_dirs_procs,), to_rm)
+        save_running_jobs(job_dirs_procs)
+    end
+end
+
+save_running_jobs(job_dirs_procs) = write(RUNNING_JOBS_FILE, join(keys(job_dirs_procs), "\n"))
+
+function spawn_worker(job::Job)
     # TODO: implement workflows again
     # if ispath(joinpath(jobdir, ".workflow/environment.jld2"))
     #     env_dat = JLD2.load(joinpath(jobdir, ".workflow/environment.jld2"))
@@ -39,26 +60,6 @@ function spawn_worker(job::Job, scheduler)
     end
 end
 
-function handle_workflow_runners!(job_dirs_procs)
-    to_rm = String[]
-    for (k, t) in job_dirs_procs
-        if istaskdone(t)
-            if istaskfailed(t)
-                @error "Task failed with $(t.result)"
-            else
-                t_ = fetch(t)
-                @info """Workflow for job directory $(k) done."""
-            end
-            push!(to_rm, k)
-        end
-    end
-    if !isempty(to_rm)
-        pop!.((job_dirs_procs,), to_rm)
-        save_running_jobs(job_dirs_procs)
-    end
-end
-
-save_running_jobs(job_dirs_procs) = write(RUNNING_JOBS_FILE, join(keys(job_dirs_procs), "\n"))
 
 # Jobs are submitted by the daemon, using supplied job jld2 from the caller (i.e. another machine)
 # Additional files are packaged with the job
@@ -71,21 +72,12 @@ function handle_job_submission!(job_dirs_procs)
             curdir = pwd()
             for j in lines
                 cd(j)
-                try
-                    if s.scheduler == Servers.Bash
-                        run(`bash job.tt`)
-                    else
-                        run(`sbatch job.tt`)
-                    end
-                catch
-                    sleep(10)
-                    if s.scheduler == Servers.Bash
-                        run(`bash job.tt`)
-                    else
-                        run(`sbatch job.tt`)
-                    end
+                if s.scheduler == Servers.Bash
+                    run(ignorestatus(`bash job.tt`), wait=false)
+                else
+                    run(ignorestatus(`sbatch job.tt`), wait=false)
                 end
-                job_dirs_procs[j] = spawn_worker(load_job(j), s.scheduler)
+                job_dirs_procs[j] = spawn_worker(load_job(j))
             end
             cd(curdir)
         end
