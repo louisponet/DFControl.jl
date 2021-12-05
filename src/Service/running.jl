@@ -70,14 +70,20 @@ function handle_job_submission!(job_dirs_procs)
         write(PENDING_JOBS_FILE, "")
         if !isempty(lines)
             curdir = pwd()
-            for j in lines
+            while !isempty(lines)
+                j = pop!(lines)
                 cd(j)
-                if s.scheduler == Servers.Bash
-                    run(detach(ignorestatus(`bash job.tt`)), wait=false)
-                else
-                    run(detach(ignorestatus(`sbatch job.tt`)), wait=false)
+                try
+                    if s.scheduler == Servers.Bash
+                        run(`bash job.tt`, wait=false)
+                    else
+                        run(`sbatch job.tt`, wait=false)
+                    end
+                    job_dirs_procs[j] = spawn_worker(load_job(j))
+                catch
+                    sleep(10)
+                    push!(lines, j)
                 end
-                job_dirs_procs[j] = spawn_worker(load_job(j))
             end
             cd(curdir)
         end
