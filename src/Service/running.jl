@@ -1,3 +1,5 @@
+const MAX_CONCURRENT_JOBS = 1000
+
 function main_loop()
     running_jobs = ispath(RUNNING_JOBS_FILE) ? filter(!isempty, readlines(RUNNING_JOBS_FILE)) : String[]
     job_dirs_procs = Dict{String,Task}()
@@ -9,7 +11,9 @@ function main_loop()
     end
     while true
         handle_workflow_runners!(job_dirs_procs)
-        handle_job_submission!(job_dirs_procs)
+        if length(job_dirs_procs) < MAX_CONCURRENT_JOBS
+            handle_job_submission!(job_dirs_procs)
+        end
         sleep(SLEEP_TIME)
     end
 end
@@ -68,6 +72,18 @@ function handle_job_submission!(job_dirs_procs)
     if ispath(PENDING_JOBS_FILE)
         lines = filter(!isempty, readlines(PENDING_JOBS_FILE))
         write(PENDING_JOBS_FILE, "")
+        if length(lines) + length(job_dirs_procs) > MAX_CONCURRENT_JOBS
+            
+            to_submit = lines[1:MAX_CONCURRENT_JOBS - length(job_dirs_procs)]
+            open(PENDING_JOBS_FILE, "a") do f
+                for l in lines[MAX_CONCURRENT_JOBS - length(job_dirs_procs) + 1:end]
+                    write(f, l * "\n")
+                end
+            end
+        else
+            to_submit = lines
+        end
+        
         if !isempty(lines)
             curdir = pwd()
             while !isempty(lines)
