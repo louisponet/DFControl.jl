@@ -73,13 +73,15 @@ function handle_job_submission!(job_dirs_procs)
             while !isempty(lines)
                 j = pop!(lines)
                 cd(j)
+                job = load_job(j)
                 try
                     if s.scheduler == Servers.Bash
-                        run(`bash job.tt`)
+                        j.metadata[:slurmid] = parse(Int, split(read(`bash job.tt`, String))[end])
                     else
                         run(`sbatch job.tt`)
                     end
-                    job_dirs_procs[j] = spawn_worker(load_job(j))
+                    Jobs.save_metadata(job)
+                    job_dirs_procs[j] = spawn_worker(job)
                 catch
                     sleep(10)
                     push!(lines, j)
