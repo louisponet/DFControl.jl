@@ -84,10 +84,10 @@ function handle_job_submission!(job_dirs_procs)
             to_submit = lines
         end
         
-        if !isempty(lines)
+        if !isempty(to_submit)
             curdir = pwd()
-            while !isempty(lines)
-                j = pop!(lines)
+            while !isempty(to_submit)
+                j = pop!(to_submit)
                 cd(j)
                 job = load_job(j)
                 try
@@ -100,7 +100,7 @@ function handle_job_submission!(job_dirs_procs)
                     job_dirs_procs[j] = spawn_worker(job)
                 catch
                     sleep(10)
-                    push!(lines, j)
+                    push!(to_submit, j)
                 end
             end
             cd(curdir)
