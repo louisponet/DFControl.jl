@@ -50,15 +50,6 @@ The `kwargs...` will be passed to the [`Job`](@ref) constructor.
         if dir[end] == '/'
             dir = dir[1:end-1]
         end
-        if isempty(metadata)
-            mpath = joinpath(dir, ".metadata.jld2")
-            if ispath(mpath)
-                stored_data = JLD2.load(mpath)
-                metadata = haskey(stored_data, "metadata") ? stored_data["metadata"] :
-                           metadata
-                version = haskey(stored_data, "version") ? stored_data["version"] : version
-            end
-        end
         out = new(name, structure, calculations, dir, header, metadata, version,
                   copy_temp_folders, server, environment)
         return out

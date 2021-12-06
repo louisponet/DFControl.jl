@@ -10,9 +10,10 @@ function load_job(job_dir::AbstractString)
     else
         error("No valid job found in $job_dir.")
     end
+    metadata = ispath(joinpath(job_dir, ".metadata.jld2")) ? JLD2.load(joinpath(job_dir, ".metadata.jld2"))["metadata"] : Dict{Symbol, Any}()
     job = Job(;
-              merge((dir = orig_dir, version = version),
-                    FileIO.read_job_script(scriptpath))...)
+                merge((dir = orig_dir, version = version, metadata=metadata),
+                FileIO.read_job_script(scriptpath))...)
     Jobs.maybe_register_job(job)
     return job
 end
@@ -140,7 +141,7 @@ First saves the job, then tries to submit the job script through `sbatch job.tt`
 `kwargs...` get passed to `save(job; kwargs...)`.
 """
 function submit(job_dir::String)
-    open(PENDING_JOBS_FILE, "a") do f
+    open(PENDING_JOBS_FILE, "a", lock=true) do f
         return write(f, job_dir * "\n")
     end
 end
