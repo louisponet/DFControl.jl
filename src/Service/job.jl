@@ -146,6 +146,15 @@ function submit(job_dir::String)
     end
 end
 
+# The actual submitting
+function submit(s::Server, job_dir::String)
+    if s.scheduler == Servers.Bash
+        return bash_submit(job_dir)
+    elseif s.scheduler == Servers.Slurm
+        return slurm_submit(job_dir)
+    end
+end
+
 """
     last_running_calculation(path::String)
 
@@ -159,8 +168,6 @@ function last_running_calculation(path::String)
     return isempty(times) ? nothing : findmax(times)[2]
 end
 
-is_slurm_job(job::Job) = haskey(job.metadata, :slurmid)
-
 """
     isrunning(job_dir::String)
 
@@ -168,35 +175,13 @@ Returns whether a job exists in the `job_dir` and if it is running or not. If th
 submitted using `slurm`, a `QUEUED` status also counts as
 running.
 """
-function isrunning(job_dir::String, long=false)
-    !ispath(joinpath(job_dir, "job.tt")) && return false
-    if !long && ispath(joinpath(job_dir, ".state"))
-        st = read(joinpath(job_dir, ".state"), String)
-        return st == "running" || st == "starting"
-    end
-    job = load_job(job_dir)
-    server = Server(job)
-    n = now()
-    if server.scheduler == Servers.Slurm
-        return slurm_isrunning(job)
+function isrunning(job_dir::String)
+    if haskey(JOB_QUEUE[], job_dir)
+        info = JOB_QUEUE[][job_dir]
+        return info[2] == Jobs.Running || info[2] == Jobs.Submitted || info[2] == Jobs.Pending
     else
-        u = username()
-        i = last_running_calculation(job_dir)
-        i === nothing && return false
-        l = job[i]
-        codeexec = l.exec.exec
-        try
-            pids = parse.(Int, split(read(`pgrep $codeexec`, String)))
-            if isempty(pids)
-                return false
-            end
-            pwd = split(strip(read(`pwdx $(pids[end])`, String)))[end]
-            return abspath(pwd) == abspath(job)
-        catch
-            return false
-        end
+        return false
     end
-    return false
 end
 
 function dirsize(path::String)
@@ -313,3 +298,11 @@ function get_environment(name::AbstractString)
 end
 
 rm_environment!(args...) = Jobs.rm_environment!(args...)
+
+function queue(s::Server, init=false)
+    if s.scheduler == Servers.Bash
+        return bash_queue(init) 
+    elseif s.scheduler == Servers.Slurm
+        return slurm_queue(init) 
+    end
+end

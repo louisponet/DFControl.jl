@@ -16,6 +16,28 @@ function slurm_history_jobdir(startdate = yesterday()) #format of startdate = yy
     return output
 end
 
+function slurm_state(state)
+    if state == "PENDING"
+        return Jobs.Pending
+    elseif state == "RUNNING"
+        return Jobs.Running
+    elseif state == "COMPLETED"
+        return Jobs.Completed
+    elseif state == "CANCELLED"
+        return Jobs.Cancelled
+    end
+end
+
+function slurm_queue(all=false)
+    if all # Should only be done veeeery sporadically
+        cmd = `sacct -u $(ENV["USER"]) --format=Workdir%100,JobID%20,State%30 -S 2000-01-01`
+    else
+        cmd = `sacct -u $(ENV["USER"]) --format=Workdir%100,JobID%20,State%30`
+    end
+    lines = filter(x->length(x) == 3, split.(readlines(cmd)[3:end]))
+    return Dict([l[1] => (parse(Int, l[2]), slurm_state(occursin(l[3], "by") ? split(l[3])[1] : l[3])) for l in lines])
+end
+
 """
     slurm_jobid(job::Job)
 
@@ -23,24 +45,12 @@ Looks through the jobs since the `startdate` and returns the job ID if found.
 Returns -1 if the jobID was not found in the list of jobs since `startdate`.
 """
 function slurm_jobid(job::Job)
-    if haskey(job.metadata, :slurmid)
-        return job.metadata[:slurmid]
-    end
-    id_dir = filter(x -> length(x) == 2,
-                    split.(slurm_process_command(`sacct --format=JobID,Workdir%100`)))
-    id_ = -1
-    for (id, dir) in id_dir
-        if occursin(job.dir, dir) || occursin(dir, job.dir)
-            id_ = parse(Int, id)
-            break
-        end
-    end
-    if id_ == -1
-        @info "Job in directory $(job.dir) was not found in the slurm jobs."
+    if haskey(JOB_QUEUE[], job.dir)
+        return JOB_QUEUE[][job.dir][1]
     else
-        job.metadata[:slurmid] = id_
+        @info "Job in directory $(job.dir) was not found in the slurm jobs."
+        return -1
     end
-    return id_
 end
 
 """
@@ -49,50 +59,11 @@ end
 Returns the current state of a job.
 """
 function slurm_job_state(job::Job)
-    id = slurm_jobid(job)
-    if id != -1
-        return error("Unknown job. Was it submitted to slurm before?")
+    if haskey(JOB_QUEUE[], job.dir)
+        return JOB_QUEUE[][job.dir][2]
     else
-        return slurm_process_command(`sacct -j $id -o State`)[end]
-    end
-end
-
-"""
-    slurm_isrunning(job::Job)
-
-Returns whether the job is running.
-"""
-function slurm_isrunning(job::Job)
-    id = slurm_jobid(job)
-    try
-        if id != -1
-            result = readlines(`squeue -j $id`)
-            st_id = findfirst(x -> x=="ST", split(result[1]))
-            return split(result[2])[st_id] ∈ ("R", "PD", "CF", "CG")
-        else
-            @warn "No jobid found. Was your job submitted through slurm?"
-            return false
-        end
-    catch
-        return false
-    end
-end
-
-"""
-    slurm_isqueued(job::Job)
-
-Returns whether the job is queued.
-"""
-function slurm_isqueued(job::Job)
-    id = slurm_jobid(job)
-    if id != -1
-        if slurm_process_command(`sacct -j $id --format=state`)[1] == "PENDING"
-            return true
-        else
-            return false
-        end
-    else
-        return false
+        error("Job in directory $(job.dir) was not found in the slurm jobs.")
+        return -1
     end
 end
 
@@ -109,4 +80,10 @@ function slurm_mostrecent(index = 1, jobfile = "job.tt", startdate = lastmonth()
     jobpath = joinpath(dirs[index], jobfile)
     @assert ispath(jobpath) "The directory $(dirs[index]) does not have a job file with filename $jobfile."
     return Job(dirs[index], args...; job_fuzzy = jobfile, kwargs...)
+end
+
+function slurm_submit(j::String)
+    cd(j)
+    id = parse(Int, split(read(`sbatch job.tt`, String))[end])
+    return (id, Jobs.Submitted)
 end

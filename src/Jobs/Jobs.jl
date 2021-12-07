@@ -5,6 +5,9 @@ using ..Calculations
 using ..Structures
 using ..Utils
 using ..DFControl
+
+@enum JobState Pending Running Completed Cancelled 
+
 include("environment.jl")
 include("job.jl")
 include("versioning.jl")

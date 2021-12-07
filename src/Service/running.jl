@@ -1,19 +1,22 @@
 const MAX_CONCURRENT_JOBS = 1000
 
-function main_loop()
-    running_jobs = ispath(RUNNING_JOBS_FILE) ? filter(!isempty, readlines(RUNNING_JOBS_FILE)) : String[]
+const JOB_QUEUE = Ref(Dict{String, Tuple{Int, Jobs.JobState}}())
+
+function main_loop(s::Server)
     job_dirs_procs = Dict{String,Task}()
-    for j in running_jobs
-        if exists_job(j)
+    JOB_QUEUE[] = queue(s, true)
+    for (j, info) in JOB_QUEUE[]
+        if info[2] == Jobs.Pending || info[2] == Jobs.Running
             tjob = load_job(j)
-            job_dirs_procs[j] = spawn_worker(tjob)
+            job_dirs_procs[j] = spawn_worker(s, tjob)
         end
     end
     while true
         handle_workflow_runners!(job_dirs_procs)
         if length(job_dirs_procs) < MAX_CONCURRENT_JOBS
-            handle_job_submission!(job_dirs_procs)
+            handle_job_submission!(s, job_dirs_procs)
         end
+        JOB_QUEUE[] = queue(s)
         sleep(SLEEP_TIME)
     end
 end
@@ -33,11 +36,8 @@ function handle_workflow_runners!(job_dirs_procs)
     end
     if !isempty(to_rm)
         pop!.((job_dirs_procs,), to_rm)
-        save_running_jobs(job_dirs_procs)
     end
 end
-
-save_running_jobs(job_dirs_procs) = write(RUNNING_JOBS_FILE, join(keys(job_dirs_procs), "\n"))
 
 function spawn_worker(job::Job)
     # TODO: implement workflows again
@@ -53,21 +53,18 @@ function spawn_worker(job::Job)
         # return proc, f
     # else
     return Threads.@spawn begin
-        write(joinpath(job, ".state"), "submitted")
-        sleep(30)
-        write(joinpath(job, ".state"), "running")
-        while isrunning(job.dir, true)
-            sleep(10)
+        sleep(SLEEP_TIME)
+        while isrunning(job.dir)
+            sleep(SLEEP_TIME)
         end
         outputdata(abspath(job), map(x->x.name, job.calculations))
-        write(joinpath(job, ".state"), "completed")
     end
 end
 
 
 # Jobs are submitted by the daemon, using supplied job jld2 from the caller (i.e. another machine)
 # Additional files are packaged with the job
-function handle_job_submission!(job_dirs_procs)
+function handle_job_submission!(s::Server, job_dirs_procs)
     s = DFC.Server("localhost")
     if ispath(PENDING_JOBS_FILE)
         lines = filter(!isempty, readlines(PENDING_JOBS_FILE))
@@ -88,18 +85,12 @@ function handle_job_submission!(job_dirs_procs)
             curdir = pwd()
             while !isempty(to_submit)
                 j = pop!(to_submit)
-                cd(j)
-                job = load_job(j)
                 try
-                    if s.scheduler == Servers.Bash
-                        run(`bash job.tt`) 
-                    else
-                        job.metadata[:slurmid] = parse(Int, split(read(`sbatch job.tt`, String))[end])
-                    end
-                    save_metadata(job)
-                    job_dirs_procs[j] = spawn_worker(job)
+                    info = submit(s, j)
+                    JOB_QUEUE[][j] = info
+                    job_dirs_procs[j] = spawn_worker(load_job(j))
                 catch
-                    sleep(10)
+                    sleep(SLEEP_TIME)
                     push!(to_submit, j)
                 end
             end

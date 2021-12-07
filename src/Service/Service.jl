@@ -26,4 +26,5 @@ include("job.jl")
 # include("execs.jl")
 # include("fileio.jl")
 include("slurm.jl")
+include("bash.jl")
 end
