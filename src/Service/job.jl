@@ -257,7 +257,7 @@ function outputdata(jobdir::String, calculations::Vector{String})
     calculations = isempty(calculations) ? map(x->x.name, job.calculations) : calculations
     respath = joinpath(job, "results.jld2")
     if ispath(respath)
-        datadict = JLD2.load(respath)["outputdata"]
+        datadict = JLD2.load(respath, iotype=IOStream)["outputdata"]
     else
         datadict = Dict{String,Dict{Symbol,Any}}()
     end
@@ -275,7 +275,7 @@ function outputdata(jobdir::String, calculations::Vector{String})
         end
     end
     if new_data
-        JLD2.save(respath, "outputdata", datadict)
+        JLD2.save(respath, iotype=IOStream, "outputdata"=datadict)
         return respath
     elseif ispath(respath)
         return respath
