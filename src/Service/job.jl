@@ -275,7 +275,7 @@ function outputdata(jobdir::String, calculations::Vector{String})
         end
     end
     if new_data
-        JLD2.save(respath, iotype=IOStream, "outputdata"=datadict)
+        JLD2.save(respath, iotype=IOStream, outputdata=datadict)
         return respath
     elseif ispath(respath)
         return respath
