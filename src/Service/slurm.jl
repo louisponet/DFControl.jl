@@ -25,6 +25,28 @@ function slurm_state(state)
         return Jobs.Completed
     elseif state == "CANCELLED"
         return Jobs.Cancelled
+    elseif state == "BOOT_FAIL"
+        return Jobs.BootFail
+    elseif state == "DEADLINE"
+        return Jobs.Deadline
+    elseif state == "FAILED"
+        return Jobs.Failed
+    elseif state == "NODE_FAIL"
+        return Jobs.NodeFail
+    elseif state == "OUT_OF_MEMORY"
+        return Jobs.OutOfMemory
+    elseif state == "PREEMTED"
+        return Jobs.Preempted
+    elseif state == "REQUEUED"
+        return Jobs.Requeued
+    elseif state == "RESIZING"
+        return Jobs.Resizing
+    elseif state == "REVOKED"
+        return Jobs.Revoked
+    elseif state == "SUSPENDED"
+        return Jobs.Suspended
+    elseif state == "TIMEOUT"
+        return Jobs.Timeout
     end
 end
 
