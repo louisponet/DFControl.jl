@@ -16,7 +16,8 @@ function main_loop(s::Server)
         if length(job_dirs_procs) < MAX_CONCURRENT_JOBS
             handle_job_submission!(s, job_dirs_procs)
         end
-        JOB_QUEUE[] = queue(s)
+        q = queue(s)
+        JOB_QUEUE[] = merge(JOB_QUEUE[], q) 
         sleep(SLEEP_TIME)
     end
 end
