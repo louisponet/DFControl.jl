@@ -17,9 +17,9 @@ function Jobs.Job(dir::AbstractString, s = "localhost"; version::Int = -1)
     # contain dir.
     job = JSON3.read(resp.body, Job)
     job.server = server.name
-    if haskey(job.metadata, :timestamp)
-        job.metadata[:timestamp] = DateTime(job.metadata[:timestamp])
-    end
+    # if haskey(job.metadata, :timestamp)
+    #     job.metadata[:timestamp] = DateTime(job.metadata[:timestamp])
+    # end
     return job
 end
 
@@ -75,9 +75,9 @@ function save(job::Job, server::Server = Servers.maybe_start_server(job))
         end
         setfield!(job, f, getfield(resp_job, f))
     end
-    if haskey(job.metadata, :timestamp)
-        job.metadata[:timestamp] = DateTime(job.metadata[:timestamp])
-    end
+    # if haskey(job.metadata, :timestamp)
+    #     job.metadata[:timestamp] = DateTime(job.metadata[:timestamp])
+    # end
     Calculations.rm_tmp_flags!.(job.calculations)
     return job
 end

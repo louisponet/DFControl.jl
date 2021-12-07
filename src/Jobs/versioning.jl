@@ -1,26 +1,17 @@
 # 0 Job version means that no jobs have ran yet.
 "Returns the version found in the .metadata.jld2 if it exists. Otherwise 0."
-function main_job_version(dir::AbstractString)
-    maindir = main_job_dir(dir)
-    mdatapath = joinpath(maindir, ".metadata.jld2")
-    if ispath(mdatapath)
-        metadata = JLD2.load(mdatapath)
-        if haskey(metadata, "version")
-            return metadata["version"]
-        end
-    end
-    return 0
-end
+main_job_version(dir::AbstractString) = job_versions(dir)[end]
 main_job_version(job::Job) = main_job_version(abspath(job))
 
 function job_versions(dir::AbstractString)
-    versions = Int[]
-    mainver = main_job_version(dir)
-    mainver != 0 && push!(versions, mainver)
     verdir = joinpath(dir, VERSION_DIR_NAME)
     if ispath(verdir)
-        append!(versions, parse.(Int, readdir(joinpath(dir, VERSION_DIR_NAME))))
+        versions = parse.(Int, readdir(verdir))
+        push!(versions, versions[end]+1)
+    else
+        versions = Int[0]
     end
+       
     return sort(unique(versions))
 end
 

@@ -127,8 +127,7 @@ function save(job::Job; kwargs...)
     end
     
     job.version = Jobs.last_version(job) + 1
-    timestamp!(job, now())
-    save_metadata(job)
+    # save_metadata(job)
     FileIO.write_job_files(job; kwargs...)
     Jobs.maybe_register_job(job)
     return job
@@ -236,8 +235,7 @@ function save_metadata(job)
                    version = job.version)
 end
 
-timestamp(job::Job) = job.metadata[:timestamp]
-timestamp!(job, time) = job.metadata[:timestamp] = time
+timestamp(job::Job) = timestamp(job.dir)
 has_timestamp(job) = haskey(job.metadata, :timestamp)
 
 function clean_dir!(dir::AbstractString)

@@ -52,9 +52,9 @@ function registered_jobs(fuzzy::AbstractString = "")
 end
 
 function timestamp(jobdir::AbstractString)
-    if ispath(joinpath(jobdir, ".metadata.jld2"))
-        md = load(joinpath(jobdir, ".metadata.jld2"))["metadata"]
-        return get(md, :timestamp, DateTime(0))
+    scriptpath = joinpath(jobdir, "job.tt")
+    if ispath(scriptpath)
+        return unix2datetime(mtime(scriptpath))
     else
         return DateTime(0)
     end
