@@ -8,7 +8,7 @@ function main_loop(s::Server)
     for (j, info) in JOB_QUEUE[]
         if info[2] == Jobs.Pending || info[2] == Jobs.Running
             tjob = load_job(j)
-            job_dirs_procs[j] = spawn_worker(s, tjob)
+            job_dirs_procs[j] = spawn_worker(tjob)
         end
     end
     while true
