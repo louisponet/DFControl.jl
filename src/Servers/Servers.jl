@@ -231,7 +231,7 @@ function start(s::Server)
     #TODO: little hack here
     retries = 0
     while !isalive(s) && retries < 60
-        tserver = load_remote_config(s.username, s.domain)
+        tserver = islocal(s) ? read_server_config(DFC.config_path("servers/localhost.json")) : load_remote_config(s.username, s.domain)
         s.port = tserver.port
         sleep(1)
         retries += 1
