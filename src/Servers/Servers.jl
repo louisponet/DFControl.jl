@@ -251,7 +251,7 @@ end
 
 function maybe_start_server(s::Server)
     if !isalive(s)
-        tserver = load_remote_config(s.username, s.domain)
+        tserver = islocal(s) ? read_server_config("~/.julia/config/DFControl/servers/localhost.json") : load_remote_config(s.username, s.domain)
         s.port = tserver.port
         if !isalive(s)
             start(s)
