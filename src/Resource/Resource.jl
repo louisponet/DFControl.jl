@@ -1,7 +1,7 @@
 module Resource
 # This module handles all the handling, parsing and transforming HTTP commands,
 # and brokers between HTTP requests and Service that fullfils them. 
-using HTTP, JSON3, Dates, LoggingExtras, Sockets
+using HTTP, JSON3, Dates, LoggingExtras, Sockets, ThreadPools
 using ..DFControl, ..Service
 using ..Utils
 using ..Servers
@@ -95,7 +95,7 @@ function run()
     port, server = listenany(ip"0.0.0.0", 8080)
     s.port = port
     Servers.save(s)
-    @async HTTP.serve(requestHandler, "0.0.0.0", port, server=server)
+    @tspawnat 2 HTTP.serve(requestHandler, "0.0.0.0", port, server=server)
     with_logger(Service.daemon_logger()) do
         Service.main_loop(s)
     end
