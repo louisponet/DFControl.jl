@@ -158,11 +158,6 @@ function write_job_files(job::Job, environment; kwargs...)
             append!(written_calculations, writetojob(f, job, elkcalculations, environment; kwargs...))
 
         for i in job.calculations
-            if i.run
-                for glob in Calculations.outfiles(i)
-                    rm.(filter(x -> ispath(x) && splitdir(x)[2] != i.infile, searchdir(job, glob)))
-                end
-            end
             if i ∉ written_calculations
                 append!(written_calculations, writetojob(f, job, i, environment; kwargs...))
             end

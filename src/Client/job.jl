@@ -78,7 +78,7 @@ function save(job::Job, server::Server = Servers.maybe_start_server(job))
     end
     job.dir = tmpdir
     FileIO.write_job_files(job, environment)
-    files_to_send = Dict([f => read(f, String) for f in readdir(tmpdir)])
+    files_to_send = Dict([f => read(joinpath(tmpdir, f), String) for f in readdir(tmpdir)])
     
     job.dir = apath
     rm(tmpdir, recursive=true)

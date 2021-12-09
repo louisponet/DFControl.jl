@@ -129,10 +129,11 @@ function save(jobdir::String, files; kwargs...)
     # Needs to be done so the inputs `dir` also changes.
     mkpath(dir)
 
-    version = Jobs.last_version(dir) + 1
+    version = Jobs.last_job_version(dir) + 1
     for (name, f) in files
         write(joinpath(dir, name), f)
     end
+
     Jobs.maybe_register_job(jobdir)
     return version
 end
