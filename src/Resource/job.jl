@@ -7,7 +7,7 @@ function job_path(req)
     end
 end
 
-save_job(req) = Service.save(JSON3.read(req.body, Job))
+save_job(req) = Service.save(job_path(req), JSON3.read(req.body, Dict{String, String}))
 HTTP.@register(ROUTER, "POST", "/jobs", save_job)
 
 submit_job(req) = Service.submit(job_path(req))

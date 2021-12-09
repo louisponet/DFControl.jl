@@ -98,37 +98,35 @@ If a previous job is present in the job directory (indicated by a valid job scri
 it will be copied to the `.versions` sub directory as the previous version of `job`,
 and the version of `job` will be incremented. 
 """
-function save(job::Job; kwargs...)
+function save(jobdir::String, files; kwargs...)
 
     #Since at this stage we know the job will belong to the current localhost we change the server
-    job.server = "localhost"
     # Here we find the main directory, needed for if a job's local dir is a .versions one
-    dir = Jobs.main_job_dir(job)
+    dir = Jobs.main_job_dir(jobdir)
     if ispath(joinpath(dir, "job.tt"))
         tj = load_job(dir)
         cp(tj, joinpath(tj, Jobs.VERSION_DIR_NAME, "$(tj.version)"); force = true)
     end
-    if !occursin(job.dir, dir)
+    if !occursin(jobdir, dir)
         # We know for sure it was a previously saved job
         # Now that we have safely stored it we can clean out the directory to then fill
         # it with the files from the job.version
         clean_dir!(dir)
-        cp(job, dir; force = true)
+        for f in readdir(jobdir)
+            cp(f, dir; force = true)
+        end
     end
 
     
     # Needs to be done so the inputs `dir` also changes.
-    job.dir = occursin(Server("localhost").default_jobdir, dir) ? strip(split(dir, Server("localhost").default_jobdir)[2], '/') : dir
     mkpath(dir)
 
-    for f in searchdir(job, "slurm")
-        rm(f)
+    version = Jobs.last_version(dir) + 1
+    for (name, f) in files
+        write(joinpath(dir, name), f)
     end
-    
-    job.version = Jobs.last_version(job) + 1
-    FileIO.write_job_files(job; kwargs...)
-    Jobs.maybe_register_job(job)
-    return job.version
+    Jobs.maybe_register_job(jobdir)
+    return version
 end
 
 """

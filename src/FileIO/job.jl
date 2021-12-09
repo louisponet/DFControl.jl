@@ -137,14 +137,8 @@ function write_job_postamble(f, job::Job) end
 Writes all the calculation files and job file that are linked to a Job.
 Kwargs will be passed down to various writetojob functions.
 """
-function write_job_files(job::Job; kwargs...)
+function write_job_files(job::Job, environment; kwargs...)
 
-    if job.environment != ""
-        environment = Jobs.load_environment(job.environment)
-        @assert environment !== nothing "Environment with name $(job.environment) not found!"
-    else
-        environment = nothing
-    end
     if any(x ->eltype(x) == QE, job.calculations)
         for a in unique(job.structure.atoms)
             write(joinpath(job, "$(a.element.symbol).UPF"), a.pseudo)

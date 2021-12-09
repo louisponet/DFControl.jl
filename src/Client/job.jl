@@ -66,7 +66,25 @@ function save(job::Job, server::Server = Servers.maybe_start_server(job))
     Jobs.sanitize_cutoffs!(job)
 
     curver = job.version
-    resp_job_version = JSON3.read(HTTP.post(server, "/jobs/" * abspath(job), [], JSON3.write(job)).body,
+
+    tmpdir = mkpath(tempname())
+    apath = abspath(job)
+
+    if job.environment != ""
+        environment = get_environment(job.environment, job.server)
+        @assert environment !== nothing "Environment with name $(job.environment) not found!"
+    else
+        environment = nothing
+    end
+    job.dir = tmpdir
+    FileIO.write_job_files(job, environment)
+    files_to_send = Dict([f => read(f, String) for f in readdir(tmpdir)])
+    
+    job.dir = apath
+    rm(tmpdir, recursive=true)
+  
+        
+    resp_job_version = JSON3.read(HTTP.post(server, "/jobs/" * apath, [], JSON3.write(files_to_send)).body,
                           Int)
     @info "Job version: $(curver) => $(resp_job_version)."
     job.version = resp_job_version
