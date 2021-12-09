@@ -28,7 +28,6 @@ function maybe_register_job(abspath::AbstractString)
         if jid === nothing
             push!(REG, abspath)
             write(n, join(REG, "\n"))
-            # cleanup_job_registry!()
         end
     end
 end

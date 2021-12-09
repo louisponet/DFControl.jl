@@ -66,18 +66,10 @@ function save(job::Job, server::Server = Servers.maybe_start_server(job))
     Jobs.sanitize_cutoffs!(job)
 
     curver = job.version
-    resp_job = JSON3.read(HTTP.post(server, "/jobs/" * abspath(job), [], JSON3.write(job)).body,
-                          Job)
-    @info "Job version: $(curver) => $(resp_job.version)."
-    for f in fieldnames(Job)
-        if f == :server
-            continue
-        end
-        setfield!(job, f, getfield(resp_job, f))
-    end
-    # if haskey(job.metadata, :timestamp)
-    #     job.metadata[:timestamp] = DateTime(job.metadata[:timestamp])
-    # end
+    resp_job_version = JSON3.read(HTTP.post(server, "/jobs/" * abspath(job), [], JSON3.write(job)).body,
+                          Int)
+    @info "Job version: $(curver) => $(resp_job_version)."
+    job.version = resp_job_version
     Calculations.rm_tmp_flags!.(job.calculations)
     return job
 end

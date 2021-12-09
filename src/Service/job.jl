@@ -14,7 +14,6 @@ function load_job(job_dir::AbstractString)
     job = Job(;
                 merge((dir = orig_dir, version = version, metadata=metadata),
                 FileIO.read_job_script(scriptpath))...)
-    Jobs.maybe_register_job(job)
     return job
 end
 
@@ -127,10 +126,9 @@ function save(job::Job; kwargs...)
     end
     
     job.version = Jobs.last_version(job) + 1
-    # save_metadata(job)
     FileIO.write_job_files(job; kwargs...)
     Jobs.maybe_register_job(job)
-    return job
+    return job.version
 end
 
 """
