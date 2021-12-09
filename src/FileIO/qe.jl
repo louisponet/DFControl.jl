@@ -550,7 +550,7 @@ function qe_read_pw_output(filename::String;
         pseudo_data = InputData(:atomic_species, :none, out[:pseudos])
         tmp_flags = Dict{Symbol,Any}(:ibrav => 0)
         tmp_flags[:A] = out[:in_alat]
-        out[:initial_structure] = extract_structure!("initial", tmp_flags, cell_data,
+        out[:initial_structure] = extract_structure!(tmp_flags, cell_data,
                                                      out[:atsyms], atoms_data, pseudo_data)
         # Add starting mag and DFTU
         if haskey(out, :starting_magnetization)
@@ -583,7 +583,7 @@ function qe_read_pw_output(filename::String;
         end
         cell_data = InputData(:cell_parameters, :alat, out[:cell_parameters])
         atoms_data = InputData(:atomic_positions, out[:pos_option], out[:atomic_positions])
-        out[:final_structure] = extract_structure!("final", tmp_flags, cell_data,
+        out[:final_structure] = extract_structure!(tmp_flags, cell_data,
                                                    out[:atsyms], atoms_data, pseudo_data)
         # Add starting mag and DFTU
         if haskey(out, :starting_magnetization)
@@ -1025,7 +1025,7 @@ function extract_atoms!(parsed_flags, atsyms, atom_block, pseudo_block, cell::Ma
     return atoms
 end
 
-function extract_structure!(name, parsed_flags, cell_block, atsyms, atom_block,
+function extract_structure!(parsed_flags, cell_block, atsyms, atom_block,
                             pseudo_block)
     if atom_block == nothing
         return nothing
@@ -1055,8 +1055,7 @@ end
 Reads a Quantum Espresso calculation file. The `QE_EXEC` inside execs gets used to find which flags are allowed in this calculation file, and convert the read values to the correct Types.
 Returns a `Calculation{QE}` and the `Structure` that is found in the calculation.
 """
-function qe_read_calculation(filename; exec = Exec(; exec = "pw.x"), run = true,
-                             structure_name = "noname")
+function qe_read_calculation(filename; exec = Exec(; exec = "pw.x"), kwargs...)
     @assert ispath(filename) "$filename is not a valid path."
     t_lines = read(filename, String) |>
               x -> split(x, "\n") .|> x -> cut_after(x, '!') .|> x -> cut_after(x, '#')
@@ -1177,7 +1176,7 @@ function qe_read_calculation(filename; exec = Exec(; exec = "pw.x"), run = true,
                 @warn "Parsing error of flag $f in file $filename." exception = e
             end
         end
-        structure = extract_structure!(structure_name, parsed_flags, cell_block, atsyms,
+        structure = extract_structure!(parsed_flags, cell_block, atsyms,
                                        atom_block, pseudos)
         delete!.((parsed_flags,), [:ibrav, :nat, :ntyp, :A, :celldm_1, :celldm])
         delete!.((parsed_flags,),
@@ -1221,8 +1220,8 @@ function qe_read_calculation(filename; exec = Exec(; exec = "pw.x"), run = true,
 
     pop!.((parsed_flags,), [:prefix, :outdir], nothing)
     dir, file = splitdir(filename)
-    return Calculation{QE}(; name = splitext(file)[1],flags = parsed_flags,
-                           data = datablocks, exec = exec, run = run), structure
+    return Calculation{QE}(; name = splitext(file)[1], flags = parsed_flags,
+                           data = datablocks, exec = exec, kwargs...), structure
 end
 
 function qe_writeflag(f, flag, value)

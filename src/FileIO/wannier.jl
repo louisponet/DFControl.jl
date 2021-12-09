@@ -64,7 +64,7 @@ function extract_atoms(atoms_block, proj_block, cell::Mat3, spinors = false)
     return out_ats
 end
 
-function extract_structure(name, cell_block, atoms_block, projections_block,
+function extract_structure(cell_block, atoms_block, projections_block,
                            spinors = false)
     if atoms_block == nothing || cell_block == nothing
         return nothing
@@ -221,8 +221,7 @@ wan_read_calculation(f::IO) = wan_read_calculation(Float64, f)
 Reads a `Calculation{Wannier90}` and the included `Structure` from a WANNIER90 calculation file.
 """
 function wan_read_calculation(filename::String, T = Float64;
-                              exec = Exec(; exec = "wannier90.x"), run = true,
-                              structure_name = "NoName")
+                              exec = Exec(; exec = "wannier90.x"), kwargs...)
     flags       = Dict{Symbol,Any}()
     data        = InputData[]
     atoms_block = nothing
@@ -231,13 +230,13 @@ function wan_read_calculation(filename::String, T = Float64;
     open(filename, "r") do f
         return flags, data, atoms_block, cell_block, proj_block = wan_read_calculation(T, f)
     end
-    structure = extract_structure(structure_name, cell_block, atoms_block, proj_block,
+    structure = extract_structure(cell_block, atoms_block, proj_block,
                                   get(flags, :spinors, false))
     dir, file = splitdir(filename)
     flags[:preprocess] = Calculations.hasflag(exec,
                                               :pp) ? true : false
     return Calculation{Wannier90}(; name = splitext(file)[1], flags = flags,
-                                  data = data, exec = exec, run = run), structure
+                                  data = data, exec = exec, kwargs...), structure
 end
 
 function wan_parse_array_value(eltyp, value_str)
