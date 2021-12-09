@@ -254,57 +254,19 @@ function calculationparser(exec::Exec)
 end
 
 function read_job_script(job_file::String)
-    dir = splitdir(job_file)[1]
     name = ""
+    dir = splitdir(job_file)[1]
     header = Vector{String}()
-    cs = Calculation[]
-    structures = Structure[]
     scratch_dir = ""
+    calcs = NamedTuple{(:exec, :infile, :outfile, :run), Tuple{Exec, String, String, Bool}}[]
     open(job_file, "r") do f
         readline(f)
         while !eof(f)
             line = readline(f)
-            if line == ""
-                continue
-            end
-            if Calculations.has_parseable_exec(line)
-                execs, cfile, output, run = read_job_line(line)
-                inpath = joinpath(dir, cfile)
-                if !ispath(inpath)
-                    c = (nothing, nothing)
-                else
-                    command = getfirst(Calculations.isparseable, execs)
-                    if command !== nothing
-                        #TODO HACK: length(execs)==1 to say it's not parallel?
-                        if length(execs) == 1
-                            command.parallel = false
-                        end
-                        c = calculationparser(command)(inpath; exec = command, run = run)
-                    else
-                        c = (nothing, nothing)
-                    end
-                end
-                if c[1] !== nothing
-                    c[1].outfile = output
-                    c[1].infile = cfile
-                end
-                if c != (nothing, nothing)
-                    id = findall(x -> x.infile == cfile, cs)
-                    if !isempty(id) #this can only happen for stuff that needs to get preprocessed
-                        merge!(c[1].flags, cs[id[1]].flags)
-                        cs[id[1]] = c[1]
-                    else
-                        if isa(c[1], Vector)
-                            append!(cs, c[1])
-                        else
-                            push!(cs, c[1])
-                        end
-                        if c[2] != nothing
-                            push!(structures, c[2])
-                        end
-                    end
-                end
-            elseif occursin("#SBATCH", line)
+            
+            isempty(line) && continue
+            
+            if occursin("#SBATCH", line)
                 if occursin("-J", line) || occursin("--job-name", line)
                     name = split(split(line, "=")[end])[end]
                 else
@@ -312,16 +274,22 @@ function read_job_script(job_file::String)
                 end
             elseif occursin("cp -r", line) && isempty(scratch_dir)
                 scratch_dir = split(line)[end]
+            elseif Calculations.has_parseable_exec(line)
+                execs, infile, outfile, run = read_job_line(line)
+                inpath = joinpath(dir, infile)
+                if ispath(inpath)
+                    exec = getfirst(Calculations.isparseable, execs)
+                    if exec !== nothing
+                        if length(execs) == 1
+                            exec.parallel = false
+                        end
+                        push!(calcs, (exec = exec, infile = joinpath(dir, infile), outfile = joinpath(dir, outfile), run = true))
+                    end
+                end
             else
                 push!(header, line)
             end
         end
-    end
-    if !isempty(structures)
-        structure = Structures.mergestructures(structures)
-    else
-        structure = Structure()
-        @warn "No valid structures could be read from calculation files."
     end
 
     module_line_ids = findall(x -> occursin("module", x), header)
@@ -333,7 +301,7 @@ function read_job_script(job_file::String)
     end
     #TODO cleanup
     known_es = Calculations.load_execs()
-    execs = filter(x -> !any(y -> y.dir == x.dir && y.exec == x.exec, known_es), unique(map(x->x.exec, cs)))
+    execs = filter(x -> !any(y -> y.dir == x.dir && y.exec == x.exec, known_es), unique(map(x->x.exec, calcs)))
     for e in execs
         i = 1
         runnable = Calculations.isrunnable(e)
@@ -346,7 +314,7 @@ function read_job_script(job_file::String)
             Calculations.maybe_register(e)
         end
     end
-    for c in cs
+    for c in calcs
         e1 = c.exec
         for e in [execs; known_es]
             if e.dir == e1.dir && e.exec == e1.exec
@@ -365,6 +333,26 @@ function read_job_script(job_file::String)
     else
         environment = ""
     end
-    
-    return (name=name, header=header, calculations = cs, structure=structure, environment=environment)
+    return (name, calcs, header, environment) 
+end
+
+function parse_calculations(calcs)
+    structures = Structure[]
+    outcalcs = Calculation[]
+    for calc in calcs
+        c = calculationparser(calc.exec)(calc.infile; exec = calc.exec, infile = splitpath(calc.infile)[end], outfile = splitpath(calc.outfile)[end], run = calc.run)
+        if c[2] !== nothing
+            push!(structures, c[2])
+        end
+        if c[1] !== nothing
+            push!(outcalcs, c[1])
+        end
+    end
+    if !isempty(structures)
+        structure = Structures.mergestructures(structures)
+    else
+        structure = Structure()
+        @warn "No valid structures could be read from calculation files."
+    end
+    return (calculations = outcalcs, structure=structure)
 end

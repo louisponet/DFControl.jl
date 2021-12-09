@@ -11,9 +11,17 @@ function load_job(job_dir::AbstractString)
         error("No valid job found in $job_dir.")
     end
     metadata = ispath(joinpath(job_dir, ".metadata.jld2")) ? JLD2.load(joinpath(job_dir, ".metadata.jld2"))["metadata"] : Dict{Symbol, Any}()
-    job = Job(;
-                merge((dir = orig_dir, version = version, metadata=metadata),
-                FileIO.read_job_script(scriptpath))...)
+
+    name, tcalcs, header, environment = FileIO.read_job_script(scriptpath)
+    calculations, structure = FileIO.parse_calculations(tcalcs)
+    job = Job(name         = name,
+              dir          = orig_dir,
+              version      = version,
+              metadata     = metadata,
+              structure    = structure,
+              calculations = calculations,
+              header       = header,
+              environment  = environment)
     return job
 end
 

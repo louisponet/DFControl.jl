@@ -7,8 +7,7 @@ function main_loop(s::Server)
     JOB_QUEUE[] = queue(s, true)
     for (j, info) in JOB_QUEUE[]
         if info[2] == Jobs.Pending || info[2] == Jobs.Running
-            tjob = load_job(j)
-            job_dirs_procs[j] = spawn_worker(tjob)
+            job_dirs_procs[j] = spawn_worker(j)
         end
     end
     while true
@@ -40,7 +39,7 @@ function handle_workflow_runners!(job_dirs_procs)
     end
 end
 
-function spawn_worker(job::Job)
+function spawn_worker(jobdir)
     # TODO: implement workflows again
     # if ispath(joinpath(jobdir, ".workflow/environment.jld2"))
     #     env_dat = JLD2.load(joinpath(jobdir, ".workflow/environment.jld2"))
@@ -55,10 +54,10 @@ function spawn_worker(job::Job)
     # else
     return Threads.@spawn begin
         sleep(3*SLEEP_TIME)
-        while isrunning(job.dir)
+        while isrunning(jobdir)
             sleep(SLEEP_TIME)
         end
-        outputdata(abspath(job), map(x->x.name, job.calculations))
+        outputdata(jobdir, map(x -> splitext(splitpath(x.infile)[end])[1], FileIO.read_job_script(joinpath(jobdir, "job.tt"))[2]))
     end
 end
 
@@ -89,7 +88,7 @@ function handle_job_submission!(s::Server, job_dirs_procs)
                 try
                     info = submit(s, j)
                     JOB_QUEUE[][j] = info
-                    job_dirs_procs[j] = spawn_worker(load_job(j))
+                    job_dirs_procs[j] = spawn_worker(j)
                 catch
                     sleep(SLEEP_TIME)
                     push!(to_submit, j)
