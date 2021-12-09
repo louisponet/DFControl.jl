@@ -54,7 +54,7 @@ function spawn_worker(job::Job)
         # return proc, f
     # else
     return Threads.@spawn begin
-        sleep(SLEEP_TIME)
+        sleep(3*SLEEP_TIME)
         while isrunning(job.dir)
             sleep(SLEEP_TIME)
         end
