@@ -83,7 +83,7 @@ function handle_job_submission!(s::Server, job_dirs_procs)
         
         if !isempty(to_submit)
             curdir = pwd()
-            while !isempty(load_job(j)o_submit)
+            while !isempty(to_submit)
                 j = pop!(to_submit)
                 try
                     info = submit(s, j)
