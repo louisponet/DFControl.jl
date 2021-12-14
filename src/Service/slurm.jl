@@ -56,7 +56,8 @@ function slurm_queue(all=false)
     else
         cmd = `sacct -u $(ENV["USER"]) --format=Workdir%100,JobID%20,State%30`
     end
-    lines = filter(x->length(x) == 3, split.(readlines(cmd)[3:end]))
+    all = map(x -> strip.(filter(!isempty, split(x, "  "))), readlines(cmd)[3:end])
+    lines = filter(x->length(x) == 3, all)
     return Dict([l[1] => (parse(Int, l[2]), slurm_state(occursin(l[3], "by") ? split(l[3])[1] : l[3])) for l in lines])
 end
 
