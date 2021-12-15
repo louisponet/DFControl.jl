@@ -1,6 +1,8 @@
 const VERSION_DIR_NAME = ".versions"
 const TEMP_CALC_DIR = "outputs"
 
+@enum JobState BootFail Pending Running Completed Cancelled Deadline Failed NodeFail OutOfMemory Preempted Requeued Resizing Revoked Suspended Timeout Submitted Unknown 
+
 """
     Job(name::String, structure::Structure;
           calculations      ::Vector{Calculation} = Calculation[],

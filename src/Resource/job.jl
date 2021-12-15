@@ -17,8 +17,11 @@ get_job(req) = Service.load_job(job_path(req))
 HTTP.@register(ROUTER, "GET", "/jobs/*", get_job)
 HTTP.@register(ROUTER, "GET", "/jobs/", get_job)
 
-job_isrunning(req) = Service.isrunning(job_path(req))
-HTTP.@register(ROUTER, "GET", "/job_isrunning/*", job_isrunning)
+job_state(req) = Service.state(job_path(req))
+HTTP.@register(ROUTER, "GET", "/job_state/*", job_state)
+
+job_submission_time(req) = Jobs.starttime(job_path(req))
+HTTP.@register(ROUTER, "GET", "/job_submission_time/*", job_state)
 
 registered_jobs(req) = Service.registered_jobs(job_path(req))
 HTTP.@register(ROUTER, "GET", "/registered_jobs/*", registered_jobs)

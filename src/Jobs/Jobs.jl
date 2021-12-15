@@ -6,7 +6,6 @@ using ..Structures
 using ..Utils
 using ..DFControl
 
-@enum JobState BootFail Pending Running Completed Cancelled Deadline Failed NodeFail OutOfMemory Preempted Requeued Resizing Revoked Suspended Timeout Submitted
 
 include("environment.jl")
 include("job.jl")

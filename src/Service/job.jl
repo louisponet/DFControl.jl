@@ -173,20 +173,12 @@ function last_running_calculation(path::String)
 end
 
 """
-    isrunning(job_dir::String)
+    state(job_dir::String)
 
-Returns whether a job exists in the `job_dir` and if it is running or not. If the job was
-submitted using `slurm`, a `QUEUED` status also counts as
-running.
+Returns the job state of the job in `job_dir`.
 """
-function isrunning(job_dir::String)
-    if haskey(JOB_QUEUE[], job_dir)
-        info = JOB_QUEUE[][job_dir]
-        return info[2] == Jobs.Running || info[2] == Jobs.Submitted || info[2] == Jobs.Pending
-    else
-        return false
-    end
-end
+state(job_dir::String) =
+    haskey(JOB_QUEUE[], job_dir) ? JOB_QUEUE[][job_dir][2] : Jobs.Unknown
 
 function dirsize(path::String)
     totsize = 0.0

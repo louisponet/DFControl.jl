@@ -39,16 +39,14 @@ function df_show(io::IO, job::Job)
     push!(fns, "versions")
     versions = Client.versions(job)
     push!(fs, join(string.(versions), ", "))
-    if haskey(job.metadata, :timestamp)
-        push!(fns, "last submission")
-        push!(fs, string(round(job.metadata[:timestamp], Second)))
-    end
-    push!(fns, "running")
-    is_running = Jobs.main_job_dir(job) != abspath(job) ? false : Client.isrunning(job)
-    push!(fs, string(is_running))
+    push!(fns, "last submission")
+    push!(fs, string(round(Dates.unix2datetime(Client.submission_time(job)), Second)))
+    push!(fns, "state")
+    state = Client.state(job)
+    push!(fs, string(state))
     lfns = maximum(length.(fns)) + maximum(length.(fs)) + 4
     line = "+"
-    for i in 1:div(lfns, 2)+1
+    for i in 1:div(lfns, 2) + 1
         line *= "-"
     end
     dfprint(io, crayon"cyan", line[1:end-2])

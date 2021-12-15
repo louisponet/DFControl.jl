@@ -128,7 +128,15 @@ function submit(jobs::Vector{Job}, run = true)
     return outbuckets
 end
 
+"""
+    state(job::Job, [server::Server])
 
+Returns the state of a job.
+"""
+function state(job::Job, server::Server = Servers.maybe_start_server(job))
+    return JSON3.read(HTTP.get(server, "/job_state/" * abspath(job)).body, Jobs.JobState)
+end
+    
 """
     isrunning(job::Job, [server::Server])
 
@@ -137,7 +145,8 @@ submitted using `slurm`, a `QUEUED` status also counts as
 running.
 """
 function isrunning(job::Job, server::Server = Servers.maybe_start_server(job))
-    return JSON3.read(HTTP.get(server, "/job_isrunning/" * abspath(job)).body, Bool)
+    s = state(job, server)
+    return s == Jobs.Running || s == Jobs.Pending
 end
 
 """
@@ -160,6 +169,12 @@ last_version(job::Job) = last_version(abspath(job), job.server)
 function last_version(dir, s="localhost")
     t = versions(dir, s)
     return isempty(t) ? 0 : t[end]
+end
+
+function submission_time(job::Job)
+    server = Servers.maybe_start_server(job)
+    resp = HTTP.get(server, "/job_submission_time/" * abspath(job))
+    return JSON3.read(resp.body, Int)
 end
 
 """
