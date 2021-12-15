@@ -20,7 +20,14 @@ HTTP.@register(ROUTER, "GET", "/jobs/", get_job)
 job_state(req) = Service.state(job_path(req))
 HTTP.@register(ROUTER, "GET", "/job_state/*", job_state)
 
-job_submission_time(req) = Jobs.starttime(job_path(req))
+function job_submission_time(req)
+    scriptpath = joinpath(job_path(req), "job.tt")
+    if ispath(scriptpath)
+        return mtime(scriptpath)
+    else
+        return 0
+    end
+end
 HTTP.@register(ROUTER, "GET", "/job_submission_time/*", job_state)
 
 registered_jobs(req) = Service.registered_jobs(job_path(req))
