@@ -39,8 +39,11 @@ function df_show(io::IO, job::Job)
     push!(fns, "versions")
     versions = Client.versions(job)
     push!(fs, join(string.(versions), ", "))
-    push!(fns, "last submission")
-    push!(fs, string(round(Dates.unix2datetime(Client.submission_time(job)), Second)))
+    timestamp = Client.submission_time(job)
+    if timestamp != 0
+        push!(fns, "last submission")
+        push!(fs, string(round(Dates.unix2datetime(timestamp), Second)))
+    end
     push!(fns, "state")
     state = Client.state(job)
     push!(fs, string(state))
@@ -84,7 +87,7 @@ function df_show(io::IO, job::Job)
             n = i.name
             cr = i.run ? crayon"green" : crayon"red"
             dfprint(io, cr,
-                    i == last ? (is_running ? "\t$n <- running\n" : "\t$n <- ran last\n") :
+                    i == last ? (state == Jobs.Pending || state == Jobs.Running ? "\t$n <- running\n" : "\t$n <- ran last\n") :
                     "\t$n\n")
         end
     end

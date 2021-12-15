@@ -278,7 +278,7 @@ function read_job_script(job_file::String)
                         if length(execs) == 1
                             exec.parallel = false
                         end
-                        push!(calcs, (exec = exec, infile = joinpath(dir, infile), outfile = joinpath(dir, outfile), run = true))
+                        push!(calcs, (exec = exec, infile = joinpath(dir, infile), outfile = joinpath(dir, outfile), run = run))
                     end
                 end
             else

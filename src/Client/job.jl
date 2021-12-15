@@ -174,7 +174,7 @@ end
 function submission_time(job::Job)
     server = Servers.maybe_start_server(job)
     resp = HTTP.get(server, "/job_submission_time/" * abspath(job))
-    return JSON3.read(resp.body, Int)
+    return JSON3.read(resp.body, Float64)
 end
 
 """
