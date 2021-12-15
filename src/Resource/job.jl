@@ -28,7 +28,7 @@ function job_submission_time(req)
         return 0
     end
 end
-HTTP.@register(ROUTER, "GET", "/job_submission_time/*", job_state)
+HTTP.@register(ROUTER, "GET", "/job_submission_time/*", job_submission_time)
 
 registered_jobs(req) = Service.registered_jobs(job_path(req))
 HTTP.@register(ROUTER, "GET", "/registered_jobs/*", registered_jobs)
