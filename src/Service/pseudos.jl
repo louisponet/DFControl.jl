@@ -4,7 +4,7 @@ function with_pseudos(f::Function)
     pseudos = ispath(pp) ? JLD2.load(pp)["pseudos"] :
               Dict{String,Dict{Symbol,Vector{String}}}()
     t = f(pseudos)
-    JLD2.save(config_path("pseudos.jld2"), "pseudos", pseudos)
+    JLD2.jldsave(config_path("pseudos.jld2"); pseudos=pseudos)
     return t
 end
 

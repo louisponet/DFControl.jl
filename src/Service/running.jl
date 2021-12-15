@@ -121,7 +121,7 @@ function run_queue(job::Job, ctx::Dict; sleep_time = 10)
             step_file = joinpath(qd, f)
             t = include(step_file)
             @eval $(t)($(job), $(ctx))
-            JLD2.save(joinpath(job, ".workflow/ctx.jld2"), "ctx", ctx)
+            JLD2.jldsave(joinpath(job, ".workflow/ctx.jld2"); ctx=ctx)
             while isrunning(job)
                 sleep(sleep_time)
             end

@@ -62,10 +62,9 @@ function write_workflow_files(job::Job)
             push!(valid, p)
         end
     end
-    JLD2.save(joinpath(job, ".workflow/environment.jld2"), "modules", valid,
-                        "project", Base.current_project())
-    return JLD2.save(joinpath(job, ".workflow/ctx.jld2"), "ctx",
-                               Dict{Symbol,Any}())
+    JLD2.jldsave(joinpath(job, ".workflow/environment.jld2"); modules = valid,
+                        project = Base.current_project())
+    return JLD2.jldsave(joinpath(job, ".workflow/ctx.jld2"); ctx = Dict{Symbol,Any}())
 end
 
 function clear_queue!(job::Job)
@@ -254,7 +253,7 @@ function outputdata(jobdir::String, calculations::Vector{String})
     calculations = isempty(calculations) ? map(x->x.name, job.calculations) : calculations
     respath = joinpath(job, "results.jld2")
     if ispath(respath)
-        datadict = JLD2.load(respath, iotype=IOStream)["outputdata"]
+        datadict = JLD2.load(respath, "outputdata")
     else
         datadict = Dict{String,Dict{Symbol,Any}}()
     end
@@ -272,7 +271,7 @@ function outputdata(jobdir::String, calculations::Vector{String})
         end
     end
     if new_data
-        JLD2.save(respath, iotype=IOStream, outputdata=datadict)
+        JLD2.jldsave(respath; outputdata=datadict)
         return respath
     elseif ispath(respath)
         return respath

@@ -430,7 +430,7 @@ function archive(job::Job, archive_directory::AbstractString, description::Strin
     cp(tj, final_dir)
     tj.dir = final_dir
 
-    JLD2.save(joinpath(final_dir, "results.jld2"), "outputdata", out)
+    JLD2.jldsave(joinpath(final_dir, "results.jld2"); outputdata=out)
 
     !isempty(description) && write(joinpath(final_dir, "description.txt"), description)
     push!(JOB_REGISTRY.archived, tj.dir)
