@@ -50,7 +50,7 @@ function slurm_state(state)
     end
 end
 
-function slurm_queue(all=false)
+function slurm_queue!(q, all=false)
     if all # Should only be done veeeery sporadically
         cmd = `sacct -u $(ENV["USER"]) --format=Workdir%100,JobID%20,State%30 -S 2000-01-01`
     else
@@ -58,7 +58,7 @@ function slurm_queue(all=false)
     end
     all = map(x -> strip.(filter(!isempty, split(x, "  "))), readlines(cmd)[3:end])
     lines = filter(x->length(x) == 3, all)
-    return Dict([l[1] => (parse(Int, l[2]), slurm_state(occursin("by", l[3]) ? split(l[3])[1] : l[3])) for l in lines])
+    return merge!(q, Dict([l[1] => (parse(Int, l[2]), slurm_state(occursin("by", l[3]) ? split(l[3])[1] : l[3])) for l in lines]))
 end
 
 """

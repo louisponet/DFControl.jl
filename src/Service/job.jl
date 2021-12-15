@@ -293,10 +293,12 @@ end
 
 rm_environment!(args...) = Jobs.rm_environment!(args...)
 
-function queue(s::Server, init=false)
+queue(args...) = queue!(Dict{String, Tuple{Int, Jobs.JobState}}(), args...)
+
+function queue!(q, s::Server, init=false)
     if s.scheduler == Servers.Bash
-        return bash_queue(init) 
+        return bash_queue!(q, init) 
     elseif s.scheduler == Servers.Slurm
-        return slurm_queue(init) 
+        return slurm_queue!(q, init) 
     end
 end

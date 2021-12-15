@@ -18,36 +18,18 @@ function bash_jobstate(jobdir::String)
     end
 end
 
-function bash_queue(init)
-    if ispath(RUNNING_JOBS_FILE)
-        lines = filter(exists_job, readlines(RUNNING_JOBS_FILE))
-        d = Dict([l => bash_jobstate(l) for l in lines])
-        to_pop = String[]
-        for (dir, state) in d
-            if state[2] != Jobs.Running
-                push!(to_pop, dir)
-            end
+function bash_queue!(q, init)
+    for j in keys(q)
+        if exists_job(j)
+            q[j] = bash_jobstate(j)
         end
-        for dir in to_pop
-            pop!(d, dir)
-        end
-        open(RUNNING_JOBS_FILE, "w") do f
-            for k in keys(d)
-                write(f, k * "\n")
-            end
-        end
-        return d
-    else
-        if init
-            touch(RUNNING_JOBS_FILE)
-        end
-        return Dict{String, Tuple{Int, Jobs.JobState}}()
     end
+    return q
 end
 
 function bash_submit(j::String)
     cd(j)
-    run(`bash job.tt`)
+    run(Cmd(`bash job.tt`, detach=true), wait=false)
     open(RUNNING_JOBS_FILE, "a") do f
         write(f, j * "\n")
     end

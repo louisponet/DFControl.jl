@@ -4,19 +4,18 @@ const JOB_QUEUE = Ref(Dict{String, Tuple{Int, Jobs.JobState}}())
 
 function main_loop(s::Server)
     job_dirs_procs = Dict{String,Task}()
-    JOB_QUEUE[] = queue(s, true)
+    queue!(JOB_QUEUE[], s, true)
     for (j, info) in JOB_QUEUE[]
         if info[2] == Jobs.Pending || info[2] == Jobs.Running
             job_dirs_procs[j] = spawn_worker(j)
         end
     end
     while true
+        queue!(JOB_QUEUE[], s)
         handle_workflow_runners!(job_dirs_procs)
         if length(job_dirs_procs) < MAX_CONCURRENT_JOBS
             handle_job_submission!(s, job_dirs_procs)
         end
-        q = queue(s)
-        JOB_QUEUE[] = merge(JOB_QUEUE[], q) 
         sleep(SLEEP_TIME)
     end
 end
