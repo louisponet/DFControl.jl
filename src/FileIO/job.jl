@@ -296,7 +296,7 @@ function read_job_script(job_file::String)
     end
     #TODO cleanup
     known_es = Calculations.load_execs()
-    execs = filter(x -> !any(y -> y.dir == x.dir && y.exec == x.exec, known_es), unique(map(x->x.exec, calcs)))
+    execs = filter(x -> !any(y -> y.dir == x.dir && y.exec == x.exec, values(known_es)), unique(map(x->x.exec, calcs)))
     for e in execs
         i = 1
         runnable = Calculations.isrunnable(e)
@@ -306,12 +306,13 @@ function read_job_script(job_file::String)
             i+=1
         end
         if runnable
+            e.name = """$(e.exec)@$(join(splitpath(e.dir)[2:end], "_"))"""
             Calculations.maybe_register(e)
         end
     end
     for c in calcs
         e1 = c.exec
-        for e in [execs; known_es]
+        for (n, e) in merge(Dict([e.name => e for e in execs]), known_es)
             if e.dir == e1.dir && e.exec == e1.exec
                 e1.modules = e.modules
             end

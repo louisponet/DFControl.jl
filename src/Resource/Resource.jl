@@ -49,11 +49,18 @@ HTTP.@register(ROUTER, "PUT", "/rm_pseudos", rm_pseudos!)
 verify_exec(req) = Service.verify_exec(JSON3.read(req.body, Exec))
 HTTP.@register(ROUTER, "GET", "/verify_exec", verify_exec)
 
-known_execs(req) = Service.known_execs(splitpath(req.target)[end])
-HTTP.@register(ROUTER, "GET", "/known_execs/*", known_execs)
+known_execs(req) = (d = JSON3.read(req.body); Service.known_execs(d["exec"],d["dir"]))
+HTTP.@register(ROUTER, "GET", "/known_execs/", known_execs)
+
+get_exec(req) = Service.load_exec(splitpath(req.target)[end])
+HTTP.@register(ROUTER, "GET", "/exec/*", known_execs)
+
+register_exec(req) = Service.register_exec(JSON3.read(req.body, Exec))
+HTTP.@register(ROUTER, "POST", "/exec/", register_exec)
 
 add_environment(req) = Service.add_environment(JSON3.read(req.body,Jobs.Environment), splitpath(req.target)[end])
 HTTP.@register(ROUTER, "POST", "/environment/*", add_environment)
+
 get_environment(req) = Service.get_environment(splitpath(req.target)[end])
 HTTP.@register(ROUTER, "GET", "/environment/*", get_environment)
 

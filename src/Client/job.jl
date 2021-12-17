@@ -229,11 +229,20 @@ function outputdata(jobdir::String, s::String = "localhost", calcs::Vector{Strin
     return out     
 end
 
-function known_execs(e::String, server)
+function known_execs(e::String, dir::String = ""; server = Server("localhost"))
     s = Servers.maybe_start_server(server)
-    return JSON3.read(HTTP.get(s, "/known_execs/" * e).body, Vector{Calculations.Exec})
+    return JSON3.read(HTTP.get(s, "/known_execs/", [], JSON3.write(Dict("exec" => e, "dir" => dir))).body, Dict{String, Calculations.Exec})
 end
-known_execs(e::Calculations.Exec, args...) = known_execs(e.exec, args...)
+known_execs(e::Calculations.Exec; kwargs...) = known_execs(e.exec,e.dir; kwargs...)
+
+function get_exec(name::String; server=Server("localhost"))
+    s = Servers.maybe_start_server(server)
+    return JSON3.read(HTTP.get(s, "/exec/$name").body, Calculations.Exec)
+end
+function register_exec(e::Exec; server=Server("localhost"))
+    s = Servers.maybe_start_server(server)
+    return JSON3.read(HTTP.post(s, "/exec/", [], JSON3.write(e)).body, Calculations.Exec)
+end
 
 function verify_execs(job::Job, server::Server)
     replacements = verify_execs(unique(map(x->x.exec, job.calculations)), server)

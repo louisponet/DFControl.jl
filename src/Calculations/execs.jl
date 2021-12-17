@@ -32,6 +32,7 @@ Basically `dir/exec --<flags>` inside a job script.
 Will first transform `flags` into a `Vector{ExecFlag}`, and construct the [`Exec`](@ref). 
 """
 @with_kw mutable struct Exec
+    name::String = ""
     exec::String = ""
     dir::String = ""
     flags::Vector{ExecFlag} = ExecFlag[]
@@ -39,7 +40,7 @@ Will first transform `flags` into a `Vector{ExecFlag}`, and construct the [`Exec
     parallel::Bool = true
 end
 
-function Exec(exec::String, dir::String, flags::Pair...; kwargs...)
+function Exec(name::String, exec::String, dir::String, flags::Pair...; kwargs...)
     _flags = ExecFlag[]
     ismpi = occursin("mpi", exec)
     for (f, v) in flags
@@ -49,19 +50,35 @@ function Exec(exec::String, dir::String, flags::Pair...; kwargs...)
         end
         push!(_flags, ExecFlag(f => v))
     end
-    return Exec(exec=exec, dir=dir, flags=_flags; kwargs...)
+    return Exec(name=name,exec=exec, dir=dir, flags=_flags; kwargs...)
 end
 
 StructTypes.StructType(::Type{Exec}) = StructTypes.Mutable()
 
-const EXEC_FILE = DFC.config_path("registered_execs.json")
+const EXEC_DIR = DFC.config_path("execs")
+
+function load_exec(name)
+    if ispath(EXEC_DIR)
+        return JSON3.read(read(joinpath(EXEC_DIR, "$name.json"), String), Exec)
+    end
+end
 
 function load_execs()
-    return ispath(EXEC_FILE) ? JSON3.read(read(EXEC_FILE, String), Vector{Exec}) : Exec[]
+    execs = Dict{String,Exec}()
+    if ispath(EXEC_DIR)
+        for f in readdir(EXEC_DIR)
+            exec = JSON3.read(read(joinpath(EXEC_DIR, f), String), Exec)
+            execs[exec.name] = exec
+        end
+    end
+    return execs
 end
 
 function write_execs(execs)
-    return JSON3.write(EXEC_FILE, execs)
+    mkpath(EXEC_DIR)
+    for (n, e) in execs
+        JSON3.write(joinpath(EXEC_DIR, "$n.json"), e)
+    end
 end
 
 function isrunnable(e::Exec)
@@ -100,25 +117,16 @@ end
 
 function maybe_register(e::Exec)
     known_execs = load_execs()
-    preexisting = getfirst(x-> x.dir == e.dir && x.exec == e.exec,  known_execs)
-    if preexisting === nothing
+    if !haskey(known_execs, e.name)
         empty!(e.flags)
-        push!(known_execs, e)
-    elseif length(preexisting.modules) > length(e.modules)
-        preexisting.modules = e.modules
+        known_execs[e.name] = e
     end
     write_execs(known_execs)
 end
 
 "Finds all executables that are known with the same exec name."
-function known_execs(exec::AbstractString)
-    out = Exec[] 
-    for e in load_execs()
-        if e.exec == exec
-            push!(out, e)
-        end
-    end
-    return out
+function known_execs(exec::AbstractString, dir="")
+    return filter(x -> isempty(dir) ? x[2].exec == exec : x[2].exec == exec && x[2].exec == dir, load_execs())
 end
 
 

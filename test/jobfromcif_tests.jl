@@ -10,7 +10,7 @@ testjobpath = joinpath(testdir, "testassets", "test_job")
     name = "Ni"
     dir = testjobpath
     bin_dir = joinpath(homedir(), "Software/qe/bin")
-    pw_exec = Exec("pw.x", bin_dir, :nk => 4)
+    pw_exec = Exec("pw", "pw.x", bin_dir, :nk => 4)
     @test !isempty(pw_exec.flags)
     pseudoset = :test
 
@@ -94,7 +94,7 @@ refjobpath =joinpath(testdir, "testassets", "reference_job")
     for a in job.structure.atoms
         a.projections = [Projection("s"), Projection("p"), Projection("d")]
     end
-    wanexec = Exec("wannier90.x", joinpath(homedir(), "Software/wannier90"))
+    wanexec = Exec("wan","wannier90.x", joinpath(homedir(), "Software/wannier90"))
     append!(job, Calculations.gencalc_wan(job, 0.000011, wanexec = wanexec))
     for (c1, c2) in zip(job2.calculations, job.calculations)
         @test c2 == c1
