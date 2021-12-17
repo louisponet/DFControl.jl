@@ -53,7 +53,7 @@ known_execs(req) = (d = JSON3.read(req.body); Service.known_execs(d["exec"],d["d
 HTTP.@register(ROUTER, "GET", "/known_execs/", known_execs)
 
 get_exec(req) = Service.load_exec(splitpath(req.target)[end])
-HTTP.@register(ROUTER, "GET", "/exec/*", known_execs)
+HTTP.@register(ROUTER, "GET", "/exec/*", get_exec)
 
 register_exec(req) = Service.register_exec(JSON3.read(req.body, Exec))
 HTTP.@register(ROUTER, "POST", "/exec/", register_exec)
