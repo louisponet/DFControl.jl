@@ -58,6 +58,6 @@ load_execs(args...) = Calculations.load_execs(args...)
 
 function register_exec(e::Exec)
     @assert Calculations.isrunnable(e) "Exec is not runnable..."
-    Calculations.maybe_register(e)
+    Calculations.register(e)
     return e
 end

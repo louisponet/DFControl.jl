@@ -115,12 +115,9 @@ function verify_exec(e::Exec)
     return valid
 end
 
-function maybe_register(e::Exec)
+function register(e::Exec)
     known_execs = load_execs()
-    if !haskey(known_execs, e.name)
-        empty!(e.flags)
-        known_execs[e.name] = e
-    end
+    known_execs[e.name] = e
     write_execs(known_execs)
 end
 
