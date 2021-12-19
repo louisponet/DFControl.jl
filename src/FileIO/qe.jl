@@ -1005,17 +1005,17 @@ function extract_atoms!(parsed_flags, atsyms, atom_block, pseudo_block, cell::Ma
     else
         primv = 1Ang .* Mat3(Matrix(1.0I, 3, 3))
     end
-    for (at_sym, pos) in atom_block.data
-        if haskey(pseudo_block.data, at_sym)
-            pseudo = pseudo_block.data[at_sym]
+    for (atsym, pos) in atom_block.data
+        if haskey(pseudo_block.data, atsym)
+            pseudo = pseudo_block.data[atsym]
         else
-            elkey = getfirst(x -> x != at_sym && Structures.element(x) == Structures.element(at_sym),
+            elkey = getfirst(x -> x != atsym && Structures.element(x) == Structures.element(atsym),
                              keys(pseudo_block.data))
             pseudo = elkey !== nothing ? pseudo_block.data[elkey] : ""
         end
-        speciesid = findfirst(isequal(at_sym), atsyms)
+        speciesid = findfirst(isequal(atsym), atsyms)
         push!(atoms,
-              Atom(; name = at_sym, element = Structures.element(at_sym),
+              Atom(; name = atsym, element = Structures.element(atsym),
                    position_cart = primv * pos,
                    position_cryst = UnitfulAtomic.ustrip.(inv(cell) * pos), pseudo = pseudo,
                    magnetization = qe_magnetization(speciesid, parsed_flags),
@@ -1057,26 +1057,86 @@ Returns a `Calculation{QE}` and the `Structure` that is found in the calculation
 """
 function qe_read_calculation(filename; exec = Exec(; exec = "pw.x"), kwargs...)
     @assert ispath(filename) "$filename is not a valid path."
-    t_lines = read(filename, String) |>
-              x -> split(x, "\n") .|> x -> cut_after(x, '!') .|> x -> cut_after(x, '#')
-    lines = join(t_lines, "\n") |>
-            # x -> replace(x, "," => "\n")  |>
-            # x -> replace(x, "," => " ")   |>
-            x -> replace(x, "'" => " ") |>
-                 x -> split(x, "\n") .|>
-                      strip |>
-                      x -> filter(y -> !occursin("&", y), x) |>
-                           x -> filter(y -> !(occursin("/", y) && length(y) == 1), x) |>
-                                x -> filter(!isempty, x)
+    contents = read(filename, String)
 
-    flaglines, lines = separate(x -> occursin("=", x), lines)
-    flaglines = strip_split.(flaglines, "=")
-    easy_flaglines, difficult_flaglines = separate(x -> !occursin("(", x[1]), flaglines)
-    parsed_flags = Dict{Symbol,Any}()
-    #easy flags
-    for (f, v) in easy_flaglines
-        sym = Symbol(f)
+    reg = r"([\w\d]+)(?:\(((?:\s*,*\d+\s*,*)*)\))?\s*=\s*([^,\n]*)"
+    offset = 0
+    m = match(reg, contents)
+    matches = RegexMatch[]
+
+    while m !== nothing
+        push!(matches, m)
+        offset = m.offsets[end] + 1
+        m = match(reg, contents, offset)
+    end
+
+    function find_pop!(flag)
+        id = findfirst(x -> x.captures[1] == flag, matches)
+        if id !== nothing
+            matches[id], matches[end] = matches[end], matches[id]
+            return pop!(matches)
+        end
+    end
+
+    natmatch = find_pop!("nat")
+    ntypmatch = find_pop!("ntyp")
+    nat = natmatch !== nothing ? parse(Int, natmatch.captures[end]) : nothing
+    ntyp = ntypmatch !== nothing ? parse(Int, ntypmatch.captures[end]) : nothing
+
+    if nat !== nothing && ntyp !== nothing
+    
+        lines = split(contents, "\n")
+            
+        used_lineids = Int[]
+        findcard(s) = findfirst(l -> occursin(s, lowercase(l)), lines)
+        i_species = findcard("atomic_species")
+        i_cell = findcard("cell_parameters")
+        i_positions = findcard("atomic_positions")
+        push!(used_lineids, i_species)
+
+        pseudos = Dict{Symbol,String}()
+        pseudo_match = find_pop!("pseudo_dir")
+        if pseudo_match === nothing 
+            pseudo_dir = splitdir(filename)[1]
+        else
+            pseudo_dir = strip(pseudo_match.captures[end], ''')
+            if pseudo_dir == "."
+                pseudo_dir = splitdir(filename)[1]
+            end
+        end
+
+        atsyms = Symbol[]
+        for k in 1:ntyp
+            push!(used_lineids, i_species + k)
+            sline = strip_split(lines[i_species+k])
+            atsym = Symbol(sline[1])
+            ppath = joinpath(pseudo_dir, sline[end])
+            pseudos[atsym] = ispath(ppath) ? read(ppath, String) : ""
+            push!(atsyms, atsym)
+        end
+
+        append!(used_lineids, [i_cell, i_cell + 1, i_cell + 2, i_cell + 3])
+        cell_option = cardoption(lines[i_cell])
+        cell = Mat3([parse(Float64, split(lines[i_cell+k])[j])
+                                     for k in 1:3, j in 1:3])
+        atoms_option = cardoption(lines[i_positions])
+        atoms = Tuple{Symbol,Point3{Float64}}[]         
+        for k in 1:nat
+            push!(used_lineids, i_positions + k)
+            sline = split(lines[i_positions+k])
+            atsym = Symbol(sline[1])
+            point = Point3(parse.(Float64, sline[2:4]))
+            push!(atoms, (atsym, point))
+        end
+    end
+        
+    flags = Dict{Symbol, Any}()
+
+    for m in matches
+        sym = Symbol(m.captures[1])
         typ = Calculations.flagtype(QE, exec, sym)
+        v   = m.captures[3]
+        # normal flag
         if eltype(typ) <: Bool
             v = replace(lowercase(v), "." => "")
         elseif eltype(typ) <: Number
@@ -1088,101 +1148,39 @@ function qe_read_calculation(filename; exec = Exec(; exec = "pw.x"), kwargs...)
         if typ <: AbstractArray
             typ = eltype(typ)
         end
-        tval = typ != String ? parse.((typ,), split(v)) : v
-        parsed_flags[sym] = length(tval) == 1 ? tval[1] : tval
-    end
-
-    used_lineids = Int[]
-    findcard(s) = findfirst(l -> occursin(s, lowercase(l)), lines)
-    i_species = findcard("atomic_species")
-    i_cell = findcard("cell_parameters")
-    i_positions = findcard("atomic_positions")
-    if i_species !== nothing && i_cell !== nothing && i_positions !== nothing
-        push!(used_lineids, i_species)
-        nat  = parsed_flags[:nat]
-        ntyp = parsed_flags[:ntyp]
-
-        pseudos = InputData(:atomic_species, :none, Dict{Symbol,String}())
-        pseudo_dir = string(pop!(parsed_flags, :pseudo_dir, splitdir(filename)[1]))
-        if pseudo_dir == "."
-            pseudo_dir = splitdir(filename)[1]
-        end
-        atsyms = Symbol[]
-        for k in 1:ntyp
-            push!(used_lineids, i_species + k)
-            sline = strip_split(lines[i_species+k])
-            atsym = Symbol(sline[1])
-            ppath = joinpath(pseudo_dir,sline[end])
-            pseudos.data[atsym] = ispath(ppath) ? read(ppath, String) : ""
-            push!(atsyms, atsym)
-        end
-
-        append!(used_lineids, [i_cell, i_cell + 1, i_cell + 2, i_cell + 3])
-        cell_block = InputData(:cell_parameters, cardoption(lines[i_cell]),
-                               Mat3([parse(Float64, split(lines[i_cell+k])[j])
-                                     for k in 1:3, j in 1:3]))
-
-        push!(used_lineids, i_positions)
-        atom_block = InputData(:atomic_positions, cardoption(lines[i_positions]),
-                               Tuple{Symbol,Point3{Float64}}[])
-        for k in 1:nat
-            push!(used_lineids, i_positions + k)
-            sline = split(lines[i_positions+k])
-            atsym = Symbol(sline[1])
-            point = Point3(parse.(Float64, sline[2:4]))
-            push!(atom_block.data, (atsym, point))
-        end
-
-        #the difficult flags, can only be present if atomic stuff is found
-        for (f, v) in difficult_flaglines
-            try
-                _s = split(replace(replace(replace(f, "(" => " "), ")" => " "), "," => " "))
-
-                sym = Symbol(_s[1])
-                ids = parse.(Int, _s[2:end])
-                typ = Calculations.flagtype(QE, exec, sym)
-                v = replace(v, "d" => "e")
-                if typ === Nothing
-                    @warn "Flag $f in file $filename not found in allowed flags for $(exec.exec)"
-                    continue
+        tval = typ != String ? parse.((typ,), split(v)) : strip(v, ''')
+        parsed_val = length(tval) == 1 ? tval[1] : tval
+        
+        if m.captures[2] === nothing
+            flags[sym] = parsed_val
+        else
+            # Since arrays can be either ntyp or nat dimensionally, we
+            # assume nat since that's the biggest, similarly we assume
+            # 7,4,nat for the multidim arrays
+            ids = parse.(Int, split(m.captures[2], ","))
+            if !haskey(flags, sym)
+                if length(ids) == 1
+                    flags[sym] = length(parsed_val) == 1 ? zeros(typ, nat) : fill(zeros(typ, length(parsed_val)), nat)
+                elseif length(ids) == 2
+                    flags[sym] = length(parsed_val) == 1 ? zeros(typ, nat, nat) : fill(zeros(typ, length(parsed_val)), nat, nat)
+                elseif length(ids) == 3
+                    flags[sym] = zeros(typ, 7, 4, nat)
+                elseif length(ids) == 4
+                    flags[sym] = zeros(typ, 7, 7, 4, nat)
                 end
-                parsedval = parse.((eltype(typ),), split(v))
-                if !haskey(parsed_flags, sym)
-                    if typ <: AbstractMatrix
-                        parsed_flags[sym] = length(parsedval) == 1 ?
-                                            zeros(eltype(typ), ntyp, 10) :
-                                            fill(zeros(eltype(typ), length(parsedval)),
-                                                 ntyp, 10) #arbitrary limit
-                    elseif typ <: AbstractVector
-                        parsed_flags[sym] = length(parsedval) == 1 ?
-                                            zeros(eltype(typ), ntyp) :
-                                            fill(zeros(eltype(typ), length(parsedval)),
-                                                 ntyp)
-                    elseif sym == :Hubbard_J
-                        parsed_flags[sym] = zeros(eltype(typ), 3, nat)
-                    elseif sym == :starting_ns_eigenvalue
-                        #7 and 4 are the largest possible, and in the end if they are not filled
-                        #they won't be written in the new input anyway
-                        parsed_flags[sym] = zeros(eltype(typ), 7, 4, nat)
-                    elseif sym == :Hubbard_occupations
-                        #7 and 4 are the largest possible, and in the end if they are not filled
-                        #they won't be written in the new input anyway
-                        parsed_flags[sym] = zeros(eltype(typ), 7, 7, 4, nat)
-                    end
-                end
-                parsed_flags[sym][ids...] = length(parsedval) == 1 ? parsedval[1] :
-                                            parsedval
-            catch e
-                @warn "Parsing error of flag $f in file $filename." exception = e
             end
+            flags[sym][ids...] = parsed_val
         end
-        structure = extract_structure!(parsed_flags, cell_block, atsyms,
-                                       atom_block, pseudos)
-        delete!.((parsed_flags,), [:ibrav, :nat, :ntyp, :A, :celldm_1, :celldm])
-        delete!.((parsed_flags,),
+    end
+    
+    if nat !== nothing && ntyp !== nothing
+                    
+        structure = extract_structure!(flags, (option = cell_option, data=cell), atsyms,
+                                   (option = atoms_option, data=atoms), (data=pseudos,))
+        delete!.((flags,), [:ibrav, :nat, :ntyp, :A, :celldm_1, :celldm])
+        delete!.((flags,),
                  [:Hubbard_U, :Hubbard_J0, :Hubbard_alpha, :Hubbard_beta, :Hubbard_J])
-        delete!.((parsed_flags,), [:starting_magnetization, :angle1, :angle2, :nspin]) #hubbard and magnetization flags
-
+        delete!.((flags,), [:starting_magnetization, :angle1, :angle2, :nspin]) #hubbard and magnetization flags
     else
         structure = nothing
     end
@@ -1205,22 +1203,10 @@ function qe_read_calculation(filename; exec = Exec(; exec = "pw.x"), kwargs...)
         end
         push!(datablocks, InputData(:k_points, k_option, k_data))
     end
-    #Now we need to deal with lines that were not flaglines and not inside the usual cards.
-    #Ultimately the goal would be to actually take the info read from the documentation to
-    #understand the syntax of the cards, and read them accordingly. In the meantime we do
-    #it like this.
-    remlines = String[]
-    for i in 1:length(lines)
-        if i ∈ used_lineids
-            continue
-        end
-        push!(remlines, lines[i])
-    end
-    !isempty(remlines) && push!(datablocks, InputData(:noname, :nooption, remlines))
 
-    pop!.((parsed_flags,), [:prefix, :outdir], nothing)
+    pop!.((flags,), [:prefix, :outdir], nothing)
     dir, file = splitdir(filename)
-    return Calculation{QE}(; name = splitext(file)[1], flags = parsed_flags,
+    return Calculation{QE}(; name = splitext(file)[1], flags = flags,
                            data = datablocks, exec = exec, kwargs...), structure
 end
 
