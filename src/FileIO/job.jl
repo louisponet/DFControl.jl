@@ -312,8 +312,7 @@ function read_job_script(job_file::String)
     end
     for c in calcs
         e1 = c.exec
-        for (n, e) in merge(Dict([e.name => e for e in execs]), known_es)
-            found = false
+        for e in [execs; known_es]
             if e.dir == e1.dir && e.exec == e1.exec
                 e1.modules = e.modules
             end
