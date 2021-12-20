@@ -1077,6 +1077,7 @@ function qe_read_calculation(filename; exec = Exec(; exec = "pw.x"), kwargs...)
             return pop!(matches)
         end
     end
+    findcard(s) = findfirst(l -> occursin(s, lowercase(l)), lines)
 
     natmatch = find_pop!("nat")
     ntypmatch = find_pop!("ntyp")
@@ -1088,7 +1089,6 @@ function qe_read_calculation(filename; exec = Exec(; exec = "pw.x"), kwargs...)
         lines = split(contents, "\n")
             
         used_lineids = Int[]
-        findcard(s) = findfirst(l -> occursin(s, lowercase(l)), lines)
         i_species = findcard("atomic_species")
         i_cell = findcard("cell_parameters")
         i_positions = findcard("atomic_positions")
