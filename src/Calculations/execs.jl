@@ -58,28 +58,15 @@ StructTypes.StructType(::Type{Exec}) = StructTypes.Mutable()
 const EXEC_DIR = DFC.config_path("execs")
 
 function load_exec(name)
-    if ispath(EXEC_DIR)
-        return JSON3.read(read(joinpath(EXEC_DIR, "$name.json"), String), Exec)
-    end
+    return JSON3.read(read(joinpath(EXEC_DIR, "$name.json"), String), Exec)
 end
 
 function load_execs()
-    execs = Dict{String,Exec}()
-    if ispath(EXEC_DIR)
-        for f in readdir(EXEC_DIR)
-            exec = JSON3.read(read(joinpath(EXEC_DIR, f), String), Exec)
-            execs[exec.name] = exec
-        end
-    end
-    return execs
+    return JSON3.read.(read.(joinpath.((EXEC_DIR,), readdir(EXEC_DIR)), String), Exec)
 end
 
-function write_execs(execs)
-    mkpath(EXEC_DIR)
-    for (n, e) in execs
-        JSON3.write(joinpath(EXEC_DIR, "$n.json"), e)
-    end
-end
+save(e::Exec) = 
+    JSON3.write(joinpath(EXEC_DIR, "$(e.name).json"), e)
 
 function isrunnable(e::Exec)
     # To find the path to then ldd on
@@ -106,26 +93,29 @@ function isrunnable(e::Exec)
     end
 end
 
-"Verifies the validity of an executable and also registers it if it wasn't known before."
-function verify_exec(e::Exec)
-    valid = isrunnable(e)
-    if valid
-        maybe_register(e)
-    end
-    return valid
+function known_exec_names()
+    d = readdir(EXEC_DIR)
+    return isempty(d) ? String[] : map(x -> splitext(x)[1], d)
 end
 
-function register(e::Exec)
-    known_execs = load_execs()
-    known_execs[e.name] = e
-    write_execs(known_execs)
+"Verifies the validity of an executable and also registers it if it wasn't known before."
+function verify_exec(e::Exec)
+    known_execs = known_exec_names()
+    if e.name ∈ known_execs && e == load_exec(e.name)
+        return true
+    else
+        valid = isrunnable(e)
+        if valid
+            save(e)
+        end
+        return valid
+    end
 end
 
 "Finds all executables that are known with the same exec name."
 function known_execs(exec::AbstractString, dir="")
     return filter(x -> isempty(dir) ? x[2].exec == exec : x[2].exec == exec && x[2].exec == dir, load_execs())
 end
-
 
 const RUN_EXECS = ["mpirun", "mpiexec", "srun"]
 

@@ -65,36 +65,34 @@ end
 # Additional files are packaged with the job
 function handle_job_submission!(s::Server, job_dirs_procs)
     s = DFC.Server("localhost")
-    if ispath(PENDING_JOBS_FILE)
-        lines = filter(!isempty, readlines(PENDING_JOBS_FILE))
-        write(PENDING_JOBS_FILE, "")
-        if length(lines) + length(job_dirs_procs) > MAX_CONCURRENT_JOBS
-            
-            to_submit = lines[1:MAX_CONCURRENT_JOBS - length(job_dirs_procs)]
-            open(PENDING_JOBS_FILE, "a") do f
-                for l in lines[MAX_CONCURRENT_JOBS - length(job_dirs_procs) + 1:end]
-                    write(f, l * "\n")
-                end
-            end
-        else
-            to_submit = lines
-        end
+    lines = filter(!isempty, readlines(PENDING_JOBS_FILE))
+    write(PENDING_JOBS_FILE, "")
+    if length(lines) + length(job_dirs_procs) > MAX_CONCURRENT_JOBS
         
-        if !isempty(to_submit)
-            curdir = pwd()
-            while !isempty(to_submit)
-                j = pop!(to_submit)
-                try
-                    info = submit(s, j)
-                    JOB_QUEUE[][j] = info
-                    job_dirs_procs[j] = spawn_worker(j)
-                catch
-                    sleep(SLEEP_TIME)
-                    push!(to_submit, j)
-                end
+        to_submit = lines[1:MAX_CONCURRENT_JOBS - length(job_dirs_procs)]
+        open(PENDING_JOBS_FILE, "a") do f
+            for l in lines[MAX_CONCURRENT_JOBS - length(job_dirs_procs) + 1:end]
+                write(f, l * "\n")
             end
-            cd(curdir)
         end
+    else
+        to_submit = lines
+    end
+        
+    if !isempty(to_submit)
+        curdir = pwd()
+        while !isempty(to_submit)
+            j = pop!(to_submit)
+            try
+                info = submit(s, j)
+                JOB_QUEUE[][j] = info
+                job_dirs_procs[j] = spawn_worker(j)
+            catch
+                sleep(SLEEP_TIME)
+                push!(to_submit, j)
+            end
+        end
+        cd(curdir)
     end
 end
 

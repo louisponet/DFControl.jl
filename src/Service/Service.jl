@@ -10,8 +10,8 @@ using ..Servers
 # const DAEMON_CONFIG_PATH = config_path("daemon.jld2")
 # delete_daemon_config!() = rm(DAEMON_CONFIG_PATH)
 
-const RUNNING_JOBS_FILE = config_path("running_jobs.txt")
-const PENDING_JOBS_FILE = config_path("pending_jobs.txt")
+const RUNNING_JOBS_FILE = config_path("jobs", "running.txt")
+const PENDING_JOBS_FILE = config_path("jobs", "pending.txt")
 const SERVICE_LOG = config_path("daemon.log")
 const SLEEP_TIME = 10.0
 
