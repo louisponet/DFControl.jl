@@ -34,7 +34,7 @@ include("job.jl")
 export submit, save, isrunning, state, versions, last_version, switch_version!, rm_version!, outputdata,
        registered_jobs, running_jobs,
        environment_from_jobscript, get_environment, add_environment, rm_environment!,
-       known_execs, get_exec, register_exec
+       known_execs, get_exec
 
 include("pseudos.jl")
 export configure_pseudoset, rm_pseudoset!

@@ -55,8 +55,8 @@ HTTP.@register(ROUTER, "GET", "/known_execs/", known_execs)
 get_exec(req) = Service.load_exec(splitpath(req.target)[end])
 HTTP.@register(ROUTER, "GET", "/exec/*", get_exec)
 
-register_exec(req) = Service.register_exec(JSON3.read(req.body, Exec))
-HTTP.@register(ROUTER, "POST", "/exec/", register_exec)
+save_exec(req) = Service.save(JSON3.read(req.body, Exec))
+HTTP.@register(ROUTER, "POST", "/exec/", save_exec)
 
 add_environment(req) = Service.add_environment(JSON3.read(req.body,Jobs.Environment), splitpath(req.target)[end])
 HTTP.@register(ROUTER, "POST", "/environment/*", add_environment)
