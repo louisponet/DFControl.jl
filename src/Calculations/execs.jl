@@ -114,7 +114,7 @@ end
 
 "Finds all executables that are known with the same exec name."
 function known_execs(exec::AbstractString, dir="")
-    return filter(x -> isempty(dir) ? x[2].exec == exec : x[2].exec == exec && x[2].exec == dir, load_execs())
+    return filter(x -> isempty(dir) ? x.exec == exec : x.exec == exec && x.exec == dir, load_execs())
 end
 
 const RUN_EXECS = ["mpirun", "mpiexec", "srun"]
