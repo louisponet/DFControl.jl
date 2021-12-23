@@ -153,6 +153,15 @@ function Base.string(e::Exec)
     return str
 end
 
+Base.setindex!(e::Exec, v, s::Symbol) = 
+    set_flags!(e, s => v)
+    
+function Base.getindex(e::Exec, s::Symbol)
+    out = getfirst(x -> x.symbol == s, e.flags)
+    out === nothing && throw(KeyError(s))
+    return out
+end
+
 function set_flags!(exec::Exec, flags...)
     for (f, val) in flags
         flag = isa(f, String) ? getfirst(x -> x.name == f, exec.flags) :

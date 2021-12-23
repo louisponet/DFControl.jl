@@ -260,7 +260,7 @@ function verify_execs(execs::Vector{Exec}, server::Server)
     replacements = Dict{Exec, Exec}()
     for e in execs 
         if !JSON3.read(HTTP.get(server, "/verify_exec/", [], JSON3.write(e)).body, Bool)
-            possibilities = known_execs(e, server)
+            possibilities = known_execs(e, server=server)
             curn = 0
             while length(possibilities) > 1
                 possibilities = filter(x -> all(splitpath(x.dir)[end-curn:end] .== splitpath(e.dir)[end-curn:end]), possibilities)
