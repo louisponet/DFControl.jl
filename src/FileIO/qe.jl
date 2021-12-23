@@ -1079,6 +1079,7 @@ function qe_read_calculation(filename; exec = Exec(; exec = "pw.x"), kwargs...)
     end
     lines = split(contents, "\n")
     findcard(s) = findfirst(l -> occursin(s, lowercase(l)), lines)
+    used_lineids = Int[]
 
     natmatch = find_pop!("nat")
     ntypmatch = find_pop!("ntyp")
@@ -1090,7 +1091,6 @@ function qe_read_calculation(filename; exec = Exec(; exec = "pw.x"), kwargs...)
 
     if nat !== nothing && ntyp !== nothing
                 
-        used_lineids = Int[]
         i_species = findcard("atomic_species")
         i_cell = findcard("cell_parameters")
         i_positions = findcard("atomic_positions")
@@ -1137,7 +1137,7 @@ function qe_read_calculation(filename; exec = Exec(; exec = "pw.x"), kwargs...)
     for m in matches
         sym = Symbol(m.captures[1])
         typ = Calculations.flagtype(QE, exec, sym)
-        v   = lowercase(m.captures[3])
+        v   = type == String ? m.captures[3] : lowercase(m.captures[3])
         # normal flag
         if eltype(typ) <: Bool
             v = replace(v, "." => "")
