@@ -1077,8 +1077,8 @@ function qe_read_calculation(filename; exec = Exec(; exec = "pw.x"), kwargs...)
             return pop!(matches)
         end
     end
-    lines = lowercase.(split(contents, "\n"))
-    findcard(s) = findfirst(l -> occursin(s, l), lines)
+    lines = split(contents, "\n")
+    findcard(s) = findfirst(l -> occursin(s, lowercase(l)), lines)
 
     natmatch = find_pop!("nat")
     ntypmatch = find_pop!("ntyp")
@@ -1137,10 +1137,10 @@ function qe_read_calculation(filename; exec = Exec(; exec = "pw.x"), kwargs...)
     for m in matches
         sym = Symbol(m.captures[1])
         typ = Calculations.flagtype(QE, exec, sym)
-        v   = m.captures[3]
+        v   = lowercase(m.captures[3])
         # normal flag
         if eltype(typ) <: Bool
-            v = replace(lowercase(v), "." => "")
+            v = replace(v, "." => "")
         elseif eltype(typ) <: Number
             v = replace(v, "d" => "e")
         elseif typ === Nothing
