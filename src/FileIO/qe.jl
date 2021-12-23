@@ -1077,17 +1077,19 @@ function qe_read_calculation(filename; exec = Exec(; exec = "pw.x"), kwargs...)
             return pop!(matches)
         end
     end
-    lines = split(contents, "\n")
-    findcard(s) = findfirst(l -> occursin(s, lowercase(l)), lines)
+    lines = lowercase.(split(contents, "\n"))
+    findcard(s) = findfirst(l -> occursin(s, l), lines)
 
     natmatch = find_pop!("nat")
     ntypmatch = find_pop!("ntyp")
     nat = natmatch !== nothing ? parse(Int, natmatch.captures[end]) : nothing
     ntyp = ntypmatch !== nothing ? parse(Int, ntypmatch.captures[end]) : nothing
+    ibravmatch = find_pop!("ibrav")
+    ibrav = ibravmatch !== nothing ? parse(Int, ibravmatch.captures[end]) : nothing
+    @assert ibrav == 0 || ibrav === nothing "ibrav different from 0 not allowed."
 
     if nat !== nothing && ntyp !== nothing
-    
-            
+                
         used_lineids = Int[]
         i_species = findcard("atomic_species")
         i_cell = findcard("cell_parameters")
@@ -1108,7 +1110,7 @@ function qe_read_calculation(filename; exec = Exec(; exec = "pw.x"), kwargs...)
         atsyms = Symbol[]
         for k in 1:ntyp
             push!(used_lineids, i_species + k)
-            sline = strip_split(lines[i_species+k])
+            sline = strip_split(lines[i_species + k])
             atsym = Symbol(sline[1])
             ppath = joinpath(pseudo_dir, sline[end])
             pseudos[atsym] = ispath(ppath) ? read(ppath, String) : ""
