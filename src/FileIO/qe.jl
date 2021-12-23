@@ -1137,7 +1137,7 @@ function qe_read_calculation(filename; exec = Exec(; exec = "pw.x"), kwargs...)
     for m in matches
         sym = Symbol(m.captures[1])
         typ = Calculations.flagtype(QE, exec, sym)
-        v   = type == String ? m.captures[3] : lowercase(m.captures[3])
+        v   = typ == String ? m.captures[3] : lowercase(m.captures[3])
         # normal flag
         if eltype(typ) <: Bool
             v = replace(v, "." => "")
