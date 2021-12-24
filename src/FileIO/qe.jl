@@ -934,7 +934,6 @@ function extract_cell!(flags, cell_block)
     if cell_block != nothing
         _alat = 1.0Ang
         if cell_block.option == :alat
-            @assert pop!(flags, :ibrav) == 0 "Only ibrav = 0 allowed for now."
             _alat = alat(flags)
 
         elseif cell_block.option == :bohr
