@@ -1,5 +1,3 @@
-const MAX_CONCURRENT_JOBS = 1000
-
 const JOB_QUEUE = Ref(Dict{String, Tuple{Int, Jobs.JobState}}())
 
 function main_loop(s::Server)
@@ -13,7 +11,7 @@ function main_loop(s::Server)
     while true
         queue!(JOB_QUEUE[], s)
         handle_workflow_runners!(job_dirs_procs)
-        if length(job_dirs_procs) < MAX_CONCURRENT_JOBS
+        if length(job_dirs_procs) < s.max_concurrent_jobs
             handle_job_submission!(s, job_dirs_procs)
         end
         sleep(SLEEP_TIME)
@@ -67,11 +65,11 @@ function handle_job_submission!(s::Server, job_dirs_procs)
     s = DFC.Server("localhost")
     lines = filter(!isempty, readlines(PENDING_JOBS_FILE))
     write(PENDING_JOBS_FILE, "")
-    if length(lines) + length(job_dirs_procs) > MAX_CONCURRENT_JOBS
+    if length(lines) + length(job_dirs_procs) > s.max_concurrent_jobs
         
-        to_submit = lines[1:MAX_CONCURRENT_JOBS - length(job_dirs_procs)]
+        to_submit = lines[1:s.max_concurrent_jobs - length(job_dirs_procs)]
         open(PENDING_JOBS_FILE, "a") do f
-            for l in lines[MAX_CONCURRENT_JOBS - length(job_dirs_procs) + 1:end]
+            for l in lines[s.max_concurrent_jobs - length(job_dirs_procs) + 1:end]
                 write(f, l * "\n")
             end
         end

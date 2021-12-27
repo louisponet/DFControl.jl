@@ -20,7 +20,8 @@ const SERVER_DIR = DFControl.config_path("servers")
     mountpoint::String     = ""
     julia_exec::String     = "julia"
     default_jobdir::String = homedir()
-    local_port = 0
+    local_port::Int = 0
+    max_concurrent_jobs::Int = 100
 end
 
 function Server(s::String; name="")
