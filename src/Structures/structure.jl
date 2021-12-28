@@ -197,7 +197,7 @@ end
 
 Returns the `i`th atom in `structure`, or all atoms with `name` or are of element `el`.
 """
-Base.getindex(str::Structure, i::Int) = str.atoms[i]
+Base.getindex(str::Structure, args...) = str.atoms[args...]
 Base.getindex(str::Structure, el::Symbol) = filter(x -> x.name == el, str.atoms)
 Base.getindex(str::Structure, el::Element) = filter(x -> x.element == el, str.atoms)
 ismagnetic(str::Structure) = any(x -> norm(x.magnetization) > 0, str.atoms)

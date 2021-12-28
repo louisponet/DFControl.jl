@@ -15,7 +15,9 @@ const PENDING_JOBS_FILE = config_path("jobs", "pending.txt")
 const SERVICE_LOG = config_path("daemon.log")
 const SLEEP_TIME = 10.0
 
-daemon_logger() = FileLogger(SERVICE_LOG; append = false)
+daemon_logger() = FileLogger(config_path("logs/daemon.log"); append = false)
+job_logger(id::Int) = FileLogger(config_path("logs/jobs/$id.log"))
+next_jobid() = length(readdir(config_path("logs/jobs"))) + 1
 
 server_config() = Server("localhost")
 

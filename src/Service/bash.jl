@@ -11,19 +11,33 @@ function bash_jobstate(jobdir::String)
         if isempty(pids)
             return (-1, Jobs.Completed)
         end
-        pwd = split(strip(read(`pwdx $(pids[end])`, String)))[end]
-        return (pids[end], abspath(pwd) == abspath(job) ? Jobs.Running : Jobs.Completed)
+        pwds = map(x -> abspath(split(strip(read(`pwdx $x`, String)))[end]), pids)
+        id = findfirst(isequal(abspath(job)), pwds)
+        if id === nothing
+            return (-1, Jobs.Completed)
+        else
+            return (pids[id], Jobs.Running)
+        end
     catch
         return (-1, Jobs.Completed)
     end
 end
 
 function bash_queue!(q, init)
-    for j in keys(q)
-        if exists_job(j)
-            q[j] = bash_jobstate(j)
+    if init
+        jobdirs = filter(exists_job, readlines(RUNNING_JOBS_FILE))
+    else
+        jobdirs = keys(q)
+    end
+    to_running = String[]
+    for j in jobdirs
+        info = bash_jobstate(j)
+        q[j] = info
+        if info[2] == Jobs.Running
+            push!(to_running, j)
         end
     end
+    write(RUNNING_JOBS_FILE, join(to_running, "\n"))
     return q
 end
 

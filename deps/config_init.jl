@@ -5,6 +5,8 @@ mkpath(config_path())
 mkpath(config_path("servers"))
 mkpath(config_path("execs"))
 mkpath(config_path("jobs"))
+mkpath(config_path("logs"))
+mkpath(config_path("logs/jobs"))
 
 # All the job info
 touch(config_path("jobs", "pending.txt"))

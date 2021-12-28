@@ -4,7 +4,7 @@ function main_loop(s::Server)
     job_dirs_procs = Dict{String,Task}()
     queue!(JOB_QUEUE[], s, true)
     for (j, info) in JOB_QUEUE[]
-        if info[2] == Jobs.Pending || info[2] == Jobs.Running
+        if info[2] == Jobs.Running 
             job_dirs_procs[j] = spawn_worker(j)
         end
     end
@@ -49,12 +49,20 @@ function spawn_worker(jobdir)
                        # sleep_time = SLEEP_TIME)
         # return proc, f
     # else
+    id = next_jobid()
     return Threads.@spawn begin
-        sleep(3*SLEEP_TIME)
-        while isrunning(jobdir)
-            sleep(SLEEP_TIME)
+        with_logger(job_logger(id)) do
+            @info (timestamp = Dates.now(), jobdir = jobdir) 
+            sleep(3*SLEEP_TIME)
+            info = state(jobdir)
+            while info == Jobs.Pending || info == Jobs.Running || info == Jobs.Submitted
+                sleep(SLEEP_TIME)
+                info = state(jobdir)
+                @info (timestamp = Dates.now(), jobdir = jobdir, state = info) 
+            end
+            outputdata(jobdir, map(x -> splitext(splitpath(x.infile)[end])[1], FileIO.read_job_script(joinpath(jobdir, "job.tt"))[2]))
+            @info (timestamp = Dates.now(), jobdir = jobdir, state = info) 
         end
-        outputdata(jobdir, map(x -> splitext(splitpath(x.infile)[end])[1], FileIO.read_job_script(joinpath(jobdir, "job.tt"))[2]))
     end
 end
 
