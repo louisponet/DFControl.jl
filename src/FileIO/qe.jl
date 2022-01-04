@@ -1081,8 +1081,7 @@ function qe_read_calculation(filename; exec = Exec(; exec = "pw.x"), kwargs...)
     end
     function findcard(s)
         idid = findfirst(i -> occursin(s, lowercase(lines[i])), unused_ids)
-        @assert idid !== nothing "Card $s not found in input $filename."
-        return unused_ids[idid]
+        return idid !== nothing ? unused_ids[idid] : nothing
     end
         
     used_lineids = Int[]
