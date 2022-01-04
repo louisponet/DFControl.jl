@@ -1056,18 +1056,21 @@ Returns a `Calculation{QE}` and the `Structure` that is found in the calculation
 """
 function qe_read_calculation(filename; exec = Exec(; exec = "pw.x"), kwargs...)
     @assert ispath(filename) "$filename is not a valid path."
-    contents = read(filename, String)
+    contents = readlines(filename)
 
-    reg = r"([\w\d]+)(?:\(((?:\s*,*\d+\s*,*)*)\))?\s*=\s*([^,\n]*)"
-    offset = 0
-    m = match(reg, contents)
-    matches = RegexMatch[]
-
-    while m !== nothing
-        push!(matches, m)
-        offset = m.offsets[end] + 1
-        m = match(reg, contents, offset)
-    end
+    lines = map(contents) do l
+        id = findfirst(isequal('!'), l)
+        if id !== nothing
+            l[1:id]
+        else
+            l
+        end
+    end |> x -> filter(!isempty, x)
+     
+    reg = r"([\w\d]+)(?:\(((?:\s*,*\d+\s*,*)*)\))?\s*=\s*([^!,\n]*)"
+    tmatches = map(x -> match(reg, x), lines)
+    unused_ids = findall(isnothing, tmatches)
+    matches = filter(!isnothing, tmatches)
 
     function find_pop!(flag)
         id = findfirst(x -> x.captures[1] == flag, matches)
@@ -1076,8 +1079,12 @@ function qe_read_calculation(filename; exec = Exec(; exec = "pw.x"), kwargs...)
             return pop!(matches)
         end
     end
-    lines = split(contents, "\n")
-    findcard(s) = findfirst(l -> occursin(s, lowercase(l)), lines)
+    function findcard(s)
+        idid = findfirst(i -> occursin(s, lowercase(lines[i])), unused_ids)
+        @assert idid !== nothing "Card $s not found in input $filename."
+        return unused_ids[idid]
+    end
+        
     used_lineids = Int[]
 
     natmatch = find_pop!("nat")
