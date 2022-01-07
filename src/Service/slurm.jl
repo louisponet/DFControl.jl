@@ -111,4 +111,4 @@ function slurm_submit(j::String)
     return (id, Jobs.Submitted)
 end
 
-slurm_abort(id::Int) = run(`scancel $id`)
+slurm_abort(id::Int) = (run(`scancel $id`); return id)

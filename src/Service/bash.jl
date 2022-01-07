@@ -62,6 +62,7 @@ function bash_abort(jobdir::String)
     if id !== nothing
         run(`pkill $id`)
     end
+    return id
 end
 
 
