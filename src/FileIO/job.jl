@@ -21,24 +21,6 @@ function write_job_header(f, job::Job, environment)
     end
 end
 
-# function writetojob(f, job, calculations::Vector{Calculation{Abinit}}, environment; kwargs...)
-#     abinit_jobfiles = write_abi_datasets(calculations, job.dir; kwargs...)
-#     abifiles = String[]
-#     num_abi = 0
-#     for (filename, pseudos, runcommand) in abinit_jobfiles
-#         push!(abifiles, filename)
-#         file, ext = splitext(filename)
-#         write(f,
-#               "$runcommand << !EOF\n$filename\n$(file * ".out")\n$(job.name * "_Xi$num_abi")\n$(job.name * "_Xo$num_abi")\n$(job.name * "_Xx$num_abi")\n")
-#         for pp in pseudos
-#             write(f, "$pp\n")
-#         end
-#         write(f, "!EOF\n")
-#         num_abi += 1
-#     end
-#     return abifiles
-# end
-
 function writetojob(f, job, calculations::Vector{Calculation{Elk}}, environment; kwargs...)
     save(calculations, job.structure, job.dir; kwargs...)
     should_run = any(map(x -> x.run, calculations))
@@ -296,7 +278,7 @@ function read_job_script(job_file::String)
     end
     #TODO cleanup
     known_es = Calculations.load_execs()
-    execs = filter(x -> !any(y -> y.dir == x.dir && y.exec == x.exec, values(known_es)), unique(map(x->x.exec, calcs)))
+    execs = filter(x -> !any(y -> y.dir == x.dir && y.exec == x.exec, values(known_es)), unique(map(x->x.exec, filter(y->y.run, calcs))))
     for e in execs
         i = 1
         runnable = Calculations.isrunnable(e)
