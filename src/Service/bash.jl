@@ -1,22 +1,28 @@
+function bash_jobid(job::Job)
+    i = last_running_calculation(jobdir)
+    l = job[i]
+    codeexec = l.exec.exec
+    pids = parse.(Int, split(read(`pgrep $codeexec`, String)))
+    if isempty(pids)
+        return (-1, Jobs.Completed)
+    end
+    pwds = map(x -> abspath(split(strip(read(`pwdx $x`, String)))[end]), pids)
+    id = findfirst(isequal(abspath(job)), pwds)
+    if id !== nothing
+        return pids[id]
+    end
+end
+
 function bash_jobstate(jobdir::String)
     job = load_job(jobdir)
     n = now()
     u = username()
-    i = last_running_calculation(jobdir)
-    i === nothing && return false
-    l = job[i]
-    codeexec = l.exec.exec
     try
-        pids = parse.(Int, split(read(`pgrep $codeexec`, String)))
-        if isempty(pids)
-            return (-1, Jobs.Completed)
-        end
-        pwds = map(x -> abspath(split(strip(read(`pwdx $x`, String)))[end]), pids)
-        id = findfirst(isequal(abspath(job)), pwds)
+        id = bash_jobid(job)
         if id === nothing
             return (-1, Jobs.Completed)
         else
-            return (pids[id], Jobs.Running)
+            return (id, Jobs.Running)
         end
     catch
         return (-1, Jobs.Completed)
@@ -49,4 +55,13 @@ function bash_submit(j::String)
     end
     return (-1, Jobs.Submitted)
 end
-        
+
+function bash_abort(jobdir::String)
+    job = load_job(jobdir)
+    id = bash_jobid(job)
+    if id !== nothing
+        run(`pkill $id`)
+    end
+end
+
+

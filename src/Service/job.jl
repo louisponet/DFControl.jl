@@ -302,3 +302,14 @@ function queue!(q, s::Server, init=false)
         return slurm_queue!(q, init) 
     end
 end
+
+function abort(job_dir::String)
+    @assert haskey(JOB_QUEUE[], job_dir) "No job exists in dir: $job_dir!"
+    id = JOB_QUEUE[][job_dir][1]
+    s = local_server()
+    if s.scheduler == Servers.Bash
+        return bash_abort(id) 
+    elseif s.scheduler == Servers.Slurm
+        return slurm_abort(id) 
+    end
+end

@@ -110,3 +110,5 @@ function slurm_submit(j::String)
     id = parse(Int, split(read(`sbatch job.tt`, String))[end])
     return (id, Jobs.Submitted)
 end
+
+slurm_abort(id::Int) = run(`scancel $id`)

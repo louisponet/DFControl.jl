@@ -287,22 +287,9 @@ If the last running calculation happened to be a `Calculation{QE}`, the correct 
 For other codes the process is not smooth, and restarting is not guaranteed.
 """
 function abort(job::Job)
-    lastrunning = job.calculations[last_running_calculation(job)]
-    if lastrunning == nothing
-        error("Is this job running?")
-    end
-    if eltype(lastrunning) == QE
-        length(filter(x -> eltype(x) == QE, job.calculations)) > 1 &&
-            @warn "It's absolutely impossible to guarantee a graceful abort of a multi job script with QE."
-
-        abortpath = writeabortfile(job, lastrunning)
-        while ispath(abortpath)
-            continue
-        end
-        qdel(job)
-    else
-        qdel(job)
-    end
+    @assert isrunning(job) "Is this job running?"
+    id = JSON3.read(HTTP.get(Server(job.server), "/abort/" * abspath(job)).body, Int)
+    @info "Aborted job $id"
 end
 
 function registered_jobs(fuzzy::String, server::Server)

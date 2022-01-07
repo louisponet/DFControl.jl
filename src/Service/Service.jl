@@ -20,6 +20,7 @@ job_logger(id::Int) = FileLogger(config_path("logs/jobs/$id.log"))
 next_jobid() = length(readdir(config_path("logs/jobs"))) + 1
 
 server_config() = Server("localhost")
+local_server() = server_config()
 
 include("running.jl")
 include("calculation.jl")
