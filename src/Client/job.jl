@@ -245,7 +245,7 @@ function save(e::Exec; server=Server("localhost"))
 end
 
 function verify_execs(job::Job, server::Server)
-    replacements = verify_execs(unique(map(x->x.exec, job.calculations)), server)
+    replacements = verify_execs(unique(map(x->x.exec, filter(x->x.run, job.calculations))), server)
     for (e, rep) in replacements
         for c in job.calculations
             if c.exec == e
