@@ -1,4 +1,4 @@
-using DFControl, Test, Suppressor
+using DFControl, Test
 
 testdir = @__DIR__
 @time begin
