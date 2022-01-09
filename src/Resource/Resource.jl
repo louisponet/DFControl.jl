@@ -102,7 +102,7 @@ function run()
     port, server = listenany(ip"0.0.0.0", 8080)
     s.port = port
     Servers.save(s)
-    @tspawnat 2 HTTP.serve(requestHandler, "0.0.0.0", port, server=server)
+    Threads.@spawn HTTP.serve(requestHandler, "0.0.0.0", port, server=server)
     with_logger(Service.daemon_logger()) do
         Service.main_loop(s)
     end
