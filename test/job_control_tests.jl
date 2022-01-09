@@ -15,13 +15,13 @@ testjobpath = joinpath(testassetspath, "test_job")
     @test isapprox(job.structure[:Ni][1].magnetization, [0,0,0.1])
     @test isapprox(map(x->x.magnetization, job.structure[Structures.element(:Ni)]), [[0,0,0.1], [0,0,-0.1]])
     ngl = Structures.niggli_reduce(job.structure)
-    @test Structures.volume(job.structure) == Structures.volume(ngl)
+    @test isapprox(Structures.volume(job.structure),  Structures.volume(ngl))
     @test job.structure.cell != ngl.cell
     prev = job.structure[Structures.element(:Ni)][1].position_cryst[1]
     prev_vol = Structures.volume(job.structure)
     Structures.scale_cell!(job.structure, diagm(0=>[2,1,1]))
-    @test job.structure[Structures.element(:Ni)][1].position_cryst[1] == 0.5prev
-    @test 2*prev_vol == Structures.volume(job.structure)
+    @test isapprox(job.structure[Structures.element(:Ni)][1].position_cryst[1],0.5prev)
+    @test isapprox(2*prev_vol,  Structures.volume(job.structure))
 
     out_str = outputdata(job)["scf"][:initial_structure]
     Structures.update_geometry!(job.structure, out_str)
@@ -35,9 +35,9 @@ end
     oldposition = job.structure.atoms[1].position_cart
     cell_ = job.structure.cell
 
-    @test job.structure.atoms[1].position_cart ==
-          job.structure.cell' * job.structure.atoms[1].position_cryst
-    @test oldposition == newpositions[1]
+    @test isapprox(job.structure.atoms[1].position_cart,
+          job.structure.cell' * job.structure.atoms[1].position_cryst)
+    @test isapprox(oldposition, newpositions[1])
     @test oldposition + cell_[:, 1] ∈ newpositions
     @test oldposition + 2 * cell_[:, 2] ∈ newpositions
     @test oldposition + 1 * cell_[:, 3] ∈ newpositions
