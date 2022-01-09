@@ -4,7 +4,7 @@ testassetspath = joinpath(testdir, "testassets")
 testjobpath = joinpath(testassetspath, "test_job")
 
 @testset "Structure manipulation" begin
-    job = Job(testjobpath, "localhost_test")
+    job = Job(testjobpath, "localhost")
 
     @test length(Structures.symmetry_operators(job.structure)[1]) == 48
     
@@ -29,7 +29,7 @@ testjobpath = joinpath(testassetspath, "test_job")
 end
 
 @testset "supercell" begin
-    job = Job(testjobpath, "localhost_test")
+    job = Job(testjobpath, "localhost")
     struct2 = Structures.create_supercell(job.structure, 1, 2, 1)
     newpositions = [at.position_cart for at in struct2.atoms]
     oldposition = job.structure.atoms[1].position_cart
@@ -45,7 +45,7 @@ end
 end
 
 @testset "registry" begin
-    job = Job(testjobpath,  "localhost_test")
+    job = Job(testjobpath,  "localhost")
     rm(testjobpath, recursive=true)
     prevlen = length(Jobs.registered_jobs())
     save(job)
@@ -54,7 +54,7 @@ end
 end
 
 # @testset "execs" begin
-#     job = Job(testjobpath,  "localhost_test")
+#     job = Job(testjobpath,  "localhost")
 #     for c in job.calculations
 #         e = c.exec
 #         if e.exec == "pw.x"
@@ -74,7 +74,7 @@ end
 #     @test mpi.flags[1].value == 4
 
 #     save(job)
-#     job = Job(testjobpath, "localhost_test")
+#     job = Job(testjobpath, "localhost")
 #     ex = job.calculations[1].execs[2]
 #     mpi = job.calculations[1].execs[1]
 #     @test ex.flags[1].symbol == :nk
@@ -99,7 +99,7 @@ end
 # end
 
 @testset "calculation management" begin
-    job = Job(testjobpath, "localhost_test")
+    job = Job(testjobpath, "localhost")
     ncalcs = length(job.calculations)
     t = pop!(job, "scf")
     @test length(job.calculations) == ncalcs - 1
@@ -118,9 +118,9 @@ end
 end
 
 @testset "versioning" begin
-    job = Job(testjobpath, "localhost_test")
+    job = Job(testjobpath, "localhost")
     job[:nbnd] = 30
-    curver = Client.last_version(job)
+    curver = job.version
     save(job)
     @test job.version == curver + 1
     save(job)

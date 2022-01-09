@@ -289,7 +289,7 @@ function read_job_script(job_file::String)
         end
         if runnable
             e.name = """$(e.exec)@$(join(splitpath(e.dir)[2:end], "_"))"""
-            Calculations.maybe_register(e)
+            Calculations.save(e)
         end
     end
     for c in calcs
@@ -306,8 +306,8 @@ function read_job_script(job_file::String)
     if ename !== nothing
         environment = ename
         #TODO only works with slurm!!!
-        deleteat!(header, findall(x -> x[1:7] == "#SBATCH", header))
-        deleteat!(header, findall(x -> x[1:6] == "export", header))
+        deleteat!(header, findall(x -> occursin("#SBATCH", x), header))
+        deleteat!(header, findall(x -> occursin("export", x), header))
     else
         environment = ""
     end
@@ -317,13 +317,19 @@ end
 function parse_calculations(calcs)
     structures = Structure[]
     outcalcs = Calculation[]
-    for calc in calcs
-        c = calculationparser(calc.exec)(calc.infile; exec = calc.exec, infile = splitpath(calc.infile)[end], outfile = splitpath(calc.outfile)[end], run = calc.run)
-        if c[2] !== nothing
-            push!(structures, c[2])
-        end
-        if c[1] !== nothing
-            push!(outcalcs, c[1])
+    for (ic, calc) in enumerate(calcs)
+        infile = splitpath(calc.infile)[end]
+        if Calculations.is_wannier_exec(calc.exec) && !isempty(outcalcs) && outcalcs[end].infile == infile
+            Calculations.set_flags!(outcalcs[end], :preprocess => outcalcs[end].run, print=false)
+            empty!(outcalcs[end].exec.flags)
+        else
+            c = calculationparser(calc.exec)(calc.infile; exec = calc.exec, infile = infile, outfile = splitpath(calc.outfile)[end], run = calc.run)
+            if c[2] !== nothing
+                push!(structures, c[2])
+            end
+            if c[1] !== nothing
+                push!(outcalcs, c[1])
+            end
         end
     end
     if !isempty(structures)

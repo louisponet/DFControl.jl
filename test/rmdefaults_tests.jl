@@ -1,5 +1,5 @@
 using DFControl, Test
 
-Client.rm_pseudoset!("test", "localhost_test")
+Client.rm_pseudoset!("test", server= "localhost")
 
-@test_throws ErrorException Client.pseudos("localhost_test", "test", [:Ni])
+@test_throws ErrorException Client.pseudos("localhost", "test", [:Ni])

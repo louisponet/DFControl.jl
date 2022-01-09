@@ -34,9 +34,16 @@ function Server(s::String; name="")
     if occursin("@", s)
         username, domain = split(s, "@")
     else
-        @info "Server with name $s not found."
-        name = s
         username, domain = "", ""
+        while isempty(username)
+            print("Username:")
+            username = readline()
+        end
+        while isempty(domain)
+            print("Domain:")
+            domain = readline()
+        end
+        name = s
     end
     @info "Creating new Server configuration..."
     while isempty(name)
@@ -72,14 +79,6 @@ function Server(s::String; name="")
         save(tserver)
         return tserver
     catch
-        while isempty(username)
-            print("Username:")
-            username = readline()
-        end
-        while isempty(domain)
-            print("Domain:")
-            domain = readline()
-        end
         print("Port (default: 8080):")
         port_str = readline()
         port = isempty(port_str) ? 8080 : parse(Int, port_str)
@@ -125,8 +124,8 @@ Utils.searchdir(s::Server, dir, str) = joinpath.(dir, filter(x->occursin(str, x)
 parse_server_config(config) = JSON3.read(config, Server)
 read_server_config(config_file) = parse_server_config(read(config_file, String))
 
-function load_remote_config(username, domain)
-    cmd = "cat ~/.julia/config/DFControl/servers/localhost.json"
+function load_remote_config(username, domain; name="localhost")
+    cmd = "cat ~/.julia/config/DFControl/servers/$name.json"
     return parse_server_config(server_command(username, domain, cmd).stdout)
 end
 
@@ -191,15 +190,15 @@ end
 
 function isalive(s::Server)
     try
-        p1 = Pipe()
-        p2 = Pipe()
-        if s.local_port != 0
-            run(pipeline(`nc -vz localhost $(s.local_port)`, stdout = p1, stderr=p2))
-        else
-            run(pipeline(`nc -vz  $(s.domain) $(s.port)`, stdout = p2, stderr=p1))
-        end
-        close(p1.in)
-        close(p2.in)
+        # p1 = Pipe()
+        # p2 = Pipe()
+        # if s.local_port != 0
+        #     run(pipeline(`nc -vz localhost $(s.local_port)`, stdout = p1, stderr=p2))
+        # else
+        #     run(pipeline(`nc -vz  $(s.domain) $(s.port)`, stdout = p2, stderr=p1))
+        # end
+        # close(p1.in)
+        # close(p2.in)
         resp = HTTP.get(s, "/server_config")
         return JSON3.read(resp.body, Server).username == s.username
     catch
@@ -209,7 +208,7 @@ end
 
 function start(s::Server)
     @info "Starting:\n$s"
-    julia_cmd = """$(s.julia_exec) --startup-file=no -t auto -e "using DFControl; DFControl.Resource.run()" &> ~/.julia/config/DFControl/errors.log"""
+    julia_cmd = """$(s.julia_exec) --startup-file=no -t auto -e "using DFControl; DFControl.Resource.run()" &> ~/.julia/config/DFControl/logs/daemon.log"""
     if s.domain != "localhost"
         if s.local_port != 0
             t = getfirst(x->occursin("ssh -f -N", x), split(read(pipeline(`ps aux` , stdout = `grep $(s.local_port)`), String), "\n"))
@@ -287,7 +286,7 @@ function maybe_create_localhost()
         end
         julia_exec = joinpath(Sys.BINDIR, "julia")
         out = Server("localhost", ENV["USER"], "localhost", port, scheduler, "", julia_exec,
-                     dir, 0)
+                     dir, 0, 100)
         save(out)
         return out
     else

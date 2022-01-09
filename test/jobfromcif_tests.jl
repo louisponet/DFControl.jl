@@ -28,7 +28,7 @@ testjobpath = joinpath(testdir, "testassets", "test_job")
                                                         [4, 4, 4, 1, 1, 1])])]
     job = Job(name, str, calculations, :ecutwfc => 40.0, :occupations => "smearing", :degauss=>0.01, :conv_thr => 1e-6, :nbnd => 18;
                 #kwargs
-                header = header, dir = dir, server="localhost_test")
+                header = header, dir = dir, server="localhost")
 
 
     set_pseudos!(job, :test)
@@ -43,7 +43,6 @@ testjobpath = joinpath(testdir, "testassets", "test_job")
     push!(job, Calculations.gencalc_nscf(job["scf"], (5,5,5)))
 
     push!(job, Calculations.gencalc_projwfc(job["nscf"], 2.0, 20.0, 0.1))
-    @show isempty(job["projwfc"].exec.flags)
 
     @test all(values(job[:ecutwfc]) .== 40.0)
     for c in job.calculations
@@ -66,9 +65,9 @@ testjobpath = joinpath(testdir, "testassets", "test_job")
     end
     save(job)
 
-    job2 = Job(abspath(job), "localhost_test")
+    job2 = Job(abspath(job), "localhost")
     for (c1, c2) in zip(job2.calculations, job.calculations)
-        @test c2 == c1
+        @test c1 == c2
     end
     @test job2.structure == job.structure
 end
@@ -76,12 +75,12 @@ end
 refjobpath =joinpath(testdir, "testassets", "reference_job")
 
 @testset "reference comparison" begin
-    job = Job(testjobpath, "localhost_test")
+    job = Job(testjobpath, "localhost")
     
     orig_job = deepcopy(job)
     job.structure = Structures.create_supercell(job.structure, 1, 0, 0, make_afm = true)
     
-    job2 = Job(refjobpath, "localhost_test")
+    job2 = Job(refjobpath, "localhost")
     @test job2.structure == job.structure
     
     for f in DFControl.Utils.searchdir(job2, ".out")
@@ -97,14 +96,13 @@ refjobpath =joinpath(testdir, "testassets", "reference_job")
     wanexec = Exec("wan","wannier90.x", joinpath(homedir(), "Software/wannier90"))
     append!(job, Calculations.gencalc_wan(job, 0.000011, wanexec = wanexec))
     for (c1, c2) in zip(job2.calculations, job.calculations)
-        @test c2 == c1
+        @test c1 == c2
     end
     save(job)
-    @test !ispath(joinpath(job, "scf.out"))
-    job = Job(testjobpath, "localhost_test")
+    job = Job(testjobpath, "localhost")
     
     for (c1, c2) in zip(job2.calculations, job.calculations)
-        @test c2 == c1
+        @test c1 == c2
     end
     save(orig_job)
     for f in DFControl.Utils.searchdir(job2, ".out")

@@ -6,7 +6,7 @@ function Jobs.Job(dir::AbstractString, s = "localhost"; version::Int = -1)
         dir = request_job_dir(dir, server)
         dir === nothing && return
     end
-    if version == last_version(dir, server)
+    if version == last_version(dir; server= server)
         dir = Jobs.main_job_dir(dir)
     elseif !occursin(Jobs.VERSION_DIR_NAME, dir) && version != -1
         dir = Jobs.version_dir(Jobs.main_job_dir(dir), version)
@@ -71,7 +71,7 @@ function save(job::Job, server::Server = Servers.maybe_start_server(job))
     apath = abspath(job)
 
     if job.environment != ""
-        environment = get_environment(job.environment, job.server)
+        environment = get_environment(job.environment; server= job.server)
         @assert environment !== nothing "Environment with name $(job.environment) not found!"
     else
         environment = nothing
@@ -83,7 +83,6 @@ function save(job::Job, server::Server = Servers.maybe_start_server(job))
     job.dir = apath
     rm(tmpdir, recursive=true)
   
-        
     resp_job_version = JSON3.read(HTTP.post(server, "/jobs/" * apath, [], JSON3.write(files_to_send)).body,
                           Int)
     @info "Job version: $(curver) => $(resp_job_version)."
@@ -154,9 +153,9 @@ end
 
 Returs the valid versions of `job`.
 """
-versions(job::Job) = versions(abspath(job), job.server) 
-function versions(dir, s = "localhost")
-    server=Servers.maybe_start_server(s) 
+versions(job::Job) = versions(abspath(job); server = job.server) 
+function versions(dir::AbstractString; server = "localhost")
+    server=Servers.maybe_start_server(server) 
     return JSON3.read(HTTP.get(server, "/job_versions/" * Jobs.main_job_dir(dir)).body, Vector{Int})
 end
 
@@ -165,9 +164,9 @@ end
 
 Returns the last version number of `job`.
 """
-last_version(job::Job) = last_version(abspath(job), job.server) 
-function last_version(dir, s="localhost")
-    t = versions(dir, s)
+last_version(job::Job) = last_version(abspath(job), server = job.server) 
+function last_version(dir::AbstractString; server="localhost")
+    t = versions(dir, server=server)
     return isempty(t) ? 0 : t[end]
 end
 
@@ -192,11 +191,11 @@ function last_running_calculation(job::Job)
     end
 end
 
-outputdata(job::Job, calcs::Vector{String}=String[]; kwargs...) =
-    outputdata(job.dir, job.server, calcs; kwargs...)
+outputdata(job::Job; kwargs...) =
+    outputdata(job.dir; server=job.server, kwargs...)
     
-function outputdata(jobdir::String, s::String = "localhost", calcs::Vector{String}=String[]; extra_parse_funcs = nothing)
-    server = Servers.maybe_start_server(s)
+function outputdata(jobdir::String; server = "localhost", calcs::Vector{String}=String[], extra_parse_funcs = nothing)
+    server = Servers.maybe_start_server(server)
     jobdir = isabspath(jobdir) ? jobdir : joinpath(server, jobdir)
     resp = HTTP.get(server, "/outputdata/" * jobdir, [], JSON3.write(calcs))
     if resp.status == 204
@@ -212,7 +211,7 @@ function outputdata(jobdir::String, s::String = "localhost", calcs::Vector{Strin
     out = dat["outputdata"]
     if extra_parse_funcs !== nothing
         for k in keys(out)
-            if k ∈ calcs
+            if !isempty(calcs) && k ∈ calcs
                 n = c.name
                 try
                     f = joinpath(jobdir, c.outfile)
@@ -235,11 +234,11 @@ function known_execs(e::String, dir::String = ""; server = Server("localhost"))
 end
 known_execs(e::Calculations.Exec; kwargs...) = known_execs(e.exec,e.dir; kwargs...)
 
-function get_exec(name::String; server=Server("localhost"))
+function get_exec(name::String; server="localhost")
     s = Servers.maybe_start_server(server)
     return JSON3.read(HTTP.get(s, "/exec/$name").body, Calculations.Exec)
 end
-function save(e::Exec; server=Server("localhost"))
+function save(e::Exec; server="localhost")
     s = Servers.maybe_start_server(server)
     return JSON3.read(HTTP.post(s, "/exec/", [], JSON3.write(e)).body, Calculations.Exec)
 end
@@ -292,28 +291,25 @@ function abort(job::Job)
     @info "Aborted job $id"
 end
 
-function registered_jobs(fuzzy::String, server::Server)
-    server = Servers.maybe_start_server(server) 
-    resp = HTTP.get(server, "/registered_jobs/" * fuzzy)
-    return reverse(JSON3.read(resp.body, Vector{Tuple{String,DateTime}}))
-end
-
-registered_jobs(fuzzy::String, server::String) = 
-    registered_jobs(fuzzy, Servers.Server(server))
-
-function registered_jobs(fuzzy::String = "")
-    all_jobs = Dict{String,Vector{Tuple{String, DateTime}}}()
-    for s in Servers.known_servers()
-        jobs = registered_jobs(fuzzy, s)
-        if !isempty(jobs)
-            all_jobs[s.name] = jobs
+function registered_jobs(fuzzy::String=""; server=nothing)
+    if server === nothing
+        all_jobs = Dict{String,Vector{Tuple{String, DateTime}}}()
+        for s in Servers.known_servers()
+            jobs = registered_jobs(fuzzy, s)
+            if !isempty(jobs)
+                all_jobs[s.name] = jobs
+            end
         end
+        return all_jobs
+    else
+        server = Servers.maybe_start_server(server) 
+        resp = HTTP.get(server, "/registered_jobs/" * fuzzy)
+        return reverse(JSON3.read(resp.body, Vector{Tuple{String,DateTime}}))
     end
-    return all_jobs
 end
-        
-function running_jobs(fuzzy="", s="localhost")
-    server = Servers.maybe_start_server(s) 
+      
+function running_jobs(fuzzy=""; server="localhost")
+    server = Servers.maybe_start_server(server) 
     resp = HTTP.get(server, "/running_jobs/" * fuzzy)
     return reverse(JSON3.read(resp.body, Vector{String}))
 end
@@ -337,7 +333,7 @@ function rm_version!(job::Job, version::Int)
         error("Version $version does not exist.")
     end
 
-    HTTP.put(server, "/rm_version/$version", [], JSON3.write(job))    
+    HTTP.put(server, "/rm_version/" * abspath(job), [], JSON3.write(version))    
     if version == job.version
         @warn "Job version is the same as the one to be removed, switching to last known version."
         lv = last_version(job)
@@ -348,25 +344,25 @@ function rm_version!(job::Job, version::Int)
     end
 end
 
-function environment_from_jobscript(scriptpath, s="localhost")
-    server = Servers.maybe_start_server(s)
+function environment_from_jobscript(scriptpath; server="localhost")
+    server = Servers.maybe_start_server(server)
     tmp = tempname()
     Servers.pull(server, scriptpath, tmp)
     return Jobs.environment_from_jobscript(tmp)
 end
     
-function get_environment(name, s="localhost")
-    server = Servers.maybe_start_server(s)
+function get_environment(name; server="localhost")
+    server = Servers.maybe_start_server(server)
     return JSON3.read(HTTP.get(server, "/environment/$name").body, Environment)    
 end
     
-function add_environment(env::Environment, name::String, s="localhost")
-    server = Servers.maybe_start_server(s)
+function add_environment(env::Environment, name::String; server="localhost")
+    server = Servers.maybe_start_server(server)
     return HTTP.post(server, "/environment/$name", [], JSON3.write(env))
 end
 
-function rm_environment!(name::String, s="localhost")
-    server = Servers.maybe_start_server(s)
+function rm_environment!(name::String; server="localhost")
+    server = Servers.maybe_start_server(server)
     return HTTP.put(server, "/environment/$name")
 end
  

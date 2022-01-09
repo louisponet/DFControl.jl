@@ -22,6 +22,16 @@ using ..FileIO
         @warn "Package not identified from execs $(x.exec)."
     end
 
+    for d in x.data
+        if d.data[1] isa Vector
+            dat = NTuple{length(d.data[1]), Float64}[]
+            for d_ in d.data
+                push!(dat, (d_...,))
+            end
+            d.data = dat
+        end
+    end
+
     t = Calculation{p}(x.name, x.flags, x.data, x.exec, x.run,  x.infile,
                        x.outfile)
     return pos, t
@@ -32,7 +42,7 @@ using ..Structures: set_pseudos!, element; export set_pseudos!, element
 
 include("job.jl")
 export submit, save, isrunning, state, versions, last_version, switch_version!, rm_version!, outputdata,
-       registered_jobs, running_jobs, abort
+       registered_jobs, running_jobs, abort,
        environment_from_jobscript, get_environment, add_environment, rm_environment!,
        known_execs, get_exec
 

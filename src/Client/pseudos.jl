@@ -35,11 +35,11 @@ function list_pseudosets(server = "localhost")
 end
 
 """
-    configure_pseudoset(set_name::String, dir::String, server = "localhost")
+    configure_pseudoset(set_name::String, dir::String; server = "localhost")
 
 Reads the specified `dir` and sets up the pseudos for `set`.
 """
-function configure_pseudoset(set_name::String, dir::String, server = "localhost")
+function configure_pseudoset(set_name::String, dir::String; server = "localhost")
     s = Servers.maybe_start_server(server)
     p = isabspath(dir) ? dir : joinpath(s, dir)
     n_pseudos = JSON3.read(HTTP.post(s, "/configure_pseudoset/" * p, [],
@@ -48,11 +48,11 @@ function configure_pseudoset(set_name::String, dir::String, server = "localhost"
 end
 
 """
-    rm_pseudoset!(set_name::String, server = "localhost")
+    rm_pseudoset!(set_name::String; server = "localhost")
 
 Removes the pseudo set from the server.
 """
-function rm_pseudoset!(set_name::String, server = "localhost")
+function rm_pseudoset!(set_name::String; server = "localhost")
     s = Servers.maybe_start_server(server)
     return HTTP.put(s, "/rm_pseudos", [], JSON3.write(set_name))
 end

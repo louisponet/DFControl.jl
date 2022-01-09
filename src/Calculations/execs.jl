@@ -142,12 +142,14 @@ function Base.string(e::Exec)
     str = "$direxec"
     for flag in e.flags
         str *= " $(join(fill('-', flag.minus_count)))$(flag.symbol)"
-        if !isa(flag.value, AbstractString)
-            for v in flag.value
-                str *= " $v"
+        if flag.value !== nothing
+            if !isa(flag.value, AbstractString)
+                for v in flag.value
+                    str *= " $v"
+                end
+            else
+                str *= " $(flag.value)"
             end
-        else
-            str *= " $(flag.value)"
         end
     end
     return str
@@ -298,7 +300,9 @@ function parse_wan_execflags(line::Vector{<:AbstractString})
     i = 1
     while i <= length(line)
         s = strip(line[i], '-')
-        push!(flags, ExecFlag(wan_execflag(Symbol(s)), nothing))
+        if s != "pp"
+            push!(flags, ExecFlag(wan_execflag(Symbol(s)), nothing))
+        end
         i += 1
     end
     return flags

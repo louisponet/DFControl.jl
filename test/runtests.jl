@@ -2,7 +2,7 @@ using DFControl, Test, Suppressor
 
 testdir = @__DIR__
 @time begin
-    test_server = Server("localhost_test", "ponet", "localhost", 8123, Servers.Bash, "", "julia", homedir(), 0)
+    test_server = Server("localhost")
     if Servers.isalive(test_server)
         try
             Servers.kill_server(test_server)
@@ -11,15 +11,15 @@ testdir = @__DIR__
         end
     end
     Servers.save(test_server)
-    DFControl.Servers.start(test_server)
-    if Servers.isalive(test_server)
-        try
-            Servers.kill_server(test_server)
-        catch
-            nothing
-        end
-    end
-    @async DFControl.Resource.run(8123)
+    # DFControl.Servers.start(test_server)
+    # if Servers.isalive(test_server)
+    #     try
+    #         Servers.kill_server(test_server)
+    #     catch
+    #         nothing
+    #     end
+    # end
+    @async DFControl.Resource.run()
     @time @testset "constants" begin
         include("constant_tests.jl")
     end
@@ -38,6 +38,6 @@ testdir = @__DIR__
     @time @testset "Remove defaults" begin
         include("rmdefaults_tests.jl")
     end
-    rm(DFControl.config_path("servers/localhost_test.json"))
+    # rm(DFControl.config_path("servers/localhost_test.json"))
     rm(DFControl.config_path("environments/test_default.json"))
 end

@@ -70,7 +70,6 @@ end
 # Jobs are submitted by the daemon, using supplied job jld2 from the caller (i.e. another machine)
 # Additional files are packaged with the job
 function handle_job_submission!(s::Server, job_dirs_procs)
-    s = DFC.Server("localhost")
     lines = filter(!isempty, readlines(PENDING_JOBS_FILE))
     write(PENDING_JOBS_FILE, "")
     if length(lines) + length(job_dirs_procs) > s.max_concurrent_jobs

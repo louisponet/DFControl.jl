@@ -1,9 +1,5 @@
 function load_job(job_dir::AbstractString)
     orig_dir = job_dir
-    s = Server("localhost")
-    if !isabspath(job_dir)
-        job_dir = joinpath(s, job_dir)
-    end
     scriptpath = joinpath(job_dir, "job.tt")
     if ispath(scriptpath)
         version = Jobs.version(job_dir)
@@ -107,14 +103,18 @@ and the version of `job` will be incremented.
 """
 function save(jobdir::String, files; kwargs...)
 
+    if jobdir[end] == '/'
+        jobdir = jobdir[1:end-1]
+    end
     #Since at this stage we know the job will belong to the current localhost we change the server
     # Here we find the main directory, needed for if a job's local dir is a .versions one
     dir = Jobs.main_job_dir(jobdir)
+    version = Jobs.last_job_version(dir) + 1
     if ispath(joinpath(dir, "job.tt"))
         tj = load_job(dir)
         cp(tj, joinpath(tj, Jobs.VERSION_DIR_NAME, "$(tj.version)"); force = true)
     end
-    if !occursin(jobdir, dir)
+    if jobdir != dir
         # We know for sure it was a previously saved job
         # Now that we have safely stored it we can clean out the directory to then fill
         # it with the files from the job.version
@@ -128,7 +128,6 @@ function save(jobdir::String, files; kwargs...)
     # Needs to be done so the inputs `dir` also changes.
     mkpath(dir)
 
-    version = Jobs.last_job_version(dir) + 1
     for (name, f) in files
         write(joinpath(dir, name), f)
     end
@@ -280,7 +279,7 @@ function outputdata(jobdir::String, calculations::Vector{String})
     end
 end
 
-rm_version!(jobdir::String, version::Int) = Jobs.rm_version!(load_job(job), version)
+rm_version!(jobdir::String, version::Int) = Jobs.rm_version!(load_job(jobdir), version)
 
 add_environment(env::Environment, name::AbstractString) = Jobs.save(env, name)
 function get_environment(name::AbstractString)
