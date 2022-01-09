@@ -1,7 +1,7 @@
 module Resource
 # This module handles all the handling, parsing and transforming HTTP commands,
 # and brokers between HTTP requests and Service that fullfils them. 
-using HTTP, JSON3, Dates, LoggingExtras, Sockets, ThreadPools
+using HTTP, JSON3, Dates, LoggingExtras, Sockets
 using ..DFControl, ..Service
 using ..Utils
 using ..Servers
