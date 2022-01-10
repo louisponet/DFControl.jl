@@ -303,7 +303,11 @@ function pull(server::Server, server_file::String, filename::String)
     if islocal(server)
         cp(server_file, filename; force = true)
     else
-        run(`scp $(ssh_string(server) * ":" * server_file) $filename`)
+        out = Pipe()
+        err = Pipe()
+        run(pipeline(`scp $(ssh_string(server) * ":" * server_file) $filename`, stdout=out, stderr=err))
+        close(out.in)
+        close(err.in)
     end
 end
 
