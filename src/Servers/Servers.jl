@@ -88,8 +88,7 @@ function Server(s::String; name="")
         julia = isempty(julia_str) ? "julia" : julia_str
 
         @info "Trying to connect to $username@$domain..."
-        dir = remotecall_fetch(homedir,
-                               Distributed.addprocs([("$username" * "@" * "$domain", 1)], exename=julia)[1])
+        dir = server_command(username, domain, `pwd`).stdout
         print("Jobs top dir (default: $dir):")
         dir = abspath(readline())
 
@@ -105,7 +104,22 @@ function Server(s::String; name="")
         else
             mountpoint = ""
         end
-        server = Server(name, username, domain, port, scheduler, mountpoint, julia_str, dir, 0)
+        local_choice = request("Should a local tunnel be created?", RadioMenu(["yes", "no"]))
+        local_choice == -1 && return
+        if local_choice == 1
+            print("Please specify local port (default 8123):")
+            portstr = readline()
+            loc_port = isempty(portstr) ? 8123 : parse(Int, portstr)
+        else
+            loc_port = 0
+        end
+        max_concurrent_jobs = 100
+        print("Maximum concurrent jobs (default 100):")
+        t = readline()
+        max_concurrent_jobs = isempty(t) ? max_concurrent_jobs : parse(Int, t)
+        
+        server = Server(name, username, domain, port, scheduler, mountpoint, julia, dir, loc_port, max_concurrent_jobs)
+
         println("Server configured as:")
         println(server)
         save(server)
@@ -126,7 +140,8 @@ read_server_config(config_file) = parse_server_config(read(config_file, String))
 
 function load_remote_config(username, domain; name="localhost")
     cmd = "cat ~/.julia/config/DFControl/servers/$name.json"
-    return parse_server_config(server_command(username, domain, cmd).stdout)
+    t = server_command(username, domain, cmd)
+    return parse_server_config(t.stdout)
 end
 
 function known_servers(fuzzy = "")
@@ -141,7 +156,8 @@ end
 
 function load_server(name::String)
     if occursin("@", name)
-        return getfirst(x -> x.name == name, known_servers())
+        n = split(name, "@")[end]
+        return getfirst(x -> x.name == n, known_servers())
     else
         all = known_servers(name)
         if length(all) > 0
@@ -190,16 +206,7 @@ end
 
 function isalive(s::Server)
     try
-        # p1 = Pipe()
-        # p2 = Pipe()
-        # if s.local_port != 0
-        #     run(pipeline(`nc -vz localhost $(s.local_port)`, stdout = p1, stderr=p2))
-        # else
-        #     run(pipeline(`nc -vz  $(s.domain) $(s.port)`, stdout = p2, stderr=p1))
-        # end
-        # close(p1.in)
-        # close(p2.in)
-        resp = HTTP.get(s, "/server_config")
+        resp = HTTP.get(s, "/server_config", readtimeout=5, retry=false)
         return JSON3.read(resp.body, Server).username == s.username
     catch
         return false
@@ -211,7 +218,7 @@ function start(s::Server)
     julia_cmd = """$(s.julia_exec) --startup-file=no -t auto -e "using DFControl; DFControl.Resource.run()" &> ~/.julia/config/DFControl/logs/daemon.log"""
     if s.domain != "localhost"
         if s.local_port != 0
-            t = getfirst(x->occursin("ssh -f -N", x), split(read(pipeline(`ps aux` , stdout = `grep $(s.local_port)`), String), "\n"))
+            t = getfirst(x->occursin("ssh -f -L", x), split(read(pipeline(`ps aux` , stdout = `grep $(s.local_port)`), String), "\n"))
             
             if t !== nothing
                 run(`kill $(split(t)[2])`)
@@ -251,12 +258,16 @@ end
 
 function maybe_start_server(s::Server)
     if !isalive(s)
-        tserver = islocal(s) ? read_server_config(DFC.config_path("servers/localhost.json")) : load_remote_config(s.username, s.domain)
-        s.port = tserver.port
-        if !isalive(s)
+        try
+            tserver = islocal(s) ? read_server_config(DFC.config_path("servers/localhost.json")) : load_remote_config(s.username, s.domain)
+            s.port = tserver.port
+            if !isalive(s)
+                start(s)
+            else
+                save(s)
+            end
+        catch
             start(s)
-        else
-            save(s)
         end
     end
     return s
