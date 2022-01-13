@@ -19,7 +19,7 @@ const SERVER_DIR = DFControl.config_path("servers")
     scheduler::Scheduler   = Bash
     mountpoint::String     = ""
     julia_exec::String     = "julia"
-    default_jobdir::String = homedir()
+    root_jobdir::String = homedir()
     local_port::Int = 0
     max_concurrent_jobs::Int = 100
 end
@@ -47,12 +47,13 @@ function Server(s::String; name="")
 
     server = load_remote_config(username, domain)
     if server !== nothing
-    
+
+        local_port = 0    
         try
             run(`nc -vz $domain 22`)
             local_port = 0
         catch
-            local_port = ask_input(Int, "Local tunnel port", 0)
+            local_port = ask_input(Int, "Local tunnel port", 8123)
         end
              
         server.name       = name
@@ -110,7 +111,7 @@ end
 StructTypes.StructType(::Type{Server}) = StructTypes.Struct()
 islocal(s::Server) = s.domain == "localhost"
 
-Base.joinpath(s::Server, p...) = joinpath(s.default_jobdir, p...)
+Base.joinpath(s::Server, p...) = joinpath(s.root_jobdir, p...)
 function Base.ispath(s::Server, p...)
     if islocal(s)
         return ispath(p...)
@@ -196,7 +197,7 @@ function Distributed.addprocs(server::Server, nprocs::Int = 1, args...; kwargs..
     if islocal(server)
         proc = Distributed.addprocs(nprocs, args...; kwargs...)
     else
-        proc = Distributed.addprocs([(ssh_string(server), nprocs)], args...; exename=`$(server.julia_exec)`, dir=server.default_jobdir, tunnel=true, kwargs...)
+        proc = Distributed.addprocs([(ssh_string(server), nprocs)], args...; exename=`$(server.julia_exec)`, dir=server.root_jobdir, tunnel=true, kwargs...)
     end
     return proc
 end
