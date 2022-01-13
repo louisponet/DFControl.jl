@@ -78,8 +78,7 @@ starttime(job::Job)  = mtime(scriptpath(job))
 runslocal(job::Job) = job.server == "localhost"
 isarchived(job::Job) = occursin(".archived", job.dir)
 
-Base.abspath(job::Job) =
-    isabspath(job.dir) ? job.dir : joinpath(Server(job.server), job.dir)
+Base.abspath(job::Job) = abspath(Server(job.server), job.dir)
     
 Base.ispath(job::Job, p...) =
     runslocal(job) ? joinpath(job, p...) : ispath(DFC.Servers.maybe_start_server(DFC.Server(job.server)), joinpath(job, p...))

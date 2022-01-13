@@ -262,10 +262,15 @@ function outputdata(jobdir::String, calculations::Vector{String})
         calculation = job[c]
         p = joinpath(job, calculation.outfile)
         if mtime(p) > stime
-            tout = outputdata(calculation, p)
-            if !isempty(tout)
-                datadict[calculation.name] = tout
-                new_data = true
+            try 
+                tout = outputdata(calculation, p)
+                if !isempty(tout)
+                    datadict[calculation.name] = tout
+                    new_data = true
+                end
+            catch e
+                @warn "Something went wrong reading output for calculation $c."
+                @warn e
             end
         end
     end

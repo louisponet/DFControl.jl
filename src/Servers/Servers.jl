@@ -31,107 +31,95 @@ function Server(s::String; name="")
     end
     #TODO load existing config 
     # Create new server 
+    @info "Creating new Server configuration..."
     if occursin("@", s)
         username, domain = split(s, "@")
+        name = ask_input(String, "Please specify the Server's identifying name:")
     else
-        username, domain = "", ""
-        while isempty(username)
-            print("Username:")
-            username = readline()
-        end
-        while isempty(domain)
-            print("Domain:")
-            domain = readline()
-        end
+        username = ask_input(String, "Username")
+        domain = ask_input(String, "Domain")
         name = s
-    end
-    @info "Creating new Server configuration..."
-    while isempty(name)
-        print("Please specify the Server's identifying name:")
-        name = readline()
     end
     if load_server(name) !== nothing
         @warn "A server with $name was already configured and will be overwritten."
     end
-    try
-        @info "Trying to pull existing configuration from $username@$domain..."
+    @info "Trying to pull existing configuration from $username@$domain..."
 
-        tserver = load_remote_config(username, domain)
-        
-        local_port = 0 
+    server = load_remote_config(username, domain)
+    if server !== nothing
+    
         try
             run(`nc -vz $domain 22`)
             local_port = 0
         catch
-            port_str = ""
-            while isempty(port_str)
-                print("Local tunnel port:")
-                port_str = readline()
-            end
-            local_port = parse(Int, port_str)
+            local_port = ask_input(Int, "Local tunnel port", 0)
         end
              
-        tserver.name       = name
-        tserver.domain     = domain
-        tserver.local_port = local_port
-        println("Server configured as:")
-        println(tserver)
-        save(tserver)
-        return tserver
-    catch
-        print("Port (default: 8080):")
-        port_str = readline()
-        port = isempty(port_str) ? 8080 : parse(Int, port_str)
-
-        print("Julia Exec (default: julia):")
-        julia_str = readline()
-        julia = isempty(julia_str) ? "julia" : julia_str
-
+        server.name       = name
+        server.domain     = domain
+        server.local_port = local_port
+    else
+        @info "Couldn't pull server configuration, creating new..."
+        port  = ask_input(Int, "Port", 8080)
+        julia = ask_input(String, "Julia Exec", "julia")
         @info "Trying to connect to $username@$domain..."
-        dir = server_command(username, domain, `pwd`).stdout
-        print("Jobs top dir (default: $dir):")
-        dir = abspath(readline())
+        if julia != "julia"
+            while server_command(username, domain, `ls $julia`).exitcode != 0
+                @warn "$julia, no such file or directory."
+                julia = ask_input(String, "Julia Exec")
+            end
+        end
+
+        hdir = server_command(username, domain, `pwd`).stdout
+        dir = ask_input(String, "Default Jobs directory", hdir)
+        if dir != hdir
+            while server_command(username, domain, `ls $dir`).exitcode != 0
+                @warn "$dir, no such file or directory."
+                dir = ask_input(String, "Default Jobs directory")
+            end
+        end
 
         scheduler_choice = request("Please select scheduler:",
                                    RadioMenu([string.(instances(Scheduler))...]))
+                                   
         scheduler_choice == -1 && return
         scheduler = Scheduler(scheduler_choice)
         mounted_choice = request("Has the server been mounted?", RadioMenu(["yes", "no"]))
         mounted_choice == -1 && return
         if mounted_choice == 1
-            print("Please specify mounting point:")
-            mountpoint = readline()
+            mountpoint = ask_input(String, "Mounting point")
         else
             mountpoint = ""
         end
         local_choice = request("Should a local tunnel be created?", RadioMenu(["yes", "no"]))
         local_choice == -1 && return
         if local_choice == 1
-            print("Please specify local port (default 8123):")
-            portstr = readline()
-            loc_port = isempty(portstr) ? 8123 : parse(Int, portstr)
+            loc_port = ask_input(Int, "Local port", 8123)
         else
             loc_port = 0
         end
-        max_concurrent_jobs = 100
-        print("Maximum concurrent jobs (default 100):")
-        t = readline()
-        max_concurrent_jobs = isempty(t) ? max_concurrent_jobs : parse(Int, t)
+        max_concurrent_jobs = ask_input(Int, "Max Concurrent Jobs", 100)
         
         server = Server(name, username, domain, port, scheduler, mountpoint, julia, dir, loc_port, max_concurrent_jobs)
 
-        println("Server configured as:")
-        println(server)
-        save(server)
-        return server
     end
+    save(server)
+    return server
 end
 
 StructTypes.StructType(::Type{Server}) = StructTypes.Struct()
 islocal(s::Server) = s.domain == "localhost"
 
 Base.joinpath(s::Server, p...) = joinpath(s.default_jobdir, p...)
-Base.ispath(s::Server, p...) = islocal(s) ? ispath(p...) : JSON3.read(HTTP.get(s, "/get_ispath/" * joinpath(p...)).body, Bool)
+function Base.ispath(s::Server, p...)
+    if islocal(s)
+        return ispath(p...)
+    else
+        tp = joinpath(p...)
+        pat = isabspath(tp) ? tp : joinpath(s, tp)
+        return JSON3.read(HTTP.get(s, "/get_ispath/" * pat).body, Bool)
+    end
+end
 
 Utils.searchdir(s::Server, dir, str) = joinpath.(dir, filter(x->occursin(str, x), readdir(s, dir))) 
 
@@ -141,7 +129,11 @@ read_server_config(config_file) = parse_server_config(read(config_file, String))
 function load_remote_config(username, domain; name="localhost")
     cmd = "cat ~/.julia/config/DFControl/servers/$name.json"
     t = server_command(username, domain, cmd)
-    return parse_server_config(t.stdout)
+    if t.exitcode != 0
+        return nothing
+    else
+        return parse_server_config(t.stdout)
+    end
 end
 
 function known_servers(fuzzy = "")
@@ -174,6 +166,16 @@ function save(s::Server)
         @info "Updating previously existing configuration for server $s."
     end
     JSON3.write(joinpath(SERVER_DIR, s.name * ".json"),  s)
+    if !islocal(s)
+        @info "Uploading server configuration."
+        t = deepcopy(s)
+        t.domain = "localhost"
+        t.local_port = 0
+        t.name = "localhost"
+        tf = tempname()
+        JSON3.write(tf,  t)
+        push(tf, s, "~/.julia/config/DFControl/servers/localhost.json")
+    end
 end
 
 ssh_string(s::Server) = s.username * "@" * s.domain
@@ -281,23 +283,52 @@ function restart_server(s::Server)
     return start(s)
 end
 
+function ask_input(::Type{T}, message, default=nothing) where {T}
+    if default === nothing
+        t = ""
+        print(message * ": ")
+        while isempty(t)
+            t = readline()
+        end
+    else
+        print(message * " (default: $default): ")
+        t = readline()
+        if isempty(t)
+            return default
+        end
+    end
+    if T != String
+        return parse(T, t)
+    else
+        return t
+    end
+end
+   
 function maybe_create_localhost()
     t = load_server("localhost")
     if t === nothing
+        @info "Initializing localhost server configuration."
         scheduler = Sys.which("sbatch") === nothing ? Bash : Slurm
         if !haskey(ENV, "DFCONTROL_PORT")
-            port = 8080
+            port = ask_input(Int, "Port", 8080)
         else
             port = parse(Int, ENV["DFCONTROL_PORT"])
         end
         if !haskey(ENV, "DFCONTROL_JOBDIR")
-            dir = homedir()
+            dir = ask_input(String, "Default Jobs directory", homedir())
+            if dir != homedir()
+                while !ispath(dir)
+                    @warn "$dir, no such directory"
+                    dir = ask_input(String, "Default Jobs directory", homedir())
+                end
+            end
         else
-            dir = ENV["DFCONTROL_PORT"]
+            dir = ENV["DFCONTROL_JOBDIR"]
         end
         julia_exec = joinpath(Sys.BINDIR, "julia")
+        max_concurrent_jobs = ask_input(Int, "Max Concurrent Jobs", 100)
         out = Server("localhost", ENV["USER"], "localhost", port, scheduler, "", julia_exec,
-                     dir, 0, 100)
+                     dir, 0, max_concurrent_jobs)
         save(out)
         return out
     else
@@ -356,7 +387,7 @@ function server_command(username, domain, cmd)
     return (
       stdout = stdout,
       stderr = stderr,
-      code = process.exitcode
+      exitcode = process.exitcode
     )
 end
     
@@ -380,10 +411,11 @@ end
 
 function Base.readdir(s::Server, dir::String)
     maybe_start_server(s)
-    resp = HTTP.get(s, "/readdir/" * dir)
+    resp = HTTP.get(s, "/readdir/" * abspath(s, dir))
     return JSON3.read(resp.body, Vector{String})
 end
 
-    
+Base.abspath(s::Server, p) =
+    isabspath(p) ? p : joinpath(s, p)
 
 end

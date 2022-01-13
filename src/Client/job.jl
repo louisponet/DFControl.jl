@@ -11,7 +11,7 @@ function Jobs.Job(dir::AbstractString, s = "localhost"; version::Int = -1)
     elseif !occursin(Jobs.VERSION_DIR_NAME, dir) && version != -1
         dir = Jobs.version_dir(Jobs.main_job_dir(dir), version)
     end
-    resp = HTTP.get(server, "/jobs/" * dir)
+    resp = HTTP.get(server, "/jobs/" * abspath(server, dir))
     # Supplied dir was not a valid path, so we ask
     # previously registered jobs on the server that
     # contain dir.
