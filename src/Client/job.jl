@@ -177,20 +177,18 @@ end
 
 """
     last_running_calculation(job::Job)
-    last_running_calculation(jobdir::String; server="localhost")
 
 Returns the last `Calculation` for which an output file was created.
 """
-function last_running_calculation(jobdir::AbstractString; server="localhost")
-    server = Servers.maybe_start_server(server)
-    resp = HTTP.get(server, "/last_running_calculation/" * jobdir)
+function last_running_calculation(job::Job)
+    server = Servers.maybe_start_server(job.server)
+    resp = HTTP.get(server, "/last_running_calculation/" * job.dir)
     if resp.status == 204
         return nothing
     else
         return job[JSON3.read(resp.body, Int)]
     end
 end
-last_running_calculation(job::Job) = last_running_calculation(job.dir; server=job.server)
 
 outputdata(job::Job; kwargs...) =
     outputdata(job.dir; server=job.server, kwargs...)
@@ -261,17 +259,23 @@ function verify_execs(execs::Vector{Exec}, server::Server)
     for e in execs 
         if !JSON3.read(HTTP.get(server, "/verify_exec/", [], JSON3.write(e)).body, Bool)
             possibilities = known_execs(e, server=server)
-            curn = 0
-            while length(possibilities) > 1
-                possibilities = filter(x -> all(splitpath(x.dir)[end-curn:end] .== splitpath(e.dir)[end-curn:end]), possibilities)
-                curn += 1
-            end
-            if !isempty(possibilities)
-                replacement = possibilities[1]
-                @warn "Executable ($(e.exec)) in dir ($(e.dir)) not runnable,\n but found a matching replacement executable in dir ($(replacement.dir)).\nUsing that one..."
-                replacements[e] = replacement 
+
+            e1 = getfirst(x -> x.name == e.name, possibilities)
+            if e1 !== nothing
+                replacements[e] = e1
             else
-                error("$e is not a valid executable on server $(server.name).\nReplace it.")
+                curn = 0
+                while length(possibilities) > 1
+                    possibilities = filter(x -> all(splitpath(x.dir)[end-curn:end] .== splitpath(e.dir)[end-curn:end]), possibilities)
+                    curn += 1
+                end
+                if !isempty(possibilities)
+                    replacement = possibilities[1]
+                    @warn "Executable ($(e.exec)) in dir ($(e.dir)) not runnable,\n but found a matching replacement executable in dir ($(replacement.dir)).\nUsing that one..."
+                    replacements[e] = replacement 
+                else
+                    error("$e is not a valid executable on server $(server.name).\nReplace it.")
+                end
             end
         end
     end

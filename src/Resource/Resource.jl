@@ -45,8 +45,6 @@ HTTP.@register(ROUTER, "GET", "/readdir/*", readdir)
 Base.mtime(req::HTTP.Request) = mtime(path(req))
 HTTP.@register(ROUTER, "GET", "/mtime/*", mtime)
 
-
-
 # PSEUDOS
 
 function pseudos(req)
