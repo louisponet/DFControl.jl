@@ -113,7 +113,7 @@ islocal(s::Server) = s.domain == "localhost"
 
 Base.joinpath(s::Server, p...) = joinpath(s.root_jobdir, p...)
 Base.ispath(s::Server, p...) =
-    JSON3.read(HTTP.get(s, "/ispath/" * joinpath(p)).body, Bool)
+    JSON3.read(HTTP.get(s, "/ispath/" * joinpath(p...)).body, Bool)
 
 Utils.searchdir(s::Server, dir, str) = joinpath.(dir, filter(x->occursin(str, x), readdir(s, dir))) 
 
