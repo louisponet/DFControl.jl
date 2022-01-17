@@ -171,25 +171,26 @@ function last_version(dir::AbstractString; server="localhost")
 end
 
 function submission_time(job::Job)
-    server = Servers.maybe_start_server(job)
-    resp = HTTP.get(server, "/job_submission_time/" * abspath(job))
+    resp = HTTP.get(Servers.maybe_start_server(job), "/mtime/" * Jobs.scriptpath(job))
     return JSON3.read(resp.body, Float64)
 end
 
 """
     last_running_calculation(job::Job)
+    last_running_calculation(jobdir::String; server="localhost")
 
 Returns the last `Calculation` for which an output file was created.
 """
-function last_running_calculation(job::Job)
-    server = Servers.maybe_start_server(job)
-    resp = HTTP.get(server, "/last_running_calculation/" * abspath(job))
+function last_running_calculation(jobdir::AbstractString; server="localhost")
+    server = Servers.maybe_start_server(server)
+    resp = HTTP.get(server, "/last_running_calculation/" * jobdir)
     if resp.status == 204
         return nothing
     else
         return job[JSON3.read(resp.body, Int)]
     end
 end
+last_running_calculation(job::Job) = last_running_calculation(job.dir; server=job.server)
 
 outputdata(job::Job; kwargs...) =
     outputdata(job.dir; server=job.server, kwargs...)

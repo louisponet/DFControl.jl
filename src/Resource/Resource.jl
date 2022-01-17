@@ -11,22 +11,41 @@ using ..Structures
 using ..FileIO
 
 const ROUTER = HTTP.Router()
-
+const CURRENT_SERVER = Ref{Server}()
 include("job.jl")
 include("fileio.jl")
 
 # GENERAL
+
+function path(req::HTTP.Request)
+    p = req.target
+    if !isabspath(p)
+        p = joinpath(CURRENT_SERVER[].root_jobdir, p)
+    end
+    id = findnext(isequal('/'), p, 2)
+    if length(p) < id + 1
+        return ""
+    else
+        return p[id+1:end]
+    end
+end
+
 kill_server(req) = exit()
 HTTP.@register(ROUTER, "PUT", "/kill_server", kill_server)
 
 get_server_config(req) = Service.server_config()
 HTTP.@register(ROUTER, "GET", "/server_config", get_server_config)
 
-get_ispath(req) = ispath(job_path(req))
-HTTP.@register(ROUTER, "GET", "/get_ispath/*", get_ispath)
+Base.ispath(req::HTTP.Request) = ispath(path(req))
+HTTP.@register(ROUTER, "GET", "/ispath/*", ispath)
 
-get_readdir(req) = readdir(job_path(req))
-HTTP.@register(ROUTER, "GET", "/readdir/*", get_readdir)
+Base.readdir(req::HTTP.Request) = readdir(path(req))
+HTTP.@register(ROUTER, "GET", "/readdir/*", readdir)
+
+Base.mtime(req::HTTP.Request) = mtime(path(req))
+HTTP.@register(ROUTER, "GET", "/mtime/*", mtime)
+
+
 
 # PSEUDOS
 
@@ -40,7 +59,7 @@ HTTP.@register(ROUTER, "GET", "/pseudos/*", pseudos)
 pseudo_sets(req) = Service.pseudo_sets()
 HTTP.@register(ROUTER, "GET", "/pseudos", pseudo_sets)
 
-configure_pseudoset(req) = Service.configure_pseudoset(JSON3.read(req.body,String), job_path(req))
+configure_pseudoset(req) = Service.configure_pseudoset(JSON3.read(req.body,String), path(req))
 HTTP.@register(ROUTER, "POST", "/configure_pseudoset/*", configure_pseudoset)
 
 rm_pseudos!(req) = Service.rm_pseudos!(JSON3.read(req.body, String))
@@ -97,6 +116,7 @@ end
 
 function run()
     s = Server("localhost")
+    CURRENT_SERVER[] = s
     cd(s.root_jobdir)
     Service.global_logger(Service.daemon_logger())
     port, server = listenany(ip"0.0.0.0", 8080)

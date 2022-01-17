@@ -112,15 +112,8 @@ StructTypes.StructType(::Type{Server}) = StructTypes.Struct()
 islocal(s::Server) = s.domain == "localhost"
 
 Base.joinpath(s::Server, p...) = joinpath(s.root_jobdir, p...)
-function Base.ispath(s::Server, p...)
-    if islocal(s)
-        return ispath(p...)
-    else
-        tp = joinpath(p...)
-        pat = isabspath(tp) ? tp : joinpath(s, tp)
-        return JSON3.read(HTTP.get(s, "/get_ispath/" * pat).body, Bool)
-    end
-end
+Base.ispath(s::Server, p...) =
+    JSON3.read(HTTP.get(s, "/ispath/" * joinpath(p)).body, Bool)
 
 Utils.searchdir(s::Server, dir, str) = joinpath.(dir, filter(x->occursin(str, x), readdir(s, dir))) 
 
@@ -419,4 +412,8 @@ end
 Base.abspath(s::Server, p) =
     isabspath(p) ? p : joinpath(s, p)
 
+function Base.mtime(s::Server, p)
+    resp = HTTP.get(s, "/mtime/" * p)
+    JSON3.read(resp.body, Float64)
+end
 end
