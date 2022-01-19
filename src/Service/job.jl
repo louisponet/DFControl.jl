@@ -23,7 +23,18 @@ end
 
 job_versions(args...) = Jobs.job_versions(args...)
 registered_jobs(args...) = Jobs.registered_jobs(args...)
-running_jobs(args...) = Jobs.running_jobs(args...)
+
+function running_jobs(fuzzy)
+    out = Tuple{String, Int}[]
+    for (j, info) in JOB_QUEUE[]
+        if occursin(fuzzy, j)
+            if info[2] == Jobs.Running || info[2] == Jobs.Pending || info[2] == Jobs.Submitted
+                push!(out, (j, info[1]))
+            end
+        end
+    end
+    return out
+end
 
 function workflow_logger(job::Job)
     return TeeLogger(MinLevelLogger(FileLogger(joinpath(job, ".workflow", "info.log");
