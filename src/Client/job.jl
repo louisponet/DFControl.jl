@@ -316,7 +316,7 @@ end
 function running_jobs(fuzzy=""; server="localhost")
     server = Servers.maybe_start_server(server) 
     resp = HTTP.get(server, "/running_jobs/" * fuzzy)
-    return reverse(JSON3.read(resp.body, Vector{String}))
+    return reverse(JSON3.read(resp.body, Vector{Tuple{String, Int}}))
 end
 
 function switch_version!(job::Job, version::Int)

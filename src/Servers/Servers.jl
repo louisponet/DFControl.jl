@@ -213,17 +213,7 @@ function start(s::Server)
     @info "Starting:\n$s"
     julia_cmd = """$(s.julia_exec) --startup-file=no -t auto -e "using DFControl; DFControl.Resource.run()" &> ~/.julia/config/DFControl/logs/daemon.log"""
     if s.domain != "localhost"
-        if s.local_port != 0
-            t = getfirst(x->occursin("ssh -f -L", x), split(read(pipeline(`ps aux` , stdout = `grep $(s.local_port)`), String), "\n"))
-            
-            if t !== nothing
-                run(`kill $(split(t)[2])`)
-            end
-            run(Cmd(`ssh -f -L $(s.local_port):localhost:$(s.port) $(ssh_string(s)) $julia_cmd`, detach=true))
-        else
-            run(Cmd(`ssh -f $(ssh_string(s)) $julia_cmd`, detach=true))
-            
-        end
+        run(Cmd(`ssh -f $(ssh_string(s)) $julia_cmd`, detach=true))
     else
         scrpt = "using DFControl; DFControl.Resource.run()"
         e = s.julia_exec
@@ -235,6 +225,15 @@ function start(s::Server)
     retries = 0
     while !isalive(s) && retries < 60
         tserver = islocal(s) ? read_server_config(DFC.config_path("servers/localhost.json")) : load_remote_config(s.username, s.domain)
+        
+        if s.local_port != 0
+            t = getfirst(x->occursin("ssh -N -f -L $(s.local_port)", x), split(read(pipeline(`ps aux` , stdout = `grep $(s.local_port)`), String), "\n"))
+            
+            if t !== nothing
+                run(`kill $(split(t)[2])`)
+            end
+            run(Cmd(`ssh -N -f -L $(s.local_port):localhost:$(tserver.port) $(ssh_string(s))`, detach=true))
+        end
         s.port = tserver.port
         sleep(1)
         retries += 1
