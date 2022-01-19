@@ -1,7 +1,9 @@
+using ..Servers: maybe_start_server
+
 Servers.Server(j::Job) = Server(j.server)
 
 function Jobs.Job(dir::AbstractString, s = "localhost"; version::Int = -1)
-    server = Servers.maybe_start_server(s)
+    server = maybe_start_server(s)
     if !ispath(server, dir)
         dir = request_job_dir(dir, server)
         dir === nothing && return
@@ -48,7 +50,7 @@ function request_job_dir(dir::String, server::Server)
     end
 end
 
-function save(job::Job, server::Server = Servers.maybe_start_server(job))
+function save(job::Job, server::Server = maybe_start_server(job))
     # First we check whether the job is trying to be saved in a archived directory, absolutely not allowed
     @assert !isrunning(job, server) "Can't save a job in a directory where another is running."
 
@@ -92,7 +94,7 @@ function save(job::Job, server::Server = Servers.maybe_start_server(job))
 end
 
 function submit(job::Job)
-    server = Servers.maybe_start_server(job)
+    server = maybe_start_server(job)
     verify_execs(job, server)
     save(job)
     return HTTP.put(server, "/jobs/" * abspath(job))
@@ -104,7 +106,7 @@ function submit(jobs::Vector{Job}, run = true)
     buckets = [jobs[findall(x -> x.server == s, jobs)] for s in server_names]
     outbuckets = [Vector{Job}(undef, length(b)) for b in buckets]
     Threads.@threads for i in 1:length(server_names)
-        server = Servers.maybe_start_server(server_names[i])
+        server = maybe_start_server(server_names[i])
         bucket = buckets[i]
         outbucket = outbuckets[i]
         execs = unique(vcat([map(x->x.exec, j.calculations) for j in bucket]...))
@@ -128,24 +130,28 @@ function submit(jobs::Vector{Job}, run = true)
 end
 
 """
-    state(job::Job, [server::Server])
+    state(job::Job)
+    state(jobdir::String; server="localhost"))
 
 Returns the state of a job.
 """
-function state(job::Job, server::Server = Servers.maybe_start_server(job))
-    return JSON3.read(HTTP.get(server, "/job_state/" * abspath(job)).body, Jobs.JobState)
+function state(jobdir::String; server = "localhost")
+    s = maybe_start_server(server) 
+    return JSON3.read(HTTP.get(s, "/job_state/" * jobdir).body, Jobs.JobState)
 end
-    
+state(job::Job) = state(job.dir, server=job.server)
+
 """
-    isrunning(job::Job, [server::Server])
+    isrunning(job::Job)
+    isrunning(jobdir::String, server="localhost")
 
 Returns whether a job is running or not. If the job was
 submitted using `slurm`, a `QUEUED` status also counts as
 running.
 """
-function isrunning(job::Job, server::Server = Servers.maybe_start_server(job))
-    s = state(job, server)
-    return s == Jobs.Running || s == Jobs.Pending
+function isrunning(args...; kwargs...)
+    s = state(args...; kwargs...)
+    return s == Jobs.Running || s == Jobs.Pending || s == Jobs.Submitted
 end
 
 """
@@ -155,7 +161,7 @@ Returs the valid versions of `job`.
 """
 versions(job::Job) = versions(abspath(job); server = job.server) 
 function versions(dir::AbstractString; server = "localhost")
-    server=Servers.maybe_start_server(server) 
+    server=maybe_start_server(server) 
     return JSON3.read(HTTP.get(server, "/job_versions/" * Jobs.main_job_dir(dir)).body, Vector{Int})
 end
 
@@ -171,7 +177,7 @@ function last_version(dir::AbstractString; server="localhost")
 end
 
 function submission_time(job::Job)
-    resp = HTTP.get(Servers.maybe_start_server(job), "/mtime/" * Jobs.scriptpath(job))
+    resp = HTTP.get(maybe_start_server(job), "/mtime/" * Jobs.scriptpath(job))
     return JSON3.read(resp.body, Float64)
 end
 
@@ -181,7 +187,7 @@ end
 Returns the last `Calculation` for which an output file was created.
 """
 function last_running_calculation(job::Job)
-    server = Servers.maybe_start_server(job.server)
+    server = maybe_start_server(job.server)
     resp = HTTP.get(server, "/last_running_calculation/" * job.dir)
     if resp.status == 204
         return nothing
@@ -194,7 +200,7 @@ outputdata(job::Job; kwargs...) =
     outputdata(job.dir; server=job.server, kwargs...)
     
 function outputdata(jobdir::String; server = "localhost", calcs::Vector{String}=String[], extra_parse_funcs = nothing)
-    server = Servers.maybe_start_server(server)
+    server = maybe_start_server(server)
     jobdir = isabspath(jobdir) ? jobdir : joinpath(server, jobdir)
     resp = HTTP.get(server, "/outputdata/" * jobdir, [], JSON3.write(calcs))
     if resp.status == 204
@@ -228,17 +234,17 @@ function outputdata(jobdir::String; server = "localhost", calcs::Vector{String}=
 end
 
 function known_execs(e::String, dir::String = ""; server = Server("localhost"))
-    s = Servers.maybe_start_server(server)
+    s = maybe_start_server(server)
     return JSON3.read(HTTP.get(s, "/known_execs/", [], JSON3.write(Dict("exec" => e, "dir" => dir))).body, Vector{Calculations.Exec})
 end
 known_execs(e::Calculations.Exec; kwargs...) = known_execs(e.exec,e.dir; kwargs...)
 
 function get_exec(name::String; server="localhost")
-    s = Servers.maybe_start_server(server)
+    s = maybe_start_server(server)
     return JSON3.read(HTTP.get(s, "/exec/$name").body, Calculations.Exec)
 end
 function save(e::Exec; server="localhost")
-    s = Servers.maybe_start_server(server)
+    s = maybe_start_server(server)
     return JSON3.read(HTTP.post(s, "/exec/", [], JSON3.write(e)).body, Calculations.Exec)
 end
 
@@ -285,16 +291,18 @@ end
 #TODO: work this
 """
     abort(job::Job)
+    abort(dir::String; server="localhost")
 
 Will try to remove the job from the scheduler's queue.
 If the last running calculation happened to be a `Calculation{QE}`, the correct abort file will be written.
 For other codes the process is not smooth, and restarting is not guaranteed.
 """
-function abort(job::Job)
-    @assert isrunning(job) "Is this job running?"
-    id = JSON3.read(HTTP.get(Server(job.server), "/abort/" * abspath(job)).body, Int)
+function abort(dir::String; server="localhost")
+    @assert isrunning(dir; server=server) "Is this job running?"
+    id = JSON3.read(HTTP.get(Server(server), "/abort/" * dir).body, Int)
     @info "Aborted job $id"
 end
+abort(job::Job) = abort(job.dir; server= job.server)
 
 function registered_jobs(fuzzy::String=""; server=nothing)
     if server === nothing
@@ -307,14 +315,14 @@ function registered_jobs(fuzzy::String=""; server=nothing)
         end
         return all_jobs
     else
-        server = Servers.maybe_start_server(server) 
+        server = maybe_start_server(server) 
         resp = HTTP.get(server, "/registered_jobs/" * fuzzy)
         return reverse(JSON3.read(resp.body, Vector{Tuple{String,DateTime}}))
     end
 end
       
 function running_jobs(fuzzy=""; server="localhost")
-    server = Servers.maybe_start_server(server) 
+    server = maybe_start_server(server) 
     resp = HTTP.get(server, "/running_jobs/" * fuzzy)
     return reverse(JSON3.read(resp.body, Vector{Tuple{String, Int}}))
 end
@@ -332,7 +340,7 @@ function switch_version!(job::Job, version::Int)
 end
 
 function rm_version!(job::Job, version::Int)
-    server = Servers.maybe_start_server(job.server) 
+    server = maybe_start_server(job.server) 
     allvers = versions(job)
     if !(version in allvers)
         error("Version $version does not exist.")
@@ -350,24 +358,24 @@ function rm_version!(job::Job, version::Int)
 end
 
 function environment_from_jobscript(scriptpath; server="localhost")
-    server = Servers.maybe_start_server(server)
+    server = maybe_start_server(server)
     tmp = tempname()
     Servers.pull(server, scriptpath, tmp)
     return Jobs.environment_from_jobscript(tmp)
 end
     
 function get_environment(name; server="localhost")
-    server = Servers.maybe_start_server(server)
+    server = maybe_start_server(server)
     return JSON3.read(HTTP.get(server, "/environment/$name").body, Environment)    
 end
     
 function add_environment(env::Environment, name::String; server="localhost")
-    server = Servers.maybe_start_server(server)
+    server = maybe_start_server(server)
     return HTTP.post(server, "/environment/$name", [], JSON3.write(env))
 end
 
 function rm_environment!(name::String; server="localhost")
-    server = Servers.maybe_start_server(server)
+    server = maybe_start_server(server)
     return HTTP.put(server, "/environment/$name")
 end
  
