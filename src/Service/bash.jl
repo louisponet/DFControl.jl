@@ -1,5 +1,5 @@
 function bash_jobid(job::Job)
-    i = last_running_calculation(jobdir)
+    i = last_running_calculation(job.dir)
     l = job[i]
     codeexec = l.exec.exec
     pids = parse.(Int, split(read(`pgrep $codeexec`, String)))
@@ -48,8 +48,7 @@ function bash_queue!(q, init)
 end
 
 function bash_submit(j::String)
-    cd(j)
-    run(Cmd(`bash job.tt`, detach=true), wait=false)
+    run(Cmd(`bash job.tt`, detach=true, dir=j), wait=false)
     open(RUNNING_JOBS_FILE, "a") do f
         write(f, j * "\n")
     end

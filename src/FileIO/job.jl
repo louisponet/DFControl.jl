@@ -114,12 +114,12 @@ function write_job_postamble(f, job::Job) end
 # end
 
 """
-    write_job_files(job::Job; kwargs...)
+    write(job::Job, environment::Environment; kwargs...)
 
 Writes all the calculation files and job file that are linked to a Job.
 Kwargs will be passed down to various writetojob functions.
 """
-function write_job_files(job::Job, environment; kwargs...)
+function Base.write(job::Job, environment::Environment; kwargs...)
 
     if any(x ->eltype(x) == QE, job.calculations)
         for a in unique(job.structure.atoms)
@@ -339,4 +339,60 @@ function parse_calculations(calcs)
         @warn "No valid structures could be read from calculation files."
     end
     return (calculations = outcalcs, structure=structure)
+end
+
+function Base.write(workflow::Jobs.Workflow, job::Job)
+    wdir = mkpath(joinpath(job.dir, ".workflow"))
+    qdir = mkpath(joinpath(wdir,"queued"))
+    mkpath(joinpath(wdir,"finished"))
+    cp(workflow.project_path, joinpath(wdir, "Project.toml"))
+    write(joinpath(wdir, "run.jl"),
+    """
+    cd(@__DIR__)
+    using Pkg
+    Pkg.instantiate()
+    Pkg.develop("DFControl")
+    using $(join(workflow.modules, ", "))
+
+    function run_queue(jobdir::String)
+        job = DFC.Service.load_job(jobdir)
+        logger = DFC.Service.workflow_logger(job)
+        DFC.Service.with_logger(logger) do
+            qd = DFC.Service.queued_dir(job)
+            queued_steps = readdir(qd)
+            order = sortperm(parse.(Int, getindex.(splitext.(queued_steps), 1)))
+            fd = DFC.Service.finished_dir(job)
+            if !ispath(qd) || isempty(queued_steps)
+                return
+            end
+            if !ispath(fd)
+                mkpath(fd)
+            else
+                for f in readdir(fd)
+                    rm(joinpath(fd, f))
+                end
+            end
+            for f in queued_steps[order]
+                step_file = joinpath(qd, f)
+                t = include(step_file)
+                results = @eval \$(t)(\$(job))
+                DFC.Service.JLD2.jldopen(joinpath(job, ".workflow/results.jld2"), "w+") do j
+                    j[splitext(f)[1]] = results
+                end
+                mv(step_file, joinpath(fd, f); force = true)
+                info = state(jobdir)
+                while info == Jobs.Pending || info == Jobs.Running || info == Jobs.Submitted
+                    sleep(DFC.Service.SLEEP_TIME)
+                    info = state(jobdir)
+                end
+            end
+        end
+        return true
+    end
+    run_queue(ARGS[1])
+    """)
+    
+    for (i, f) in enumerate(workflow.steps)
+        write(joinpath(qdir, "$i.jl"), @code_string f(job))
+    end
 end

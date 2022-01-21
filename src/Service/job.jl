@@ -48,32 +48,6 @@ end
 queued_dir(job::Job, args...) = joinpath(job, ".workflow/queued", args...)
 finished_dir(job::Job, args...) = joinpath(job, ".workflow/finished", args...)
 
-function queue_steps(job::Job, funcs)
-    qd = queued_dir(job)
-    if !ispath(qd)
-        mkpath(qd)
-    end
-    prev_steps = readdir(qd)
-    last_step = !isempty(prev_steps) ? parse(Int, splitext(prev_steps[end])[1]) : 0
-    for (i, f) in enumerate(funcs)
-        write(joinpath(qd, "$(i + last_step).jl"), @code_string f(job, Dict{Symbol,Any}()))
-    end
-end
-
-function write_workflow_files(job::Job)
-    all = string.(values(Base.loaded_modules))
-    valid = String[]
-    ks = keys(Pkg.project().dependencies)
-    for p in all
-        if p ∈ ks
-            push!(valid, p)
-        end
-    end
-    JLD2.jldsave(joinpath(job, ".workflow/environment.jld2"); modules = valid,
-                        project = Base.current_project())
-    return JLD2.jldsave(joinpath(job, ".workflow/ctx.jld2"); ctx = Dict{Symbol,Any}())
-end
-
 function clear_queue!(job::Job)
     qd = queued_dir(job)
     if !ispath(qd)
@@ -140,6 +114,8 @@ function save(jobdir::String, files; kwargs...)
     mkpath(dir)
 
     for (name, f) in files
+        d = splitdir(name)[1]
+        mkpath(joinpath(dir, d))
         write(joinpath(dir, name), f)
     end
 
@@ -148,14 +124,19 @@ function save(jobdir::String, files; kwargs...)
 end
 
 """
-    submit(job::Job; kwargs...)
+    submit(dir::String, workflow::Bool)
 
-First saves the job, then tries to submit the job script through `sbatch job.tt` or `bash job.tt` if the former command fails.
-`kwargs...` get passed to `save(job; kwargs...)`.
+Writes the directory to either pending workflows or pending jobs file.
 """
-function submit(job_dir::String)
-    open(PENDING_JOBS_FILE, "a", lock=true) do f
-        return write(f, job_dir * "\n")
+function submit(job_dir::String, workflow::Bool)
+    if workflow
+        open(PENDING_WORKFLOWS_FILE, "a", lock=true) do f
+            return write(f, job_dir * "\n")
+        end
+    else
+        open(PENDING_JOBS_FILE, "a", lock=true) do f
+            return write(f, job_dir * "\n")
+        end
     end
 end
 

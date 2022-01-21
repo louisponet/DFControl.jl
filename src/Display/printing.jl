@@ -77,7 +77,7 @@ function df_show(io::IO, job::Job)
         dfprintln(io, crayon"cyan", "|", reset)
     end
     is = job.calculations
-    last = !isempty(versions) ? Client.last_running_calculation(job) : -1
+    last = ispath(Server(job.server), Jobs.main_job_dir(job)) ? Client.last_running_calculation(job) : -1
     if !isempty(is)
         dfprintln(io, crayon"cyan", line, reset)
         dfprintln(io, reset, "(", crayon"green", "scheduled", reset, ", ", crayon"red",

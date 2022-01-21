@@ -50,9 +50,9 @@ function request_job_dir(dir::String, server::Server)
     end
 end
 
-function save(job::Job, server::Server = maybe_start_server(job))
+function save(job::Job, workflow::Union{Nothing, Workflow} = nothing; server::Server = maybe_start_server(job))
     # First we check whether the job is trying to be saved in a archived directory, absolutely not allowed
-    @assert !isrunning(job, server) "Can't save a job in a directory where another is running."
+    @assert !isrunning(job) "Can't save a job in a directory where another is running."
 
     @assert !Jobs.isarchived(job)
     "Not allowed to save a job in a archived directory, please specify a different directory."
@@ -79,8 +79,18 @@ function save(job::Job, server::Server = maybe_start_server(job))
         environment = nothing
     end
     job.dir = tmpdir
-    FileIO.write_job_files(job, environment)
-    files_to_send = Dict([f => read(joinpath(tmpdir, f), String) for f in readdir(tmpdir)])
+    write(job, environment)
+    if workflow !== nothing
+        write(workflow, job)
+    end
+
+    files_to_send = Dict{String,String}()
+    for (r, d, files) in walkdir(tmpdir)
+        for f in files
+            fp = joinpath(r, f)
+            files_to_send[split(fp, tmpdir)[2][2:end]] = read(fp, String)
+        end
+    end
     
     job.dir = apath
     rm(tmpdir, recursive=true)
@@ -93,11 +103,11 @@ function save(job::Job, server::Server = maybe_start_server(job))
     return job
 end
 
-function submit(job::Job)
+function submit(job::Job, workflow=nothing)
     server = maybe_start_server(job)
     verify_execs(job, server)
-    save(job)
-    return HTTP.put(server, "/jobs/" * abspath(job))
+    save(job, workflow)
+    return HTTP.put(server, "/jobs/" * abspath(job), [], JSON3.write(workflow !== nothing))
 end
 
 function submit(jobs::Vector{Job}, run = true)

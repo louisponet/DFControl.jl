@@ -1,6 +1,6 @@
 module Service
 using ..DFControl
-using Distributed, Pkg, CodeTracking, LoggingExtras, Dates, JLD2, LinearAlgebra
+using Distributed, Pkg, LoggingExtras, Dates, JLD2, LinearAlgebra
 using ..DFControl: config_path
 using ..Utils
 using ..Calculations
@@ -12,6 +12,8 @@ using ..Servers
 
 const RUNNING_JOBS_FILE = config_path("jobs", "running.txt")
 const PENDING_JOBS_FILE = config_path("jobs", "pending.txt")
+const PENDING_WORKFLOWS_FILE = config_path("workflows", "pending.txt")
+const RUNNING_WORKFLOWS_FILE = config_path("workflows", "running.txt")
 const SERVICE_LOG = config_path("daemon.log")
 const SLEEP_TIME = 10.0
 

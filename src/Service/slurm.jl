@@ -106,8 +106,7 @@ function slurm_mostrecent(index = 1, jobfile = "job.tt", startdate = lastmonth()
 end
 
 function slurm_submit(j::String)
-    cd(j)
-    id = parse(Int, split(read(`sbatch job.tt`, String))[end])
+    id = parse(Int, split(read(Cmd(`sbatch job.tt`, dir=j), String))[end])
     return (id, Jobs.Submitted)
 end
 

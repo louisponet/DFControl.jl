@@ -362,54 +362,6 @@ function readbands(job::Job, outdat)
     return outdat[calc.name][:bands]
 end
 
-#TODO: only for QE 
-"""
-    set_present!(job::Job, func::Function)
-    set_present!(job::Job, func::String)
-    set_present!(job::Job, func::Expr)
-
-Sets a function with the call signature `func(job)` which can be later called using the [`@present`](@ref) macro.
-"""
-function set_present!(job::Job, func::Function)
-    try
-        str = loaded_modules_string() * @code_string func(job)
-        set_present!(job, str)
-    catch
-        error("Could not generate the source string for the supplied function.\nIf you are running in a Jupyter notebook, please supply the source code as a string, or expression to set_present!.\nDon't forget to include the right using statements.")
-    end
-end
-function set_present!(job::Job, func::AbstractString)
-    open(joinpath(job, ".present.jl"), "w") do f
-        return write(f, func)
-    end
-end
-function set_present!(job::Job, func::Expr)
-    funcstr = string(func)
-    if funcstr[1:5] == "begin"
-        funcstr = funcstr[findfirst(isequal('\n'), funcstr)+1:findlast(isequal('\n'), funcstr)-1]
-    end
-    return set_present!(job, funcstr)
-end
-
-"""
-    present(job)
-
-Calls a present function if it was previously saved using [`set_present!`](@ref) or [`archive`](@ref). 
-"""
-macro present(job)
-    return esc(quote
-                   if ispath(joinpath($job, ".present.jl"))
-                       t = include(joinpath($job, ".present.jl"))
-                       DFControl.with_logger(DFControl.MinLevelLogger(DFControl.current_logger(),
-                                                                      DFControl.Logging.Error)) do
-                           return t($job)
-                       end
-                   else
-                       @error "No presentation function defined.\n Please set it with `set_present!`."
-                   end
-               end)
-end
-
 """
     archive(job::Job, archive_directory::AbstractString, description::String=""; present = nothing, version=job.version)
 
