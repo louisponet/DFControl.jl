@@ -5,7 +5,7 @@ function main_loop(s::Server)
     queue!(JOB_QUEUE[], s, true)
     for (j, info) in JOB_QUEUE[]
         if info[2] == Jobs.Running 
-            job_dirs_procs[j] = spawn_worker(j)
+            job_dirs_procs[j] = spawn_task(s, j)
         end
     end
     while true
@@ -42,8 +42,6 @@ function handle_workflow_runners!(job_dirs_procs)
 end
 
 function spawn_task(s::Server, jobdir)
-    # TODO: implement workflows again
-
     id = next_jobid()
     info = submit(s, jobdir)
     JOB_QUEUE[][jobdir] = info
@@ -57,7 +55,8 @@ function spawn_task(s::Server, jobdir)
                 info = state(jobdir)
                 @info (timestamp = Dates.now(), jobdir = jobdir, state = info) 
             end
-            # outputdata(jobdir, map(x -> splitext(splitpath(x.infile)[end])[1], FileIO.read_job_script(joinpath(jobdir, "job.tt"))[2]))
+            JOB_QUEUE[][jobdir] = (info[1], Jobs.Running)
+            outputdata(jobdir, map(x -> splitext(splitpath(x.infile)[end])[1], FileIO.read_job_script(joinpath(jobdir, "job.tt"))[2]))
             JOB_QUEUE[][jobdir] = (info[1], Jobs.Completed)
         end
     end
@@ -70,11 +69,6 @@ function spawn_worker(s::Server, jobdir)
     envpath = joinpath(jobdir, ".workflow/run.jl")
     ppath = joinpath(wdir, "Project.toml")
     proc = run(pipeline(Cmd(`$julia_exec --project=$ppath --startup-file=no $envpath $jobdir`, detach=true), stderr = joinpath(wdir, "errors.log"), stdout = joinpath(wdir, "out.log")), wait=false) 
-    # proc = addprocs(1; exeflags = "--project=$ppath")[1]
-    
-
-    # f = Distributed.remotecall(include, proc, envpath)
-    # f = remotecall(Main.run_queue, proc, jobdir)
     return proc
 end
 
@@ -116,37 +110,3 @@ function handle_workflow_submission!(s::Server, job_dirs_procs)
         job_dirs_procs[l] = spawn_worker(s, l)
     end
 end
-# function run_queue(jobdir::String)
-#     job = load_job(jobdir)
-#     logger = workflow_logger(job)
-#     with_logger(logger) do
-#         qd = queued_dir(job)
-#         queued_steps = readdir(qd)
-#         order = sortperm(parse.(Int, getindex.(splitext.(queued_steps), 1)))
-#         fd = finished_dir(job)
-#         if !ispath(qd) || isempty(queued_steps)
-#             return
-#         end
-#         if !ispath(fd)
-#             mkpath(fd)
-#         else
-#             for f in readdir(fd)
-#                 rm(joinpath(fd, f))
-#             end
-#         end
-#         for f in queued_steps[order]
-#             step_file = joinpath(qd, f)
-#             t = include(step_file)
-#             results = @eval $(t)($(job))
-#             JLD2.jldopen(joinpath(job, ".workflow/results.jld2"), "w+") do j
-#                 j[splitext(f)[1]] = results
-#             end
-#             mv(step_file, joinpath(fd, f); force = true)
-#             info = state(jobdir)
-#             while info == Jobs.Pending || info == Jobs.Running || info == Jobs.Submitted
-#                 sleep(SLEEP_TIME)
-#             end
-#         end
-#     end
-#     return true
-# end
