@@ -304,9 +304,10 @@ function abort(job_dir::String)
     id = JOB_QUEUE[][job_dir][1]
     s = local_server()
     if s.scheduler == Servers.Bash
-        return bash_abort(id) 
+        out = bash_abort(id) 
     elseif s.scheduler == Servers.Slurm
-        return slurm_abort(id) 
+        out = slurm_abort(id) 
     end
     JOB_QUEUE[][job_dir] = (JOB_QUEUE[][job_dir][1], Jobs.Cancelled)
+    return out
 end
