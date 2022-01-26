@@ -45,6 +45,19 @@ HTTP.@register(ROUTER, "GET", "/readdir/*", readdir)
 Base.mtime(req::HTTP.Request) = mtime(path(req))
 HTTP.@register(ROUTER, "GET", "/mtime/*", mtime)
 
+function execute_function(req)
+    funcstr = Meta.parse(path(req))
+    func = eval(funcstr)
+    args = []
+    for (t, a) in JSON3.read(req.body, Vector)
+        typ = Symbol(t)
+        eval(:(arg = JSON3.read($a, $typ)))
+        push!(args, arg)
+    end
+    return func(args...)
+end
+
+HTTP.@register(ROUTER, "GET", "/api/*", execute_function)
 # PSEUDOS
 
 function pseudos(req)

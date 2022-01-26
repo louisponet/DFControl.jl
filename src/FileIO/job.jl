@@ -60,12 +60,10 @@ function writetojob(f, job, _calculation::Calculation{Wannier90}, environment; k
 
     nscf_calc = getfirst(x -> Calculations.isnscf(x), job.calculations)
     if nscf_calc !== nothing
-        runexec = nscf_calc.exec
         # For elk the setup necessary for the wan_calc needs to be done before writing the wan calculation
         # because it's inside elk.in
         if eltype(nscf_calc) == QE
-            pw2wancalculation = qe_generate_pw2wancalculation(_calculation, nscf_calc,
-                                                              runexec)
+            pw2wancalculation = qe_generate_pw2wancalculation(_calculation, nscf_calc)
             preprocess = pop!(_calculation, :preprocess, false)
             wannier_plot = pop!(_calculation, :wannier_plot, nothing)
 

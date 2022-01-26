@@ -1363,12 +1363,15 @@ function write_structure(f, calculation::Calculation{QE}, structure)
     return
 end
 
-function qe_generate_pw2wancalculation(c::Calculation{Wannier90}, nscf::Calculation{QE},
-                                       runexec)
+function qe_generate_pw2wancalculation(c::Calculation{Wannier90}, nscf::Calculation{QE})
     flags = Dict()
-    flags[:prefix] = nscf[:prefix]
+    if haskey(nscf, :prefix)
+        flags[:prefix] = nscf[:prefix]
+    end
     flags[:seedname] = "$(c.name)"
-    flags[:outdir] = nscf[:outdir]
+    if haskey(nscf, :outdir)
+        flags[:outdir] = nscf[:outdir]
+    end
     flags[:wan_mode] = "standalone"
     flags[:write_mmn] = true
     flags[:write_amn] = true
@@ -1384,7 +1387,7 @@ function qe_generate_pw2wancalculation(c::Calculation{Wannier90}, nscf::Calculat
     if any(get(c, :berry_task, []) .== ("morb"))
         flags[:write_uHu] = true
     end
-    pw2wanexec = Exec(exec ="pw2wannier90.x", dir=runexec.dir, modules = nscf.exec.modules)
+    pw2wanexec = Exec(exec ="pw2wannier90.x", dir=nscf.exec.dir, modules = nscf.exec.modules)
     run = get(c, :preprocess, false) && c.run
     return Calculation{QE}(; name = "pw2wan_$(flags[:seedname])", 
                            flags = flags, data = InputData[],

@@ -388,4 +388,7 @@ function rm_environment!(name::String; server="localhost")
     server = maybe_start_server(server)
     return HTTP.put(server, "/environment/$name")
 end
- 
+
+function Servers.pull(j::Job, dest::String; versions=false)
+    
+end
