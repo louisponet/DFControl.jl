@@ -225,7 +225,6 @@ function start(s::Server)
     retries = 0
     while !isalive(s) && retries < 60
         tserver = islocal(s) ? read_server_config(DFC.config_path("servers/localhost.json")) : load_remote_config(s.username, s.domain)
-        
         if s.local_port != 0
             t = getfirst(x->occursin("ssh -N -f -L $(s.local_port)", x), split(read(pipeline(`ps aux` , stdout = `grep $(s.local_port)`), String), "\n"))
             

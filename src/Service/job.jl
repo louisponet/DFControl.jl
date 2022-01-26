@@ -308,4 +308,5 @@ function abort(job_dir::String)
     elseif s.scheduler == Servers.Slurm
         return slurm_abort(id) 
     end
+    JOB_QUEUE[][job_dir] = (JOB_QUEUE[][job_dir][1], Jobs.Cancelled)
 end
