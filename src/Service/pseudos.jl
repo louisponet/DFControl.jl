@@ -1,33 +1,25 @@
-#We used this function to always keep the saved pseudos updated
-function with_pseudos(f::Function)
-    pp = config_path("pseudos.jld2")
-    pseudos = ispath(pp) ? JLD2.load(pp)["pseudos"] :
-              Dict{String,Dict{Symbol,Vector{String}}}()
-    t = f(pseudos)
-    JLD2.jldsave(config_path("pseudos.jld2"); pseudos=pseudos)
-    return t
-end
+const PSEUDO_DIR = DFC.config_path("pseudos")
 
 function pseudos(set::String, fuzzy::String)
-    with_pseudos() do all_sets
-        out = Dict{Symbol,String}()
-        pseudos = get(all_sets, set, nothing)
-        pseudos === nothing && return nothing
-        @info length(pseudos)
-        for (k, ps) in pseudos
-            p = getfirst(x -> occursin(fuzzy, x), ps)
-            if p !== nothing
-                out[k] = p
-            end
-        end
-        return out
+    if !(set in pseudo_sets())
+        error("$set not found in pseudosets.")
     end
+    out = Dict{Symbol,String}()
+    
+    pseudos = JSON3.read(read(joinpath(PSEUDO_DIR, set * ".json"), String), Dict{Symbol, Vector{String}})
+    for (k, ps) in pseudos
+        p = getfirst(x -> occursin(fuzzy, x), ps)
+        if p !== nothing
+            out[k] = p
+        end
+    end
+    return out
 end
 
 function rm_pseudos!(set::String)
-    with_pseudos() do pseudos
-        pop!(pseudos, set, nothing)
-        return nothing
+    p = joinpath(PSEUDO_DIR, set * ".json")
+    if ispath(p)
+        rm(p)
     end
 end
 
@@ -37,18 +29,17 @@ end
 Reads the specified `dir` and sets up the pseudos for `set`.
 """
 function configure_pseudoset(set_name::String, dir::String)
-    with_pseudos() do pseudos
-        files = readdir(dir)
-        pseudos[set_name] = Dict{Symbol,Vector{String}}([el.symbol => String[]
-                                                         for el in Structures.ELEMENTS])
-        for pseudo_string in files
-            element = Symbol(titlecase(String(split(split(pseudo_string, ".")[1], "_")[1])))
-            if haskey(pseudos[set_name], element)
-                push!(pseudos[set_name][element], joinpath(dir, pseudo_string))
-            end
+    files = readdir(dir)
+    pseudos = Dict{Symbol,Vector{String}}([el.symbol => String[]
+                                           for el in Structures.ELEMENTS])
+    for pseudo_string in files
+        element = Symbol(titlecase(String(split(split(pseudo_string, ".")[1], "_")[1])))
+        if haskey(pseudos, element)
+            push!(pseudos[element], joinpath(dir, pseudo_string))
         end
-        return length(files)
     end
+    JSON3.write(joinpath(PSEUDO_DIR, set_name * ".json"), pseudos) 
+    return length(pseudos)
 end
 
 """
@@ -56,4 +47,4 @@ end
 
 Lists all pseudo_sets.
 """
-pseudo_sets() = with_pseudos(x -> keys(x))
+pseudo_sets() = map(x -> splitext(x)[1], readdir(PSEUDO_DIR))

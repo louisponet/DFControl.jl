@@ -1,6 +1,6 @@
 module Service
 using ..DFControl
-using Distributed, Pkg, LoggingExtras, Dates, JLD2, LinearAlgebra
+using Distributed, Pkg, LoggingExtras, Dates, JLD2, LinearAlgebra, JSON3
 using ..DFControl: config_path
 using ..Utils
 using ..Calculations

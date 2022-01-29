@@ -22,6 +22,8 @@ possible, i.e. ssh-copy-id must have been used to not require passwords while ex
 The daemon will listen to the `port` for http requests and if `local_port` is specified,
 a tunnel will be created to guarantee a connection. This is useful in the case that the login node on the remote
 server can change.
+
+Calling [`Server`](@ref) with a single `String` will either load the configuration that was previously saved with that label, or go through an interactive setup of a new server.
 """
 mutable struct Server
     name::String
@@ -36,7 +38,7 @@ mutable struct Server
     max_concurrent_jobs::Int
 end
 
-function Server(s::String; name="")
+function Server(s::String)
     server = load(s) #First check if previous server exists
     if server !== nothing
         return server
@@ -165,6 +167,12 @@ function load(name::String)
     end
 end
 
+"""
+    save(s::Server)
+
+Saves the server configuration for later use. Can be loaded using [`Server`](@ref) with the name of `s`.
+If the server is not local it will also upload the configuration to the remote host.
+"""
 function save(s::Server)
     mkpath(SERVER_DIR)
     if ispath(joinpath(SERVER_DIR, s.name * ".json"))
@@ -212,6 +220,12 @@ function rm(s::Server)
            rm(joinpath(SERVER_DIR, s.name * ".json"))
 end
 
+"""
+    isalive(s::Server)
+
+Will try to fetch some data from `s`. If the server is not running this will fail and
+the return is `false`.
+"""
 function isalive(s::Server)
     try
         resp = HTTP.get(s, "/server_config", readtimeout=15, retry=false)
@@ -221,6 +235,11 @@ function isalive(s::Server)
     end
 end
 
+"""
+    start(s::Server)
+
+Launches the daemon process on  the host [`Server`](@ref) `s`.
+"""
 function start(s::Server)
     @info "Starting:\n$s"
 
@@ -299,7 +318,6 @@ function start(s::Server)
     return s
 end
 
-
 function maybe_start(s::Server)
     if !isalive(s)
         try
@@ -318,6 +336,11 @@ function maybe_start(s::Server)
 end
 maybe_start(j) = (s = Server(j); return maybe_start(s))
 
+"""
+    kill(s::Server)
+
+Kills the daemon process on [`Server`](@ref) `s`.
+"""
 kill(s::Server) = HTTP.put(s, "/kill_server")
 
 function restart(s::Server)
@@ -413,6 +436,7 @@ function push(filename::String, server::Server, server_file::String)
     end
 end
 
+"Executes a command through `ssh`."
 function server_command(username, domain, cmd)
     out = Pipe()
     err = Pipe()
