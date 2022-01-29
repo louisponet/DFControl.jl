@@ -95,7 +95,7 @@ function save(job::Job, workflow::Union{Nothing, Workflow} = nothing; server::Se
     job.dir = apath
     rm(tmpdir, recursive=true)
   
-    resp_job_version = JSON3.read(HTTP.post(server, "/jobs/" * apath, [], JSON3.write(files_to_send)).body,
+    resp_job_version = JSON3.read(HTTP.post(server, "/jobs/" * apath, JSON3.write(files_to_send)).body,
                           Int)
     @info "Job version: $(curver) => $(resp_job_version)."
     job.version = resp_job_version
@@ -107,7 +107,7 @@ function submit(job::Job, workflow=nothing)
     server = maybe_start(job)
     verify_execs(job, server)
     save(job, workflow)
-    return HTTP.put(server, "/jobs/" * abspath(job), [], JSON3.write(workflow !== nothing))
+    return HTTP.put(server, "/jobs/" * abspath(job), JSON3.write(workflow !== nothing))
 end
 
 function submit(jobs::Vector{Job}, run = true)
@@ -212,7 +212,7 @@ outputdata(job::Job; kwargs...) =
 function outputdata(jobdir::String; server = "localhost", calcs::Vector{String}=String[], extra_parse_funcs = nothing)
     server = maybe_start(server)
     jobdir = isabspath(jobdir) ? jobdir : joinpath(server, jobdir)
-    resp = HTTP.get(server, "/outputdata/" * jobdir, [], JSON3.write(calcs))
+    resp = HTTP.get(server, "/outputdata/" * jobdir, JSON3.write(calcs))
     if resp.status == 204
         error("No outputdata found yet. Is the job running?")
     end
@@ -245,7 +245,7 @@ end
 
 function known_execs(e::String, dir::String = ""; server = Server("localhost"))
     s = maybe_start(server)
-    return JSON3.read(HTTP.get(s, "/known_execs/", [], JSON3.write(Dict("exec" => e, "dir" => dir))).body, Vector{Calculations.Exec})
+    return JSON3.read(HTTP.get(s, "/known_execs/", JSON3.write(Dict("exec" => e, "dir" => dir))).body, Vector{Calculations.Exec})
 end
 known_execs(e::Calculations.Exec; kwargs...) = known_execs(e.exec,e.dir; kwargs...)
 
@@ -255,7 +255,7 @@ function get_exec(name::String; server="localhost")
 end
 function save(e::Exec; server="localhost")
     s = maybe_start(server)
-    return JSON3.read(HTTP.post(s, "/exec/", [], JSON3.write(e)).body, Calculations.Exec)
+    return JSON3.read(HTTP.post(s, "/exec/", JSON3.write(e)).body, Calculations.Exec)
 end
 
 function verify_execs(job::Job, server::Server)
@@ -273,7 +273,7 @@ end
 function verify_execs(execs::Vector{Exec}, server::Server)
     replacements = Dict{Exec, Exec}()
     for e in execs 
-        if !JSON3.read(HTTP.get(server, "/verify_exec/", [], JSON3.write(e)).body, Bool)
+        if !JSON3.read(HTTP.get(server, "/verify_exec/", JSON3.write(e)).body, Bool)
             possibilities = known_execs(e, server=server)
 
             e1 = getfirst(x -> x.name == e.name, possibilities)
@@ -356,7 +356,7 @@ function rm_version!(job::Job, version::Int)
         error("Version $version does not exist.")
     end
 
-    HTTP.put(server, "/rm_version/" * abspath(job), [], JSON3.write(version))    
+    HTTP.put(server, "/rm_version/" * abspath(job), JSON3.write(version))    
     if version == job.version
         @warn "Job version is the same as the one to be removed, switching to last known version."
         lv = last_version(job)
@@ -381,7 +381,7 @@ end
     
 function add_environment(env::Environment, name::String; server="localhost")
     server = maybe_start(server)
-    return HTTP.post(server, "/environment/$name", [], JSON3.write(env))
+    return HTTP.post(server, "/environment/$name", JSON3.write(env))
 end
 
 function rm_environment!(name::String; server="localhost")
