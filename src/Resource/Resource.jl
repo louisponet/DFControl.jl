@@ -1,7 +1,7 @@
 module Resource
 # This module handles all the handling, parsing and transforming HTTP commands,
 # and brokers between HTTP requests and Service that fullfils them. 
-using HTTP, JSON3, Dates, LoggingExtras, Sockets
+using HTTP, JSON3, Dates, LoggingExtras, Sockets, UUIDs
 using ..DFControl, ..Service
 using ..Utils
 using ..Servers
@@ -12,6 +12,7 @@ using ..FileIO
 
 const ROUTER = HTTP.Router()
 const CURRENT_SERVER = Ref{Server}()
+const USER_UUID = Ref{UUID}()
 include("job.jl")
 include("fileio.jl")
 
@@ -125,6 +126,16 @@ function requestHandler(req)
     return resp
 end
 
+function AuthHandler(req)
+    if HTTP.hasheader(req, "USER-UUID")
+        uuid = HTTP.header(req, "USER-UUID")
+        if uuid == USER_UUID[]
+            return requestHandler(req)
+        end
+    end
+    return HTTP.Response(401, "unauthorized")
+end     
+
 function run()
     s = Server("localhost")
     CURRENT_SERVER[] = s
@@ -133,7 +144,8 @@ function run()
     port, server = listenany(ip"0.0.0.0", 8080)
     s.port = port
     Servers.save(s)
-    Threads.@spawn HTTP.serve(requestHandler, "0.0.0.0", port, server=server)
+    USER_UUID[] = UUID(read(DFC.config_path("user_uuid"), String))
+    Threads.@spawn HTTP.serve(AuthHandler, "0.0.0.0", port, server=server)
     with_logger(Service.daemon_logger()) do
         Service.main_loop(s)
     end

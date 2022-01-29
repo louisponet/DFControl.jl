@@ -1,5 +1,5 @@
 module Servers
-using StructTypes, Distributed, JSON3, HTTP, REPL.TerminalMenus, Parameters
+using StructTypes, Distributed, JSON3, HTTP, REPL.TerminalMenus, Parameters, UUIDs
 using ..DFControl
 using ..Utils
 using ..Jobs
@@ -10,26 +10,37 @@ const SERVER_DIR = DFControl.config_path("servers")
 
 @enum Scheduler Slurm=1 Bash=2
 
-#TODO: there is some disconnect between domain and ssh configuration to be used... 
-@with_kw mutable struct Server
-    name::String           = "nothing"
-    username::String       = "nothing"
-    domain::String         = "nothing"
-    port::Int              = 8080
-    scheduler::Scheduler   = Bash
-    mountpoint::String     = ""
-    julia_exec::String     = "julia"
-    root_jobdir::String = homedir()
-    local_port::Int = 0
-    max_concurrent_jobs::Int = 100
+"""
+    Server(name::String, username::String, domain::String, port::Int, scheduler::Scheduler, mountpoint::String,
+           julia_exec::String, root_jobdir::String, local_port::Int, max_concurrent_jobs::Int)
+    Server(name::String)
+
+A [`Server`](@ref) represents a remote daemon that has the label `name`. It runs on the server defined by
+`username` and `domain`. The requirement is that `ssh` is set up in such a way that `ssh username@domain` is
+possible, i.e. ssh-copy-id must have been used to not require passwords while executing `ssh` commands.
+
+The daemon will listen to the `port` for http requests and if `local_port` is specified,
+a tunnel will be created to guarantee a connection. This is useful in the case that the login node on the remote
+server can change.
+"""
+mutable struct Server
+    name::String
+    username::String
+    domain::String
+    port::Int
+    scheduler::Scheduler
+    mountpoint::String
+    julia_exec::String
+    root_jobdir::String
+    local_port::Int
+    max_concurrent_jobs::Int
 end
 
 function Server(s::String; name="")
-    server = load_server(s) #First check if previous server exists
+    server = load(s) #First check if previous server exists
     if server !== nothing
         return server
     end
-    #TODO load existing config 
     # Create new server 
     @info "Creating new Server configuration..."
     if occursin("@", s)
@@ -40,7 +51,7 @@ function Server(s::String; name="")
         domain = ask_input(String, "Domain")
         name = s
     end
-    if load_server(name) !== nothing
+    if load(name) !== nothing
         @warn "A server with $name was already configured and will be overwritten."
     end
     @info "Trying to pull existing configuration from $username@$domain..."
@@ -117,8 +128,8 @@ Base.ispath(s::Server, p...) =
 
 Utils.searchdir(s::Server, dir, str) = joinpath.(dir, filter(x->occursin(str, x), readdir(s, dir))) 
 
-parse_server_config(config) = JSON3.read(config, Server)
-read_server_config(config_file) = parse_server_config(read(config_file, String))
+parse_config(config) = JSON3.read(config, Server)
+read_config(config_file) = parse_config(read(config_file, String))
 
 function load_remote_config(username, domain; name="localhost")
     cmd = "cat ~/.julia/config/DFControl/servers/$name.json"
@@ -126,7 +137,7 @@ function load_remote_config(username, domain; name="localhost")
     if t.exitcode != 0
         return nothing
     else
-        return parse_server_config(t.stdout)
+        return parse_config(t.stdout)
     end
 end
 
@@ -140,7 +151,7 @@ function known_servers(fuzzy = "")
     return servers
 end
 
-function load_server(name::String)
+function load(name::String)
     if occursin("@", name)
         n = split(name, "@")[end]
         return getfirst(x -> x.name == n, known_servers())
@@ -176,7 +187,8 @@ ssh_string(s::Server) = s.username * "@" * s.domain
 http_string(s::Server) = s.local_port != 0 ? "http://localhost:$(s.local_port)" : "http://$(s.domain):$(s.port)"
 
 function HTTP.request(method::String, s::Server, url, args...; kwargs...)
-    return HTTP.request(method, string(http_string(s), url), args...; kwargs...)
+    uuid = read(DFC.config_path("user_uuid"), String)
+    return HTTP.request(method, string(http_string(s), url), ["USER-UUID" => uuid], args...; kwargs...)
 end
 
 for f in (:get, :put, :post, :head)
@@ -195,9 +207,9 @@ function Distributed.addprocs(server::Server, nprocs::Int = 1, args...; kwargs..
     return proc
 end
 
-function remove_server!(name::String)
-    return ispath(joinpath(SERVER_DIR, name * ".json")) &&
-           rm(joinpath(SERVER_DIR, name * ".json"))
+function rm(s::Server)
+    return ispath(joinpath(SERVER_DIR, s.name * ".json")) &&
+           rm(joinpath(SERVER_DIR, s.name * ".json"))
 end
 
 function isalive(s::Server)
@@ -211,6 +223,45 @@ end
 
 function start(s::Server)
     @info "Starting:\n$s"
+
+    # Here we clean up previous connections and commands
+    if !islocal(s)
+        t = getfirst(x->occursin("ssh -f $(ssh_string(s))", x), split(read(pipeline(`ps aux` , stdout = `grep Resource`), String), "\n"))
+        if t !== nothing
+            run(`kill $(split(t)[2])`)
+        end
+    end
+        
+    if s.local_port != 0
+        t = getfirst(x->occursin("ssh -N -f -L $(s.local_port)", x), split(read(pipeline(`ps aux` , stdout = `grep $(s.local_port)`), String), "\n"))
+            
+        if t !== nothing
+            run(`kill $(split(t)[2])`)
+        end
+    end
+
+    # Here we check what the modify time of the server-side localhost file is.
+    # The server will rewrite the file with the correct port, which we use to see
+    # whether the server started succesfully.
+    function checktime()
+        curtime = 0
+        try
+            cmd = `stat -c '%'Z  '~'/.julia/config/DFControl/servers/localhost.json`
+            curtime = islocal(s) ? parse(Int, read(cmd, String)) : parse(Int, server_command(s.username, s.domain, cmd)[1])
+        catch
+            nothing
+        end
+        return curtime
+    end
+    firstime = checktime()
+
+    # Now we upload the user's uuid for safety
+    if !ispath(DFC.config_path("user_uuid"))
+        uuid = UUIDs.uuid4()
+        write(DFC.config_path("user_uuid"), "$uuid")
+    end
+    push(s, DFC.config_path("user_uuid"), "~/.julia/config/DFControl/user_uuid")
+
     julia_cmd = """$(s.julia_exec) --startup-file=no -t auto -e "using DFControl; DFControl.Resource.run()" &> ~/.julia/config/DFControl/logs/daemon.log"""
     if s.domain != "localhost"
         run(Cmd(`ssh -f $(ssh_string(s)) $julia_cmd`, detach=true))
@@ -223,37 +274,34 @@ function start(s::Server)
         
     #TODO: little hack here
     retries = 0
-    while !isalive(s) && retries < 60
-        tserver = islocal(s) ? read_server_config(DFC.config_path("servers/localhost.json")) : load_remote_config(s.username, s.domain)
-        if s.local_port != 0
-            t = getfirst(x->occursin("ssh -N -f -L $(s.local_port)", x), split(read(pipeline(`ps aux` , stdout = `grep $(s.local_port)`), String), "\n"))
-            
-            if t !== nothing
-                run(`kill $(split(t)[2])`)
-            end
-            run(Cmd(`ssh -N -f -L $(s.local_port):localhost:$(tserver.port) $(ssh_string(s))`, detach=true))
-        end
-        s.port = tserver.port
-        sleep(1)
+    while checktime() <= firstime && retries < 60
         retries += 1
+        sleep(1)
     end
+
     if retries == 60
         error("Something went wrong starting the server.")
     else
         if s.local_port == 0
             @info "Daemon on Server $(s.name) started, listening on port $(s.port)."
         else
+            tserver = islocal(s) ? read_config(DFC.config_path("servers/localhost.json")) : load_remote_config(s.username, s.domain)
+            run(Cmd(`ssh -N -f -L $(s.local_port):localhost:$(tserver.port) $(ssh_string(s))`, detach=true))
             @info "Daemon on Server $(s.name) started, listening on local port $(s.local_port)."
+            s.port = tserver.port
+            @info "Saving updated server info..."
+            save(s)
         end
     end
-    return 
+     
+    return s
 end
 
 
-function maybe_start_server(s::Server)
+function maybe_start(s::Server)
     if !isalive(s)
         try
-            tserver = islocal(s) ? read_server_config(DFC.config_path("servers/localhost.json")) : load_remote_config(s.username, s.domain)
+            tserver = islocal(s) ? read_config(DFC.config_path("servers/localhost.json")) : load_remote_config(s.username, s.domain)
             s.port = tserver.port
             if !isalive(s)
                 start(s)
@@ -266,12 +314,12 @@ function maybe_start_server(s::Server)
     end
     return s
 end
-maybe_start_server(j) = (s = Server(j); return maybe_start_server(s))
+maybe_start(j) = (s = Server(j); return maybe_start(s))
 
-kill_server(s::Server) = HTTP.put(s, "/kill_server")
+kill(s::Server) = HTTP.put(s, "/kill_server")
 
-function restart_server(s::Server)
-    kill_server(s)
+function restart(s::Server)
+    kill(s)
     return start(s)
 end
 
@@ -297,7 +345,7 @@ function ask_input(::Type{T}, message, default=nothing) where {T}
 end
    
 function maybe_create_localhost()
-    t = load_server("localhost")
+    t = load("localhost")
     if t === nothing
         @info "Initializing localhost server configuration."
         scheduler = Sys.which("sbatch") === nothing ? Bash : Slurm
@@ -374,8 +422,8 @@ function server_command(username, domain, cmd)
     close(out.in)
     close(err.in)
 
-    stdout = String(read(out))
-    stderr = String(read(err))
+    stdout = read(out, String)
+    stderr = read(err, String)
     return (
       stdout = stdout,
       stderr = stderr,
@@ -402,7 +450,7 @@ function available_modules(s::Server)
 end
 
 function Base.readdir(s::Server, dir::String)
-    maybe_start_server(s)
+    maybe_start(s)
     resp = HTTP.get(s, "/readdir/" * abspath(s, dir))
     return JSON3.read(resp.body, Vector{String})
 end

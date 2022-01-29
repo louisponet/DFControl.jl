@@ -59,7 +59,7 @@ include("Display/Display.jl")
 
 function __init__()
     Servers.maybe_create_localhost()
-    # Client.maybe_start_server("localhost")
+    # Client.maybe_start("localhost")
     # if !haskey(ENV, "IS_DAEMON")
     #     init_daemon()
     # else

@@ -1,5 +1,5 @@
 function pseudos(server, pseudoset, atsyms::Vector{Symbol}, fuzzy = "")
-    s = Servers.maybe_start_server(server)
+    s = Servers.maybe_start(server)
     pseudo_paths = list_pseudoset(s, pseudoset, fuzzy)
     ps = Dict{Symbol,String}()
     for a in atsyms
@@ -16,7 +16,7 @@ function pseudos(server, pseudoset, atsyms::Vector{Symbol}, fuzzy = "")
 end
 
 function list_pseudoset(server, pseudoset, fuzzy="")
-    s = Servers.maybe_start_server(server)
+    s = Servers.maybe_start(server)
     resp = HTTP.get(s, "/pseudos/$pseudoset", [], JSON3.write(fuzzy))
     if resp.status == 204
         error("No pseudoset $pseudoset found on Server $(s.name). Please first configure it using configure_pseudoset.")
@@ -30,7 +30,7 @@ end
 Lists the pseudosets that have previously been set up.
 """
 function list_pseudosets(server = "localhost")
-    s = Servers.maybe_start_server(server)
+    s = Servers.maybe_start(server)
     return JSON3.read(HTTP.get(s, "/pseudos").body, Vector{String})
 end
 
@@ -40,7 +40,7 @@ end
 Reads the specified `dir` and sets up the pseudos for `set`.
 """
 function configure_pseudoset(set_name::String, dir::String; server = "localhost")
-    s = Servers.maybe_start_server(server)
+    s = Servers.maybe_start(server)
     p = isabspath(dir) ? dir : joinpath(s, dir)
     n_pseudos = JSON3.read(HTTP.post(s, "/configure_pseudoset/" * p, [],
                                      JSON3.write(set_name)).body, Int)
@@ -53,7 +53,7 @@ end
 Removes the pseudo set from the server.
 """
 function rm_pseudoset!(set_name::String; server = "localhost")
-    s = Servers.maybe_start_server(server)
+    s = Servers.maybe_start(server)
     return HTTP.put(s, "/rm_pseudos", [], JSON3.write(set_name))
 end
 #---#
