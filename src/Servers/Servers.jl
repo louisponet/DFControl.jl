@@ -247,7 +247,7 @@ function start(s::Server)
         curtime = 0
         try
             cmd = `stat -c '%'Z  '~'/.julia/config/DFControl/servers/localhost.json`
-            curtime = islocal(s) ? parse(Int, read(cmd, String)) : parse(Int, server_command(s.username, s.domain, cmd)[1])
+            curtime = islocal(s) ? mtime(DFC.config_path("servers", "localhost.json")) : parse(Int, server_command(s.username, s.domain, cmd)[1])
         catch
             nothing
         end
@@ -260,7 +260,9 @@ function start(s::Server)
         uuid = UUIDs.uuid4()
         write(DFC.config_path("user_uuid"), "$uuid")
     end
-    push(s, DFC.config_path("user_uuid"), "~/.julia/config/DFControl/user_uuid")
+    if !islocal(s)
+        push(DFC.config_path("user_uuid"), s, "~/.julia/config/DFControl/user_uuid")
+    end
 
     julia_cmd = """$(s.julia_exec) --startup-file=no -t auto -e "using DFControl; DFControl.Resource.run()" &> ~/.julia/config/DFControl/logs/daemon.log"""
     if s.domain != "localhost"

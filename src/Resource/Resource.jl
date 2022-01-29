@@ -129,7 +129,7 @@ end
 function AuthHandler(req)
     if HTTP.hasheader(req, "USER-UUID")
         uuid = HTTP.header(req, "USER-UUID")
-        if uuid == USER_UUID[]
+        if UUID(uuid) == USER_UUID[]
             return requestHandler(req)
         end
     end
