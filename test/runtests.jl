@@ -5,7 +5,7 @@ testdir = @__DIR__
     test_server = Server("localhost")
     if Servers.isalive(test_server)
         try
-            Servers.kill_server(test_server)
+            Servers.kill(test_server)
         catch
             nothing
         end

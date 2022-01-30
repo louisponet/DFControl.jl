@@ -275,10 +275,6 @@ function start(s::Server)
     firstime = checktime()
 
     # Now we upload the user's uuid for safety
-    if !ispath(DFC.config_path("user_uuid"))
-        uuid = UUIDs.uuid4()
-        write(DFC.config_path("user_uuid"), "$uuid")
-    end
     if !islocal(s)
         push(DFC.config_path("user_uuid"), s, "~/.julia/config/DFControl/user_uuid")
     end
