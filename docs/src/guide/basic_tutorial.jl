@@ -6,7 +6,7 @@
 # starting from a cif file specifying the structure.
 
 using DFControl
-if !isalive(Server("localhost"))#hide
+if !Servers.isalive(Server("localhost"))#hide
     @async DFC.Resource.run()#hide
 end#hide
 
