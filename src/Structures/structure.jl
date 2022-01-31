@@ -274,7 +274,7 @@ function polyhedron(at::Atom, str::Structure, order::Int)
     return polyhedron(at, create_supercell(str, -1:1, -1:1, -1:1).atoms, order)
 end
 
-function set_pseudos!(structure::Structure, pseudos)
+function set_pseudos!(structure::Structure, pseudos::Dict)
     for at in structure.atoms
         pseudo = get(pseudos, at.element.symbol, nothing)
         if pseudo === nothing

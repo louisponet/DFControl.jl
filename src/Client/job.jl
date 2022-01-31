@@ -50,6 +50,17 @@ function request_job_dir(dir::String, server::Server)
     end
 end
 
+"""
+    save(job::Job)
+
+Saves the job's calculations and `job.tt` submission script in `job.dir`.
+Some sanity checks will be performed on the validity of flags, execs, pseudopotentials, etc.
+The job will also be registered for easy retrieval at a later stage.
+
+If a previous job is present in the job directory (indicated by a valid job script),
+it will be copied to the `.versions` sub directory as the previous version of `job`,
+and the version of `job` will be incremented. 
+"""
 function save(job::Job, workflow::Union{Nothing, Workflow} = nothing; server::Server = maybe_start(job))
     # First we check whether the job is trying to be saved in a archived directory, absolutely not allowed
     @assert !isrunning(job) "Can't save a job in a directory where another is running."
@@ -103,6 +114,11 @@ function save(job::Job, workflow::Union{Nothing, Workflow} = nothing; server::Se
     return job
 end
 
+"""
+    submit(job::Job)
+
+Saves and launches `job`. 
+"""
 function submit(job::Job, workflow=nothing)
     server = maybe_start(job)
     verify_execs(job, server)
@@ -164,28 +180,6 @@ function isrunning(args...; kwargs...)
     return s == Jobs.Running || s == Jobs.Pending || s == Jobs.Submitted
 end
 
-"""
-    versions(job::Job)
-
-Returs the valid versions of `job`.
-"""
-versions(job::Job) = versions(abspath(job); server = job.server) 
-function versions(dir::AbstractString; server = "localhost")
-    server=maybe_start(server) 
-    return JSON3.read(HTTP.get(server, "/job_versions/" * Jobs.main_job_dir(dir)).body, Vector{Int})
-end
-
-"""
-    last_version(job::Job)
-
-Returns the last version number of `job`.
-"""
-last_version(job::Job) = last_version(abspath(job), server = job.server) 
-function last_version(dir::AbstractString; server="localhost")
-    t = versions(dir, server=server)
-    return isempty(t) ? 0 : t[end]
-end
-
 function submission_time(job::Job)
     resp = HTTP.get(maybe_start(job), "/mtime/" * Jobs.scriptpath(job))
     return JSON3.read(resp.body, Float64)
@@ -209,6 +203,12 @@ end
 outputdata(job::Job; kwargs...) =
     outputdata(job.dir; server=job.server, kwargs...)
     
+"""
+    outputdata(job::Job; server = job.server, calcs::Vector{String}=String[], extra_parse_funcs = nothing)
+    outputdata(jobdir::String; server = job.server, calcs::Vector{String}=String[], extra_parse_funcs = nothing)
+    
+Finds the output files for each of the calculations of a [`Job`](@ref), and groups all the parsed data into a dictionary.
+"""
 function outputdata(jobdir::String; server = "localhost", calcs::Vector{String}=String[], extra_parse_funcs = nothing)
     server = maybe_start(server)
     jobdir = isabspath(jobdir) ? jobdir : joinpath(server, jobdir)
@@ -314,6 +314,16 @@ function abort(dir::String; server="localhost")
 end
 abort(job::Job) = abort(job.dir; server= job.server)
 
+"""
+    registered_jobs(fuzzy::AbstractString = "")
+
+Lists all the known [`Jobs`](@ref Job) directories that contain `fuzzy`.
+Intended to be used as:
+```julia
+job_dirs = registered_jobs("NiO")
+job = Job(job_dirs[1])
+```
+"""
 function registered_jobs(fuzzy::String=""; server=nothing)
     if server === nothing
         all_jobs = Dict{String,Vector{Tuple{String, DateTime}}}()
@@ -337,6 +347,36 @@ function running_jobs(fuzzy=""; server="localhost")
     return reverse(JSON3.read(resp.body, Vector{Tuple{String, Int}}))
 end
 
+"""
+    versions(job::Job)
+    versions(jobdir::String; server="localhost")
+
+Returs the valid versions of `job`.
+"""
+versions(job::Job) = versions(abspath(job); server = job.server) 
+function versions(dir::AbstractString; server = "localhost")
+    server=maybe_start(server) 
+    return JSON3.read(HTTP.get(server, "/job_versions/" * Jobs.main_job_dir(dir)).body, Vector{Int})
+end
+
+"""
+    last_version(job::Job)
+    last_version(jobdir::String; server="localhost")
+
+Returns the last version number of `job`.
+"""
+last_version(job::Job) = last_version(abspath(job), server = job.server) 
+function last_version(dir::AbstractString; server="localhost")
+    t = versions(dir, server=server)
+    return isempty(t) ? 0 : t[end]
+end
+
+
+"""
+    switch_version!(job::Job, version::Int)
+
+Changes the version of `job`.
+"""
 function switch_version!(job::Job, version::Int)
     allvers = versions(job)
     if !(version in allvers)
@@ -349,6 +389,11 @@ function switch_version!(job::Job, version::Int)
     return job
 end
 
+"""
+    rm_version!(job::Job, version::Int)
+
+Removes the `version` of the `job`.
+"""
 function rm_version!(job::Job, version::Int)
     server = maybe_start(job.server) 
     allvers = versions(job)
@@ -389,6 +434,102 @@ function rm_environment!(name::String; server="localhost")
     return HTTP.put(server, "/environment/$name")
 end
 
-function Servers.pull(j::Job, dest::String; versions=false)
-    
+"""
+    bandgap(job::Job, fermi=nothing)
+
+Calculates the bandgap (possibly indirect) around the fermi level.
+Uses the first found bands calculation, if there is none it uses the first found nscf calculation.
+"""
+function bandgap(job::Job, fermi = nothing, outdat = outputdata(job))
+    band_calcs = filter(!isnothing, getfirst.([Calculations.isbands, Calculations.isnscf, Calculations.isscf], (job.calculations,)))
+    if isempty(band_calcs)
+        error("No valid calculation found to calculate the bandgap.\nMake sure the job has either a valid bands or nscf calculation.")
+    end
+
+    if fermi === nothing
+        fermi_calcs = filter(x -> (Calculations.isvcrelax(x) ||
+                                   Calculations.isscf(x) ||
+                                   Calculations.isnscf(x)), job.calculations)
+
+        if isempty(fermi_calcs)
+            error("No valid calculation found to extract the fermi level.\nPlease supply the fermi level manually.")
+        end
+        fermi = maximum(x->get(get(outdat, x.name, Dict()), :fermi, -Inf), fermi_calcs)
+    end
+
+    bands = map(x->outdat[x.name][:bands], filter(x -> haskey(outdat, x.name), band_calcs))
+    return minimum(bandgap.(bands, fermi))
 end
+
+
+
+"""
+    readfermi(job::Job, outdat=outputdata(job))
+
+Tries to read the fermi level from a valid [`Calculation`](@ref) inside `job`. 
+"""
+function readfermi(job::Job, outdat=outputdata(job))
+    ins = filter(x -> (Calculations.isvcrelax(x) || Calculations.isscf(x) || Calculations.isnscf(x)), job.calculations)
+    @assert isempty(ins) !== nothing "Job does not have a valid scf or nscf output."
+    for i in ins
+        if haskey(outdat, i.name)
+            o = outdat[i.name]
+            if haskey(o, :fermi)
+                return o[:fermi]
+            end
+        end
+    end
+    @warn "No output files with fermi level found."
+    return 0.0
+end
+
+"""
+    readbands(job::Job, outdat=outputdata(job))
+
+Tries to read the bands from a bands calculation that is present in `job`.
+"""
+function readbands(job::Job, outdat=outputdata(job))
+    calc = getfirst(x -> Calculations.isbands(x), job.calculations)
+    if calc === nothing || !haskey(outdat, calc.name)
+        calc = getfirst(x -> Calculations.isnscf(x), job.calculations)
+        if calc === nothing || !haskey(outdat, calc.name)
+            @warn "Job does not have a valid bands output."
+            return nothing
+        end
+        @warn "No bands calculation found, return bands from nscf calculation."
+        return outdat[calc.name][:bands]
+    end
+    return outdat[calc.name][:bands]
+end
+
+# TODO
+# """
+#     cleanup(job::Job)
+    
+# Cleanup `job.dir` interactively.
+# """
+# function cleanup(job::Job)
+#     labels = String[]
+#     paths = String[]
+#     for v in versions(job)
+#         vpath = version_dir(job, v)
+#         s = round(dirsize(vpath) / 1e6; digits = 3)
+#         push!(labels, "Version $v:  $s Mb")
+#         push!(paths, vpath)
+#         opath = joinpath(vpath, Jobs.TEMP_CALC_DIR)
+#         if ispath(opath)
+#             s_out = round(dirsize(opath) / 1e6; digits = 3)
+#             push!(labels, "Version $v/outputs:  $s_out Mb")
+#             push!(paths, opath)
+#         end
+#     end
+#     menu = MultiSelectMenu(labels)
+#     choices = request("Select job files to delete:", menu)
+#     for i in choices
+#         if ispath(paths[i]) # Could be that outputs was already deleted
+#             @info "Deleting $(paths[i])"
+#             rm(paths[i]; recursive = true)
+#         end
+#     end
+# end
+

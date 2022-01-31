@@ -308,61 +308,6 @@ function set_wanenergies!(job::Job, min_window_determinator::Real; kwargs...)
 end
 
 """
-    bandgap(job::Job, fermi=nothing)
-
-Calculates the bandgap (possibly indirect) around the fermi level.
-Uses the first found bands calculation, if there is none it uses the first found nscf calculation.
-"""
-function bandgap(job::Job, fermi = nothing)
-    band_calcs = filter(!isnothing, getfirst.([Calculations.isbands, Calculations.isnscf, Calculations.isscf], (job.calculations,)))
-    if isempty(band_calcs)
-        error("No valid calculation found to calculate the bandgap.\nMake sure the job has either a valid bands or nscf calculation.")
-    end
-
-    outdat = outputdata(job)
-    if fermi === nothing
-        fermi_calcs = filter(!isnothing, getfirst.([Calculations.isnscf, Calculations.isscf], (job.calculations,)))
-        if isempty(fermi_calcs)
-            error("No valid calculation found to extract the fermi level.\nPlease supply the fermi level manually.")
-        end
-        fermi = maximum(x->get(get(outdat, x.name, Dict()), :fermi, -Inf), fermi_calcs)
-    end
-
-    bands = map(x->outdata[x.name][:bands], filter(x -> haskey(outdat, x.name), band_calcs))
-    return minimum(bandgap.(bands, fermi))
-end
-
-function readfermi(job::Job, outdat)
-    ins = filter(x -> (Calculations.isvcrelax(x) || Calculations.isscf(x) || Calculations.isnscf(x)), job.calculations)
-    @assert isempty(ins) !== nothing "Job does not have a valid scf or nscf output."
-    for i in ins
-        if haskey(outdat, i.name)
-            o = outdat[i.name]
-            if haskey(o, :fermi)
-                return o[:fermi]
-            end
-        end
-    end
-    @warn "No output files with fermi level found."
-    return 0.0
-end
-
-function readbands(job::Job, outdat)
-    calc = getfirst(x -> Calculations.isbands(x), job.calculations)
-    outdat = outputdata(job)
-    if calc === nothing || !haskey(outdat, calc.name)
-        calc = getfirst(x -> Calculations.isnscf(x), job.calculations)
-        if calc === nothing || !haskey(outdat, calc.name)
-            @warn "Job does not have a valid bands output."
-            return nothing
-        end
-        @warn "No bands calculation found, return bands from nscf calculation."
-        return outdat[calc.name][:bands]
-    end
-    return outdat[calc.name][:bands]
-end
-
-"""
     archive(job::Job, archive_directory::AbstractString, description::String=""; present = nothing, version=job.version)
 
 Archives `job` by copying it's contents to `archive_directory` alongside a `results.jld2` file with all the parseable results as a Dict. `description` will be saved in a `description.txt` file in the `archive_directory`. A different job version can be copied using the `version` kwarg, and with the `present` kwarg a function can be specified that can be later called with the [`@present`](@ref) macro.

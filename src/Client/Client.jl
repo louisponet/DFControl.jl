@@ -41,12 +41,13 @@ using ..Calculations: set_name!, set_kpoints!, data; export set_name!, set_kpoin
 using ..Structures: set_pseudos!, element; export set_pseudos!, element
 
 include("job.jl")
-export submit, save, isrunning, state, versions, last_version, switch_version!, rm_version!, outputdata,
+export submit, save, isrunning, state, versions, last_version, switch_version!, rm_version!,
        registered_jobs, running_jobs, abort,
        environment_from_jobscript, get_environment, add_environment, rm_environment!,
-       known_execs, get_exec
+       known_execs, get_exec,
+       outputdata, readfermi, readbands, bandgap
 
 include("pseudos.jl")
-export configure_pseudoset, rm_pseudoset!
+export configure_pseudoset, rm_pseudoset!, list_pseudosets
 
 end

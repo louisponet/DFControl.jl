@@ -75,17 +75,6 @@ finished(job::Job) = readdir(finished_dir(job))
 
 mods_test() = Base.loaded_modules
 
-"""
-    save(job::Job)
-
-Saves the job's calculations and `job.tt` submission script in `job.dir`.
-Some sanity checks will be performed on the validity of flags, execs, pseudopotentials, etc.
-The job will also be registered for easy retrieval at a later stage.
-
-If a previous job is present in the job directory (indicated by a valid job script),
-it will be copied to the `.versions` sub directory as the previous version of `job`,
-and the version of `job` will be incremented. 
-"""
 function save(jobdir::String, files; kwargs...)
 
     if jobdir[end] == '/'
@@ -187,41 +176,6 @@ Total filesize on disk for a job and all its versions.
 """
 Base.filesize(job::Job) = dirsize(job.dir)
 
-"""
-    cleanup(job::Job)
-    
-Cleanup `job.dir` interactively.
-"""
-function cleanup(job::Job)
-    labels = String[]
-    paths = String[]
-    for v in versions(job)
-        vpath = version_dir(job, v)
-        s = round(dirsize(vpath) / 1e6; digits = 3)
-        push!(labels, "Version $v:  $s Mb")
-        push!(paths, vpath)
-        opath = joinpath(vpath, Jobs.TEMP_CALC_DIR)
-        if ispath(opath)
-            s_out = round(dirsize(opath) / 1e6; digits = 3)
-            push!(labels, "Version $v/outputs:  $s_out Mb")
-            push!(paths, opath)
-        end
-    end
-    menu = MultiSelectMenu(labels)
-    choices = request("Select job files to delete:", menu)
-    for i in choices
-        if ispath(paths[i]) # Could be that outputs was already deleted
-            @info "Deleting $(paths[i])"
-            rm(paths[i]; recursive = true)
-        end
-    end
-end
-
-function save_metadata(job)
-    return jldsave(joinpath(job, ".metadata.jld2"); metadata = job.metadata,
-                   version = job.version)
-end
-
 timestamp(job::Job) = timestamp(job.dir)
 has_timestamp(job) = haskey(job.metadata, :timestamp)
 
@@ -238,7 +192,6 @@ end
 
 exists_job(d::AbstractString) = ispath(d) && ispath(joinpath(d, "job.tt"))
 
-"Finds the output files for each of the calculations of a job, and groups all found data into a dictionary."
 function outputdata(jobdir::String, calculations::Vector{String})
     job = load_job(jobdir)
     calculations = isempty(calculations) ? map(x->x.name, job.calculations) : calculations

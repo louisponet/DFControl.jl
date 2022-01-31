@@ -1,6 +1,6 @@
-function pseudos(server, pseudoset, atsyms::Vector{Symbol}, fuzzy = "")
+function pseudos(pseudoset, atsyms::Vector{Symbol}, fuzzy = ""; server="localhost")
     s = Servers.maybe_start(server)
-    pseudo_paths = list_pseudoset(s, pseudoset, fuzzy)
+    pseudo_paths = list_pseudoset(pseudoset, fuzzy, server=s)
     ps = Dict{Symbol,String}()
     for a in atsyms
         path = get(pseudo_paths, a, nothing)
@@ -15,7 +15,7 @@ function pseudos(server, pseudoset, atsyms::Vector{Symbol}, fuzzy = "")
     return ps
 end
 
-function list_pseudoset(server, pseudoset, fuzzy="")
+function list_pseudoset(pseudoset, fuzzy=""; server="localhost")
     s = Servers.maybe_start(server)
     resp = HTTP.get(s, "/pseudos/$pseudoset", JSON3.write(fuzzy))
     if resp.status == 204
@@ -25,11 +25,11 @@ function list_pseudoset(server, pseudoset, fuzzy="")
 end
 
 """
-    list_pseudosets(server = "localhost")
+    list_pseudosets(;server = "localhost")
 
 Lists the pseudosets that have previously been set up.
 """
-function list_pseudosets(server = "localhost")
+function list_pseudosets(;server = "localhost")
     s = Servers.maybe_start(server)
     return JSON3.read(HTTP.get(s, "/pseudos").body, Vector{String})
 end
@@ -59,30 +59,25 @@ end
 #---#
 
 """
-    set_pseudos!(job::Job, set::Symbol, specifier::String=""; kwargs...)
-    set_pseudos!(structure::Structure, set::Symbol, specifier::String=""; kwargs...)
-    set_pseudos!(job::Job, atsym::Symbol, set::Symbol, specifier::String=""; kwargs...)
-    set_pseudos!(structure::Structure, atsym::Symbol, set::Symbol, specifier::String=""; kwargs...)
+    set_pseudos!(job::Job, set::String; server=job.server, specifier::String="", kwargs...)
+    set_pseudos!(structure::Structure, set::String; server="localhost", specifier::String="", kwargs...)
 
 Sets the pseudopotentials of the atoms inside the `structure` (or `job.structure`) to the ones of `set`.
-`specifier` can be specified to select a specific pseudo if multiple pseudopotentials
-for a given element exist in the set.
+`specifier` can be specified as a fuzzy match to select a specific pseudos if multiple pseudopotentials exist in the set.
 Example:
 ```
-set_pseudos!(job, :pbesol, "rrkjus")
+set_pseudos!(job, "pbesol", specifier="rrkjus")
 ```
 will select the pseudo file that contains "rrkjus" in the filename.
 
-If `atsym` is used, only the pseudos of the atoms with that name will be set.
-
-    set_pseudos!(job::Job, at_pseudos::Pair{Symbol, Pseudo}...; kwargs...)
-    set_pseudos!(structure::Structure, at_pseudos::Pair{Symbol, Pseudo}...; kwargs...)
-
-Convenience function that allows to set pseudopotentials for multiple atom types at the same time.
-e.g. `set_pseudos!(job, :Si => getdefault_pseudo(:Si, :sssp)
+The pseudos will be searched for in the `server`.
 """
-function Structures.set_pseudos!(job::Job, set; server=job.server, specifier::String = "", kwargs...)
-    atsyms = unique(map(x -> x.element.symbol, job.structure.atoms))
-    return Structures.set_pseudos!(job.structure, pseudos(server, set, atsyms, specifier);
+Structures.set_pseudos!(job::Job, args...; server=job.server,kwargs...) =
+    Structures.set_pseudos!(job.structure, args...; server=server, kwargs...)
+    
+function Structures.set_pseudos!(str::Structures.Structure, set; server = "localhost", specifier = "", kwargs...)
+    atsyms = unique(map(x -> x.element.symbol, str.atoms))
+    return Structures.set_pseudos!(str, pseudos(set, atsyms, specifier, server=server);
                                    kwargs...)
 end
+    
