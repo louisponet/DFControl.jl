@@ -6,6 +6,9 @@
 # in it.
 using DFControl
 
+if !isalive(Server("localhost"))#hide
+    @async DFC.Resource.run()#hide
+end#hide
 tjob = Job(joinpath(@__DIR__, "..", "assets", "job"))#hide
 tjob2 = Job(joinpath(@__DIR__, "..", "assets", "Job2"))#hide
 if false#hide

@@ -6,6 +6,9 @@
 # starting from a cif file specifying the structure.
 
 using DFControl
+if !isalive(Server("localhost"))#hide
+    @async DFC.Resource.run()#hide
+end#hide
 
 # First we download the cif file, extract the `Structure` and assign the right pseudos to it.
 # In this case Si (F d -3 m :1) from http://www.crystallography.net/cod/9011998.cif
