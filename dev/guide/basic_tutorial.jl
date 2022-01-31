@@ -91,15 +91,14 @@ push!(job, bands_calc)
 job["scf"].run = false
 
 # Printing the job will now highlight the scheduled calculations differently from the non-scheduled ones
-job
+show(job)
 
 # Seeing that all is right we submit the job again
 job.dir = "job"; #hide
 if false #hide
     submit(job)
 else #hide
-    global job = Job(joinpath(@__DIR__, "..", "assets",
-                              "job"))#hide
+    global job = Job(joinpath(splitdir(pathof(DFControl))[1], "..", "docs","src","assets", "job"))#hide
 end #hide
 
 # We can access the bands through
