@@ -9,8 +9,8 @@ using DFControl
 if !Servers.isalive(Server("localhost"))#hide
     @async DFC.Resource.run()#hide
 end#hide
-tjob = Job(joinpath(@__DIR__, "..", "assets", "job"))#hide
-tjob2 = Job(joinpath(@__DIR__, "..", "assets", "Job2"))#hide
+tjob = Job(joinpath(splitdir(pathof(DFControl))[1], "..", "docs","src","assets", "job"))#hide
+tjob2 = Job(joinpath(splitdir(pathof(DFControl))[1], "..", "docs","src","assets", "Job2"))#hide
 if false#hide
     global job = Job("job")
 else#hide

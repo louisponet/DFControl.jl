@@ -139,7 +139,6 @@ end
 function run()
     s = Server("localhost")
     CURRENT_SERVER[] = s
-    cd(s.root_jobdir)
     Service.global_logger(Service.daemon_logger())
     port, server = listenany(ip"0.0.0.0", 8080)
     s.port = port

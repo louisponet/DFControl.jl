@@ -58,7 +58,7 @@ job = Job("Si", structure, [scf_calculation], :ecutwfc => 20, :conv_thr => 1e-6;
 if false #hide
     submit(job)
 else #hide
-    global job = Job(joinpath(@__DIR__, "../../src/assets/job/"))#hide
+    global job = Job(joinpath(splitdir(pathof(DFControl))[1], "..", "docs","src","assets", "job"))#hide
     pop!(job) #hide
 end #hide
 
