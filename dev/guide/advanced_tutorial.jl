@@ -6,13 +6,16 @@
 # in it.
 using DFControl
 
-tjob = DFJob(joinpath(pathof(DFControl), "..", "..", "docs", "src", "assets", "job"))#hide
-tjob2 = DFJob(joinpath(pathof(DFControl), "..", "..", "docs", "src", "assets", "Job2"))#hide
+if !Servers.isalive(Server("localhost"))#hide
+    @async DFC.Resource.run()#hide
+end#hide
+tjob = Job(joinpath(splitdir(pathof(DFControl))[1], "..", "docs","src","assets", "job"))#hide
+tjob2 = Job(joinpath(splitdir(pathof(DFControl))[1], "..", "docs","src","assets", "Job2"))#hide
 if false#hide
-    global job = DFJob("job")
+    global job = Job("job")
 else#hide
     global job = deepcopy(tjob)#hide
-    set_localdir!(job, "job") #hide
+    job.dir= "job" #hide
     job#hide
 end#hide
 
@@ -21,7 +24,7 @@ end#hide
 
 # The next thing we may want to do is to change the directory where the job is running.
 if false#hide
-    set_localdir!(job, "Job2"; copy = true)
+    job.dir = "Job2"
 else#hide
     global job = deepcopy(tjob2)#hide
     pop!(job)#hide
@@ -34,7 +37,7 @@ end#hide
 
 # Next we would like to plot the projected density of states.
 # For that we create both an nscf calculation to get a uniform k-grid, and projwfc calculation.
-push!(job, gencalc_nscf(job["scf"], (6, 6, 6)))
+push!(job, Calculations.gencalc_nscf(job["scf"], (6, 6, 6)))
 
 # The second argument of gencalc_nscf is the kgrid. When passing a 3-Tuple,
 # the code will assume that an explicit k-grid is requested, which can be verified by
@@ -44,7 +47,7 @@ data(job["nscf"], :k_points)
 # energy window.
 # The arguments are structured as (template, Emin, Emax, deltaE) respectively.
 fermi = readfermi(job)
-push!(job, gencalc_projwfc(job["nscf"], fermi - 10, fermi + 1, 0.1))
+push!(job, Calculations.gencalc_projwfc(job["nscf"], fermi - 10, fermi + 1, 0.1))
 # Next we disable the bands calculation and run the new ones.
 job["bands"].run = false
 if false#hide
@@ -72,7 +75,7 @@ job["bands"][:nbnd] = 30
 # will be converted to the correct one.
 
 # In order to quickly specify what calculations to schedule and which not, one can use
-set_flow!(job, "" => false, "scf" => true)
+Jobs.set_flow!(job, "" => false, "scf" => true)
 # As we can see, only the scf and nscf calculations are scheduled to run now,
 # this is because for each of the pairs in the arguments of `set_flow!`, every calculation inside
 # the job for which the string occurs in the name will be set to run or not depending on the Bool.
