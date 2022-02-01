@@ -13,7 +13,7 @@ function blend_color(contribs::Vector, at_colors)
     if any(isnan, contribs)
         return RGB(0.0, 0.0, 0.0)
     end
-    if length(contribs) == 1
+    if length(contribs) == 1 || length(at_colors) == 1
         return at_colors[1]
     end
     result = weighted_color_mean(normalize([contribs[1], contribs[2]])[1], at_colors[1],

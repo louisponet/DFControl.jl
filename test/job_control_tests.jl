@@ -142,7 +142,6 @@ end
 end
 
 
-rm(testjobpath, recursive=true)
 # function copy_outfiles()
 #     for f in readdir(joinpath(testassetspath, "outputs"))
 #         cp(joinpath(testassetspath, "outputs", f), joinpath(testjobpath, f); force = true)

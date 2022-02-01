@@ -5,7 +5,7 @@ function color_print(io, v)
     tio_ =  IOContext(tio, :color=>true)
     df_show(tio_, v)
     html_str = sprint(io2->display(io2, MIME"text/html"(),
-                      HTMLPrinter(tio, root_class="documenter-example-output")))
+                      HTMLPrinter(tio_, root_class="documenter-example-output")))
     print(io,"$html_str")
 end
 
