@@ -61,17 +61,17 @@ function Server(s::String)
     server = load_remote_config(username, domain)
     if server !== nothing
 
-        local_port = 0    
-        try
-            run(`nc -vz $domain 22`)
-            local_port = 0
-        catch
-            local_port = ask_input(Int, "Local tunnel port", 8123)
+        local_choice = request("Should a local tunnel be created?", RadioMenu(["yes", "no"]))
+        local_choice == -1 && return
+        if local_choice == 1
+            loc_port = ask_input(Int, "Local port", 8123)
+        else
+            loc_port = 0
         end
              
         server.name       = name
         server.domain     = domain
-        server.local_port = local_port
+        server.local_port = loc_port
     else
         @info "Couldn't pull server configuration, creating new..."
         port  = ask_input(Int, "Port", 8080)
@@ -246,7 +246,7 @@ function start(s::Server)
     if islocal(s)
         t = ispath(DFC.config_path("self_destruct"))
     else
-        cmd = `cat '~'/.julia/config/DFControl/self_destruct`
+        cmd = "cat ~/.julia/config/DFControl/self_destruct"
         t = server_command(s, cmd).exitcode == 0
     end
         
@@ -274,7 +274,7 @@ function start(s::Server)
     function checktime()
         curtime = 0
         try
-            cmd = `stat -c '%'Z  '~'/.julia/config/DFControl/servers/localhost.json`
+            cmd = "stat -c %Z  ~/.julia/config/DFControl/servers/localhost.json"
             curtime = islocal(s) ? mtime(DFC.config_path("servers", "localhost.json")) : parse(Int, server_command(s.username, s.domain, cmd)[1])
         catch
             nothing
@@ -438,7 +438,7 @@ function server_command(username, domain, cmd)
     if domain == "localhost"
         process = run(pipeline(ignorestatus(cmd), stdout=out, stderr=err))
     else
-        process = run(pipeline(ignorestatus(`ssh $(username * "@" * domain) source /etc/profile '&''&' $cmd`), stdout=out, stderr=err))
+        process = run(pipeline(ignorestatus(`ssh $(username * "@" * domain) $cmd`), stdout=out, stderr=err))
     end
     close(out.in)
     close(err.in)
