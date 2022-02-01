@@ -251,7 +251,9 @@ function isalive(s::Server)
             
         try 
             resp = HTTP.get(s, "/server_config", readtimeout=15, retry=false)
-            return JSON3.read(resp.body, Server).username == s.username
+            t = JSON3.read(resp.body, Server).username == s.username
+            save(s)
+            return t
         catch
             return false
         end

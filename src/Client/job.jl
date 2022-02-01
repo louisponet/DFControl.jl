@@ -2,8 +2,8 @@ using ..Servers: maybe_start
 
 Servers.Server(j::Job) = Server(j.server)
 
-function Jobs.Job(dir::AbstractString, s = "localhost"; version::Int = -1)
-    server = maybe_start(s)
+function Jobs.Job(dir::AbstractString; server = "localhost", version::Int = -1)
+    server = maybe_start(server)
     if !ispath(server, dir)
         dir = request_job_dir(dir, server)
         dir === nothing && return
