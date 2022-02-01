@@ -1,12 +1,12 @@
 module Servers
 using StructTypes, Distributed, JSON3, HTTP, REPL.TerminalMenus, Parameters, UUIDs
-using ..DFControl
+using ..DFControl: config_path
 using ..Utils
 using ..Jobs
 
 export Server
 
-const SERVER_DIR = DFControl.config_path("servers")
+const SERVER_DIR = config_path("servers")
 
 @enum Scheduler Slurm=1 Bash=2
 
@@ -195,7 +195,7 @@ ssh_string(s::Server) = s.username * "@" * s.domain
 http_string(s::Server) = s.local_port != 0 ? "http://localhost:$(s.local_port)" : "http://$(s.domain):$(s.port)"
 
 function HTTP.request(method::String, s::Server, url, args...; kwargs...)
-    uuid = read(DFC.config_path("user_uuid"), String)
+    uuid = read(config_path("user_uuid"), String)
     return HTTP.request(method, string(http_string(s), url), ["USER-UUID" => uuid], args...; kwargs...)
 end
 
@@ -220,6 +220,17 @@ function rm(s::Server)
            rm(joinpath(SERVER_DIR, s.name * ".json"))
 end
 
+function destroy_tunnel(s)
+    t = getfirst(x->occursin("ssh -N -f -L $(s.local_port)", x), split(read(pipeline(`ps aux` , stdout = `grep $(s.local_port)`), String), "\n"))
+        
+    if t !== nothing
+        run(`kill $(split(t)[2])`)
+    end
+end
+function construct_tunnel(s)
+    run(Cmd(`ssh -N -f -L $(s.local_port):localhost:$(s.port) $(ssh_string(s))`, detach=true))
+end
+
 """
     isalive(s::Server)
 
@@ -231,7 +242,19 @@ function isalive(s::Server)
         resp = HTTP.get(s, "/server_config", readtimeout=15, retry=false)
         return JSON3.read(resp.body, Server).username == s.username
     catch
-        return false
+        tserver = load_remote_config(s.username, s.domain)
+        s.port = tserver.port
+        if s.local_port != 0
+            destroy_tunnel(s)
+            construct_tunnel(s)
+        end
+            
+        try 
+            resp = HTTP.get(s, "/server_config", readtimeout=15, retry=false)
+            return JSON3.read(resp.body, Server).username == s.username
+        catch
+            return false
+        end
     end
 end
 
@@ -244,7 +267,7 @@ function start(s::Server)
     @assert !isalive(s) "Server is already up and running."
     @info "Starting:\n$s"
     if islocal(s)
-        t = ispath(DFC.config_path("self_destruct"))
+        t = ispath(config_path("self_destruct"))
     else
         cmd = "cat ~/.julia/config/DFControl/self_destruct"
         t = server_command(s, cmd).exitcode == 0
@@ -261,11 +284,7 @@ function start(s::Server)
     end
         
     if s.local_port != 0
-        t = getfirst(x->occursin("ssh -N -f -L $(s.local_port)", x), split(read(pipeline(`ps aux` , stdout = `grep $(s.local_port)`), String), "\n"))
-            
-        if t !== nothing
-            run(`kill $(split(t)[2])`)
-        end
+        destroy_tunnel(s)
     end
 
     # Here we check what the modify time of the server-side localhost file is.
@@ -275,7 +294,7 @@ function start(s::Server)
         curtime = 0
         try
             cmd = "stat -c %Z  ~/.julia/config/DFControl/servers/localhost.json"
-            curtime = islocal(s) ? mtime(DFC.config_path("servers", "localhost.json")) : parse(Int, server_command(s.username, s.domain, cmd)[1])
+            curtime = islocal(s) ? mtime(config_path("servers", "localhost.json")) : parse(Int, server_command(s.username, s.domain, cmd)[1])
         catch
             nothing
         end
@@ -285,7 +304,7 @@ function start(s::Server)
 
     # Now we upload the user's uuid for safety
     if !islocal(s)
-        push(DFC.config_path("user_uuid"), s, "~/.julia/config/DFControl/user_uuid")
+        push(config_path("user_uuid"), s, "~/.julia/config/DFControl/user_uuid")
     end
 
     julia_cmd = """$(s.julia_exec) --startup-file=no -t auto -e "using DFControl; DFControl.Resource.run()" &> ~/.julia/config/DFControl/logs/daemon.log"""
@@ -311,10 +330,10 @@ function start(s::Server)
         if s.local_port == 0
             @info "Daemon on Server $(s.name) started, listening on port $(s.port)."
         else
-            tserver = islocal(s) ? read_config(DFC.config_path("servers/localhost.json")) : load_remote_config(s.username, s.domain)
-            run(Cmd(`ssh -N -f -L $(s.local_port):localhost:$(tserver.port) $(ssh_string(s))`, detach=true))
-            @info "Daemon on Server $(s.name) started, listening on local port $(s.local_port)."
+            tserver = islocal(s) ? read_config(config_path("servers/localhost.json")) : load_remote_config(s.username, s.domain)
             s.port = tserver.port
+            construct_tunnel(s)
+            @info "Daemon on Server $(s.name) started, listening on local port $(s.local_port)."
             @info "Saving updated server info..."
             save(s)
         end
