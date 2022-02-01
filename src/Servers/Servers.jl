@@ -58,7 +58,7 @@ function Server(s::String)
     end
     @info "Trying to pull existing configuration from $username@$domain..."
 
-    server = load_remote_config(username, domain)
+    server = load_config(username, domain)
     if server !== nothing
 
         local_choice = request("Should a local tunnel be created?", RadioMenu(["yes", "no"]))
@@ -133,15 +133,20 @@ Utils.searchdir(s::Server, dir, str) = joinpath.(dir, filter(x->occursin(str, x)
 parse_config(config) = JSON3.read(config, Server)
 read_config(config_file) = parse_config(read(config_file, String))
 
-function load_remote_config(username, domain; name="localhost")
-    cmd = "cat ~/.julia/config/DFControl/servers/$name.json"
-    t = server_command(username, domain, cmd)
-    if t.exitcode != 0
-        return nothing
+function load_config(username, domain; name="localhost")
+    if domain == "localhost"
+        return read_config(config_path("servers/localhost.json"))
     else
-        return parse_config(t.stdout)
+        cmd = "cat ~/.julia/config/DFControl/servers/$name.json"
+        t = server_command(username, domain, cmd)
+        if t.exitcode != 0
+            return nothing
+        else
+            return parse_config(t.stdout)
+        end
     end
 end
+load_config(s::Server; kwargs...) = load_config(s.username, s.domain; kwargs...)
 
 function known_servers(fuzzy = "")
     if ispath(SERVER_DIR)
@@ -242,7 +247,7 @@ function isalive(s::Server)
         resp = HTTP.get(s, "/server_config", readtimeout=15, retry=false)
         return JSON3.read(resp.body, Server).username == s.username
     catch
-        tserver = load_remote_config(s.username, s.domain)
+        tserver = load_config(s)
         s.port = tserver.port
         if s.local_port != 0
             destroy_tunnel(s)
@@ -332,7 +337,7 @@ function start(s::Server)
         if s.local_port == 0
             @info "Daemon on Server $(s.name) started, listening on port $(s.port)."
         else
-            tserver = islocal(s) ? read_config(config_path("servers/localhost.json")) : load_remote_config(s.username, s.domain)
+            tserver = load_config(s)
             s.port = tserver.port
             construct_tunnel(s)
             @info "Daemon on Server $(s.name) started, listening on local port $(s.local_port)."
@@ -457,7 +462,7 @@ function server_command(username, domain, cmd)
     out = Pipe()
     err = Pipe()
     if domain == "localhost"
-        process = run(pipeline(ignorestatus(cmd), stdout=out, stderr=err))
+        process = run(pipeline(ignorestatus(`$cmd`), stdout=out, stderr=err))
     else
         process = run(pipeline(ignorestatus(`ssh $(username * "@" * domain) $cmd`), stdout=out, stderr=err))
     end

@@ -384,7 +384,7 @@ function switch_version!(job::Job, version::Int)
     if !(version in allvers)
         error("Version $version does not exist.")
     end
-    tj = Job(Jobs.main_job_dir(job), job.server, version=version)
+    tj = Job(Jobs.main_job_dir(job), server= job.server, version=version)
     for f in fieldnames(Job)
         setfield!(job, f, getfield(tj, f))
     end
