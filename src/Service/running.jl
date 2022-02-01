@@ -21,6 +21,7 @@ function main_loop(s::Server)
         monitor_issues(log_mtimes)
         print_log(s, job_dirs_procs)
         if ispath(config_path("self_destruct"))
+            @info (timestamp = Dates.now(), message = "self_destruct found, self destructing...")
             for (k, t) in job_dirs_procs
                 if t isa Task
                     continue
@@ -28,6 +29,7 @@ function main_loop(s::Server)
                     run(`pkill $t`)
                 end
             end
+            @info (timestamp = Dates.now(), message = "self destructing complete")
             exit()
         end
             

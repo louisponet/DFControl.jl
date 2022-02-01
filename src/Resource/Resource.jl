@@ -102,31 +102,29 @@ HTTP.@register(ROUTER, "PUT", "/environment/*", rm_environment!)
 
 # RUNNING
 function requestHandler(req)
-    with_logger(Service.restapi_logger()) do 
-        start = Dates.now()
-        @info (timestamp = start, event = "ServiceRequestBegin", tid = Threads.threadid(),
-               method = req.method, target = req.target)
-        local resp
-        try
-            obj = HTTP.handle(ROUTER, req)
-            if obj === nothing
-                resp = HTTP.Response(204)
-            else
-                resp = HTTP.Response(200, JSON3.write(obj))
-            end
-        catch e
-            s = IOBuffer()
-            showerror(s, e, catch_backtrace(); backtrace = true)
-            errormsg = String(resize!(s.data, s.size))
-            @error errormsg
-            resp = HTTP.Response(500, errormsg)
+    start = Dates.now()
+    @info (timestamp = start, event = "ServiceRequestBegin", tid = Threads.threadid(),
+           method = req.method, target = req.target)
+    local resp
+    try
+        obj = HTTP.handle(ROUTER, req)
+        if obj === nothing
+            resp = HTTP.Response(204)
+        else
+            resp = HTTP.Response(200, JSON3.write(obj))
         end
-        stop = Dates.now()
-        @info (timestamp = stop, event = "ServiceRequestEnd", tid = Threads.threadid(),
-               method = req.method, target = req.target, duration = Dates.value(stop - start),
-               status = resp.status, bodysize = length(resp.body))
-        return resp
+    catch e
+        s = IOBuffer()
+        showerror(s, e, catch_backtrace(); backtrace = true)
+        errormsg = String(resize!(s.data, s.size))
+        @error errormsg
+        resp = HTTP.Response(500, errormsg)
     end
+    stop = Dates.now()
+    @info (timestamp = stop, event = "ServiceRequestEnd", tid = Threads.threadid(),
+           method = req.method, target = req.target, duration = Dates.value(stop - start),
+           status = resp.status, bodysize = length(resp.body))
+    return resp
 end
 
 function AuthHandler(req)
@@ -146,7 +144,13 @@ function run()
     s.port = port
     Servers.save(s)
     USER_UUID[] = UUID(read(config_path("user_uuid"), String))
-    Threads.@spawn HTTP.serve(AuthHandler, "0.0.0.0", port, server=server)
+    Threads.@spawn begin
+        with_logger(Service.restapi_logger()) do
+            @info (timestamp = Dates.now(), username = ENV["USER"], host = gethostname(), pid=getpid(), port=port)
+            
+            HTTP.serve(AuthHandler, "0.0.0.0", port, server=server)
+        end
+    end
     with_logger(Service.server_logger()) do
         Service.main_loop(s)
     end
