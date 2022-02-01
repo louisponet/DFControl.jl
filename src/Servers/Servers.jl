@@ -344,7 +344,7 @@ end
 
 function maybe_start(s::Server)
     if !isalive(s)
-        error("Server $(s.name) is not running.\nTry to start it with Servers.start(Server($(s.name)))")
+        error("Server $(s.name) is not running.\nTry to start it with Servers.start(Server(\"$(s.name)\"))")
     end
     return s
 end
