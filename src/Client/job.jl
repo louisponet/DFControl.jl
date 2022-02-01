@@ -62,6 +62,7 @@ it will be copied to the `.versions` sub directory as the previous version of `j
 and the version of `job` will be incremented. 
 """
 function save(job::Job, workflow::Union{Nothing, Workflow} = nothing; server::Server = maybe_start(job))
+    @assert workflow === nothing "Workflows not implemented yet."
     # First we check whether the job is trying to be saved in a archived directory, absolutely not allowed
     @assert !isrunning(job) "Can't save a job in a directory where another is running."
 
@@ -120,6 +121,7 @@ end
 Saves and launches `job`. 
 """
 function submit(job::Job, workflow=nothing)
+    @assert workflow === nothing "Workflows not implemented yet."
     server = maybe_start(job)
     verify_execs(job, server)
     save(job, workflow)

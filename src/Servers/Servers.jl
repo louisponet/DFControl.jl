@@ -241,7 +241,16 @@ end
 Launches the daemon process on  the host [`Server`](@ref) `s`.
 """
 function start(s::Server)
+    @assert !isalive(s) "Server is already up and running."
     @info "Starting:\n$s"
+    if islocal(s)
+        t = ispath(DFC.config_path("self_destruct"))
+    else
+        cmd = `cat '~'/.julia/config/DFControl/self_destruct`
+        t = server_command(s, cmd).exitcode == 0
+    end
+        
+    @assert !t "Self destruction was previously triggered, signalling issues on the Server.\nPlease investigate and if safe, remove ~/.julia/config/DFControl/self_destruct"
 
     # Here we clean up previous connections and commands
     if !islocal(s)
@@ -316,17 +325,7 @@ end
 
 function maybe_start(s::Server)
     if !isalive(s)
-        try
-            tserver = islocal(s) ? read_config(DFC.config_path("servers/localhost.json")) : load_remote_config(s.username, s.domain)
-            s.port = tserver.port
-            if !isalive(s)
-                start(s)
-            else
-                save(s)
-            end
-        catch
-            start(s)
-        end
+        error("Server $(s.name) is not running.\nTry to start it with Servers.start(Server($(s.name)))")
     end
     return s
 end

@@ -20,6 +20,9 @@ testdir = @__DIR__
     #     end
     # end
     @async DFControl.Resource.run()
+    while !Servers.isalive(Server("localhost"))
+        sleep(0.1)
+    end
     @time @testset "constants" begin
         include("constant_tests.jl")
     end

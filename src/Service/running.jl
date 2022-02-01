@@ -3,20 +3,62 @@ const JOB_QUEUE = Ref(Dict{String, Tuple{Int, Jobs.JobState}}())
 function main_loop(s::Server)
     job_dirs_procs = Dict()
     queue!(JOB_QUEUE[], s, true)
+    @info (timestamp = Dates.now(), username = ENV["USER"], host = gethostname(), pid=getpid())
     for (j, info) in JOB_QUEUE[]
         if info[2] == Jobs.Running 
             job_dirs_procs[j] = spawn_task(s, j)
         end
     end
+
+    # Used to identify if multiple servers are running in order to selfdestruct 
+    log_mtimes = mtime.(joinpath.((config_path("logs/servers"),), readdir(config_path("logs/servers"))))
+    
     while true
         queue!(JOB_QUEUE[], s)
         handle_workflow_runners!(job_dirs_procs)
         handle_job_submission!(s, job_dirs_procs)
-        handle_workflow_submission!(s, job_dirs_procs)
+        # handle_workflow_submission!(s, job_dirs_procs)
+        monitor_issues(log_mtimes)
+        print_log(s, job_dirs_procs)
+        if ispath(config_path("self_destruct"))
+            for (k, t) in job_dirs_procs
+                if t isa Task
+                    continue
+                else
+                    run(`pkill $t`)
+                end
+            end
+            exit()
+        end
+            
         sleep(SLEEP_TIME)
     end
 end
 
+function print_log(s, job_dirs_procs)
+    if length(job_dirs_procs) > 0
+        ntasks = sum(x-> x isa Task ? 1 : 0, values(job_dirs_procs))
+        nprocs = length(job_dirs_procs) - ntasks
+    else
+        ntasks = 0
+        nprocs = 0
+    end
+    @info (timestamp = Dates.now(), ntasks = ntasks, nprocs = nprocs)
+end
+
+function monitor_issues(log_mtimes)
+    new_mtimes = mtime.(joinpath.((config_path("logs/servers"),), readdir(config_path("logs/servers"))))
+    if length(new_mtimes) != length(log_mtimes)
+        @error "More Server logs got created signalling a server was started while a previous was running."
+        touch(config_path("self_destruct"))
+    end
+    ndiff = length(filter(x -> log_mtimes[x] != new_mtimes[x], 1:length(log_mtimes)))
+    if ndiff > 1
+        @error "More Server logs modification times differed than 1."
+        touch(config_path("self_destruct"))
+    end
+end
+   
 function handle_workflow_runners!(job_dirs_procs)
     to_rm = String[]
     for (k, t) in job_dirs_procs
@@ -26,7 +68,7 @@ function handle_workflow_runners!(job_dirs_procs)
                     @error "Task failed with $(t.result)"
                 else
                     t_ = fetch(t)
-                    @info """Workflow for job directory $(k) done."""
+                    @info (timestamp = Dates.now(), jobdir = k, state=Jobs.Completed)
                 end
                 push!(to_rm, k)
             end
@@ -43,33 +85,27 @@ end
 
 function spawn_task(s::Server, jobdir)
     id = next_jobid()
-    info = submit(s, jobdir)
+    @info (timestamp = Dates.now(), jobdir = jobdir, jobid = id, state = Jobs.Submitted)
+    info = Service.submit(s, jobdir)
     JOB_QUEUE[][jobdir] = info
     return Threads.@spawn begin
         with_logger(job_logger(id)) do
-            @info (timestamp = Dates.now(), jobdir = jobdir) 
+            @info (jobdir = jobdir,)
             sleep(3*SLEEP_TIME)
-            info = state(jobdir)
+            info = Service.state(jobdir)
+            @info (timestamp = Dates.now(), state = info) 
             while info == Jobs.Pending || info == Jobs.Running || info == Jobs.Submitted
                 sleep(SLEEP_TIME)
-                info = state(jobdir)
-                @info (timestamp = Dates.now(), jobdir = jobdir, state = info) 
+                ninfo = Service.state(jobdir)
+                ninfo != info && @info (timestamp = Dates.now(), state = info) 
+                info = ninfo
             end
-            JOB_QUEUE[][jobdir] = (info[1], Jobs.Running)
-            outputdata(jobdir, map(x -> splitext(splitpath(x.infile)[end])[1], FileIO.read_job_script(joinpath(jobdir, "job.tt"))[2]))
-            JOB_QUEUE[][jobdir] = (info[1], Jobs.Completed)
+            JOB_QUEUE[][jobdir] = (JOB_QUEUE[][jobdir][1], Jobs.Running)
+            @info (timestamp = Dates.now(), state = Jobs.PostProcessing)
+            Service.outputdata(jobdir, map(x -> splitext(splitpath(x.infile)[end])[1], FileIO.read_job_script(joinpath(jobdir, "job.tt"))[2]))
+            JOB_QUEUE[][jobdir] = (JOB_QUEUE[][jobdir][1], Jobs.Completed)
         end
     end
-end
-
-function spawn_worker(s::Server, jobdir)
-    wdir = joinpath(jobdir, ".workflow")
-        
-    julia_exec = joinpath(Sys.BINDIR, "julia")
-    envpath = joinpath(jobdir, ".workflow/run.jl")
-    ppath = joinpath(wdir, "Project.toml")
-    proc = run(pipeline(Cmd(`$julia_exec --project=$ppath --startup-file=no $envpath $jobdir`, detach=true), stderr = joinpath(wdir, "errors.log"), stdout = joinpath(wdir, "out.log")), wait=false) 
-    return proc
 end
 
 # Jobs are submitted by the daemon, using supplied job jld2 from the caller (i.e. another machine)
@@ -101,6 +137,16 @@ function handle_job_submission!(s::Server, job_dirs_procs)
             end
         end
     end
+end
+
+function spawn_worker(s::Server, jobdir)
+    wdir = joinpath(jobdir, ".workflow")
+        
+    julia_exec = joinpath(Sys.BINDIR, "julia")
+    envpath = joinpath(jobdir, ".workflow/run.jl")
+    ppath = joinpath(wdir, "Project.toml")
+    proc = run(pipeline(Cmd(`$julia_exec --project=$ppath --startup-file=no $envpath $jobdir`, detach=true), stderr = joinpath(wdir, "errors.log"), stdout = joinpath(wdir, "out.log")), wait=false) 
+    return proc
 end
 
 function handle_workflow_submission!(s::Server, job_dirs_procs)

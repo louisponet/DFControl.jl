@@ -9,6 +9,7 @@ mkpath(config_path("jobs"))
 mkpath(config_path("workflows"))
 mkpath(config_path("logs"))
 mkpath(config_path("logs/jobs"))
+mkpath(config_path("logs/servers"))
 mkpath(config_path("pseudos"))
 
 # All the job info

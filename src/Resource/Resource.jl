@@ -2,7 +2,8 @@ module Resource
 # This module handles all the handling, parsing and transforming HTTP commands,
 # and brokers between HTTP requests and Service that fullfils them. 
 using HTTP, JSON3, Dates, LoggingExtras, Sockets, UUIDs
-using ..DFControl, ..Service
+using ..DFControl: config_path
+using ..Service
 using ..Utils
 using ..Servers
 using ..Jobs
@@ -101,29 +102,31 @@ HTTP.@register(ROUTER, "PUT", "/environment/*", rm_environment!)
 
 # RUNNING
 function requestHandler(req)
-    start = Dates.now()
-    @info (timestamp = start, event = "ServiceRequestBegin", tid = Threads.threadid(),
-           method = req.method, target = req.target)
-    local resp
-    try
-        obj = HTTP.handle(ROUTER, req)
-        if obj === nothing
-            resp = HTTP.Response(204)
-        else
-            resp = HTTP.Response(200, JSON3.write(obj))
+    with_logger(Service.restapi_logger()) do 
+        start = Dates.now()
+        @info (timestamp = start, event = "ServiceRequestBegin", tid = Threads.threadid(),
+               method = req.method, target = req.target)
+        local resp
+        try
+            obj = HTTP.handle(ROUTER, req)
+            if obj === nothing
+                resp = HTTP.Response(204)
+            else
+                resp = HTTP.Response(200, JSON3.write(obj))
+            end
+        catch e
+            s = IOBuffer()
+            showerror(s, e, catch_backtrace(); backtrace = true)
+            errormsg = String(resize!(s.data, s.size))
+            @error errormsg
+            resp = HTTP.Response(500, errormsg)
         end
-    catch e
-        s = IOBuffer()
-        showerror(s, e, catch_backtrace(); backtrace = true)
-        errormsg = String(resize!(s.data, s.size))
-        @error errormsg
-        resp = HTTP.Response(500, errormsg)
+        stop = Dates.now()
+        @info (timestamp = stop, event = "ServiceRequestEnd", tid = Threads.threadid(),
+               method = req.method, target = req.target, duration = Dates.value(stop - start),
+               status = resp.status, bodysize = length(resp.body))
+        return resp
     end
-    stop = Dates.now()
-    @info (timestamp = stop, event = "ServiceRequestEnd", tid = Threads.threadid(),
-           method = req.method, target = req.target, duration = Dates.value(stop - start),
-           status = resp.status, bodysize = length(resp.body))
-    return resp
 end
 
 function AuthHandler(req)
@@ -139,13 +142,12 @@ end
 function run()
     s = Server("localhost")
     CURRENT_SERVER[] = s
-    Service.global_logger(Service.daemon_logger())
     port, server = listenany(ip"0.0.0.0", 8080)
     s.port = port
     Servers.save(s)
-    USER_UUID[] = UUID(read(DFC.config_path("user_uuid"), String))
+    USER_UUID[] = UUID(read(config_path("user_uuid"), String))
     Threads.@spawn HTTP.serve(AuthHandler, "0.0.0.0", port, server=server)
-    with_logger(Service.daemon_logger()) do
+    with_logger(Service.server_logger()) do
         Service.main_loop(s)
     end
     close(server)

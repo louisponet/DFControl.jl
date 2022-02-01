@@ -1,4 +1,4 @@
-const PSEUDO_DIR = DFC.config_path("pseudos")
+const PSEUDO_DIR = config_path("pseudos")
 
 function pseudos(set::String, fuzzy::String)
     if !(set in pseudo_sets())
