@@ -1128,7 +1128,7 @@ html.theme--documenter-dark {
       color: #1dd2af; }
   html.theme--documenter-dark code {
     background-color: rgba(255, 255, 255, 0.05);
-    color: #ececec;
+    color: #e74c3c;
     font-size: 0.875em;
     font-weight: normal;
     padding: 0.1em; }
@@ -7179,35 +7179,6 @@ html.theme--documenter-dark {
     visibility: visible; }
   html.theme--documenter-dark .docs-light-only {
     display: none !important; }
-  html.theme--documenter-dark pre {
-    position: relative; }
-    html.theme--documenter-dark pre .copy-button {
-      opacity: 0.2;
-      transition: opacity 0.2s;
-      position: absolute;
-      right: 0em;
-      top: 0em;
-      padding: 0.5em;
-      width: 2.5em;
-      height: 2.5em;
-      background: transparent;
-      border: none;
-      font-family: "Font Awesome 5 Free";
-      color: #fff;
-      cursor: pointer;
-      text-align: center; }
-      html.theme--documenter-dark pre .copy-button:focus, html.theme--documenter-dark pre .copy-button:hover {
-        opacity: 1;
-        background: rgba(255, 255, 255, 0.1);
-        color: #1abc9c; }
-      html.theme--documenter-dark pre .copy-button.success {
-        color: #259a12;
-        opacity: 1; }
-      html.theme--documenter-dark pre .copy-button.error {
-        color: #cb3c33;
-        opacity: 1; }
-    html.theme--documenter-dark pre:hover .copy-button {
-      opacity: 1; }
   html.theme--documenter-dark .admonition {
     background-color: #282f2f;
     border-style: solid;
@@ -7306,11 +7277,7 @@ html.theme--documenter-dark {
         position: absolute;
         right: 0.625rem;
         bottom: 0.5rem; }
-        html.theme--documenter-dark .docstring > section > a.docs-sourcelink:focus {
-          opacity: 1 !important; }
     html.theme--documenter-dark .docstring:hover > section > a.docs-sourcelink {
-      opacity: 0.2; }
-    html.theme--documenter-dark .docstring:focus-within > section > a.docs-sourcelink {
       opacity: 0.2; }
     html.theme--documenter-dark .docstring > section:hover a.docs-sourcelink {
       opacity: 1; }
@@ -7371,13 +7338,10 @@ html.theme--documenter-dark {
   html.theme--documenter-dark html {
     -moz-osx-font-smoothing: auto;
     -webkit-font-smoothing: auto; }
-  html.theme--documenter-dark li.no-marker {
-    list-style: none; }
   html.theme--documenter-dark #documenter .docs-main > article {
     overflow-wrap: break-word; }
     html.theme--documenter-dark #documenter .docs-main > article .math-container {
-      overflow-x: auto;
-      overflow-y: hidden; }
+      overflow-x: auto; }
   @media screen and (min-width: 1056px) {
     html.theme--documenter-dark #documenter .docs-main {
       max-width: 52rem;
@@ -7660,70 +7624,67 @@ html.theme--documenter-dark {
   html.theme--documenter-dark .ansi span.sgr30 {
     color: #242424; }
   html.theme--documenter-dark .ansi span.sgr31 {
-    color: #f6705f; }
+    color: #e74c3c; }
   html.theme--documenter-dark .ansi span.sgr32 {
-    color: #4fb43a; }
+    color: #2ecc71; }
   html.theme--documenter-dark .ansi span.sgr33 {
-    color: #f4c72f; }
+    color: #f1b70e; }
   html.theme--documenter-dark .ansi span.sgr34 {
-    color: #7587f0; }
+    color: #3498db; }
   html.theme--documenter-dark .ansi span.sgr35 {
-    color: #bc89d3; }
+    color: #8e44ad; }
   html.theme--documenter-dark .ansi span.sgr36 {
-    color: #49b6ca; }
+    color: #137886; }
   html.theme--documenter-dark .ansi span.sgr37 {
-    color: #b3bdbe; }
+    color: #dbdee0; }
   html.theme--documenter-dark .ansi span.sgr40 {
     background-color: #242424; }
   html.theme--documenter-dark .ansi span.sgr41 {
-    background-color: #f6705f; }
+    background-color: #e74c3c; }
   html.theme--documenter-dark .ansi span.sgr42 {
-    background-color: #4fb43a; }
+    background-color: #2ecc71; }
   html.theme--documenter-dark .ansi span.sgr43 {
-    background-color: #f4c72f; }
+    background-color: #f1b70e; }
   html.theme--documenter-dark .ansi span.sgr44 {
-    background-color: #7587f0; }
+    background-color: #3498db; }
   html.theme--documenter-dark .ansi span.sgr45 {
-    background-color: #bc89d3; }
+    background-color: #8e44ad; }
   html.theme--documenter-dark .ansi span.sgr46 {
-    background-color: #49b6ca; }
+    background-color: #137886; }
   html.theme--documenter-dark .ansi span.sgr47 {
-    background-color: #b3bdbe; }
+    background-color: #dbdee0; }
   html.theme--documenter-dark .ansi span.sgr90 {
-    color: #92a0a2; }
+    color: #8c9b9d; }
   html.theme--documenter-dark .ansi span.sgr91 {
-    color: #ff8674; }
+    color: #ef8b80; }
   html.theme--documenter-dark .ansi span.sgr92 {
-    color: #79d462; }
+    color: #69dd9a; }
   html.theme--documenter-dark .ansi span.sgr93 {
-    color: #ffe76b; }
+    color: #f4c53e; }
   html.theme--documenter-dark .ansi span.sgr94 {
-    color: #8a98ff; }
+    color: #75b9e7; }
   html.theme--documenter-dark .ansi span.sgr95 {
-    color: #d2a4e6; }
+    color: #a563c1; }
   html.theme--documenter-dark .ansi span.sgr96 {
-    color: #6bc8db; }
+    color: #1db4c9; }
   html.theme--documenter-dark .ansi span.sgr97 {
     color: #ecf0f1; }
   html.theme--documenter-dark .ansi span.sgr100 {
-    background-color: #92a0a2; }
+    background-color: #8c9b9d; }
   html.theme--documenter-dark .ansi span.sgr101 {
-    background-color: #ff8674; }
+    background-color: #ef8b80; }
   html.theme--documenter-dark .ansi span.sgr102 {
-    background-color: #79d462; }
+    background-color: #69dd9a; }
   html.theme--documenter-dark .ansi span.sgr103 {
-    background-color: #ffe76b; }
+    background-color: #f4c53e; }
   html.theme--documenter-dark .ansi span.sgr104 {
-    background-color: #8a98ff; }
+    background-color: #75b9e7; }
   html.theme--documenter-dark .ansi span.sgr105 {
-    background-color: #d2a4e6; }
+    background-color: #a563c1; }
   html.theme--documenter-dark .ansi span.sgr106 {
-    background-color: #6bc8db; }
+    background-color: #1db4c9; }
   html.theme--documenter-dark .ansi span.sgr107 {
     background-color: #ecf0f1; }
-  html.theme--documenter-dark code.language-julia-repl > span.hljs-meta {
-    color: #4fb43a;
-    font-weight: bolder; }
   html.theme--documenter-dark .hljs {
     background: #2b2b2b;
     color: #f8f8f2; }
