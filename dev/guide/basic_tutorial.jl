@@ -44,14 +44,7 @@ set_kpoints!(scf_calculation, (6, 6, 6, 1, 1, 1))
 
 scf_calculation = Calculation{QE}("scf", :calculation => "scf"; exec = pw_exec,
                                   data = [InputData(:k_points, :automatic,
-                                                    (6, 6, 6, 1, 1, 1))])
-
-# We can now define our job: 
-job = Job("Si", structure, [scf_calculation], :ecutwfc => 20, :conv_thr => 1e-6;
-          dir="job")
-
-# Additional calculations would be be added to the list `[scf_calculation]`.
-# The flag => value pairs will set the specified flags to that value for all calculations in the job
+                                                    (6, 6, 6, 1, 1, 1))])  # We can now define our job:  job = Job("Si", structure, [scf_calculation], :ecutwfc => 20, :conv_thr => 1e-6; dir="job")  # Additional calculations would be be added to the list `[scf_calculation]`. # The flag => value pairs will set the specified flags to that value for all calculations in the job
 # that allow recognize that flag, so it's ideal for things like cutoffs and smearing etc.
 
 # We are now ready to submit the job, which will run in the current working directory
@@ -91,14 +84,14 @@ push!(job, bands_calc)
 job["scf"].run = false
 
 # Printing the job will now highlight the scheduled calculations differently from the non-scheduled ones
-show(job)
+job
 
 # Seeing that all is right we submit the job again
 job.dir = "job"; #hide
 if false #hide
     submit(job)
 else #hide
-    global job = Job(joinpath(splitdir(pathof(DFControl))[1], "..", "docs","src","assets", "job"))#hide
+    global job = Job(joinpath(splitdir(pathof(DFControl))[1], "..", "docs","src","assets", "job"));#hide
 end #hide
 
 # We can access the bands through
