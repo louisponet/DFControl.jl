@@ -23,11 +23,11 @@ JLDEPS = [Pkg.PackageSpec(; url = "https://github.com/louisponet/DFControl.jl.gi
 
 # Setup julia dependencies for docs generation if not yet done
 Pkg.activate(@__DIR__)
-if !isfile(joinpath(@__DIR__, "Manifest.toml"))
+# if !isfile(joinpath(@__DIR__, "Manifest.toml"))
     Pkg.develop(Pkg.PackageSpec(; path = ROOTPATH))
     Pkg.instantiate()
     Pkg.add(; url = "https://github.com/kimikage/Documenter.jl", rev = "ansicolor")
-end
+# end
 
 # Setup environment for making plots
 ENV["GKS_ENCODING"] = "utf8"
