@@ -142,7 +142,6 @@ function run()
     CURRENT_SERVER[] = s
     port, server = listenany(ip"0.0.0.0", 8080)
     s.port = port
-    Servers.save(s)
     USER_UUID[] = UUID(read(config_path("user_uuid"), String))
     Threads.@spawn begin
         with_logger(Service.restapi_logger()) do
@@ -151,6 +150,7 @@ function run()
             HTTP.serve(AuthHandler, "0.0.0.0", port, server=server)
         end
     end
+    Servers.save(s)
     with_logger(Service.server_logger()) do
         Service.main_loop(s)
     end
