@@ -7,9 +7,9 @@ function Database.load(req::HTTP.Request)
         typ = Symbol(HTTP.header(req, "Type"))
         val = eval(:(JSON3.read($(req.body), $typ)))
         if Database.exists(val)
-            return [Database.load(val)]
+            return Database.load(val)
         else
-            return Database.replacements(val)
+            return map(x->Database.storage_name(x), Database.replacements(val))
         end
     else
         cpath = config_path(p) 

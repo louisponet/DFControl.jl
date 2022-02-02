@@ -14,8 +14,6 @@ testjobpath = joinpath(testdir, "testassets", "test_job")
     @test !isempty(pw_exec.flags)
     pseudoset = :test
 
-    header = ["#SBATCH -N 1"]
-
     str = Structure(joinpath(testdir, "testassets/Ni.cif"))
 
     calculations = [Calculation{QE}("vcrelax", :calculation => "vc-relax", :verbosity => "high", :ion_dynamics => "bfgs", :cell_dynamics => "bfgs";
@@ -28,7 +26,7 @@ testjobpath = joinpath(testdir, "testassets", "test_job")
                                                         [4, 4, 4, 1, 1, 1])])]
     job = Job(name, str, calculations, :ecutwfc => 40.0, :occupations => "smearing", :degauss=>0.01, :conv_thr => 1e-6, :nbnd => 18;
                 #kwargs
-                header = header, dir = dir, server="localhost")
+                dir = dir, server="localhost")
 
 
     set_pseudos!(job, :test)
@@ -49,6 +47,7 @@ testjobpath = joinpath(testdir, "testassets", "test_job")
         pop!(c, :ecutwfc, nothing)
     end
 
+    
     save(job)
     @test all(values(job[:ecutwfc]) .== 41.0)
     @test all(values(job[:ecutrho]) .== 236.0)

@@ -12,6 +12,10 @@ function load(server::Server, j::Job)
     else
         dir = j.dir
     end
+    if !ispath(server, dir)
+        @warn "No valid job found in $dir. Here are similar options:"
+        return first.(registered_jobs(server, dir))
+    end
     resp = HTTP.get(server, "/jobs/" * abspath(server, dir))
     # Supplied dir was not a valid path, so we ask
     # previously registered jobs on the server that
@@ -46,7 +50,7 @@ function request_job_dir(dir::String, server::Server)
     end
 end
 """
-    registered_jobs(fuzzy::AbstractString = "")
+    registered_jobs(server::Server, fuzzy::AbstractString = "")
 
 Lists all the known [`Jobs`](@ref Job) directories that contain `fuzzy`.
 Intended to be used as:
@@ -55,20 +59,9 @@ job_dirs = registered_jobs("NiO")
 job = Job(job_dirs[1])
 ```
 """
-function registered_jobs(fuzzy::String=""; server=nothing)
-    if server === nothing
-        all_jobs = Dict{String,Vector{Tuple{String, DateTime}}}()
-        for s in Servers.known_servers()
-            jobs = registered_jobs(fuzzy, s)
-            if !isempty(jobs)
-                all_jobs[s.name] = jobs
-            end
-        end
-        return all_jobs
-    else
-        resp = HTTP.get(server, "/registered_jobs/" * fuzzy)
-        return reverse(JSON3.read(resp.body, Vector{Tuple{String,DateTime}}))
-    end
+function registered_jobs(server::Server, fuzzy::String="")
+    resp = HTTP.get(server, "/registered_jobs/" * fuzzy)
+    return reverse(JSON3.read(resp.body, Vector{Tuple{String,DateTime}}))
 end
       
 function running_jobs(fuzzy=""; server="localhost")
@@ -112,12 +105,10 @@ function save(job::Job, workflow::Union{Nothing, Workflow} = nothing)
     apath = abspath(job)
 
     server = Server(job.server)
-    if job.environment != ""
-        environment = load(server, Environment(job.environment))
-        @assert environment !== nothing "Environment with name $(job.environment) not found!"
-    else
-        environment = nothing
-    end
+    @assert job.environment != "" "Please set job environment."
+    environment = load(server, Environment(job.environment))
+    @assert environment isa Environment "Environment with name $(job.environment) not found!"
+    
     job.dir = tmpdir
     write(job, environment)
     if workflow !== nothing

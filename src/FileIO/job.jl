@@ -299,11 +299,8 @@ function read_job_script(job_file::String)
 
     runtime = Jobs.environment_from_jobscript(job_file)
     environment = runtime.name
-    if !isempty(environment)
-        #TODO only works with slurm!!!
-        deleteat!(header, findall(x -> occursin("#SBATCH", x), header))
-        deleteat!(header, findall(x -> occursin("export", x), header))
-    end
+    deleteat!(header, findall(x -> occursin("#SBATCH", x), header))
+    deleteat!(header, findall(x -> occursin("export", x), header))
     return (name, calcs, header, environment) 
 end
 

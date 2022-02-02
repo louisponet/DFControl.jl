@@ -37,10 +37,14 @@ module Database
     end
     function load(server, s::S) where {S <: Storable}
         url = storage_url(s)
-        if exists(server, s)
+        if s == S()
+            @show "ping"
+            return JSON3.read(HTTP.get(server, splitdir(url)[1]).body, Vector{String})
+        elseif exists(server, s)
             return JSON3.read(JSON3.read(HTTP.get(server, url).body, String), S)
         else
-            return JSON3.read(HTTP.get(server, url, s).body, Vector{S})
+            @warn "No exact match found. Returning the closest options..."
+            return JSON3.read(HTTP.get(server, url, s).body, Vector{String})
         end
             
     end
@@ -54,16 +58,17 @@ module Database
 
     function replacements(s::S) where {S<:Storable}
         dir = config_path(storage_directory(s))
+        default = S() # We only score matches that are not the default
         all = map(x -> JSON3.read(read(joinpath(dir, x), String), S), readdir(dir))
         score = zeros(Int, length(all))
         for (i, t) in enumerate(all)
             for f in fieldnames(S)
-                if getfield(t, f) == getfield(s, f)
+                if getfield(t, f) == getfield(s, f) != getfield(default, f)
                     score[i] += 1
                 end
             end
         end
-        s = sortperm(score)
+        s = sortperm(score, rev=true)
         return all[s][1:length(findall(!iszero, score))]
     end
 
@@ -71,7 +76,18 @@ module Database
         dir = config_path(storage_directory(s))
         for f in readdir(dir)
             t =  JSON3.read(read(joinpath(dir, f), String), S)
-            if t == s
+            same = true
+            for f in fieldnames(S)
+                if f == :name
+                    continue
+                else
+                    if getfield(s, f) != getfield(t, f)
+                        same = false
+                        break
+                    end
+                end
+            end
+            if same
                 return t.name
             end
         end
