@@ -1,7 +1,7 @@
 module Calculations
 # This module handles all interactions with calculations
 using Parameters, StructTypes, LinearAlgebra, JSON3 
-using ..DFControl: config_path, DEPS_DIR, Band, Point3, Vec3, Mat3, Mat4, SVector
+using ..DFControl: config_path, DEPS_DIR, Band, Point3, Vec3, Mat3, Mat4, SVector, SArray
 using ..Utils
 using ..Structures
 import ..Database: storage_directory, exists, load, save, Storable, verify
