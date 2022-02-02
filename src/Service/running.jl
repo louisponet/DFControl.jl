@@ -3,7 +3,7 @@ const JOB_QUEUE = Ref(Dict{String, Tuple{Int, Jobs.JobState}}())
 function main_loop(s::Server)
     job_dirs_procs = Dict()
     queue!(JOB_QUEUE[], s, true)
-    @info (timestamp = Dates.now(), username = ENV["USER"], host = gethostname(), pid=getpid())
+    println((timestamp = Dates.now(), username = ENV["USER"], host = gethostname(), pid=getpid()))
     for (j, info) in JOB_QUEUE[]
         if info[2] == Jobs.Running 
             job_dirs_procs[j] = spawn_task(s, j)
@@ -29,7 +29,7 @@ function main_loop(s::Server)
                     run(`pkill $t`)
                 end
             end
-            @info (timestamp = Dates.now(), message = "self destructing complete")
+            println((timestamp = Dates.now(), message = "self destructing complete"))
             exit()
         end
             
@@ -45,7 +45,7 @@ function print_log(s, job_dirs_procs)
         ntasks = 0
         nprocs = 0
     end
-    @info (timestamp = Dates.now(), ntasks = ntasks, nprocs = nprocs)
+    println((timestamp = Dates.now(), ntasks = ntasks, nprocs = nprocs))
 end
 
 function monitor_issues(log_mtimes)
@@ -87,15 +87,15 @@ end
 
 function spawn_task(s::Server, jobdir)
     id = next_jobid()
-    @info (timestamp = Dates.now(), jobdir = jobdir, jobid = id, state = Jobs.Submitted)
+    println((timestamp = Dates.now(), jobdir = jobdir, jobid = id, state = Jobs.Submitted))
     info = Service.submit(s, jobdir)
     JOB_QUEUE[][jobdir] = info
     return Threads.@spawn begin
         with_logger(job_logger(id)) do
-            @info (jobdir = jobdir,)
+            println((jobdir = jobdir,))
             sleep(3*SLEEP_TIME)
             info = Service.state(jobdir)
-            @info (timestamp = Dates.now(), state = info) 
+            println((timestamp = Dates.now(), state = info))
             while info == Jobs.Pending || info == Jobs.Running || info == Jobs.Submitted
                 sleep(SLEEP_TIME)
                 ninfo = Service.state(jobdir)
@@ -103,7 +103,7 @@ function spawn_task(s::Server, jobdir)
                 info = ninfo
             end
             JOB_QUEUE[][jobdir] = (JOB_QUEUE[][jobdir][1], Jobs.Running)
-            @info (timestamp = Dates.now(), state = Jobs.PostProcessing)
+            println((timestamp = Dates.now(), state = Jobs.PostProcessing))
             Service.outputdata(jobdir, map(x -> splitext(splitpath(x.infile)[end])[1], FileIO.read_job_script(joinpath(jobdir, "job.tt"))[2]))
             JOB_QUEUE[][jobdir] = (JOB_QUEUE[][jobdir][1], Jobs.Completed)
         end
