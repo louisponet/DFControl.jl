@@ -141,12 +141,6 @@ end
 The former returns `calculation.data`, the later -- the `InputData` with name `n`.
 """
 data(calculation::Calculation, n::Symbol) = getfirst(x -> x.name == n, calculation.data)
-
-#
-# Directory interface
-#
-DFC.Utils.searchdir(i::Calculation, glob) = searchdir(i.dir, glob)
-
 Base.eltype(::Calculation{T}) where {T} = T
 
 #

@@ -46,7 +46,7 @@ function allflags(info::QECalculationInfo)
     return vcat([[i.flags for i in info.control]; [i.flags for i in info.data]]...)
 end
 
-include(joinpath(DFC.DEPS_DIR, "qeflags.jl"))
+include(joinpath(DEPS_DIR, "qeflags.jl"))
 const QECalculationInfos = _QEINPUTINFOS()
 push!(QECalculationInfos,
       QECalculationInfo("pw2wannier90.x",

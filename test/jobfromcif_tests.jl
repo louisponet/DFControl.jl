@@ -65,7 +65,7 @@ testjobpath = joinpath(testdir, "testassets", "test_job")
     end
     save(job)
 
-    job2 = Job(abspath(job))
+    job2 = load(test_server, Job(abspath(job)))
     for (c1, c2) in zip(job2.calculations, job.calculations)
         @test c1 == c2
     end
@@ -75,12 +75,12 @@ end
 refjobpath =joinpath(testdir, "testassets", "reference_job")
 
 @testset "reference comparison" begin
-    job = Job(testjobpath)
+    job = load(test_server, Job(testjobpath))
     
     orig_job = deepcopy(job)
     job.structure = Structures.create_supercell(job.structure, 1, 0, 0, make_afm = true)
     
-    job2 = Job(refjobpath)
+    job2 = load(test_server, Job(refjobpath))
     @test job2.structure == job.structure
     
     for f in DFControl.Utils.searchdir(job2, ".out")
@@ -99,7 +99,7 @@ refjobpath =joinpath(testdir, "testassets", "reference_job")
         @test c1 == c2
     end
     save(job)
-    job = Job(testjobpath)
+    job = load(test_server, Job(testjobpath))
     
     for (c1, c2) in zip(job2.calculations, job.calculations)
         @test c1 == c2

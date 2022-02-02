@@ -1,5 +1,5 @@
 
-const JOB_REGISTRY = (in_progress = DFC.config_path("jobs", "active.txt"), archived = DFC.config_path("jobs", "archived.txt"))
+const JOB_REGISTRY = (in_progress = config_path("jobs", "active.txt"), archived = config_path("jobs", "archived.txt"))
 
 all_known_jobs() = vcat(readlines(JOB_REGISTRY[1]), readlines(JOB_REGISTRY[2]))
 

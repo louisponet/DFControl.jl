@@ -14,7 +14,7 @@ function bash_jobid(job::Job)
 end
 
 function bash_jobstate(jobdir::String)
-    job = load_job(jobdir)
+    job = load(Job(jobdir))
     n = now()
     u = username()
     try
@@ -56,7 +56,7 @@ function bash_submit(j::String)
 end
 
 function bash_abort(jobdir::String)
-    job = load_job(jobdir)
+    job = load(Job(jobdir))
     id = bash_jobid(job)
     if id !== nothing
         run(`pkill $id`)

@@ -409,7 +409,7 @@ function qe_parse_magnetization(out, line, f)
 end
 
 function qe_parse_timing(out, line, f)
-    out[:timing] = DFC.TimingData[]
+    out[:timing] = TimingData[]
     curparent = ""
     while !occursin("PWSCF", line)
         isempty(line) && (line = readline(f); continue)
@@ -417,9 +417,9 @@ function qe_parse_timing(out, line, f)
         if line[end] == ':' # descent into call case
             curparent = String(sline[end][1:end-1])
         elseif length(sline) == 9 # normal call
-            td = DFC.TimingData(String(sline[1]), qe_parse_time(sline[3]),
+            td = TimingData(String(sline[1]), qe_parse_time(sline[3]),
                                 qe_parse_time(sline[5]), parse(Int, sline[8]),
-                                DFC.TimingData[])
+                                TimingData[])
             push!(out[:timing], td)
             if !isempty(curparent) # Child case
                 if curparent[1] == '*'
@@ -438,8 +438,8 @@ function qe_parse_timing(out, line, f)
             end
         elseif sline[1] == "PWSCF" # Final PWSCF report
             push!(out[:timing],
-                  DFC.TimingData("PWSCF", qe_parse_time(sline[3]), qe_parse_time(sline[5]),
-                                 1, DFC.TimingData[]))
+                  TimingData("PWSCF", qe_parse_time(sline[3]), qe_parse_time(sline[5]),
+                                 1, TimingData[]))
         end
         line = strip(readline(f))
     end
@@ -613,10 +613,10 @@ function qe_read_pw_output(filename::String;
                              w = out[:k_cart].w)
         end
         if get(out, :colincalc, false)
-            out[:bands]   = (up = [DFC.Band(out[:k_cart].v, out[:k_cryst].v, zeros(length(out[:k_cart].v))) for i in 1:length(out[:k_eigvals][1])],
-            down =[DFC.Band(out[:k_cart].v, out[:k_cryst].v, zeros(length(out[:k_cart].v))) for i in 1:length(out[:k_eigvals][1])])
+            out[:bands]   = (up = [Band(out[:k_cart].v, out[:k_cryst].v, zeros(length(out[:k_cart].v))) for i in 1:length(out[:k_eigvals][1])],
+            down =[Band(out[:k_cart].v, out[:k_cryst].v, zeros(length(out[:k_cart].v))) for i in 1:length(out[:k_eigvals][1])])
         else
-            out[:bands] = [DFC.Band(out[:k_cart].v, out[:k_cryst].v,
+            out[:bands] = [Band(out[:k_cart].v, out[:k_cryst].v,
                                     zeros(length(out[:k_cart].v)))
                            for i in 1:length(out[:k_eigvals][1])]
         end
@@ -847,7 +847,7 @@ function qe_read_projwfc(filename::String)
     end
     nkstot = length(kdos)
     nbnd   = length(last(kdos[1]))
-    bands  = [DFC.Band(fill(kdos[1][1], nkstot), fill(zero(Vec3{Float64}), nkstot), fill(0.0, nkstot), Dict{Symbol,Any}()) for i in 1:nbnd]
+    bands  = [Band(fill(kdos[1][1], nkstot), fill(zero(Vec3{Float64}), nkstot), fill(0.0, nkstot), Dict{Symbol,Any}()) for i in 1:nbnd]
     for b in bands
         b.extra[:ψ]  = Vector{Vector{Float64}}(undef, nkstot)
         b.extra[:ψ²] = Vector{Float64}(undef, nkstot)

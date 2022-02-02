@@ -4,7 +4,7 @@ HTTP.@register(ROUTER, "POST", "/jobs", save_job)
 submit_job(req) = Service.submit(path(req), JSON3.read(req.body, Bool))
 HTTP.@register(ROUTER, "PUT", "/jobs/*", submit_job)
 
-get_job(req) = Service.load_job(path(req))
+get_job(req) = load(Job(path(req)))
 HTTP.@register(ROUTER, "GET", "/jobs/*", get_job)
 HTTP.@register(ROUTER, "GET", "/jobs/", get_job)
 

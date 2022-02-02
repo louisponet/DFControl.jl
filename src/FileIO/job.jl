@@ -275,39 +275,34 @@ function read_job_script(job_file::String)
         modules = map(x -> split(x)[end], module_lines)
     end
     #TODO cleanup
-    known_es = Calculations.load_execs()
-    execs = filter(x -> !any(y -> y.dir == x.dir && y.exec == x.exec, values(known_es)), unique(map(x->x.exec, filter(y->y.run, calcs))))
-    for e in execs
-        i = 1
-        runnable = Calculations.isrunnable(e)
-        while length(e.modules) < length(modules) && !runnable
-            push!(e.modules, modules[i])
-            runnable = Calculations.isrunnable(e)
-            i+=1
-        end
-        if runnable
-            e.name = """$(e.exec)@$(join(splitpath(e.dir)[2:end], "_"))"""
-            Calculations.save(e)
+    ues = unique(map(x->x.exec, filter(y->y.run, calcs)))
+    for e in ues
+        t = Database.replacements(e)
+        if !isempty(t)
+            b = getfirst(x -> e.dir == x.dir && e.exec == x.exec, t)
+            if b !== nothing
+                e.name = b.name
+                e.modules = b.modules
+            end
         end
     end
+            
     for c in calcs
         e1 = c.exec
-        for e in [execs; known_es]
+        for e in ues
             if e.dir == e1.dir && e.exec == e1.exec
                 e1.modules = e.modules
+                e1.name = e.name
             end
         end
     end
 
     runtime = Jobs.environment_from_jobscript(job_file)
-    ename = Jobs.environment_name(runtime)
-    if ename !== nothing
-        environment = ename
+    environment = runtime.name
+    if !isempty(environment)
         #TODO only works with slurm!!!
         deleteat!(header, findall(x -> occursin("#SBATCH", x), header))
         deleteat!(header, findall(x -> occursin("export", x), header))
-    else
-        environment = ""
     end
     return (name, calcs, header, environment) 
 end

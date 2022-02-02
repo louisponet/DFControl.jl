@@ -53,9 +53,6 @@ end
 
 verify_exec(args...) = Calculations.verify_exec(args...)
 
-known_execs(args...) = Calculations.known_execs(args...)
-load_exec(args...) = Calculations.load_exec(args...)
-
 function save(e::Exec)
     @assert Calculations.isrunnable(e) "Exec is not runnable..."
     Calculations.save(e)

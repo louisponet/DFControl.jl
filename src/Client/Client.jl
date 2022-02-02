@@ -1,8 +1,9 @@
 module Client
 using HTTP, JSON3, StructTypes, Dates, JLD2, Distributed, REPL.TerminalMenus, Reexport
-using ..DFControl
+import ..Database: load, save, exists
 using ..Utils
 using ..FileIO
+
 @reexport using ..Servers
 @reexport using ..Structures
 @reexport using ..Calculations
@@ -43,9 +44,7 @@ using ..Structures: set_pseudos!, element; export set_pseudos!, element
 include("job.jl")
 export submit, save, isrunning, state, versions, last_version, switch_version!, rm_version!,
        registered_jobs, running_jobs, abort,
-       environment_from_jobscript, get_environment, add_environment, rm_environment!,
-       known_execs, get_exec,
-       outputdata, readfermi, readbands, bandgap
+       environment_from_jobscript, outputdata, readfermi, readbands, bandgap
 
 include("pseudos.jl")
 export configure_pseudoset, rm_pseudoset!, list_pseudosets

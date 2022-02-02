@@ -23,6 +23,7 @@ testdir = @__DIR__
     while !Servers.isalive(Server("localhost"))
         sleep(0.1)
     end
+    testserver = Server("localhost")
     @time @testset "constants" begin
         include("constant_tests.jl")
     end

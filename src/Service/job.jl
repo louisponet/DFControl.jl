@@ -1,4 +1,5 @@
-function load_job(job_dir::AbstractString)
+function load(job::Job)
+    job_dir = job.dir
     orig_dir = job_dir
     scriptpath = joinpath(job_dir, "job.tt")
     if ispath(scriptpath)
@@ -20,6 +21,43 @@ function load_job(job_dir::AbstractString)
               environment  = environment)
     return job
 end
+function save(jobdir::String, files; kwargs...)
+
+    if jobdir[end] == '/'
+        jobdir = jobdir[1:end-1]
+    end
+    #Since at this stage we know the job will belong to the current localhost we change the server
+    # Here we find the main directory, needed for if a job's local dir is a .versions one
+    dir = Jobs.main_job_dir(jobdir)
+    version = Jobs.last_job_version(dir) + 1
+    if ispath(joinpath(dir, "job.tt"))
+        tj = load(Job(dir))
+        cp(tj, joinpath(tj, Jobs.VERSION_DIR_NAME, "$(tj.version)"); force = true)
+    end
+    if jobdir != dir
+        # We know for sure it was a previously saved job
+        # Now that we have safely stored it we can clean out the directory to then fill
+        # it with the files from the job.version
+        clean_dir!(dir)
+        for f in readdir(jobdir)
+            cp(f, dir; force = true)
+        end
+    end
+
+    
+    # Needs to be done so the inputs `dir` also changes.
+    mkpath(dir)
+
+    for (name, f) in files
+        d = splitdir(name)[1]
+        mkpath(joinpath(dir, d))
+        write(joinpath(dir, name), f)
+    end
+
+    Jobs.maybe_register_job(jobdir)
+    return version
+end
+
 
 job_versions(args...) = Jobs.job_versions(args...)
 registered_jobs(args...) = Jobs.registered_jobs(args...)
@@ -75,43 +113,6 @@ finished(job::Job) = readdir(finished_dir(job))
 
 mods_test() = Base.loaded_modules
 
-function save(jobdir::String, files; kwargs...)
-
-    if jobdir[end] == '/'
-        jobdir = jobdir[1:end-1]
-    end
-    #Since at this stage we know the job will belong to the current localhost we change the server
-    # Here we find the main directory, needed for if a job's local dir is a .versions one
-    dir = Jobs.main_job_dir(jobdir)
-    version = Jobs.last_job_version(dir) + 1
-    if ispath(joinpath(dir, "job.tt"))
-        tj = load_job(dir)
-        cp(tj, joinpath(tj, Jobs.VERSION_DIR_NAME, "$(tj.version)"); force = true)
-    end
-    if jobdir != dir
-        # We know for sure it was a previously saved job
-        # Now that we have safely stored it we can clean out the directory to then fill
-        # it with the files from the job.version
-        clean_dir!(dir)
-        for f in readdir(jobdir)
-            cp(f, dir; force = true)
-        end
-    end
-
-    
-    # Needs to be done so the inputs `dir` also changes.
-    mkpath(dir)
-
-    for (name, f) in files
-        d = splitdir(name)[1]
-        mkpath(joinpath(dir, d))
-        write(joinpath(dir, name), f)
-    end
-
-    Jobs.maybe_register_job(jobdir)
-    return version
-end
-
 """
     submit(dir::String, workflow::Bool)
 
@@ -145,7 +146,7 @@ Returns the last `Calculation` for which an output file was created.
 """
 function last_running_calculation(path::String)
     scrpath = joinpath(path, "job.tt")
-    job = load_job(path)
+    job = load(Job(path))
     t = mtime(Jobs.scriptpath(job))
     times = map(x -> (o = joinpath(job, x.outfile); ispath(o) ? mtime(o) : 0.0), job.calculations)
     return isempty(times) ? nothing : findmax(times)[2]
@@ -193,7 +194,7 @@ end
 exists_job(d::AbstractString) = ispath(d) && ispath(joinpath(d, "job.tt"))
 
 function outputdata(jobdir::String, calculations::Vector{String})
-    job = load_job(jobdir)
+    job = load(Job(jobdir))
     calculations = isempty(calculations) ? map(x->x.name, job.calculations) : calculations
     respath = joinpath(job, "results.jld2")
     if ispath(respath)
@@ -229,18 +230,7 @@ function outputdata(jobdir::String, calculations::Vector{String})
     end
 end
 
-rm_version!(jobdir::String, version::Int) = Jobs.rm_version!(load_job(jobdir), version)
-
-add_environment(env::Environment, name::AbstractString) = Jobs.save(env, name)
-function get_environment(name::AbstractString)
-    out = Jobs.load_environment(name)
-    if out === nothing
-        error("No Environment found with name $name")
-    end
-    return out
-end
-
-rm_environment!(args...) = Jobs.rm_environment!(args...)
+rm_version!(jobdir::String, version::Int) = Jobs.rm_version!(load(Job(jobdir)), version)
 
 queue(args...) = queue!(Dict{String, Tuple{Int, Jobs.JobState}}(), args...)
 

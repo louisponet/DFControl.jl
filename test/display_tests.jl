@@ -3,7 +3,7 @@ using DFControl
 testjobpath = joinpath(testdir, "testassets", "test_job")
 
 @testset "Basic printing" begin
-    job = Job(testjobpath)
+    job = load(Job(testjobpath))
     show(job.calculations[1])
     show(job.calculations[1].data[1])
     show(DFC.Calculations.qe_execflag(:nosym))

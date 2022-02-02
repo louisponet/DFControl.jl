@@ -4,7 +4,7 @@ testassetspath = joinpath(testdir, "testassets")
 testjobpath = joinpath(testassetspath, "test_job")
 
 @testset "Structure manipulation" begin
-    job = Job(testjobpath)
+    job = load(test_server, Job(testjobpath))
 
     @test length(Structures.symmetry_operators(job.structure)[1]) == 48
     
@@ -29,7 +29,7 @@ testjobpath = joinpath(testassetspath, "test_job")
 end
 
 @testset "supercell" begin
-    job = Job(testjobpath)
+    job = load(test_server, Job(testjobpath))
     struct2 = Structures.create_supercell(job.structure, 1, 2, 1)
     newpositions = [at.position_cart for at in struct2.atoms]
     oldposition = job.structure.atoms[1].position_cart
@@ -45,7 +45,7 @@ end
 end
 
 @testset "registry" begin
-    job = Job(testjobpath)
+    job = load(test_server, Job(testjobpath))
     rm(testjobpath, recursive=true)
     prevlen = length(Jobs.registered_jobs())
     save(job)
@@ -99,7 +99,7 @@ end
 # end
 
 @testset "calculation management" begin
-    job = Job(testjobpath)
+    job = load(test_server, Job(testjobpath))
     ncalcs = length(job.calculations)
     t = pop!(job, "scf")
     @test length(job.calculations) == ncalcs - 1
@@ -118,7 +118,7 @@ end
 end
 
 @testset "versioning" begin
-    job = Job(testjobpath)
+    job = load(test_server, Job(testjobpath))
     job[:nbnd] = 30
     curver = job.version
     save(job)
@@ -129,11 +129,13 @@ end
     job[:nbnd] = 40
     save(job)
     @test job.version == curver + 3
-    @test job["scf"][:nbnd] == 40
+    c = job["scf"]
+    @test c[:nbnd] == 40
     switch_version!(job, curver + 1)
     @test job.version == curver + 1
     # @test DFControl.last_version(job) == 2
-    @test job["scf"][:nbnd] == 30
+    c = job["scf"]
+    @test c[:nbnd] == 30
     rm_version!(job, curver + 1)
     @test !ispath(joinpath(Jobs.main_job_dir(job), Jobs.VERSION_DIR_NAME,
                            "$(curver + 1)"))

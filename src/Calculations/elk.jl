@@ -1,4 +1,4 @@
-include(joinpath(DFC.DEPS_DIR, "elkflags.jl"))
+include(joinpath(DEPS_DIR, "elkflags.jl"))
 
 struct ElkFlagInfo{T}
     name::Symbol

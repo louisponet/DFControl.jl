@@ -17,7 +17,7 @@ end
 
 function list_pseudoset(pseudoset, fuzzy=""; server="localhost")
     s = Servers.maybe_start(server)
-    resp = HTTP.get(s, "/pseudos/$pseudoset", JSON3.write(fuzzy))
+    resp = HTTP.get(s, "/pseudos/$pseudoset", fuzzy)
     if resp.status == 204
         error("No pseudoset $pseudoset found on Server $(s.name). Please first configure it using configure_pseudoset.")
     end
@@ -43,7 +43,7 @@ function configure_pseudoset(set_name::String, dir::String; server = "localhost"
     s = Servers.maybe_start(server)
     p = isabspath(dir) ? dir : joinpath(s, dir)
     n_pseudos = JSON3.read(HTTP.post(s, "/configure_pseudoset/" * p, 
-                                     JSON3.write(set_name)).body, Int)
+                                     set_name).body, Int)
     @info "Configured $n_pseudos pseudos on Server $(s.name), found in dir $p."
 end
 
@@ -54,7 +54,7 @@ Removes the pseudo set from the server.
 """
 function rm_pseudoset!(set_name::String; server = "localhost")
     s = Servers.maybe_start(server)
-    return HTTP.put(s, "/rm_pseudos", JSON3.write(set_name))
+    return HTTP.put(s, "/rm_pseudos", set_name)
 end
 #---#
 

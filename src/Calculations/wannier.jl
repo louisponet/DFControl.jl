@@ -1,4 +1,4 @@
-include(joinpath(DFC.DEPS_DIR, "wannier90flags.jl"))
+include(joinpath(DEPS_DIR, "wannier90flags.jl"))
 const WAN_FLAGS = _WAN_FLAGS()
 issoc(c::Calculation{Wannier90}) = get(c, :spinors, false) 
 flagtype(::Type{Wannier90}, flag) = haskey(WAN_FLAGS, flag) ? WAN_FLAGS[flag] : Nothing
@@ -138,7 +138,7 @@ function wanenergyranges(Emin, nbnd, bands, Epad = 5)
     return (Emin - Epad, Emin, max, max + Epad)
 end
 
-function Emin_from_projwfc(structure::Structure, states, bands::Vector{DFC.Band},
+function Emin_from_projwfc(structure::Structure, states, bands::Vector{Band},
                            threshold::Number)
     mask = zeros(length(states))
     for (atid, at) in enumerate(structure.atoms)

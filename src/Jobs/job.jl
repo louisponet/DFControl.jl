@@ -68,6 +68,7 @@ function Job(job_name::String, structure::Structure, calculations::Vector{<:Calc
     end
     return out
 end
+Job(dir::AbstractString; kwargs...) = Job(;dir=dir, kwargs...)
 
 StructTypes.StructType(::Type{Job}) = StructTypes.Mutable()
 
@@ -81,7 +82,7 @@ isarchived(job::Job) = occursin(".archived", job.dir)
 Base.abspath(job::Job) = abspath(Server(job.server), job.dir)
     
 Base.ispath(job::Job, p...) =
-    runslocal(job) ? joinpath(job, p...) : ispath(DFC.Servers.maybe_start(DFC.Server(job.server)), joinpath(job, p...))
+    runslocal(job) ? joinpath(job, p...) : ispath(Servers.maybe_start(Server(job.server)), joinpath(job, p...))
 
     
 """
@@ -171,7 +172,7 @@ Returns the i'th `Calculation` in the job.
 """
 function Base.getindex(job::Job, id::String)
     tmp = getfirst(x -> x.name == id, job.calculations)
-    if tmp != nothing
+    if tmp !== nothing
         return tmp
     else
         error("Calculation $id not found.")
@@ -192,37 +193,6 @@ function main_job_dir(dir::AbstractString)
     return d[end] == '/' ? d[1:end-1] : d
 end
 main_job_dir(job::Job) = isabspath(job.dir) ? main_job_dir(job.dir) : main_job_dir(joinpath(Server(job), job.dir))
-
-"""
-    gencalc_wan(job::Job, min_window_determinator::Real, extra_wan_flags...; kwargs...)
-
-Automates the generation of wannier calculations based on the `job`.
-When a projwfc calculation is present in the `job`, `min_window_determinator` will be used to
-determine the threshold value for including a band in the window based on the projections, otherwise
-it will be used as the `Emin` value from which to start counting the number of bands needed for all
-projections.
-`extra_wan_flags` can be any extra flags for the Wannier90 calculation such as `write_hr` etc.
-"""
-function Calculations.gencalc_wan(job::Job, min_window_determinator::Real,
-                                  extra_wan_flags...; kwargs...)
-    nscf_calc = getfirst(x -> Calculations.isnscf(x), job.calculations)
-    nscf_calc === nothing && "Please first run an nscf calculation."
-    if get(nscf_calc, :nosym, false) != true
-        @info "'nosym' flag was not set in the nscf calculation.
-                If this was not intended please set it and rerun the nscf calculation.
-                This generally gives errors because of omitted kpoints, needed for pw2wannier90.x"
-    end
-    projwfc_calc = getfirst(x -> Calculations.isprojwfc(x), job.calculations)
-    outdat = outputdata(job)
-    if projwfc_calc === nothing || !haskey(outdat, projwfc_calc.name)
-        @info "No projwfc calculation found with valid output, using $min_window_determinator as Emin"
-        Emin = min_window_determinator
-    else
-        @info "Valid projwfc output found, using $min_window_determinator as the dos threshold."
-        Emin = Calculations.Emin_from_projwfc(job.structure, outdat[projwfc_calc.name][:states], outdat[projwfc_calc.name][:bands], min_window_determinator)
-    end
-    return Calculations.gencalc_wan(nscf_calc, job.structure, outdat[nscf_calc.name][:bands], Emin, extra_wan_flags...; kwargs...)
-end
 
 """
     set_flow!(job::Job, should_runs::Pair{String, Bool}...)
@@ -405,5 +375,10 @@ function sanitize_cutoffs!(job::Job)
         ρflag !== nothing && !haskey(i, ρflag) && ρcut != 0.0 &&
             Calculations.set_flags!(i, ρflag => ρcut; print = false)
     end
+end
+
+function Servers.pull(j::Job, f, t)
+    @assert ispath(j, f) "File $f not found in jobdir."
+    pull(Server(j.server), joinpath(j, f), t)
 end
 

@@ -1,17 +1,20 @@
-const ENVIRONMENTS_DIR = DFC.config_path("environments")
-
 """
     Environment(MPI_command::String, scheduler_flags::Vector{String}, exports::Vector{String})
 
 Environment to run a [`Job`](@ref) in. When running on a server with a scheduler `scheduler_flags` holds what these should be. e.g. `#SBATCH -N 2`. `MPI_command` and `MPI_processes` will be used to prefix executables that should be ran in parallel, e.g. if `MPI_command = "mpirun -np 4 --bind-to core"` a parallel executable will be translated into a script line as `mpirun -np 4 --bind-to core exec`. 
 """
-@with_kw mutable struct Environment
-    MPI_command::String
+@with_kw mutable struct Environment <: Storable
+    name::String = ""
+    MPI_command::String = ""
     scheduler_flags::Vector{String} = String[]
     exports::Vector{String} = String[]
 end
+Environment(name::AbstractString; kwargs...) = Environment(;name=name, kwargs...)
 
 StructTypes.StructType(::Type{Environment}) = StructTypes.Struct()
+
+Database.storage_directory(e::Environment) = "environments"
+
 function Base.:(==)(e1::Environment, e2::Environment)
     if e1.MPI_command != e2.MPI_command
         return false
@@ -42,31 +45,11 @@ function environment_from_jobscript(scriptpath::String)
     scheduler_flags = map(y -> strip(split(y, "SBATCH")[end]), filter(x -> occursin("#SBATCH", x), lines))
     deleteat!(scheduler_flags, findall(x -> occursin("-J", x) || occursin("--job-name", x), scheduler_flags))
     exports = map(y -> strip(split(y, "export")[end]), filter(x -> occursin("export", x), lines))
-    return Environment(MPI_command, scheduler_flags, exports)
-end
-
-function load_environment(name::String)
-    fullpath = joinpath(ENVIRONMENTS_DIR, name * ".json") 
-    return ispath(fullpath) ? JSON3.read(read(fullpath, String), Environment) : nothing
-end
-
-function save(env::Environment, name::String)
-    if !ispath(ENVIRONMENTS_DIR)
-        mkpath(ENVIRONMENTS_DIR)
-    end 
-    return JSON3.write(joinpath(ENVIRONMENTS_DIR, name * ".json"), env)
-end
-
-function environment_name(env::Environment)
-    if ispath(ENVIRONMENTS_DIR)
-        for f in readdir(ENVIRONMENTS_DIR)
-            name = splitext(f)[1]
-            env2 = load_environment(name)
-            if env2 == env
-                return name
-            end
-        end
-    end
+    
+    t = Environment("", MPI_command, scheduler_flags, exports)
+    n = Database.name(t)
+    t.name = n === nothing ? t : n
+    return t
 end
 
 function Base.write(f::IO, env::Environment)
@@ -78,8 +61,8 @@ function Base.write(f::IO, env::Environment)
     end
 end
 
-function rm_environment!(name::AbstractString)
-    fullpath = joinpath(ENVIRONMENTS_DIR, name * ".json")
+function Base.rm(e::Environment)
+    fullpath = joinpath(ENVIRONMENTS_DIR, e.name * ".json")
     if ispath(fullpath)
         rm(fullpath)
     end

@@ -2,7 +2,6 @@ module Servers
 using StructTypes, Distributed, JSON3, HTTP, REPL.TerminalMenus, Parameters, UUIDs
 using ..DFControl: config_path
 using ..Utils
-using ..Jobs
 
 export Server
 
@@ -199,9 +198,16 @@ end
 ssh_string(s::Server) = s.username * "@" * s.domain
 http_string(s::Server) = s.local_port != 0 ? "http://localhost:$(s.local_port)" : "http://$(s.domain):$(s.port)"
 
-function HTTP.request(method::String, s::Server, url, args...; kwargs...)
+function HTTP.request(method::String, s::Server, url, body; kwargs...)
     uuid = read(config_path("user_uuid"), String)
-    return HTTP.request(method, string(http_string(s), url), ["USER-UUID" => uuid], args...; kwargs...)
+    header = ["Type" => "$(typeof(body))", "USER-UUID" => uuid]
+    return HTTP.request(method, string(http_string(s), url), header, JSON3.write(body); kwargs...)
+end
+
+function HTTP.request(method::String, s::Server, url; kwargs...)
+    uuid = read(config_path("user_uuid"), String)
+    header = ["USER-UUID" => uuid]
+    return HTTP.request(method, string(http_string(s), url), header; kwargs...)
 end
 
 for f in (:get, :put, :post, :head)
@@ -437,11 +443,6 @@ function pull(server::Server, server_file::String, filename::String)
         close(out.in)
         close(err.in)
     end
-end
-
-function pull(j::Job, f, t)
-    @assert ispath(j, f) "File $f not found in jobdir."
-    pull(Server(j.server), joinpath(j, f), t)
 end
 
 """

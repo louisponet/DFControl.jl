@@ -31,7 +31,7 @@ Basically `dir/exec --<flags>` inside a job script.
 
 Will first transform `flags` into a `Vector{ExecFlag}`, and construct the [`Exec`](@ref). 
 """
-@with_kw mutable struct Exec
+@with_kw mutable struct Exec <: Storable
     name::String = ""
     exec::String = ""
     dir::String = ""
@@ -39,6 +39,8 @@ Will first transform `flags` into a `Vector{ExecFlag}`, and construct the [`Exec
     modules::Vector{AbstractString} = String[]
     parallel::Bool = true
 end
+
+Exec(name::AbstractString; kwargs...) = Exec(;name=name, kwargs...)
 
 function Exec(name::String, exec::String, dir::String, flags::Pair...; kwargs...)
     _flags = ExecFlag[]
@@ -55,18 +57,8 @@ end
 
 StructTypes.StructType(::Type{Exec}) = StructTypes.Mutable()
 
-const EXEC_DIR = DFC.config_path("execs")
+storage_directory(e::Exec) = "execs"
 
-function load_exec(name)
-    return JSON3.read(read(joinpath(EXEC_DIR, "$name.json"), String), Exec)
-end
-
-function load_execs()
-    return JSON3.read.(read.(joinpath.((EXEC_DIR,), readdir(EXEC_DIR)), String), Exec)
-end
-
-save(e::Exec) = 
-    JSON3.write(joinpath(EXEC_DIR, "$(e.name).json"), e)
 
 function isrunnable(e::Exec)
     # To find the path to then ldd on
@@ -93,28 +85,11 @@ function isrunnable(e::Exec)
     end
 end
 
-function known_exec_names()
-    d = readdir(EXEC_DIR)
-    return isempty(d) ? String[] : map(x -> splitext(x)[1], d)
-end
-
 "Verifies the validity of an executable and also registers it if it wasn't known before."
-function verify_exec(e::Exec)
-    known_execs = known_exec_names()
-    if e.name ∈ known_execs && e == load_exec(e.name)
-        return true
-    else
-        valid = isrunnable(e)
-        if valid
-            save(e)
-        end
-        return valid
+function verify(e::Exec)
+    if !isrunnable(e)
+        error("Executable Exec(\"$(e.name)\") can not run.")
     end
-end
-
-"Finds all executables that are known with the same exec name."
-function known_execs(exec::AbstractString, dir="")
-    return filter(x -> isempty(dir) ? x.exec == exec : x.exec == exec && x.exec == dir, load_execs())
 end
 
 const RUN_EXECS = ["mpirun", "mpiexec", "srun"]
@@ -205,7 +180,7 @@ end
 
 
 #### MPI Exec Functionality ###
-include(joinpath(DFC.DEPS_DIR, "mpirunflags.jl"))
+include(joinpath(DEPS_DIR, "mpirunflags.jl"))
 const MPI_FLAGS = _MPI_FLAGS()
 
 mpi_flag(flag::AbstractString) = getfirst(x -> x.name == flag, MPI_FLAGS)

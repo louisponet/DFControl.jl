@@ -3,11 +3,12 @@ module FileIO
 using DelimitedFiles, Dates, LinearAlgebra, UnitfulAtomic, CodeTracking
 using UnitfulAtomic.Unitful: ustrip, uconvert
 using UnitfulAtomic: bohr
-using ..DFControl
 using ..Utils
 using ..Calculations
 using ..Structures
 using ..Jobs
+using ..Database
+using ..DFControl: Point,Point3, Vec3, SVector, Mat3, Mat4, Band, TimingData
 
 include("qe.jl")
 include("wannier.jl")

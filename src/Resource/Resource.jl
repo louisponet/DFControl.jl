@@ -10,12 +10,14 @@ using ..Jobs
 using ..Calculations
 using ..Structures
 using ..FileIO
+using ..Database
 
 const ROUTER = HTTP.Router()
 const CURRENT_SERVER = Ref{Server}()
 const USER_UUID = Ref{UUID}()
 include("job.jl")
 include("fileio.jl")
+include("database.jl")
 
 # GENERAL
 
@@ -84,19 +86,19 @@ HTTP.@register(ROUTER, "GET", "/verify_exec", verify_exec)
 known_execs(req) = (d = JSON3.read(req.body); Service.known_execs(d["exec"],d["dir"]))
 HTTP.@register(ROUTER, "GET", "/known_execs/", known_execs)
 
-get_exec(req) = Service.load_exec(splitpath(req.target)[end])
-HTTP.@register(ROUTER, "GET", "/exec/*", get_exec)
+get_exec(req) = Calculations.load(Exec(splitpath(req.target)[end]))
+HTTP.@register(ROUTER, "GET", "/execs/*", get_exec)
 
-save_exec(req) = Service.save(JSON3.read(req.body, Exec))
-HTTP.@register(ROUTER, "POST", "/exec/", save_exec)
+save_exec(req) = Calculations.save(JSON3.read(req.body, Exec))
+HTTP.@register(ROUTER, "POST", "/execs/", save_exec)
 
-add_environment(req) = Service.add_environment(JSON3.read(req.body,Jobs.Environment), splitpath(req.target)[end])
-HTTP.@register(ROUTER, "POST", "/environment/*", add_environment)
+add_environment(req) = Jobs.save(JSON3.read(req.body, Jobs.Environment))
+HTTP.@register(ROUTER, "POST", "/environment/", add_environment)
 
-get_environment(req) = Service.get_environment(splitpath(req.target)[end])
+get_environment(req) = Jobs.load(Environment(splitpath(req.target)[end]))
 HTTP.@register(ROUTER, "GET", "/environment/*", get_environment)
 
-rm_environment!(req) = Service.rm_environment!(splitpath(req.target)[end])
+rm_environment!(req) = rm(Environment(splitpath(req.target)[end]))
 HTTP.@register(ROUTER, "PUT", "/environment/*", rm_environment!)
 
 

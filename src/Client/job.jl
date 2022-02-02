@@ -2,16 +2,18 @@ using ..Servers: maybe_start
 
 Servers.Server(j::Job) = Server(j.server)
 
-function Jobs.Job(dir::AbstractString; server = "localhost", version::Int = -1)
+##### JOB INTERACTIONS #########
+function load(server::Server, j::Job)
     server = maybe_start(server)
-    if !ispath(server, dir)
-        dir = request_job_dir(dir, server)
-        dir === nothing && return
+    if !ispath(server, j.dir)
+        j.dir == "" && return
     end
-    if version == last_version(dir; server= server)
-        dir = Jobs.main_job_dir(dir)
-    elseif !occursin(Jobs.VERSION_DIR_NAME, dir) && version != -1
-        dir = Jobs.version_dir(Jobs.main_job_dir(dir), version)
+    if j.version == last_version(j.dir; server= server)
+        dir = Jobs.main_job_dir(j.dir)
+    elseif !occursin(Jobs.VERSION_DIR_NAME, j.dir) && j.version != -1
+        dir = Jobs.version_dir(Jobs.main_job_dir(j.dir), j.version)
+    else
+        dir = j.dir
     end
     resp = HTTP.get(server, "/jobs/" * abspath(server, dir))
     # Supplied dir was not a valid path, so we ask
@@ -19,9 +21,6 @@ function Jobs.Job(dir::AbstractString; server = "localhost", version::Int = -1)
     # contain dir.
     job = JSON3.read(resp.body, Job)
     job.server = server.name
-    # if haskey(job.metadata, :timestamp)
-    #     job.metadata[:timestamp] = DateTime(job.metadata[:timestamp])
-    # end
     return job
 end
 
@@ -49,6 +48,39 @@ function request_job_dir(dir::String, server::Server)
         error(err_msg)
     end
 end
+"""
+    registered_jobs(fuzzy::AbstractString = "")
+
+Lists all the known [`Jobs`](@ref Job) directories that contain `fuzzy`.
+Intended to be used as:
+```julia
+job_dirs = registered_jobs("NiO")
+job = Job(job_dirs[1])
+```
+"""
+function registered_jobs(fuzzy::String=""; server=nothing)
+    if server === nothing
+        all_jobs = Dict{String,Vector{Tuple{String, DateTime}}}()
+        for s in Servers.known_servers()
+            jobs = registered_jobs(fuzzy, s)
+            if !isempty(jobs)
+                all_jobs[s.name] = jobs
+            end
+        end
+        return all_jobs
+    else
+        server = maybe_start(server) 
+        resp = HTTP.get(server, "/registered_jobs/" * fuzzy)
+        return reverse(JSON3.read(resp.body, Vector{Tuple{String,DateTime}}))
+    end
+end
+      
+function running_jobs(fuzzy=""; server="localhost")
+    server = maybe_start(server) 
+    resp = HTTP.get(server, "/running_jobs/" * fuzzy)
+    return reverse(JSON3.read(resp.body, Vector{Tuple{String, Int}}))
+end
+
 
 """
     save(job::Job)
@@ -85,7 +117,7 @@ function save(job::Job, workflow::Union{Nothing, Workflow} = nothing; server::Se
     apath = abspath(job)
 
     if job.environment != ""
-        environment = get_environment(job.environment; server= job.server)
+        environment = load(Server(job.server), Environment(job.environment))
         @assert environment !== nothing "Environment with name $(job.environment) not found!"
     else
         environment = nothing
@@ -107,7 +139,7 @@ function save(job::Job, workflow::Union{Nothing, Workflow} = nothing; server::Se
     job.dir = apath
     rm(tmpdir, recursive=true)
   
-    resp_job_version = JSON3.read(HTTP.post(server, "/jobs/" * apath, JSON3.write(files_to_send)).body,
+    resp_job_version = JSON3.read(HTTP.post(server, "/jobs/" * apath, files_to_send).body,
                           Int)
     @info "Job version: $(curver) => $(resp_job_version)."
     job.version = resp_job_version
@@ -123,9 +155,9 @@ Saves and launches `job`.
 function submit(job::Job, workflow=nothing)
     @assert workflow === nothing "Workflows not implemented yet."
     server = maybe_start(job)
-    verify_execs(job, server)
+    fill_execs(job, server)
     save(job, workflow)
-    return HTTP.put(server, "/jobs/" * abspath(job), JSON3.write(workflow !== nothing))
+    return HTTP.put(server, "/jobs/" * abspath(job), workflow !== nothing)
 end
 
 function submit(jobs::Vector{Job}, run = true)
@@ -150,12 +182,27 @@ function submit(jobs::Vector{Job}, run = true)
                     end
                 end
             end
-            outbucket[ij] = save(job, server)
+            outbucket[ij] = save(job)
             run && HTTP.put(server, "/jobs/" * abspath(job))
         end
     end
     return outbuckets
 end
+
+"""
+    abort(job::Job)
+    abort(server::Server, dir::String)
+
+Will try to remove the job from the scheduler's queue.
+If the last running calculation happened to be a `Calculation{QE}`, the correct abort file will be written.
+For other codes the process is not smooth, and restarting is not guaranteed.
+"""
+function abort(server::Server, dir::String)
+    @assert isrunning(dir; server=server) "Is this job running?"
+    id = JSON3.read(HTTP.get(Server(server), "/abort/" * dir).body, Int)
+    @info "Aborted job $id"
+end
+abort(job::Job) = abort(job.dir; server= job.server)
 
 """
     state(job::Job)
@@ -202,153 +249,8 @@ function last_running_calculation(job::Job)
     end
 end
 
-outputdata(job::Job; kwargs...) =
-    outputdata(job.dir; server=job.server, kwargs...)
-    
-"""
-    outputdata(job::Job; server = job.server, calcs::Vector{String}=String[], extra_parse_funcs = nothing)
-    outputdata(jobdir::String; server = job.server, calcs::Vector{String}=String[], extra_parse_funcs = nothing)
-    
-Finds the output files for each of the calculations of a [`Job`](@ref), and groups all the parsed data into a dictionary.
-"""
-function outputdata(jobdir::String; server = "localhost", calcs::Vector{String}=String[], extra_parse_funcs = nothing)
-    server = maybe_start(server)
-    jobdir = isabspath(jobdir) ? jobdir : joinpath(server, jobdir)
-    resp = HTTP.get(server, "/outputdata/" * jobdir, JSON3.write(calcs))
-    if resp.status == 204
-        error("No outputdata found yet. Is the job running?")
-    end
-    tmp_path = JSON3.read(resp.body,
-                          String)
-                          
-    local_temp = tempname() * ".jld2"
-    Servers.pull(server, tmp_path, local_temp)
-    dat = JLD2.load(local_temp)
-    rm(local_temp)
-    out = dat["outputdata"]
-    if extra_parse_funcs !== nothing
-        for k in keys(out)
-            if !isempty(calcs) && k ∈ calcs
-                n = c.name
-                try
-                    f = joinpath(jobdir, c.outfile)
-                    local_f = tempname()
-                    Servers.pull(server, f, local_f)
-                    FileIO.parse_file(local_f, extra_parse_funcs, out = out[n])
-                    rm(local_f)
-                catch
-                    nothing
-                end
-            end
-        end
-    end
-    return out     
-end
 
-function known_execs(e::String, dir::String = ""; server = Server("localhost"))
-    s = maybe_start(server)
-    return JSON3.read(HTTP.get(s, "/known_execs/", JSON3.write(Dict("exec" => e, "dir" => dir))).body, Vector{Calculations.Exec})
-end
-known_execs(e::Calculations.Exec; kwargs...) = known_execs(e.exec,e.dir; kwargs...)
-
-function get_exec(name::String; server="localhost")
-    s = maybe_start(server)
-    return JSON3.read(HTTP.get(s, "/exec/$name").body, Calculations.Exec)
-end
-function save(e::Exec; server="localhost")
-    s = maybe_start(server)
-    return JSON3.read(HTTP.post(s, "/exec/", JSON3.write(e)).body, Calculations.Exec)
-end
-
-function verify_execs(job::Job, server::Server)
-    replacements = verify_execs(unique(map(x->x.exec, filter(x->x.run, job.calculations))), server)
-    for (e, rep) in replacements
-        for c in job.calculations
-            if c.exec == e
-                c.exec.dir = rep.dir
-                c.exec.modules = rep.modules
-            end
-        end
-    end
-end
-
-function verify_execs(execs::Vector{Exec}, server::Server)
-    replacements = Dict{Exec, Exec}()
-    for e in execs 
-        if !JSON3.read(HTTP.get(server, "/verify_exec/", JSON3.write(e)).body, Bool)
-            possibilities = known_execs(e, server=server)
-
-            e1 = getfirst(x -> x.name == e.name, possibilities)
-            if e1 !== nothing
-                replacements[e] = e1
-            else
-                curn = 0
-                while length(possibilities) > 1
-                    possibilities = filter(x -> all(splitpath(x.dir)[end-curn:end] .== splitpath(e.dir)[end-curn:end]), possibilities)
-                    curn += 1
-                end
-                if !isempty(possibilities)
-                    replacement = possibilities[1]
-                    @warn "Executable ($(e.exec)) in dir ($(e.dir)) not runnable,\n but found a matching replacement executable in dir ($(replacement.dir)).\nUsing that one..."
-                    replacements[e] = replacement 
-                else
-                    error("$e is not a valid executable on server $(server.name).\nReplace it.")
-                end
-            end
-        end
-    end
-    return replacements
-end
-
-#TODO: work this
-"""
-    abort(job::Job)
-    abort(dir::String; server="localhost")
-
-Will try to remove the job from the scheduler's queue.
-If the last running calculation happened to be a `Calculation{QE}`, the correct abort file will be written.
-For other codes the process is not smooth, and restarting is not guaranteed.
-"""
-function abort(dir::String; server="localhost")
-    @assert isrunning(dir; server=server) "Is this job running?"
-    id = JSON3.read(HTTP.get(Server(server), "/abort/" * dir).body, Int)
-    @info "Aborted job $id"
-end
-abort(job::Job) = abort(job.dir; server= job.server)
-
-"""
-    registered_jobs(fuzzy::AbstractString = "")
-
-Lists all the known [`Jobs`](@ref Job) directories that contain `fuzzy`.
-Intended to be used as:
-```julia
-job_dirs = registered_jobs("NiO")
-job = Job(job_dirs[1])
-```
-"""
-function registered_jobs(fuzzy::String=""; server=nothing)
-    if server === nothing
-        all_jobs = Dict{String,Vector{Tuple{String, DateTime}}}()
-        for s in Servers.known_servers()
-            jobs = registered_jobs(fuzzy, s)
-            if !isempty(jobs)
-                all_jobs[s.name] = jobs
-            end
-        end
-        return all_jobs
-    else
-        server = maybe_start(server) 
-        resp = HTTP.get(server, "/registered_jobs/" * fuzzy)
-        return reverse(JSON3.read(resp.body, Vector{Tuple{String,DateTime}}))
-    end
-end
-      
-function running_jobs(fuzzy=""; server="localhost")
-    server = maybe_start(server) 
-    resp = HTTP.get(server, "/running_jobs/" * fuzzy)
-    return reverse(JSON3.read(resp.body, Vector{Tuple{String, Int}}))
-end
-
+####### VERSIONING ###################
 """
     versions(job::Job)
     versions(jobdir::String; server="localhost")
@@ -384,7 +286,7 @@ function switch_version!(job::Job, version::Int)
     if !(version in allvers)
         error("Version $version does not exist.")
     end
-    tj = Job(Jobs.main_job_dir(job), server= job.server, version=version)
+    tj = load(Server(job.server), Job(Jobs.main_job_dir(job), version=version))
     for f in fieldnames(Job)
         setfield!(job, f, getfield(tj, f))
     end
@@ -403,7 +305,7 @@ function rm_version!(job::Job, version::Int)
         error("Version $version does not exist.")
     end
 
-    HTTP.put(server, "/rm_version/" * abspath(job), JSON3.write(version))    
+    HTTP.put(server, "/rm_version/" * abspath(job), version)    
     if version == job.version
         @warn "Job version is the same as the one to be removed, switching to last known version."
         lv = last_version(job)
@@ -414,26 +316,85 @@ function rm_version!(job::Job, version::Int)
     end
 end
 
-function environment_from_jobscript(scriptpath; server="localhost")
+
+##### EXECS #######
+function fill_execs(job::Job, server::Server)
+    replacements = Dict{Exec, Exec}()
+    for e in unique(map(x->x.exec, filter(x->x.run, job.calculations)))
+        t = load(server, e)
+        if t isa Exec
+            replacements[e] = t
+        else
+            error("""
+            Exec(\"$(e.name)\") not found on Server(\"$(server.name)\").
+            Either save it, or choose one of the possible substitutions:
+            $t""")
+        end
+    end
+    for (e, rep) in replacements
+        for c in job.calculations
+            if c.exec == e
+                c.exec.dir = rep.dir
+                c.exec.modules = rep.modules
+            end
+        end
+    end
+end
+
+########## ENVIRONMENTS #############
+function environment_from_jobscript(server::Server, name::String, scriptpath::String)
     server = maybe_start(server)
     tmp = tempname()
     Servers.pull(server, scriptpath, tmp)
-    return Jobs.environment_from_jobscript(tmp)
-end
-    
-function get_environment(name; server="localhost")
-    server = maybe_start(server)
-    return JSON3.read(HTTP.get(server, "/environment/$name").body, Environment)    
-end
-    
-function add_environment(env::Environment, name::String; server="localhost")
-    server = maybe_start(server)
-    return HTTP.post(server, "/environment/$name", JSON3.write(env))
+    env = Jobs.environment_from_jobscript(tmp)
+    env.name = name
+    return env
 end
 
-function rm_environment!(name::String; server="localhost")
+######## OUTPUTS ############
+outputdata(job::Job; kwargs...) =
+    outputdata(Server(job.server), job.dir; kwargs...)
+    
+"""
+    outputdata(job::Job; server = job.server, calcs::Vector{String}=String[], extra_parse_funcs = nothing)
+    outputdata(jobdir::String; server = job.server, calcs::Vector{String}=String[], extra_parse_funcs = nothing)
+    
+Finds the output files for each of the calculations of a [`Job`](@ref), and groups all the parsed data into a dictionary.
+"""
+function outputdata(server::Server, jobdir::String; calcs::Vector{String}=String[], extra_parse_funcs = nothing)
     server = maybe_start(server)
-    return HTTP.put(server, "/environment/$name")
+    jobdir = isabspath(jobdir) ? jobdir : joinpath(server, jobdir)
+    resp = HTTP.get(server, "/outputdata/" * jobdir, calcs)
+    if resp.status == 204
+        error("No outputdata found yet. Is the job running?")
+    end
+    tmp_path = JSON3.read(resp.body,
+                          String)
+                          
+    local_temp = tempname() * ".jld2"
+    Servers.pull(server, tmp_path, local_temp)
+    dat = JLD2.load(local_temp)
+    rm(local_temp)
+    out = dat["outputdata"]
+    if extra_parse_funcs !== nothing
+        j = load(Server(server), Job(jobdir))
+        for k in keys(out)
+            if !isempty(calcs) && k ∈ calcs
+                c = j[k]
+                n = c.name
+                try
+                    f = joinpath(jobdir, c.outfile)
+                    local_f = tempname()
+                    Servers.pull(server, f, local_f)
+                    FileIO.parse_file(local_f, extra_parse_funcs, out = out[n])
+                    rm(local_f)
+                catch
+                    nothing
+                end
+            end
+        end
+    end
+    return out     
 end
 
 """
@@ -462,8 +423,6 @@ function bandgap(job::Job, fermi = nothing, outdat = outputdata(job))
     bands = map(x->outdat[x.name][:bands], filter(x -> haskey(outdat, x.name), band_calcs))
     return minimum(bandgap.(bands, fermi))
 end
-
-
 
 """
     readfermi(job::Job, outdat=outputdata(job))
@@ -503,6 +462,38 @@ function readbands(job::Job, outdat=outputdata(job))
     end
     return outdat[calc.name][:bands]
 end
+
+"""
+    gencalc_wan(job::Job, min_window_determinator::Real, extra_wan_flags...; kwargs...)
+
+Automates the generation of wannier calculations based on the `job`.
+When a projwfc calculation is present in the `job`, `min_window_determinator` will be used to
+determine the threshold value for including a band in the window based on the projections, otherwise
+it will be used as the `Emin` value from which to start counting the number of bands needed for all
+projections.
+`extra_wan_flags` can be any extra flags for the Wannier90 calculation such as `write_hr` etc.
+"""
+function Calculations.gencalc_wan(job::Job, min_window_determinator::Real,
+                                  extra_wan_flags...; kwargs...)
+    nscf_calc = getfirst(x -> Calculations.isnscf(x), job.calculations)
+    nscf_calc === nothing && "Please first run an nscf calculation."
+    if get(nscf_calc, :nosym, false) != true
+        @info "'nosym' flag was not set in the nscf calculation.
+                If this was not intended please set it and rerun the nscf calculation.
+                This generally gives errors because of omitted kpoints, needed for pw2wannier90.x"
+    end
+    projwfc_calc = getfirst(x -> Calculations.isprojwfc(x), job.calculations)
+    outdat = outputdata(job)
+    if projwfc_calc === nothing || !haskey(outdat, projwfc_calc.name)
+        @info "No projwfc calculation found with valid output, using $min_window_determinator as Emin"
+        Emin = min_window_determinator
+    else
+        @info "Valid projwfc output found, using $min_window_determinator as the dos threshold."
+        Emin = Calculations.Emin_from_projwfc(job.structure, outdat[projwfc_calc.name][:states], outdat[projwfc_calc.name][:bands], min_window_determinator)
+    end
+    return Calculations.gencalc_wan(nscf_calc, job.structure, outdat[nscf_calc.name][:bands], Emin, extra_wan_flags...; kwargs...)
+end
+
 
 # TODO
 # """

@@ -7,6 +7,7 @@ using ..Jobs
 using ..FileIO
 using ..Servers
 using ..Structures
+import ..Database: save, load, exists
 # const DAEMON_CONFIG_PATH = config_path("daemon.jld2")
 # delete_daemon_config!() = rm(DAEMON_CONFIG_PATH)
 
