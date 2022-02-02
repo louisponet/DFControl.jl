@@ -11,6 +11,7 @@ mkpath(config_path("logs"))
 mkpath(config_path("logs/jobs"))
 mkpath(config_path("logs/servers"))
 mkpath(config_path("pseudos"))
+mkpath(config_path("environments"))
 
 # All the job info
 touch(config_path("jobs", "pending.txt"))
