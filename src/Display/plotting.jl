@@ -85,12 +85,12 @@ end
     end
     outdat = Client.outputdata(job)
     if !haskey(plotattributes, :fermi)
-        frmi = Jobs.readfermi(job, outdat)
+        frmi = readfermi(job, outdat)
     else
         frmi = pop!(plotattributes, :fermi)
     end
     fermi --> frmi
-    bands = Jobs.readbands(job, outdat)
+    bands = readbands(job, outdat)
     if bands === nothing
         error("No bands found in job $(job.name).")
     end
