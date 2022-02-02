@@ -20,7 +20,6 @@ include("fileio.jl")
 include("database.jl")
 
 # GENERAL
-
 function path(req::HTTP.Request)
     p = req.target
     if !isabspath(p)

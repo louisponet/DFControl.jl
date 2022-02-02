@@ -82,7 +82,7 @@ isarchived(job::Job) = occursin(".archived", job.dir)
 Base.abspath(job::Job) = abspath(Server(job.server), job.dir)
     
 Base.ispath(job::Job, p...) =
-    runslocal(job) ? joinpath(job, p...) : ispath(Servers.maybe_start(Server(job.server)), joinpath(job, p...))
+    runslocal(job) ? joinpath(job, p...) : ispath(Server(job.server), joinpath(job, p...))
 
     
 """

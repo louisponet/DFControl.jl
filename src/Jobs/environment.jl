@@ -48,7 +48,7 @@ function environment_from_jobscript(scriptpath::String)
     
     t = Environment("", MPI_command, scheduler_flags, exports)
     n = Database.name(t)
-    t.name = n === nothing ? t : n
+    t.name = n === nothing ? t.name : n
     return t
 end
 

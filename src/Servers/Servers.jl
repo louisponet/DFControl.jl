@@ -2,6 +2,7 @@ module Servers
 using StructTypes, Distributed, JSON3, HTTP, REPL.TerminalMenus, Parameters, UUIDs
 using ..DFControl: config_path
 using ..Utils
+using ..Database
 
 export Server
 
@@ -24,23 +25,25 @@ server can change.
 
 Calling [`Server`](@ref) with a single `String` will either load the configuration that was previously saved with that label, or go through an interactive setup of a new server.
 """
-mutable struct Server
-    name::String
-    username::String
-    domain::String
-    port::Int
-    scheduler::Scheduler
-    mountpoint::String
-    julia_exec::String
-    root_jobdir::String
-    local_port::Int
-    max_concurrent_jobs::Int
+@with_kw mutable struct Server <: Storable
+    name::String = ""
+    username::String = ""
+    domain::String = ""
+    port::Int = 8080
+    scheduler::Scheduler = Bash
+    mountpoint::String = ""
+    julia_exec::String = ""
+    root_jobdir::String = ""
+    local_port::Int = 0
+    max_concurrent_jobs::Int = 100
 end
 
+Database.storage_directory(::Server) = "servers"
+
 function Server(s::String)
-    server = load(s) #First check if previous server exists
-    if server !== nothing
-        return server
+    t = Server(name=s)
+    if exists(t)
+        return load(t)
     end
     # Create new server 
     @info "Creating new Server configuration..."
@@ -147,64 +150,22 @@ function load_config(username, domain; name="localhost")
 end
 load_config(s::Server; kwargs...) = load_config(s.username, s.domain; kwargs...)
 
-function known_servers(fuzzy = "")
-    if ispath(SERVER_DIR)
-        servers = [JSON3.read(read(joinpath(SERVER_DIR, s), String), Server)
-                   for s in filter(x -> occursin(fuzzy, x), readdir(SERVER_DIR))]
-    else
-        servers = Server[]
-    end
-    return servers
-end
-
-function load(name::String)
-    if occursin("@", name)
-        n = split(name, "@")[end]
-        return getfirst(x -> x.name == n, known_servers())
-    else
-        all = known_servers(name)
-        if length(all) > 0
-            return all[1]
-        else
-            return nothing
-        end
-    end
-end
-
-"""
-    save(s::Server)
-
-Saves the server configuration for later use. Can be loaded using [`Server`](@ref) with the name of `s`.
-If the server is not local it will also upload the configuration to the remote host.
-"""
-function save(s::Server)
-    mkpath(SERVER_DIR)
-    if ispath(joinpath(SERVER_DIR, s.name * ".json"))
-        @info "Updating previously existing configuration for server $s."
-    end
-    JSON3.write(joinpath(SERVER_DIR, s.name * ".json"),  s)
-    if !islocal(s)
-        @info "Uploading server configuration."
-        t = deepcopy(s)
-        t.domain = "localhost"
-        t.local_port = 0
-        t.name = "localhost"
-        tf = tempname()
-        JSON3.write(tf,  t)
-        push(tf, s, "~/.julia/config/DFControl/servers/localhost.json")
-    end
-end
-
 ssh_string(s::Server) = s.username * "@" * s.domain
 http_string(s::Server) = s.local_port != 0 ? "http://localhost:$(s.local_port)" : "http://$(s.domain):$(s.port)"
 
-function HTTP.request(method::String, s::Server, url, body; kwargs...)
+function HTTP.request(method::String, s::Server, url, body; checkalive = true, kwargs...)
+    if checkalive
+        maybe_start(s)
+    end
     uuid = read(config_path("user_uuid"), String)
     header = ["Type" => "$(typeof(body))", "USER-UUID" => uuid]
     return HTTP.request(method, string(http_string(s), url), header, JSON3.write(body); kwargs...)
 end
 
-function HTTP.request(method::String, s::Server, url; kwargs...)
+function HTTP.request(method::String, s::Server, url; checkalive=true, kwargs...)
+    if checkalive
+        maybe_start(s)
+    end
     uuid = read(config_path("user_uuid"), String)
     header = ["USER-UUID" => uuid]
     return HTTP.request(method, string(http_string(s), url), header; kwargs...)
@@ -250,7 +211,7 @@ the return is `false`.
 """
 function isalive(s::Server)
     try
-        resp = HTTP.get(s, "/server_config", readtimeout=15, retry=false)
+        resp = HTTP.get(s, "/server_config", readtimeout=15, retry=false, checkalive=false)
         return JSON3.read(resp.body, Server).username == s.username
     catch
         tserver = load_config(s)
@@ -261,7 +222,7 @@ function isalive(s::Server)
         end
             
         try 
-            resp = HTTP.get(s, "/server_config", readtimeout=15, retry=false)
+            resp = HTTP.get(s, "/server_config", readtimeout=15, retry=false, checkalive=false)
             t = JSON3.read(resp.body, Server).username == s.username
             save(s)
             return t
@@ -293,6 +254,16 @@ function start(s::Server)
         t = getfirst(x->occursin("ssh -f $(ssh_string(s))", x), split(read(pipeline(`ps aux` , stdout = `grep Resource`), String), "\n"))
         if t !== nothing
             run(`kill $(split(t)[2])`)
+        end
+       
+        if !islocal(s)
+            t = deepcopy(s)
+            t.domain = "localhost"
+            t.local_port = 0
+            t.name = "localhost"
+            tf = tempname()
+            JSON3.write(tf,  t)
+            push(tf, s, "~/.julia/config/DFControl/servers/localhost.json")
         end
     end
         
@@ -361,7 +332,6 @@ function maybe_start(s::Server)
     end
     return s
 end
-maybe_start(j) = (s = Server(j); return maybe_start(s))
 
 """
     kill(s::Server)
@@ -397,8 +367,7 @@ function ask_input(::Type{T}, message, default=nothing) where {T}
 end
    
 function maybe_create_localhost()
-    t = load("localhost")
-    if t === nothing
+    if !exists(Server(name="localhost"))
         @info "Initializing localhost server configuration."
         scheduler = Sys.which("sbatch") === nothing ? Bash : Slurm
         if !haskey(ENV, "DFCONTROL_PORT")
@@ -424,7 +393,7 @@ function maybe_create_localhost()
         save(out)
         return out
     else
-        return t
+        return Server("localhost")
     end
 end
 
@@ -498,7 +467,6 @@ function available_modules(s::Server)
 end
 
 function Base.readdir(s::Server, dir::String)
-    maybe_start(s)
     resp = HTTP.get(s, "/readdir/" * abspath(s, dir))
     return JSON3.read(resp.body, Vector{String})
 end

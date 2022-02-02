@@ -26,8 +26,8 @@ export Point, Point3, Vec3, Mat3, Mat4
 
 include("utils.jl")
 
-include("Servers/Servers.jl")
 include("Database/Database.jl")
+include("Servers/Servers.jl")
 @reexport using .Database
 
 include("Structures/Structures.jl")

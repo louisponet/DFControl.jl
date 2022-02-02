@@ -1,10 +1,7 @@
-using ..Servers: maybe_start
-
 Servers.Server(j::Job) = Server(j.server)
 
 ##### JOB INTERACTIONS #########
 function load(server::Server, j::Job)
-    server = maybe_start(server)
     if !ispath(server, j.dir)
         j.dir == "" && return
     end
@@ -69,14 +66,12 @@ function registered_jobs(fuzzy::String=""; server=nothing)
         end
         return all_jobs
     else
-        server = maybe_start(server) 
         resp = HTTP.get(server, "/registered_jobs/" * fuzzy)
         return reverse(JSON3.read(resp.body, Vector{Tuple{String,DateTime}}))
     end
 end
       
 function running_jobs(fuzzy=""; server="localhost")
-    server = maybe_start(server) 
     resp = HTTP.get(server, "/running_jobs/" * fuzzy)
     return reverse(JSON3.read(resp.body, Vector{Tuple{String, Int}}))
 end
@@ -93,7 +88,7 @@ If a previous job is present in the job directory (indicated by a valid job scri
 it will be copied to the `.versions` sub directory as the previous version of `job`,
 and the version of `job` will be incremented. 
 """
-function save(job::Job, workflow::Union{Nothing, Workflow} = nothing; server::Server = maybe_start(job))
+function save(job::Job, workflow::Union{Nothing, Workflow} = nothing)
     @assert workflow === nothing "Workflows not implemented yet."
     # First we check whether the job is trying to be saved in a archived directory, absolutely not allowed
     @assert !isrunning(job) "Can't save a job in a directory where another is running."
@@ -116,8 +111,9 @@ function save(job::Job, workflow::Union{Nothing, Workflow} = nothing; server::Se
     tmpdir = mkpath(tempname())
     apath = abspath(job)
 
+    server = Server(job.server)
     if job.environment != ""
-        environment = load(Server(job.server), Environment(job.environment))
+        environment = load(server, Environment(job.environment))
         @assert environment !== nothing "Environment with name $(job.environment) not found!"
     else
         environment = nothing
@@ -154,7 +150,7 @@ Saves and launches `job`.
 """
 function submit(job::Job, workflow=nothing)
     @assert workflow === nothing "Workflows not implemented yet."
-    server = maybe_start(job)
+    server = Server(job.server)
     fill_execs(job, server)
     save(job, workflow)
     return HTTP.put(server, "/jobs/" * abspath(job), workflow !== nothing)
@@ -162,11 +158,11 @@ end
 
 function submit(jobs::Vector{Job}, run = true)
     # To verify all execs
-    server_names = unique(map(x -> x.server, jobs))
+    server_names = Server.(unique(map(x -> x.server, jobs)))
     buckets = [jobs[findall(x -> x.server == s, jobs)] for s in server_names]
     outbuckets = [Vector{Job}(undef, length(b)) for b in buckets]
     Threads.@threads for i in 1:length(server_names)
-        server = maybe_start(server_names[i])
+        server = server_names[i]
         bucket = buckets[i]
         outbucket = outbuckets[i]
         execs = unique(vcat([map(x->x.exec, j.calculations) for j in bucket]...))
@@ -211,8 +207,7 @@ abort(job::Job) = abort(job.dir; server= job.server)
 Returns the state of a job.
 """
 function state(jobdir::String; server = "localhost")
-    s = maybe_start(server) 
-    return JSON3.read(HTTP.get(s, "/job_state/" * jobdir).body, Jobs.JobState)
+    return JSON3.read(HTTP.get(Server(server), "/job_state/" * jobdir).body, Jobs.JobState)
 end
 state(job::Job) = state(job.dir, server=job.server)
 
@@ -230,7 +225,7 @@ function isrunning(args...; kwargs...)
 end
 
 function submission_time(job::Job)
-    resp = HTTP.get(maybe_start(job), "/mtime/" * Jobs.scriptpath(job))
+    resp = HTTP.get(Server(job.server), "/mtime/" * Jobs.scriptpath(job))
     return JSON3.read(resp.body, Float64)
 end
 
@@ -240,7 +235,7 @@ end
 Returns the last `Calculation` for which an output file was created.
 """
 function last_running_calculation(job::Job)
-    server = maybe_start(job.server)
+    server = Server(job.server)
     resp = HTTP.get(server, "/last_running_calculation/" * job.dir)
     if resp.status == 204
         return nothing
@@ -259,7 +254,7 @@ Returs the valid versions of `job`.
 """
 versions(job::Job) = versions(abspath(job); server = job.server) 
 function versions(dir::AbstractString; server = "localhost")
-    server=maybe_start(server) 
+    server=Server(server) 
     return JSON3.read(HTTP.get(server, "/job_versions/" * Jobs.main_job_dir(dir)).body, Vector{Int})
 end
 
@@ -299,7 +294,7 @@ end
 Removes the `version` of the `job`.
 """
 function rm_version!(job::Job, version::Int)
-    server = maybe_start(job.server) 
+    server = Server(job.server) 
     allvers = versions(job)
     if !(version in allvers)
         error("Version $version does not exist.")
@@ -343,7 +338,7 @@ end
 
 ########## ENVIRONMENTS #############
 function environment_from_jobscript(server::Server, name::String, scriptpath::String)
-    server = maybe_start(server)
+    server = Server(server)
     tmp = tempname()
     Servers.pull(server, scriptpath, tmp)
     env = Jobs.environment_from_jobscript(tmp)
@@ -362,7 +357,7 @@ outputdata(job::Job; kwargs...) =
 Finds the output files for each of the calculations of a [`Job`](@ref), and groups all the parsed data into a dictionary.
 """
 function outputdata(server::Server, jobdir::String; calcs::Vector{String}=String[], extra_parse_funcs = nothing)
-    server = maybe_start(server)
+    server = Server(server)
     jobdir = isabspath(jobdir) ? jobdir : joinpath(server, jobdir)
     resp = HTTP.get(server, "/outputdata/" * jobdir, calcs)
     if resp.status == 204
