@@ -51,7 +51,7 @@ scf_calculation = Calculation{QE}("scf", :calculation => "scf"; exec = pw_exec,
 if false #hide
     submit(job)
 else #hide
-    global job = Job(joinpath(splitdir(pathof(DFControl))[1], "..", "docs","src","assets", "job"))#hide
+    global job = load(Job(joinpath(splitdir(pathof(DFControl))[1], "..", "docs","src","assets", "job")))#hide
     pop!(job) #hide
 end #hide
 
@@ -91,7 +91,7 @@ job.dir = "job"; #hide
 if false #hide
     submit(job)
 else #hide
-    global job = Job(joinpath(splitdir(pathof(DFControl))[1], "..", "docs","src","assets", "job"));#hide
+    global job = load(Job(joinpath(splitdir(pathof(DFControl))[1], "..", "docs","src","assets", "job")));#hide
 end #hide
 
 # We can access the bands through

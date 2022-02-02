@@ -9,10 +9,10 @@ using DFControl
 if !Servers.isalive(Server("localhost"))#hide
     @async DFC.Resource.run()#hide
 end#hide
-tjob = Job(joinpath(splitdir(pathof(DFControl))[1], "..", "docs","src","assets", "job"))#hide
-tjob2 = Job(joinpath(splitdir(pathof(DFControl))[1], "..", "docs","src","assets", "Job2"))#hide
+tjob = load(Job(joinpath(splitdir(pathof(DFControl))[1], "..", "docs","src","assets", "job")))#hide
+tjob2 = load(Job(joinpath(splitdir(pathof(DFControl))[1], "..", "docs","src","assets", "Job2")))#hide
 if false#hide
-    global job = Job("job")
+    global job = load(Job("job"))
 else#hide
     global job = deepcopy(tjob)#hide
     job.dir= "job" #hide
