@@ -27,3 +27,5 @@ if !ispath(config_path("user_uuid"))
     uuid = UUIDs.uuid4()
     write(config_path("user_uuid"), "$uuid")
 end
+
+

@@ -6,7 +6,11 @@ function Database.load(req::HTTP.Request)
         # when loading an entity (e.g. a Job).
         typ = Symbol(HTTP.header(req, "Type"))
         val = eval(:(JSON3.read($(req.body), $typ)))
-        return map(x->Database.storage_name(x), Database.replacements(val))
+        try
+            return Database.load(val)
+        catch
+            return map(x->Database.storage_name(x), Database.replacements(val))
+        end
     else
         cpath = config_path(p) 
         if isempty(splitext(p)[end])

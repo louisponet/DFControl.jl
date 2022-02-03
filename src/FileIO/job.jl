@@ -273,6 +273,8 @@ function read_job_script(job_file::String)
         module_lines = header[module_line_ids]
         deleteat!(header, module_line_ids)
         modules = map(x -> split(x)[end], module_lines)
+    else
+        modules = String[]
     end
     #TODO cleanup
     ues = unique(map(x->x.exec, filter(y->y.run, calcs)))
@@ -284,6 +286,8 @@ function read_job_script(job_file::String)
                 e.name = b.name
                 e.modules = b.modules
             end
+        else
+            e.modules = modules
         end
     end
             

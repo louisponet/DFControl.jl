@@ -70,6 +70,9 @@ module Database
         dir = config_path("storage", storage_directory(s))
         default = S() # We only score matches that are not the default
         all = map(x -> JSON3.read(read(joinpath(dir, x), String), S), readdir(dir))
+        if isempty(all)
+            return S[]
+        end
         score = zeros(Int, length(all))
         for (i, t) in enumerate(all)
             for f in fieldnames(S)
