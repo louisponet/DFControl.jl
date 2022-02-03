@@ -1,4 +1,4 @@
-const PSEUDO_DIR = config_path("pseudos")
+const PSEUDO_DIR = config_path("storage/pseudos")
 
 function pseudos(set::String, fuzzy::String)
     if !(set in pseudo_sets())

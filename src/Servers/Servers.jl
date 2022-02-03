@@ -6,7 +6,7 @@ using ..Database
 
 export Server
 
-const SERVER_DIR = config_path("servers")
+const SERVER_DIR = config_path("storage/servers")
 
 @enum Scheduler Slurm=1 Bash=2
 
@@ -137,9 +137,9 @@ read_config(config_file) = parse_config(read(config_file, String))
 
 function load_config(username, domain; name="localhost")
     if domain == "localhost"
-        return read_config(config_path("servers/localhost.json"))
+        return read_config(config_path("storage/servers/localhost.json"))
     else
-        cmd = "cat ~/.julia/config/DFControl/servers/$name.json"
+        cmd = "cat ~/.julia/config/DFControl/storage/servers/$name.json"
         t = server_command(username, domain, cmd)
         if t.exitcode != 0
             return nothing
@@ -263,7 +263,7 @@ function start(s::Server)
             t.name = "localhost"
             tf = tempname()
             JSON3.write(tf,  t)
-            push(tf, s, "~/.julia/config/DFControl/servers/localhost.json")
+            push(tf, s, "~/.julia/config/DFControl/storage/servers/localhost.json")
         end
     end
         
@@ -277,8 +277,8 @@ function start(s::Server)
     function checktime()
         curtime = 0
         try
-            cmd = "stat -c %Z  ~/.julia/config/DFControl/servers/localhost.json"
-            curtime = islocal(s) ? mtime(config_path("servers", "localhost.json")) : parse(Int, server_command(s.username, s.domain, cmd)[1])
+            cmd = "stat -c %Z  ~/.julia/config/DFControl/storage/servers/localhost.json"
+            curtime = islocal(s) ? mtime(config_path("storage", "servers", "localhost.json")) : parse(Int, server_command(s.username, s.domain, cmd)[1])
         catch
             nothing
         end

@@ -1,6 +1,7 @@
 module Client
+using ..Database
+import ..Database: load, save
 using HTTP, JSON3, StructTypes, Dates, JLD2, Distributed, REPL.TerminalMenus, Reexport
-import ..Database: load, save, exists
 using ..Utils
 using ..FileIO
 

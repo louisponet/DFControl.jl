@@ -6,11 +6,7 @@ function Database.load(req::HTTP.Request)
         # when loading an entity (e.g. a Job).
         typ = Symbol(HTTP.header(req, "Type"))
         val = eval(:(JSON3.read($(req.body), $typ)))
-        if Database.exists(val)
-            return Database.load(val)
-        else
-            return map(x->Database.storage_name(x), Database.replacements(val))
-        end
+        return map(x->Database.storage_name(x), Database.replacements(val))
     else
         cpath = config_path(p) 
         if isempty(splitext(p)[end])
@@ -21,7 +17,7 @@ function Database.load(req::HTTP.Request)
         end
     end
 end
-HTTP.@register(ROUTER, "GET", "/database/*", load)
+HTTP.@register(ROUTER, "GET", "/database/storage/*", load)
 
 function Database.save(req::HTTP.Request)
     p = path(req)
@@ -35,11 +31,20 @@ function Database.save(req::HTTP.Request)
         write(p, req.body)
     end
 end
-HTTP.@register(ROUTER, "POST", "/database/*", save)
+HTTP.@register(ROUTER, "POST", "/database/storage/*", save)
 
 function database_rm(req)
-    ispath(path(req))
-    rm(path(req))
+    p = config_path(path(req))
+    ispath(p)
+    rm(p)
 end
-HTTP.@register(ROUTER, "PUT", "/database/*", database_rm)
+HTTP.@register(ROUTER, "PUT", "/database/storage/*", database_rm)
+
+function Database.name(req)
+    typ = Symbol(HTTP.header(req, "Type"))
+    val = eval(:(JSON3.read($(req.body), $typ)))
+    return Database.name(val)
+end
+    
+HTTP.@register(ROUTER, "GET", "/database/name", Database.name)
  

@@ -33,6 +33,9 @@ testdir = @__DIR__
     @time @testset "Setting defaults" begin
         include("defaults_tests.jl")
     end
+    @time @testset "Database" begin
+        include("database_tests.jl")
+    end
     @time @testset "Job from CIF file" begin
         include("jobfromcif_tests.jl")
     end
@@ -46,6 +49,4 @@ testdir = @__DIR__
         include("rmdefaults_tests.jl")
     end
     include("cleanup.jl")
-    # rm(DFControl.config_path("servers/localhost_test.json"))
-    rm(DFControl.config_path("environments/test_default.json"))
 end

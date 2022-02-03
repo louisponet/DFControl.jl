@@ -302,7 +302,6 @@ function rm_version!(job::Job, version::Int)
     end
 end
 
-
 ##### EXECS #######
 function fill_execs(job::Job, server::Server)
     replacements = Dict{Exec, Exec}()
@@ -311,10 +310,14 @@ function fill_execs(job::Job, server::Server)
         if t isa Exec
             replacements[e] = t
         else
-            error("""
-            Exec(\"$(e.name)\") not found on Server(\"$(server.name)\").
-            Either save it, or choose one of the possible substitutions:
-            $t""")
+            if !isempty(Database.storage_name(t))
+                save(server, e)
+            else
+                error("""
+                Exec(\"$(e.name)\") not found on Server(\"$(server.name)\").
+                Either save it, or choose one of the possible substitutions:
+                $t""")
+            end
         end
     end
     for (e, rep) in replacements

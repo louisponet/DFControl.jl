@@ -16,7 +16,7 @@ StructTypes.StructType(::Type{Environment}) = StructTypes.Struct()
 Database.storage_directory(e::Environment) = "environments"
 
 function Base.:(==)(e1::Environment, e2::Environment)
-    if e1.MPI_command != e2.MPI_command || e1.name != e2.name
+    if e1.MPI_command != e2.MPI_command
         return false
     else
         for fn in (:scheduler_flags, :exports)
