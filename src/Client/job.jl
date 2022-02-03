@@ -5,7 +5,7 @@ function load(server::Server, j::Job)
     if !ispath(server, j.dir)
         j.dir == "" && return
     end
-    if j.version == last_version(j.dir; server= server)
+    if j.version == last_version(server, j.dir)
         dir = Jobs.main_job_dir(j.dir)
     elseif !occursin(Jobs.VERSION_DIR_NAME, j.dir) && j.version != -1
         dir = Jobs.version_dir(Jobs.main_job_dir(j.dir), j.version)
@@ -255,9 +255,9 @@ end
 
 Returns the last version number of `job`.
 """
-last_version(job::Job) = last_version(abspath(job), server = job.server) 
-function last_version(dir::AbstractString; server="localhost")
-    t = versions(dir, server=server)
+last_version(job::Job) = last_version(Server(job.server), abspath(job))
+function last_version(server::Server, dir::AbstractString)
+    t = versions(server, dir)
     return isempty(t) ? 0 : t[end]
 end
 
