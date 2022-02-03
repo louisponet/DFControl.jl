@@ -63,9 +63,9 @@ uuid = "a8cc5b0e-0ffa-5ad4-8c14-923d3ee1735f"
 version = "4.1.1"
 
 [[deps.DFControl]]
-deps = ["ANSIColoredPrinters", "BinDeps", "CodeTracking", "Colors", "Crayons", "Dates", "DelimitedFiles", "Distributed", "HTTP", "JLD2", "JSON3", "LinearAlgebra", "LoggingExtras", "Media", "Parameters", "Pkg", "REPL", "RecipesBase", "Reexport", "Requires", "Sockets", "StaticArrays", "StructTypes", "UUIDs", "UnitfulAtomic", "fzf_jll", "spglib_jll"]
-git-tree-sha1 = "926e7b3145152c0d0ed7068b7479630284b6a296"
-repo-rev = "70b0b26b43e0839778eeb281b4f8de933405ef9e"
+deps = ["ANSIColoredPrinters", "BinDeps", "CodeTracking", "Colors", "Crayons", "Dates", "DelimitedFiles", "Distributed", "HTTP", "JLD2", "JSON3", "LinearAlgebra", "LoggingExtras", "Media", "Parameters", "Pkg", "ProgressMeter", "REPL", "RecipesBase", "Reexport", "Requires", "Sockets", "StaticArrays", "StructTypes", "UUIDs", "UnitfulAtomic", "fzf_jll", "spglib_jll"]
+git-tree-sha1 = "4e369c4e77db26ce7c3b1866d4007e6230e1bf8b"
+repo-rev = "ba7469dec860f3537ff7fb76a51e7180933abb96"
 repo-url = "https://github.com/louisponet/DFControl.jl.git"
 uuid = "1e31e15d-4957-550d-a244-318eced754ae"
 version = "0.3.3"
@@ -239,6 +239,12 @@ version = "1.2.3"
 [[deps.Printf]]
 deps = ["Unicode"]
 uuid = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+
+[[deps.ProgressMeter]]
+deps = ["Distributed", "Printf"]
+git-tree-sha1 = "afadeba63d90ff223a6a48d2009434ecee2ec9e8"
+uuid = "92933f4c-e287-5a05-a399-4b506db050ca"
+version = "1.7.1"
 
 [[deps.REPL]]
 deps = ["InteractiveUtils", "Markdown", "Sockets", "Unicode"]
