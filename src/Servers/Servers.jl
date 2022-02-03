@@ -1,10 +1,11 @@
 module Servers
-using StructTypes, Distributed, JSON3, HTTP, REPL.TerminalMenus, Parameters, UUIDs
+using StructTypes, Distributed, JSON3, HTTP, REPL.TerminalMenus, Parameters, UUIDs, ProgressMeter
 using ..DFControl: config_path
 using ..Utils
 using ..Database
 
-export Server
+
+export Server, start
 
 const SERVER_DIR = config_path("storage/servers")
 
@@ -303,7 +304,9 @@ function start(s::Server)
         
     #TODO: little hack here
     retries = 0
+    prog = ProgressUnknown( "Waiting for server bootup:", spinner=true)
     while checktime() <= firstime && retries < 60
+        ProgressMeter.next!(prog; spinner = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏", showvalues=[(:try, retries)])
         retries += 1
         sleep(1)
     end
@@ -322,8 +325,7 @@ function start(s::Server)
             save(s)
         end
     end
-     
-    return s
+    return
 end
 
 function maybe_start(s::Server)

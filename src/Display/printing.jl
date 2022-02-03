@@ -30,30 +30,46 @@ function df_show(io::IO, band::Band)
 end
 
 function df_show(io::IO, job::Job)
+    server = Server(job.server)
     reset = crayon"reset"
     fieldns = [:name, :version]
     fs = string.(filter(x -> !isempty(x), getfield.((job,), fieldns)))
     fns = string.(fieldns)
     insert!(fns, 2, "dir")
+    push!(fns, "server")
+    if Servers.isalive(server) 
+        push!(fs, "$(job.server), alive")
+    else
+        push!(fs, "$(job.server), not alive")
+    end
+        
+    
     insert!(fs, 2, Jobs.main_job_dir(job))
     push!(fns, "versions")
-    versions = Client.versions(job)
-    push!(fs, join(string.(versions), ", "))
-    timestamp = Client.submission_time(job)
-    if timestamp != 0
-        push!(fns, "last submission")
-        push!(fs, string(round(Dates.unix2datetime(timestamp), Second)))
+    if Servers.isalive(server)
+        versions = Client.versions(job)
+        push!(fs, join(string.(versions), ", "))
+        timestamp = Client.submission_time(job)
+        if timestamp != 0
+            push!(fns, "last submission")
+            push!(fs, string(round(Dates.unix2datetime(timestamp), Second)))
+        end
+        push!(fns, "state")
+        state = Client.state(job)
+        push!(fs, string(state))
+    else
+        push!(fs, "unknown")
+        push!(fns, "state")
+        push!(fs, string(Jobs.Unknown))
     end
-    push!(fns, "state")
-    state = Client.state(job)
-    push!(fs, string(state))
+        
     lfns = maximum(length.(fns)) + maximum(length.(fs)) + 4
     line = "+"
     for i in 1:div(lfns, 2) + 1
         line *= "-"
     end
     dfprint(io, crayon"cyan", line[1:end-2])
-    dfprint(io, crayon"cyan", "DFJOB")
+    dfprint(io, crayon"cyan", "JOB")
     for i in 1:div(lfns, 2)
         line *= "-"
     end
@@ -77,7 +93,7 @@ function df_show(io::IO, job::Job)
         dfprintln(io, crayon"cyan", "|", reset)
     end
     is = job.calculations
-    last = ispath(Server(job.server), Jobs.main_job_dir(job)) ? Client.last_running_calculation(job) : -1
+    last = Servers.isalive(server) && ispath(server, Jobs.main_job_dir(job)) ? Client.last_running_calculation(job) : -1
     if !isempty(is)
         dfprintln(io, crayon"cyan", line, reset)
         dfprintln(io, reset, "(", crayon"green", "scheduled", reset, ", ", crayon"red",

@@ -239,12 +239,12 @@ end
 ####### VERSIONING ###################
 """
     versions(job::Job)
-    versions(jobdir::String; server="localhost")
+    versions(server::Server, jobdir::String)
 
 Returs the valid versions of `job`.
 """
-versions(job::Job) = versions(abspath(job); server = job.server) 
-function versions(dir::AbstractString; server = "localhost")
+versions(job::Job) = versions(Server(job.server), abspath(job)) 
+function versions(server::Server, dir::AbstractString)
     server=Server(server) 
     return JSON3.read(HTTP.get(server, "/job_versions/" * Jobs.main_job_dir(dir)).body, Vector{Int})
 end
@@ -306,17 +306,24 @@ end
 function fill_execs(job::Job, server::Server)
     replacements = Dict{Exec, Exec}()
     for e in unique(map(x->x.exec, filter(x->x.run, job.calculations)))
-        t = load(server, e)
-        if t isa Exec
-            replacements[e] = t
-        else
-            if !isempty(Database.storage_name(t))
-                save(server, e)
+        if !Database.exists(server, e)
+            n = Database.name(server, e)
+            if n !== nothing
+                e.name = n
             else
-                error("""
-                Exec(\"$(e.name)\") not found on Server(\"$(server.name)\").
-                Either save it, or choose one of the possible substitutions:
-                $t""")
+                try
+                    save(server, e)
+                catch
+                    possibilities = load(server, e)
+                    if length(possibilities) == 1
+                        replacements[e] = load(server, Environment(possibilities[1]))
+                    else
+                        error("""
+                        Exec(\"$(e.name)\") not found on Server(\"$(server.name)\").
+                        Either save it, or choose one of the possible substitutions:
+                        $possibilities""")
+                    end
+                end
             end
         end
     end
