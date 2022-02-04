@@ -93,7 +93,7 @@ makedocs(; modules = [DFControl],
                                            "guide/configuration.md",
                                            "Basic Tutorial"=>"guide/basic_tutorial.md",
                                            "Advanced Tutorial"=>"guide/advanced_tutorial.md"],
-                  "Usage" => Any["guide/jobs.md", "guide/calculations.md",
+                  "Usage" => Any["guide/jobs.md", "guide/calculations.md", "guide/servers.md",
                                  "guide/structure.md",],
                   # "Examples" => EXAMPLES,
                   "api.md"

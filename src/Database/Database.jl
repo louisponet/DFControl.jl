@@ -14,6 +14,13 @@ module Database
 
     # These are the standard functions where things are saved as simple jsons in the
     # config_path.
+    """
+        save([server::Server], e::Environment)
+        save([server::Server], e::Exec)
+        save([server::Server], s::Server)
+
+    Saves an item to the database of `server`. If `server` is not specified the item will be stored in the local database.
+    """
     function save(s::Storable)
         p = config_path(storage_path(s))
         mkpath(splitdir(p)[1])
@@ -27,7 +34,14 @@ module Database
         url = storage_url(s) 
         HTTP.post(server, url, s)
     end
-    
+
+    """
+        load([server::Server], e::Environment)
+        load([server::Server], e::Exec)
+        load([server::Server], s::Server)
+
+    Loads a previously stored item from the `server`. If `server` is not specified the local item is loaded.
+    """
     function load(s::S) where {S <: Storable}
         p = config_path(storage_path(s))
         if !ispath(p)
@@ -103,7 +117,14 @@ module Database
             return JSON3.read(resp.body, String)
         end
     end
-    
+
+    """
+        Base.rm([server::Server], e::Environment)
+        Base.rm([server::Server], e::Exec)
+        Base.rm([server::Server], s::Server)
+
+    Removes an item from the database of `server`. If `server` is not specified the item will removed from the local database.
+    """
     function Base.rm(s::Storable)
         p = config_path(storage_path(s))
         if !ispath(p)

@@ -10,6 +10,7 @@ Pages=["jobs.md"]
 ## Job
 ```@docs
 Job
+load(::Server, ::Job)
 ```
 
 ## Interacting with calculations
@@ -18,7 +19,7 @@ Base.getindex(::Job, ::String)
 ```
 ```@setup job_calculation_access
 using DFControl
-job = Job(joinpath(@__DIR__, "..", "assets", "job"))
+job = load(Job(joinpath(@__DIR__, "..", "assets", "job")))
 ```
 Example: 
 ```@repl job_calculation_access
@@ -35,30 +36,25 @@ Base.insert!(::Job, ::Int, ::Calculation)
 
 ## Scheduling, submission and monitoring
 ```@docs
-Jobs.set_flow!
+set_flow!
 save(::Job)
 submit
 isrunning
 abort
 ```
 
-
 ## Directories
 ```@docs
-Base.cp(::Job, ::String)
-Base.mv(::Job, ::String)
-Base.filesize
-Base.joinpath(::Job, ::Any...)
+joinpath(::Job, ::Any...)
+abspath(::Job)
+cleanup(::Job)
 ```
 ## Registry
 All [`Jobs`](@ref Job) are stored in an internal registry the first time `save(job)` is called. 
 This means that finding all previously worked on [`Jobs`](@ref Job) is as straightforward as
-calling `Job(fuzzy)` where `fuzzy` is a part of the previously saved [`Job`](@ref) `dir`. 
-This will then show a menu in the REPL with the possible choices and one will be loaded upon choosing.
+calling `load(server, Job(fuzzy))` where `fuzzy` is a part of the previously saved [`Job`](@ref) `dir`. 
+This will then return a list of [`Jobs`](@ref Job) with similar directories. 
 
-```@docs
-registered_jobs
-```
 ## Versioning
 
 As previously mentioned, a rudimentary implementation of a [`Job`](@ref) versioning system is implemented. 
@@ -83,20 +79,22 @@ switch_version!
 rm_version!
 ```
 
-## Archiving 
+## Archiving
 After a `Job` is completed, or an interesting result is achieved, it makes sense to store it for future reference. 
-This can be achieved through the [`Jobs.archive`](@ref) function. This will take the current job, and copy it to a subdirectory (specified by the second argument to [`Jobs.archive`](@ref)) of the `.archived` directory inside the `DFControl` config directory. The third argument is a description of this job's result. If a previous version of the job should be saved, this can be done by specifying the `version` keyword. 
+This can be achieved through the [`archive`](@ref) function. This will take the current job, and copy it to a subdirectory (specified by the second argument to [`archive`](@ref)) of the `jobs/archived` directory inside the `DFControl` config directory. The third argument is a description of this job's result.
+
+!!! note
+    In order to not cause huge file transfers, all the temporary directories will first be removed before archiving.
 
 Example:
 ```julia
-archive(job, "test_archived_job", "This is a test archived job"; version = 1, present = j -> @show j.structure)
+archive(job, "test_archived_job", "This is a test archived job")
 ```
 
-To query previously archived jobs one can use the [`Jobs.archived_jobs`](@ref) function.
+To query previously archived jobs one can use `load(Server("localhost"), Job("archived"))`.
 
 ```@docs
-Jobs.archive
-Jobs.archived_jobs
+archive
 ```
 
 ## Output 
@@ -107,3 +105,9 @@ readbands
 bandgap
 ```
 
+## [Environments](@id environments_header)
+Environments specify the skeleton of the job script, i.e. which environment variables need to be set, which scheduler flags, etc.
+
+```@docs
+Environment
+```

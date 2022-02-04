@@ -38,7 +38,7 @@ Base.setindex!(::Calculation, ::Symbol, ::Any)
 Calculations.set_flags!
 ```
 
-## Execs
+## [Execs](@id execs_header)
 ```@docs
 Exec
 ```

@@ -400,17 +400,17 @@ function maybe_create_localhost()
 end
 
 """
-    pull(server::Server, server_file::String, local_file::String)
+    pull(server::Server, remote::String, loc::String)
 
-Pulls `server_file` from the server the `local_file`.
+Pulls `remote` from the server to `loc`.
 """
-function pull(server::Server, server_file::String, filename::String)
+function pull(server::Server, remote::String, loc::String)
     if islocal(server)
-        cp(server_file, filename; force = true)
+        cp(remote, loc; force = true)
     else
         out = Pipe()
         err = Pipe()
-        run(pipeline(`scp $(ssh_string(server) * ":" * server_file) $filename`, stdout=out, stderr=err))
+        run(pipeline(`scp -r $(ssh_string(server) * ":" * remote) $loc`, stdout=out, stderr=err))
         close(out.in)
         close(err.in)
     end

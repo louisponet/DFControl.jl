@@ -61,17 +61,6 @@ function timestamp(jobdir::AbstractString)
 end
 
 """
-    archived_jobs(fuzzy::AbstractString = "")
-
-Returns a `Vector` of pairs with all archived [`Jobs`](@ref Job) whose directory contains the fuzzy as the first, and their description as the second item of the pair.
-"""
-function archived_jobs(fuzzy::AbstractString = "")
-    jobs = filter(x -> occursin(fuzzy, x), cleanup_job_registry!().archived)
-    return [j => ispath(joinpath(j, "description.txt")) ?
-                 read(joinpath(j, "description.txt"), String) : "" for j in jobs]
-end
-
-"""
     load_jobs(fuzzy::AbstractString)
 
 Loads all the known [`Jobs`](@ref Job) whose `dir` contains `fuzzy`.

@@ -1,6 +1,13 @@
 Servers.Server(j::Job) = Server(j.server)
 
 ##### JOB INTERACTIONS #########
+"""
+    load(server::Server, j::Job)
+
+Tries to load the [`Job`](@ref) from `server` at directory `j.dir`.
+If no exact matching directory is found, a list of job directories that comprise
+`j.dir` will be returned.
+"""
 function load(server::Server, j::Job)
     if isempty(j.dir)
         return first.(registered_jobs(server, j.dir))
@@ -339,6 +346,11 @@ function fill_execs(job::Job, server::Server)
 end
 
 ########## ENVIRONMENTS #############
+"""
+    environment_from_jobscript([server::Server, name::String,] scriptpath::String)
+    
+Tries to extract an [`Environment`](@ref) from a jobscript.
+"""
 function environment_from_jobscript(server::Server, name::String, scriptpath::String)
     server = Server(server)
     tmp = tempname()
@@ -491,35 +503,49 @@ function Calculations.gencalc_wan(job::Job, min_window_determinator::Real,
     return Calculations.gencalc_wan(nscf_calc, job.structure, outdat[nscf_calc.name][:bands], Emin, extra_wan_flags...; kwargs...)
 end
 
+"""
+    archive(job::Job, archive_directory::AbstractString, description::String=""; present = nothing, version=job.version)
+
+Archives `job` by copying it's contents to `archive_directory` alongside a `results.jld2` file with all the parseable results as a Dict. `description` will be saved in a `description.txt` file in the `archive_directory`. 
+"""
+function archive(job::Job, archive_directory::AbstractString, description::String = "";
+                 present = nothing)
+    @assert !isarchived(job) "Job was already archived"
+    final_dir = config_path("jobs", "archived", archive_directory)
+    @assert !ispath(final_dir) "A archived job already exists in $archive_directory"
+
+    cleanup(job)
+
+    @assert present === nothing "Presenting is currently broken."
+    present !== nothing && set_present!(job, present)
+
+    Servers.pull(Server(job.server), abspath(job), final_dir)
+    !isempty(description) && write(joinpath(final_dir, "description.txt"), description)
+    push!(JOB_REGISTRY.archived, final_dir)
+    @info "Archived job at $final_dir. If you're done with this one, it is safe to delete the directory at $(job.dir) on Server(\"$(job.server)\")."
+    Jobs.maybe_register_job(final_dir)
+    return nothing
+end
+
 
 # TODO
-# """
-#     cleanup(job::Job)
+"""
+    cleanup(job::Job)
     
-# Cleanup `job.dir` interactively.
-# """
-# function cleanup(job::Job)
-#     labels = String[]
-#     paths = String[]
-#     for v in versions(job)
-#         vpath = version_dir(job, v)
-#         s = round(dirsize(vpath) / 1e6; digits = 3)
-#         push!(labels, "Version $v:  $s Mb")
-#         push!(paths, vpath)
-#         opath = joinpath(vpath, Jobs.TEMP_CALC_DIR)
-#         if ispath(opath)
-#             s_out = round(dirsize(opath) / 1e6; digits = 3)
-#             push!(labels, "Version $v/outputs:  $s_out Mb")
-#             push!(paths, opath)
-#         end
-#     end
-#     menu = MultiSelectMenu(labels)
-#     choices = request("Select job files to delete:", menu)
-#     for i in choices
-#         if ispath(paths[i]) # Could be that outputs was already deleted
-#             @info "Deleting $(paths[i])"
-#             rm(paths[i]; recursive = true)
-#         end
-#     end
-# end
+Clean temporary files from the [`Job`](@ref).
+"""
+function cleanup(job::Job)
+    server = Server(job.server)
+    td = joinpath(job, Jobs.TEMP_CALC_DIR)
+    if ispath(server, td)
+        rm(server, joinpath(job, Jobs.TEMP_CALC_DIR))
+    end
+    for v in versions(job)
+        vpath = version_dir(job, v)
+        
+        if ispath(server, joinpath(vpath, Jobs.TEMP_CALC_DIR))
+            rm(server, joinpath(job, Jobs.TEMP_CALC_DIR))
+        end
+    end
+end
 

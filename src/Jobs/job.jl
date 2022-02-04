@@ -79,8 +79,13 @@ scriptpath(job::Job) = joinpath(job, "job.tt")
 submission_time(job::Job)  = mtime(scriptpath(job))
 
 runslocal(job::Job) = job.server == "localhost"
-isarchived(job::Job) = occursin(".archived", job.dir)
+isarchived(job::Job) = occursin("archived", job.dir)
 
+"""
+    abspath(job::Job, args...)
+
+If the job is local this is `abspath(job.dir)`, otherwise it will resolve the abspath using the [`Server`](@ref) rootdir.
+"""
 Base.abspath(job::Job) = abspath(Server(job.server), job.dir)
     
 Base.ispath(job::Job, p...) =
@@ -90,7 +95,7 @@ Base.ispath(job::Job, p...) =
 """
     joinpath(job::Job, args...)
 
-`joinpath(job.dir, args...)`.
+If the job is local this is `joinpath(job.dir, args...)`, otherwise it will resolve the path using the [`Server`](@ref) rootdir.
 """
 Base.joinpath(job::Job, args...) = joinpath(abspath(job), args...)
 Base.readdir(job::Job) = runslocal(job) ? readdir(abspath(job)) : readdir(Server(job.server), job.dir)
@@ -277,34 +282,6 @@ function set_wanenergies!(job::Job, min_window_determinator::Real; kwargs...)
         return set_wanenergies!(job, nscf_calc, projwfc_calculation,
                                 min_window_determinator; kwargs...)
     end
-end
-
-"""
-    archive(job::Job, archive_directory::AbstractString, description::String=""; present = nothing, version=job.version)
-
-Archives `job` by copying it's contents to `archive_directory` alongside a `results.jld2` file with all the parseable results as a Dict. `description` will be saved in a `description.txt` file in the `archive_directory`. A different job version can be copied using the `version` kwarg, and with the `present` kwarg a function can be specified that can be later called with the [`@present`](@ref) macro.
-"""
-function archive(job::Job, archive_directory::AbstractString, description::String = "";
-                 present = nothing, version = job.version)
-    @assert !isarchived(job) "Job was already archived"
-    final_dir = config_path(".archived", archive_directory)
-    @assert !ispath(final_dir) "A archived job already exists in $archive_directory"
-    mkpath(final_dir)
-
-    present !== nothing && set_present!(job, present)
-    out = outputdata(job)
-    tj = deepcopy(job)
-    switch_version!(tj, version)
-    cp(tj, final_dir)
-    tj.dir = final_dir
-
-    JLD2.jldsave(joinpath(final_dir, "results.jld2"); outputdata=out)
-
-    !isempty(description) && write(joinpath(final_dir, "description.txt"), description)
-    push!(JOB_REGISTRY.archived, tj.dir)
-    @info "Archived job at $(tj.dir). If you're done with this one, it is safe to delete the directory at $(job.dir)."
-    write_job_registry()
-    return nothing
 end
 
 for (f, strs) in zip((:cp, :mv), (("copy", "Copies"), ("move", "Moves")))
