@@ -72,7 +72,7 @@ function isrunnable(e::Exec)
         else
             cmd = `echo "source /etc/profile && ldd $fullpath"`
         end
-        run(pipeline(pipeline(cmd, stdout=ignorestatus(`bash`)),stdout = out, stderr=err))
+        run(pipeline(pipeline(cmd, stdout=ignorestatus(`bash`)), stdout = out, stderr=err))
         close(out.in)
         close(err.in)
 

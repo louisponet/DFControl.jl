@@ -51,10 +51,4 @@ function outputdata(calculation::Calculation, file;
     return Dict{Symbol,Any}()
 end
 
-verify_exec(args...) = Calculations.verify_exec(args...)
-
-function save(e::Exec)
-    @assert Calculations.isrunnable(e) "Exec is not runnable..."
-    Calculations.save(e)
-    return e
-end
+verify_exec(args...) = Calculations.verify(args...)

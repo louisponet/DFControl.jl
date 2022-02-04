@@ -1,7 +1,7 @@
 using DFControl
 
 @testset "environment" begin
-    
+    length1 = length(load(test_server, Environment("")))
     e = Environment("environment1", "mpirun -np 2", ["#SBATCH --partition=default", "#SBATCH --time=23:59:00"], ["OMP_NUM_THREADS=1"])
     save(test_server, e)
     e1 = load(test_server, Environment("environment1"))
@@ -26,5 +26,5 @@ using DFControl
     rm(test_server, Environment("environment2"))
     rm(test_server, Environment("environment3"))
     
-    @test length(load(test_server, Environment(""))) == 1
+    @test length(load(test_server, Environment(""))) == length1
 end
