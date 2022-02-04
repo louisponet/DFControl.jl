@@ -2,8 +2,8 @@ Servers.Server(j::Job) = Server(j.server)
 
 ##### JOB INTERACTIONS #########
 function load(server::Server, j::Job)
-    if !ispath(server, j.dir)
-        j.dir == "" && return
+    if isempty(j.dir)
+        return first.(registered_jobs(server, j.dir))
     end
     if j.version == last_version(server, j.dir)
         dir = Jobs.main_job_dir(j.dir)
@@ -13,6 +13,7 @@ function load(server::Server, j::Job)
         dir = j.dir
     end
     if !ispath(server, dir)
+        
         @warn "No valid job found in $dir. Here are similar options:"
         return first.(registered_jobs(server, dir))
     end

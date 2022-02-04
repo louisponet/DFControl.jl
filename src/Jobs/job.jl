@@ -49,8 +49,10 @@ The `kwargs...` will be passed to the [`Job`](@ref) constructor.
     environment::String = ""
     function Job(name, structure, calculations, dir, header, metadata, version,
                  copy_temp_folders, server, environment)
-        if dir[end] == '/'
-            dir = dir[1:end-1]
+        if !isempty(dir)
+            if dir[end] == '/'
+                dir = dir[1:end-1]
+            end
         end
         out = new(name, structure, calculations, dir, header, metadata, version,
                   copy_temp_folders, server, environment)
