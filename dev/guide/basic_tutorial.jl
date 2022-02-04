@@ -1,5 +1,6 @@
 # # Basic Tutorial
-
+# !!! note
+#     Make sure to first go through the [`Configuration`](@ref Configuration) steps.
 # Since DFControl is aimed at improving the day to day quality of life of a material's scientist/anyone running DFT codes,
 # we will look at a simple demonstration of how by creating and submitting some
 # [Quantum-Espresso](https://www.quantum-espresso.org/) calculations on Si
@@ -46,6 +47,12 @@ scf_calculation = Calculation{QE}("scf", :calculation => "scf"; exec = pw_exec,
                                   data = [InputData(:k_points, :automatic,
                                                     (6, 6, 6, 1, 1, 1))])  # We can now define our job:  job = Job("Si", structure, [scf_calculation], :ecutwfc => 20, :conv_thr => 1e-6; dir="job")  # Additional calculations would be be added to the list `[scf_calculation]`. # The flag => value pairs will set the specified flags to that value for all calculations in the job
 # that allow recognize that flag, so it's ideal for things like cutoffs and smearing etc.
+
+if false#hide
+job = Job("Si", structure, [scf_calculation], :ecutwfc => 40.0, :occupations => "smearing", :degauss=>0.01, :conv_thr => 1e-6, :nbnd => 18;
+            #kwargs
+            dir = dir, server="localhost", environment="default")
+end#hide
 
 # We are now ready to submit the job, which will run in the current working directory
 if false #hide
