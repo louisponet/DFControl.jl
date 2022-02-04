@@ -3,7 +3,8 @@
 In case you don't have a working Julia installation yet, first
 [download the Julia binaries](https://julialang.org/downloads/)
 and follow the [Julia installation instructions](https://julialang.org/downloads/platform/).
-DFControl is tested thoroughly with **Julia 1.6**, your mileage may vary with older versions.
+!!! note
+    DFControl requires **Julia 1.6** or newer, the server side functionality will not work with older versions.
 
 Afterwards you can install DFControl
 [like any other package](https://julialang.github.io/Pkg.jl/v1/getting-started/)
