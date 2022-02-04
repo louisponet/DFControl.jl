@@ -30,10 +30,10 @@ rm_pseudoset!
 
 ## [Environments](@ref environments_header)
 Environments specify the skeleton of the job script, i.e. which environment variables need to be set, which scheduler flags, etc.
-Here we will set up an environment and save it on server `daint`.
+Here we will set up an environment and save it on server `localhost`. Change the information according to your own setup.
 ```julia
-e = Environment(name="normal_1node", MPI_command="srun", scheduler_flags=["#SBATCH -N 1", "#SBATCH --partition=parallel"], exports=["OMP_NUM_THREADS=1"])
-save(Server("daint"), e)
+e = Environment(name="default", MPI_command="mpirun -np 4", scheduler_flags=["#SBATCH -N 1", "#SBATCH --partition=parallel"], exports=["OMP_NUM_THREADS=1"])
+save(Server("localhost"), e)
 ```
 Alternatively, one can extract an environment from a preexisting jobscript using
 ```@docs
