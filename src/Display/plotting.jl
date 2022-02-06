@@ -1,7 +1,7 @@
 using Colors
 using .Plots
 using LinearAlgebra
-using RecipesBase
+using .Plots.RecipesBase
 # using ..Client
 # using ..Jobs
 # using ..Structures

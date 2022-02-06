@@ -2,7 +2,7 @@ name = "DFControl"
 uuid = "1e31e15d-4957-550d-a244-318eced754ae"
 authors = ["Louis Ponet <louisponet@gmail.com>"]
 repo = "https://github.com/louisponet/DFControl.jl.git"
-version = "0.4.1"
+version = "0.4.0"
 
 [deps]
 ANSIColoredPrinters = "a4c015fc-c6ff-483c-b24f-f7ea428134e9"
@@ -23,7 +23,6 @@ Parameters = "d96e819e-fc66-5662-9728-84c9c7592b0a"
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
 REPL = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
-RecipesBase = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
 Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 Requires = "ae029012-a4dd-5104-9daa-d747884805df"
 Sockets = "6462fe0b-24de-5631-8697-dd941f90decc"
