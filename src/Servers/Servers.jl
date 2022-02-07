@@ -390,7 +390,8 @@ function maybe_create_localhost()
         end
         julia_exec = joinpath(Sys.BINDIR, "julia")
         max_concurrent_jobs = ask_input(Int, "Max Concurrent Jobs", 100)
-        out = Server("localhost", ENV["USER"], "localhost", port, scheduler, "", julia_exec,
+        user = haskey(ENV, "USER") ? ENV["USER"] : "unknown_user"
+        out = Server("localhost", user, "localhost", port, scheduler, "", julia_exec,
                      dir, 0, max_concurrent_jobs)
         save(out)
         return out
