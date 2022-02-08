@@ -37,13 +37,13 @@ pw_exec = Exec("pw", "pw.x", "/opt/qe/bin/", :nk => 4)
 # Then we create the first calculation for our job, we name it scf, which will be used to reference it later.
 # We also pass the executables to be used and additional flags to be set to the constructor.
 # Afterwards we set the kpoints to be used in the scf calculation.
-scf_calculation = Calculation{QE}("scf", :calculation => "scf"; exec = pw_exec)
+scf_calculation = Calculation("scf", :calculation => "scf"; exec = pw_exec)
 set_kpoints!(scf_calculation, (6, 6, 6, 1, 1, 1))
 
 # The code recognizes internally that this 6-Tuple corresponds to a
 # `K_POINTS (automatic)` block in QE. Alternatively (leading to an identical final result):
 
-scf_calculation = Calculation{QE}("scf", :calculation => "scf"; exec = pw_exec,
+scf_calculation = Calculation("scf", :calculation => "scf"; exec = pw_exec,
                                   data = [InputData(:k_points, :automatic,
                                                     (6, 6, 6, 1, 1, 1))])  # We can now define our job:  job = Job("Si", structure, [scf_calculation], :ecutwfc => 20, :conv_thr => 1e-6; dir="job")  # Additional calculations would be be added to the list `[scf_calculation]`. # The flag => value pairs will set the specified flags to that value for all calculations in the job
 # that allow recognize that flag, so it's ideal for things like cutoffs and smearing etc.
