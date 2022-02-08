@@ -14,7 +14,7 @@ end
 function ExecFlag(p::Pair, count::Int)
     return ExecFlag(first(p), String(first(p)), "", last(p), count)
 end
-ExecFlag(dict::JSON3.Object) = ExecFlag(Symbol(dict[:symbol]), dict[:name], dict[:description], dict[:value], dict[:minus_count])
+ExecFlag(dict::JSON3.Object) = ExecFlag(Symbol(dict[:symbol]), dict[:name], dict[:description], dict[:value], Int(dict[:minus_count]))
 
 StructTypes.StructType(::Type{<:ExecFlag}) = StructTypes.Struct()
 
