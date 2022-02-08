@@ -17,6 +17,9 @@ DFT+U parameters for a given [`Atom`](@ref).
     β::Float64 = 0.0
     J::Vector{Float64} = [0.0]
 end
+function DFTU(dict::JSON3.Object)
+    return DFTU(;dict...)
+end
 
 function Base.:(==)(x::DFTU, y::DFTU)
     fnames = fieldnames(DFTU)
@@ -28,7 +31,7 @@ function Base.:(==)(x::DFTU, y::DFTU)
     return true
 end
 
-StructTypes.StructType(::Type{DFTU}) = StructTypes.Mutable()
+StructTypes.StructType(::Type{DFTU}) = StructTypes.Struct()
 
 """
     Element(symbol::Symbol, Z::Int, name::String, atomic_weight::Float64, color::NTuple{3, Float64})
@@ -44,6 +47,9 @@ struct Element
 end
 Element() = Element(:nothing, -1, "", -1, (0.0, 0.0, 0.0))
 StructTypes.StructType(::Type{Element}) = StructTypes.Struct()
+function Element(dict::JSON3.Object)
+    return Element(Symbol(dict[:symbol]), dict[:Z], dict[:name], dict[:atomic_weight], ([v for v in dict[:color]]...,))
+end
 
 """
 Reads all the elements from the file.
@@ -109,6 +115,13 @@ See documentation for [`Element`](@ref) for further information on this attribut
     dftu::DFTU = DFTU()
 end
 StructTypes.StructType(::Type{Atom}) = StructTypes.Struct()
+function Atom(dict::JSON3.Object)
+    return Atom(Symbol(dict[:name]), 1.0Ang .* Point3([t[:val] for t in dict[:position_cart]]),
+                Point3([t for t in dict[:position_cryst]]), Element(dict[:element]), dict[:pseudo],
+                [Projection(x) for x in dict[:projections]], Vec3([t for t in dict[:magnetization]]),
+                DFTU(dict[:dftu]))
+end
+
 
 "Takes a Vector of atoms and returns a Vector with the atoms having unique symbols."
 function Base.unique(atoms::Vector{Atom})

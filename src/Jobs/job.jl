@@ -71,6 +71,8 @@ function Job(job_name::String, structure::Structure, calculations::Vector{<:Calc
     return out
 end
 Job(dir::AbstractString; kwargs...) = Job(;dir=dir, kwargs...)
+Job(dict::JSON3.Object) = Job(dict[:name], Structure(dict[:structure]), Calculation.(dict[:calculations]), dict[:dir], dict[:header],
+                              Dict(dict[:metadata]), dict[:version], dict[:copy_temp_folders], dict[:server], dict[:environment])
 
 StructTypes.StructType(::Type{Job}) = StructTypes.Mutable()
 

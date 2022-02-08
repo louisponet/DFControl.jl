@@ -28,7 +28,7 @@ function load(server::Server, j::Job)
     # Supplied dir was not a valid path, so we ask
     # previously registered jobs on the server that
     # contain dir.
-    job = JSON3.read(resp.body, Job)
+    job = Job(JSON3.read(resp.body))
     job.server = server.name
     return job
 end

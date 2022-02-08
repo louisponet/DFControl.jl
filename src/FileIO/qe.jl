@@ -1054,7 +1054,7 @@ end
 Reads a Quantum Espresso calculation file. The `QE_EXEC` inside execs gets used to find which flags are allowed in this calculation file, and convert the read values to the correct Types.
 Returns a `Calculation{QE}` and the `Structure` that is found in the calculation.
 """
-function qe_read_calculation(filename; exec = Exec(; exec = "pw.x"), kwargs...)
+function qe_read_calculation(filename; exec = Exec(; exec = "pw.x"), outfile=splitext(filename)[1] * ".out", kwargs...)
     @assert ispath(filename) "$filename is not a valid path."
     contents = readlines(filename)
 
@@ -1213,8 +1213,9 @@ function qe_read_calculation(filename; exec = Exec(; exec = "pw.x"), kwargs...)
 
     pop!.((flags,), [:prefix, :outdir], nothing)
     dir, file = splitdir(filename)
-    return Calculation{QE}(; name = splitext(file)[1], flags = flags,
-                           data = datablocks, exec = exec, kwargs...), structure
+    name = splitext(file)[1]
+    return Calculation(; name = name, flags = flags,
+                           data = datablocks, exec = exec, infile=file, outfile=outfile, kwargs...), structure
 end
 
 function qe_writeflag(f, flag, value)
@@ -1389,7 +1390,8 @@ function qe_generate_pw2wancalculation(c::Calculation{Wannier90}, nscf::Calculat
     end
     pw2wanexec = Exec(exec ="pw2wannier90.x", dir=nscf.exec.dir, modules = nscf.exec.modules)
     run = get(c, :preprocess, false) && c.run
-    return Calculation{QE}(; name = "pw2wan_$(flags[:seedname])", 
+    name = "pw2wan_$(flags[:seedname])"
+    return Calculation(; name = name, 
                            flags = flags, data = InputData[],
-                           exec = pw2wanexec, run = run)
+                           exec = pw2wanexec, run = run, infile = name*".in", outfile=name*".out")
 end

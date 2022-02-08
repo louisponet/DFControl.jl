@@ -12,6 +12,7 @@ mutable struct Structure
     atoms :: Vector{Atom}
 end
 Structure() = Structure(Mat3(fill(1.0Ang, 3, 3)), Atom[])
+Structure(dict::JSON3.Object) = Structure(1.0Ang .* Mat3([t[:val] for t in dict[:cell]]...), [Atom(t) for t in dict[:atoms]])
 
 function Structure(cif_file::String)
     str = cif2structure(cif_file)

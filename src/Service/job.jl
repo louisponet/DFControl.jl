@@ -7,7 +7,7 @@ function load(job::Job)
     else
         error("No valid job found in $job_dir.")
     end
-    metadata = ispath(joinpath(job_dir, ".metadata.jld2")) ? JLD2.load(joinpath(job_dir, ".metadata.jld2"))["metadata"] : Dict{Symbol, Any}()
+    metadata::Dict{Symbol, Any} = ispath(joinpath(job_dir, ".metadata.jld2")) ? JLD2.load(joinpath(job_dir, ".metadata.jld2"))["metadata"] : Dict{Symbol, Any}()
 
     name, tcalcs, header, environment = FileIO.read_job_script(scriptpath)
     calculations, structure = FileIO.parse_calculations(tcalcs)

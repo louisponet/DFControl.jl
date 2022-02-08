@@ -95,9 +95,9 @@ module Database
                 end
             end
         end
-        s = sortperm(score, rev=true)
+        p = sortperm(score, rev=true)
         best = maximum(score)
-        return all[s][1:length(findall(isequal(best), score))]
+        return all[p][1:length(findall(isequal(best), score))]
     end
 
     function name(s::S) where {S<:Storable}

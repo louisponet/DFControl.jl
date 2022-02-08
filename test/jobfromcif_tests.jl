@@ -16,11 +16,11 @@ testjobpath = joinpath(testdir, "testassets", "test_job")
 
     str = Structure(joinpath(testdir, "testassets/Ni.cif"))
 
-    calculations = [Calculation{QE}("vcrelax", :calculation => "vc-relax", :verbosity => "high", :ion_dynamics => "bfgs", :cell_dynamics => "bfgs";
+    calculations = [Calculation("vcrelax", :calculation => "vc-relax", :verbosity => "high", :ion_dynamics => "bfgs", :cell_dynamics => "bfgs";
                                       exec = pw_exec,
                                       data = [InputData(:k_points, :automatic,
                                                         [6, 6, 6, 1, 1, 1])]),
-                    Calculation{QE}(; name = "scf", exec = pw_exec,
+                    Calculation(; name = "scf", exec = pw_exec,
                                       flags = Dict(:calculation => "scf", :verbosity => "high"),
                                       data = [InputData(:k_points, :automatic,
                                                         [4, 4, 4, 1, 1, 1])])]

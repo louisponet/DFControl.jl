@@ -14,6 +14,7 @@ end
 function ExecFlag(p::Pair, count::Int)
     return ExecFlag(first(p), String(first(p)), "", last(p), count)
 end
+ExecFlag(dict::JSON3.Object) = ExecFlag(Symbol(dict[:symbol]), dict[:name], dict[:description], dict[:value], dict[:minus_count])
 
 StructTypes.StructType(::Type{<:ExecFlag}) = StructTypes.Struct()
 
@@ -55,7 +56,9 @@ function Exec(name::String, exec::String, dir::String, flags::Pair...; kwargs...
     return Exec(name=name,exec=exec, dir=dir, flags=_flags; kwargs...)
 end
 
-StructTypes.StructType(::Type{Exec}) = StructTypes.Mutable()
+Exec(dict::JSON3.Object) = Exec(dict[:name], dict[:exec], dict[:dir], [ExecFlag(t) for t in dict[:flags]], dict[:modules], dict[:parallel])
+
+StructTypes.StructType(::Type{Exec}) = StructTypes.Struct()
 
 storage_directory(e::Exec) = "execs"
 

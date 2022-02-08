@@ -10,6 +10,7 @@ struct Orbital
     mr   :: Int
 end
 Orbital() = Orbital("none", 0, 0, 0)
+Orbital(dict::JSON3.Object) = Orbital(dict[:name], dict[:size], dict[:l], dict[:mr])
 StructTypes.StructType(::Type{Orbital}) = StructTypes.Struct()
 
 const ORBITALS = [Orbital("s", 1, 0, 1), Orbital("p", 3, 1, 0), Orbital("px", 1, 1, 2),
@@ -53,6 +54,7 @@ Projection(o::String) = Projection(orbital(o), 0, 0)
 Projection(o::Orbital, start::Int) = Projection(o, start, start + o.size - 1)
 Projection(ostr::String, start::Int) = (o = orbital(ostr); Projection(o, start))
 StructTypes.StructType(::Type{Projection}) = StructTypes.Struct()
+Projection(dict::JSON3.Object) = Projection(Orbital(dict[:orbital]), dict[:start], dict[:last])
 
 function sanitize!(projs::Vector{Projection}, soc::Bool)
     id = 1

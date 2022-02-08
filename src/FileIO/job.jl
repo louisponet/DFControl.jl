@@ -157,8 +157,8 @@ function read_job_line(line)
     end
     spl = strip_split(line)
 
-    calculation = spl[end-1]
-    output = spl[end]
+    calculation = String(spl[end-1])
+    output = String(spl[end])
     spl = spl[1:end-2]
     exec_and_flags = Pair{String,Vector{SubString}}[]
     #TODO This is not really nice, we don't handle execs that are unparseable...
@@ -229,10 +229,10 @@ function calculationparser(exec::Exec)
 end
 
 function read_job_script(job_file::String)
-    name = ""
+    name::String = ""
     dir = splitdir(job_file)[1]
     header = Vector{String}()
-    scratch_dir = ""
+    scratch_dir::String = ""
     calcs = NamedTuple{(:exec, :infile, :outfile, :run), Tuple{Exec, String, String, Bool}}[]
     open(job_file, "r") do f
         readline(f)
@@ -243,12 +243,12 @@ function read_job_script(job_file::String)
             
             if occursin("#SBATCH", line)
                 if occursin("-J", line) || occursin("--job-name", line)
-                    name = split(split(line, "=")[end])[end]
+                    name = String(split(split(line, "=")[end])[end])
                 else
                     push!(header, line)
                 end
             elseif occursin("cp -r", line) && isempty(scratch_dir)
-                scratch_dir = split(line)[end]
+                scratch_dir = String(split(line)[end])
             elseif Calculations.has_parseable_exec(line)
                 execs, infile, outfile, run = read_job_line(line)
                 inpath = joinpath(dir, infile)
@@ -317,7 +317,7 @@ function parse_calculations(calcs)
             Calculations.set_flags!(outcalcs[end], :preprocess => outcalcs[end].run, print=false)
             empty!(outcalcs[end].exec.flags)
         else
-            c = calculationparser(calc.exec)(calc.infile; exec = calc.exec, infile = infile, outfile = splitpath(calc.outfile)[end], run = calc.run)
+            c = calculationparser(calc.exec)(calc.infile; exec = calc.exec, infile = infile, outfile = splitext(splitpath(calc.outfile)[end])[1] *".out", run = calc.run)
             if c[2] !== nothing
                 push!(structures, c[2])
             end

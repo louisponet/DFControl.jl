@@ -2,7 +2,7 @@ module Structures
 # This module handles all functionality related to Structure and Atom
 using ..DFControl
 using ..Utils
-using LinearAlgebra, StructTypes, Parameters, StaticArrays
+using LinearAlgebra, StructTypes, Parameters, StaticArrays, JSON3
 using spglib_jll
 const SPGLIB = spglib_jll.libsymspg
 

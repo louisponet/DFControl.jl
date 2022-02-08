@@ -102,9 +102,17 @@ function df_show(io::IO, job::Job)
         for i in is
             n = i.name
             cr = i.run ? crayon"green" : crayon"red"
-            dfprint(io, cr,
-                    i == last ? (state == Jobs.Pending || state == Jobs.Running ? "\t$n <- running\n" : "\t$n <- ran last\n") :
-                    "\t$n\n")
+            if i == last
+                if state == Jobs.Running
+                    dfprint(io, cr, "\t$n <- running\n")
+                elseif state == Jobs.Completed || state == Jobs.Failed || state == Jobs.Cancelled
+                    dfprint(io, cr, "\t$n <- ran last\n")
+                else
+                    dfprint(io, cr, "\t$n\n")
+                end
+            else
+                dfprint(io, cr, "\t$n\n")
+            end
         end
     end
     dfprint(io, reset)

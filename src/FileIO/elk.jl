@@ -142,7 +142,7 @@ function elk_read_calculation(fn::String; exec = Exec(; exec = "elk"), run = tru
         flags = pop!(blocknames_flaglines, :wannier)
         # flags[:elk2wan_tasks] = wan_tasks
         push!(calculations,
-              Calculation{Elk}(; name = "elk2wannier", flags = flags,
+              Calculation(; name = "elk2wannier", flags = flags,
                                exec = exec, run = true))
     end
     for f in (:ngrid, :vkloff, :plot1d, :plot2d, :plot3d)
@@ -186,7 +186,7 @@ function calculation_from_task(task, blocknames_flaglines, dir, exec, run)
     elseif task ∈ ["20", "21"]
         data = find_data((:plot1d, :plot2d, :plot3d), blocknames_flaglines)
     end
-    return Calculation{Elk}(; name = task, data = data, exec = exec, run = run)
+    return Calculation(; name = task, data = data, exec = exec, run = run)
 end
 
 function parse(::Type{UnitRange{Int}}, l::AbstractString)

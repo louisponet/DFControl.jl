@@ -14,6 +14,17 @@ mutable struct InputData
     option :: Symbol
     data   :: Any
 end
+function InputData(dict::JSON3.Object)
+    if dict[:data][1] isa AbstractVector
+        data = NTuple{length(dict[:data][1]), Float64}[]
+        for d_ in dict[:data]
+            push!(data, (d_...,))
+        end
+    else
+        data = [dict[:data]...,]
+    end
+    return InputData(Symbol(dict[:name]), Symbol(dict[:option]), data)
+end
 
 StructTypes.StructType(::Type{InputData}) = StructTypes.Struct()
 
@@ -56,11 +67,11 @@ Creates a new [`Calculation`](@ref) from the `template`, setting the `flags` of 
     data::Vector{InputData} = InputData[]
     exec::Exec
     run::Bool = true
-    infile::String = P == Wannier90 ? name * ".win" : name * ".in"
-    outfile::String = P == Wannier90 ? name * ".wout" : name * ".out"
-    function Calculation{P}(name, flags, data, exec, run, infile,
-                            outfile) where {P<:Package}
-        out = new{P}(name, Dict{Symbol,Any}(), data, exec, run, infile,
+    infile::String = name * ".in"
+    outfile::String = name * ".out"
+    function Calculation{p}(name, flags, data, exec, run, infile,
+                            outfile) where {p}
+        out = new{p}(name, Dict{Symbol,Any}(), data, exec, run, infile,
                      outfile)
         set_flags!(out, flags...; print = false)
         for (f, v) in flags
@@ -71,14 +82,23 @@ Creates a new [`Calculation`](@ref) from the `template`, setting the `flags` of 
         return out
     end
 end
-function Calculation{P}(name, flags, data, exec, run) where {P<:Package}
-    return Calculation{P}(name, flags, data, exec, run, Dict{Symbol,Any}(),
-                          P == Wannier90 ? name * ".win" : name * ".in",
-                          P == Wannier90 ? name * ".wout" : name * ".out")
+
+function Calculation(name, flags, data, exec, run, infile,
+                            outfile)
+    if exec.exec ∈ Calculations.WAN_EXECS
+        p = Wannier90
+    elseif exec.exec ∈ Calculations.QE_EXECS
+        p = QE
+    elseif exec.exec ∈ Calculations.ELK_EXECS
+        p = ELK
+    else
+        @warn "Package not identified from execs $(exec.exec)."
+    end
+    return Calculation{p}(name, flags, data, exec, run, infile, outfile)
 end
 
-function Calculation{P}(name, flags...; kwargs...) where {P<:Package}
-    return Calculation{P}(; name = name, flags = flags, kwargs...)
+function Calculation(name, flags...; kwargs...)
+    return Calculation(; name = name, flags = flags, kwargs...)
 end
 
 function Calculation(template::Calculation, name, newflags...;
@@ -104,9 +124,13 @@ function Calculation(template::Calculation, name, newflags...;
     end
     return calculation
 end
+function Calculation(dict::JSON3.Object)
+    Calculation(dict[:name], Dict(dict[:flags]), [InputData(t) for t in dict[:data]], Exec(dict[:exec]), dict[:run], dict[:infile], dict[:outfile])
+end
+    
 
 # Calculation() = Calculation{NoPackage}(package=NoPackage())
-StructTypes.StructType(::Type{<:Calculation}) = StructTypes.Mutable()
+StructTypes.StructType(::Type{<:Calculation}) = StructTypes.Struct()
 
 
 # Interface Functions
