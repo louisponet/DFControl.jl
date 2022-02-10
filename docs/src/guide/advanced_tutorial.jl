@@ -6,9 +6,12 @@
 # in it.
 using DFControl
 
-# if !Servers.isalive(Server("localhost"))#hide
+using UUIDs#hide
+s = Server(name="localhost", port=8080, domain = "localhost", scheduler = Bash(), uuid = uuid4(), julia_exec=Sys.BINDIR * "/julia")#hide
+if !exists(s)#hide
+    save(s)#hide
+end#hide
 @async DFC.Resource.run()#hide
-# end#hide
 tjob = load(Job(joinpath(splitdir(pathof(DFControl))[1], "..", "docs","src","assets", "job")))#hide
 tjob2 = load(Job(joinpath(splitdir(pathof(DFControl))[1], "..", "docs","src","assets", "Job2")))#hide
 if false#hide
