@@ -11,19 +11,12 @@ testdir = @__DIR__
                 nothing
             end
         end
+        created_new_server = false
     else
+        created_new_server = true
         test_server = Server(name="localhost", domain="localhost", julia_exec = joinpath(Sys.BINDIR, "julia"), uuid=string(uuid4()))
         save(test_server) 
     end
-        # Servers.save(test_server)
-    # DFControl.Servers.start(test_server)
-    # if Servers.isalive(test_server)
-    #     try
-    #         Servers.kill_server(test_server)
-    #     catch
-    #         nothing
-    #     end
-    # end
     @async DFControl.Resource.run()
     while !Servers.isalive(Server("localhost"))
         sleep(0.1)
@@ -54,4 +47,7 @@ testdir = @__DIR__
         include("rmdefaults_tests.jl")
     end
     include("cleanup.jl")
+    if created_new_server
+        rm(DFC.config_path("storage/servers/localhost.json"))
+    end
 end

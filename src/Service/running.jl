@@ -70,7 +70,7 @@ function handle_workflow_runners!(job_dirs_procs)
                     @error "Task failed with $(t.result)"
                 else
                     t_ = fetch(t)
-                    @info (timestamp = Dates.now(), jobdir = k, state=Jobs.Completed)
+                    println((timestamp = Dates.now(), jobdir = k, state=Jobs.Completed))
                 end
                 push!(to_rm, k)
             end
@@ -86,8 +86,8 @@ function handle_workflow_runners!(job_dirs_procs)
 end
 
 function spawn_task(s::Server, jobdir)
-    println((timestamp = Dates.now(), jobdir = jobdir, jobid = id, state = Jobs.Submitted))
     id = Servers.submit(s.scheduler, jobdir)
+    println((timestamp = Dates.now(), jobdir = jobdir, jobid = id, state = Jobs.Submitted))
     JOB_QUEUE[][jobdir] = (id, Jobs.Submitted)
     return Threads.@spawn begin
         with_logger(job_logger(id)) do

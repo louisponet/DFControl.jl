@@ -4,7 +4,6 @@ using ..DFControl: config_path
 using ..Utils
 using ..Database
 
-
 export Server, start
 
 const SERVER_DIR = config_path("storage/servers")
@@ -43,15 +42,18 @@ Database.storage_directory(::Server) = "servers"
 
 function configure!(s::Server)
     s.port  = ask_input(Int, "Port", s.port)
-    julia = ask_input(String, "Julia Exec", s.julia_exec)
-    while server_command(username, domain, `which $julia`).exitcode != 0
-        @warn "$julia, no such file or directory."
-        julia = ask_input(String, "Julia Exec")
+    if s.domain == "localhost"
+        julia = joinpath(Sys.BINDIR, "julia")
+    else
+        julia = ask_input(String, "Julia Exec", s.julia_exec)
+        while server_command(username, domain, `which $julia`).exitcode != 0
+            @warn "$julia, no such file or directory."
+            julia = ask_input(String, "Julia Exec")
+        end
     end
     s.julia_exec = julia
     scheduler = Bash()
-    for s in subtypes(Scheduler)
-        t = s()
+    for t in (Slurm(),)
         scmd = submit_cmd(t)
         if server_command(s, `which $scmd`).exitcode == 0
             scheduler = t
@@ -303,8 +305,8 @@ function start(s::Server)
     end
     firstime = checktime()
 
-    julia_cmd = """$(s.julia_exec) --startup-file=no -t auto -e "using DFControl; DFControl.Resource.run()" &> ~/.julia/config/DFControl/logs/daemon.log"""
     if s.domain != "localhost"
+        julia_cmd = """$(s.julia_exec) --startup-file=no -t auto -e "using DFControl; DFControl.Resource.run()" &> ~/.julia/config/DFControl/logs/errors.log"""
         run(Cmd(`ssh -f $(ssh_string(s)) $julia_cmd`, detach=true))
     else
         scrpt = "using DFControl; DFControl.Resource.run()"

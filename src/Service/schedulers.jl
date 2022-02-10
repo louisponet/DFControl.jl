@@ -23,12 +23,16 @@ end
 
 ## BASH ##
 function Servers.jobstate(::Bash, id::Int)
-    p = run(ignorestatus(`ps -p $id`))
+    out = Pipe()
+    err = Pipe()
+    p = run(pipeline(ignorestatus(`ps -p $id`), stderr = err, stdout=out))
+    close(out.in)
+    close(err.in)
     return p.exitcode == 1 ? Jobs.Completed : Jobs.Running
 end
 
 Servers.submit(b::Bash, j::String) = 
-    getpid(run(Cmd(`bash job.tt`, detach=true, dir=j), wait=false))
+    Int(getpid(run(Cmd(`bash job.tt`, detach=true, dir=j), wait=false)))
 
 Servers.abort(b::Bash, id::Int) = 
     run(`pkill $id`)

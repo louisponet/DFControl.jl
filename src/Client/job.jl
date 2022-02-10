@@ -19,6 +19,7 @@ function load(server::Server, j::Job)
     else
         dir = j.dir
     end
+    dir = abspath(server, dir)
     if !ispath(server, dir)
         
         @warn "No valid job found in $dir. Here are similar options:"
