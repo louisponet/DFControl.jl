@@ -6,9 +6,9 @@
 # in it.
 using DFControl
 
-if !Servers.isalive(Server("localhost"))#hide
-    @async DFC.Resource.run()#hide
-end#hide
+# if !Servers.isalive(Server("localhost"))#hide
+@async DFC.Resource.run()#hide
+# end#hide
 tjob = load(Job(joinpath(splitdir(pathof(DFControl))[1], "..", "docs","src","assets", "job")))#hide
 tjob2 = load(Job(joinpath(splitdir(pathof(DFControl))[1], "..", "docs","src","assets", "Job2")))#hide
 if false#hide
