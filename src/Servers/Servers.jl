@@ -97,6 +97,10 @@ function Server(s::String)
         if exists(Server(name=name, username=username, domain=domain))
             @warn "A server with $name was already configured and will be overwritten."
         end
+    elseif s == "localhost"
+        username = ENV["USER"]
+        domain = "localhost"
+        name = s
     else
         username = ask_input(String, "Username")
         domain = ask_input(String, "Domain")
@@ -145,7 +149,12 @@ read_config(config_file) = parse_config(read(config_file, String))
 
 function load_config(username, domain; name="localhost")
     if domain == "localhost"
-        return read_config(config_path("storage/servers/localhost.json"))
+        p = config_path("storage/servers/localhost.json")
+        if ispath(p)
+            return read_config(p)
+        else
+            return nothing
+        end
     else
         cmd = "cat ~/.julia/config/DFControl/storage/servers/$name.json"
         t = server_command(username, domain, cmd)

@@ -23,4 +23,3 @@ touch(config_path("workflows", "pending.txt"))
 touch(config_path("workflows", "archived.txt"))
 touch(config_path("workflows", "active.txt"))
 touch(config_path("workflows", "running.txt"))
-
