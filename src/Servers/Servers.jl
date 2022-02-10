@@ -46,7 +46,7 @@ function configure!(s::Server)
         julia = joinpath(Sys.BINDIR, "julia")
     else
         julia = ask_input(String, "Julia Exec", s.julia_exec)
-        while server_command(username, domain, `which $julia`).exitcode != 0
+        while server_command(s.username, s.domain, `which $julia`).exitcode != 0
             @warn "$julia, no such file or directory."
             julia = ask_input(String, "Julia Exec")
         end
@@ -234,18 +234,22 @@ function isalive(s::Server)
         return JSON3.read(resp.body, Server).username == s.username
     catch
         tserver = load_config(s)
-        s.port = tserver.port
-        if s.local_port != 0
-            destroy_tunnel(s)
-            construct_tunnel(s)
-        end
-            
-        try 
-            resp = HTTP.get(s, "/server_config", readtimeout=15, retry=false, checkalive=false)
-            t = JSON3.read(resp.body, Server).username == s.username
-            save(s)
-            return t
-        catch
+        if tserver !== nothing
+            s.port = tserver.port
+            if s.local_port != 0
+                destroy_tunnel(s)
+                construct_tunnel(s)
+            end
+                
+            try 
+                resp = HTTP.get(s, "/server_config", readtimeout=15, retry=false, checkalive=false)
+                t = JSON3.read(resp.body, Server).username == s.username
+                save(s)
+                return t
+            catch
+                return false
+            end
+        else
             return false
         end
     end

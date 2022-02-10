@@ -39,7 +39,7 @@ Servers.abort(b::Bash, id::Int) =
 
 ## SLURM ##
 function Servers.jobstate(::Slurm, id::Int)
-    cmd = `sacct -u $(ENV["USER"]) --format=State%30 -j $id`
+    cmd = `sacct -u $(ENV["USER"]) --format=State -j $id -P`
     state = readlines(cmd)[2]
     if state == "PENDING"
         return Jobs.Pending
