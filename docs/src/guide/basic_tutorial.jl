@@ -7,7 +7,13 @@
 # starting from a cif file specifying the structure.
 
 using DFControl
-if !Servers.isalive(Server("localhost"))#hide
+using UUIDs#hide
+s = Server(name="localhost", port=8080, domain = "localhost", scheduler = Bash(), uuid = uuid4(), julia_exec=Sys.BINDIR * "/julia")#hide
+if !exists(s)#hide
+    save(s)#hide
+end#hide
+    
+if !Servers.isalive(s)#hide
     @async DFC.Resource.run()#hide
 end#hide
 
