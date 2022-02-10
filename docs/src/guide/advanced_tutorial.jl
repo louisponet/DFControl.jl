@@ -12,7 +12,7 @@ end#hide
 tjob = load(Job(joinpath(splitdir(pathof(DFControl))[1], "..", "docs","src","assets", "job")))#hide
 tjob2 = load(Job(joinpath(splitdir(pathof(DFControl))[1], "..", "docs","src","assets", "Job2")))#hide
 if false#hide
-    global job = load(Job("job"))
+job = load(Server("localhost"), Job("job"))
 else#hide
     global job = deepcopy(tjob)#hide
     job.dir= "job" #hide
@@ -24,7 +24,7 @@ end#hide
 
 # The next thing we may want to do is to change the directory where the job is running.
 if false#hide
-    job.dir = "Job2"
+job.dir = "Job2"
 else#hide
     global job = deepcopy(tjob2)#hide
     pop!(job)#hide

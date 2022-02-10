@@ -13,6 +13,5 @@ include("environment.jl")
 include("job.jl")
 include("workflow.jl")
 include("versioning.jl")
-include("registry.jl")
 export Job, Environment, Workflow
 end

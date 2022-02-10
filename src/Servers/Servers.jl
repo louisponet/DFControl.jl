@@ -9,7 +9,7 @@ export Server, start
 
 const SERVER_DIR = config_path("storage/servers")
 
-@enum Scheduler Slurm=1 Bash=2
+include("schedulers.jl")
 
 """
     Server(name::String, username::String, domain::String, port::Int, scheduler::Scheduler, mountpoint::String,
@@ -31,16 +31,59 @@ Calling [`Server`](@ref) with a single `String` will either load the configurati
     username::String = ""
     domain::String = ""
     port::Int = 8080
-    scheduler::Scheduler = Bash
-    mountpoint::String = ""
-    julia_exec::String = ""
+    scheduler::Scheduler = Bash()
+    julia_exec::String = "julia"
     root_jobdir::String = ""
     local_port::Int = 0
     max_concurrent_jobs::Int = 100
+    uuid::String = ""
 end
 
 Database.storage_directory(::Server) = "servers"
 
+function configure!(s::Server)
+    s.port  = ask_input(Int, "Port", s.port)
+    julia = ask_input(String, "Julia Exec", s.julia_exec)
+    while server_command(username, domain, `which $julia`).exitcode != 0
+        @warn "$julia, no such file or directory."
+        julia = ask_input(String, "Julia Exec")
+    end
+    s.julia_exec = julia
+    scheduler = Bash()
+    for s in subtypes(Scheduler)
+        t = s()
+        scmd = submit_cmd(t)
+        if server_command(s, `which $scmd`).exitcode == 0
+            scheduler = t
+            break
+        end
+    end
+    s.scheduler = scheduler
+    
+    hdir = server_command(s, `pwd`).stdout
+    dir = ask_input(String, "Default Jobs directory", hdir)
+    if dir != hdir
+        while server_command(s, `ls $dir`).exitcode != 0
+            @warn "$dir, no such file or directory."
+            dir = ask_input(String, "Default Jobs directory")
+        end
+    end
+    s.root_jobdir = dir
+    s.max_concurrent_jobs = ask_input(Int, "Max Concurrent Jobs", s.max_concurrent_jobs)
+    s.uuid = string(uuid4())
+end
+
+function configure_local_port!(s::Server)
+    local_choice = request("Should a local tunnel be created?", RadioMenu(["yes", "no"]))
+    local_choice == -1 && return
+    if local_choice == 1
+        s.local_port = ask_input(Int, "Local port", s.local_port)
+    else
+        s.local_port = 0
+    end
+end
+
+# TODO put uuid generation here
 function Server(s::String)
     t = Server(name=s)
     if exists(t)
@@ -51,76 +94,40 @@ function Server(s::String)
     if occursin("@", s)
         username, domain = split(s, "@")
         name = ask_input(String, "Please specify the Server's identifying name:")
+        if exists(Server(name=name, username=username, domain=domain))
+            @warn "A server with $name was already configured and will be overwritten."
+        end
     else
         username = ask_input(String, "Username")
         domain = ask_input(String, "Domain")
         name = s
     end
-    if load(name) !== nothing
-        @warn "A server with $name was already configured and will be overwritten."
-    end
     @info "Trying to pull existing configuration from $username@$domain..."
 
     server = load_config(username, domain)
     if server !== nothing
-
-        local_choice = request("Should a local tunnel be created?", RadioMenu(["yes", "no"]))
-        local_choice == -1 && return
-        if local_choice == 1
-            loc_port = ask_input(Int, "Local port", 8123)
-        else
-            loc_port = 0
+        server.name = name
+        server.domain = domain
+        
+        change_config = request("Found remote server configuration:\n$server\nIs this correct?", RadioMenu(["yes", "no"]))
+        change_config == -1 && return
+        if change_config == 2
+            configure!(server)
         end
+        configure_local_port!(server)
              
-        server.name       = name
-        server.domain     = domain
-        server.local_port = loc_port
     else
         @info "Couldn't pull server configuration, creating new..."
-        port  = ask_input(Int, "Port", 8080)
-        julia = ask_input(String, "Julia Exec", "julia")
-        @info "Trying to connect to $username@$domain..."
-        if julia != "julia"
-            while server_command(username, domain, `ls $julia`).exitcode != 0
-                @warn "$julia, no such file or directory."
-                julia = ask_input(String, "Julia Exec")
-            end
-        end
-
-        hdir = server_command(username, domain, `pwd`).stdout
-        dir = ask_input(String, "Default Jobs directory", hdir)
-        if dir != hdir
-            while server_command(username, domain, `ls $dir`).exitcode != 0
-                @warn "$dir, no such file or directory."
-                dir = ask_input(String, "Default Jobs directory")
-            end
-        end
-
-        scheduler_choice = request("Please select scheduler:",
-                                   RadioMenu([string.(instances(Scheduler))...]))
-                                   
-        scheduler_choice == -1 && return
-        scheduler = Scheduler(scheduler_choice)
-        mounted_choice = request("Has the server been mounted?", RadioMenu(["yes", "no"]))
-        mounted_choice == -1 && return
-        if mounted_choice == 1
-            mountpoint = ask_input(String, "Mounting point")
-        else
-            mountpoint = ""
-        end
-        local_choice = request("Should a local tunnel be created?", RadioMenu(["yes", "no"]))
-        local_choice == -1 && return
-        if local_choice == 1
-            loc_port = ask_input(Int, "Local port", 8123)
-        else
-            loc_port = 0
-        end
-        max_concurrent_jobs = ask_input(Int, "Max Concurrent Jobs", 100)
-        
-        server = Server(name, username, domain, port, scheduler, mountpoint, julia, dir, loc_port, max_concurrent_jobs)
-
+        server = Server(name=name, domain=domain, username=username)
+        configure!(server)
+        configure_local_port!(server)
     end
     save(server)
+    start_server = request("Start server?", RadioMenu(["yes", "no"]))
+    start_server == -1 && return
+    if start_server == 1
+        start(server)
+    end
     return server
 end
 
@@ -154,12 +161,13 @@ load_config(s::Server; kwargs...) = load_config(s.username, s.domain; kwargs...)
 ssh_string(s::Server) = s.username * "@" * s.domain
 http_string(s::Server) = s.local_port != 0 ? "http://localhost:$(s.local_port)" : "http://$(s.domain):$(s.port)"
 
+
+
 function HTTP.request(method::String, s::Server, url, body; checkalive = true, kwargs...)
     if checkalive
         maybe_start(s)
     end
-    uuid = read(config_path("user_uuid"), String)
-    header = ["Type" => "$(typeof(body))", "USER-UUID" => uuid]
+    header = ["Type" => "$(typeof(body))", "USER-UUID" => s.uuid]
     return HTTP.request(method, string(http_string(s), url), header, JSON3.write(body); kwargs...)
 end
 
@@ -167,8 +175,7 @@ function HTTP.request(method::String, s::Server, url; checkalive=true, kwargs...
     if checkalive
         maybe_start(s)
     end
-    uuid = read(config_path("user_uuid"), String)
-    header = ["USER-UUID" => uuid]
+    header = ["USER-UUID" => s.uuid]
     return HTTP.request(method, string(http_string(s), url), header; kwargs...)
 end
 
@@ -287,11 +294,6 @@ function start(s::Server)
     end
     firstime = checktime()
 
-    # Now we upload the user's uuid for safety
-    if !islocal(s)
-        push(config_path("user_uuid"), s, "~/.julia/config/DFControl/user_uuid")
-    end
-
     julia_cmd = """$(s.julia_exec) --startup-file=no -t auto -e "using DFControl; DFControl.Resource.run()" &> ~/.julia/config/DFControl/logs/daemon.log"""
     if s.domain != "localhost"
         run(Cmd(`ssh -f $(ssh_string(s)) $julia_cmd`, detach=true))
@@ -314,16 +316,17 @@ function start(s::Server)
     if retries == 60
         error("Something went wrong starting the server.")
     else
+
+        tserver = load_config(s)
+        s.port = tserver.port
         if s.local_port == 0
             @info "Daemon on Server $(s.name) started, listening on port $(s.port)."
         else
-            tserver = load_config(s)
-            s.port = tserver.port
             construct_tunnel(s)
             @info "Daemon on Server $(s.name) started, listening on local port $(s.local_port)."
-            @info "Saving updated server info..."
-            save(s)
         end
+        @info "Saving updated server info..."
+        save(s)
     end
     return
 end
@@ -368,38 +371,6 @@ function ask_input(::Type{T}, message, default=nothing) where {T}
     end
 end
    
-function maybe_create_localhost()
-    if !exists(Server(name="localhost"))
-        @info "Initializing localhost server configuration."
-        scheduler = Sys.which("sbatch") === nothing ? Bash : Slurm
-        if !haskey(ENV, "DFCONTROL_PORT")
-            port = ask_input(Int, "Port", 8080)
-        else
-            port = parse(Int, ENV["DFCONTROL_PORT"])
-        end
-        if !haskey(ENV, "DFCONTROL_JOBDIR")
-            dir = ask_input(String, "Default Jobs directory", homedir())
-            if dir != homedir()
-                while !ispath(dir)
-                    @warn "$dir, no such directory"
-                    dir = ask_input(String, "Default Jobs directory", homedir())
-                end
-            end
-        else
-            dir = ENV["DFCONTROL_JOBDIR"]
-        end
-        julia_exec = joinpath(Sys.BINDIR, "julia")
-        max_concurrent_jobs = ask_input(Int, "Max Concurrent Jobs", 100)
-        user = haskey(ENV, "USER") ? ENV["USER"] : "unknown_user"
-        out = Server("localhost", user, "localhost", port, scheduler, "", julia_exec,
-                     dir, 0, max_concurrent_jobs)
-        save(out)
-        return out
-    else
-        return Server("localhost")
-    end
-end
-
 """
     pull(server::Server, remote::String, loc::String)
 
@@ -481,4 +452,6 @@ function Base.mtime(s::Server, p)
     resp = HTTP.get(s, "/mtime/" * p)
     JSON3.read(resp.body, Float64)
 end
+
+
 end

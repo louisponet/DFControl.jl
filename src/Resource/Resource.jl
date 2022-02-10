@@ -143,7 +143,7 @@ function run()
     CURRENT_SERVER[] = s
     port, server = listenany(ip"0.0.0.0", 8080)
     s.port = port
-    USER_UUID[] = UUID(read(config_path("user_uuid"), String))
+    USER_UUID[] = UUID(s.uuid)
     Threads.@spawn begin
         with_logger(Service.restapi_logger()) do
             @info (timestamp = Dates.now(), username = ENV["USER"], host = gethostname(), pid=getpid(), port=port)

@@ -1,16 +1,21 @@
 using DFControl, Test
-
+using UUIDs
 testdir = @__DIR__
 @time begin
-    test_server = Server("localhost")
-    if Servers.isalive(test_server)
-        try
-            Servers.kill(test_server)
-        catch
-            nothing
+    if exists(Server(name="localhost"))
+        test_server = Server("localhost")
+        if Servers.isalive(test_server)
+            try
+                Servers.kill(test_server)
+            catch
+                nothing
+            end
         end
+    else
+        test_server = Server(name="localhost", domain="localhost", julia_exec = joinpath(Sys.BINDIR, "julia"), uuid=string(uuid4()))
+        save(test_server) 
     end
-    Servers.save(test_server)
+        # Servers.save(test_server)
     # DFControl.Servers.start(test_server)
     # if Servers.isalive(test_server)
     #     try

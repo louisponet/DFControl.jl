@@ -23,9 +23,4 @@ touch(config_path("workflows", "pending.txt"))
 touch(config_path("workflows", "archived.txt"))
 touch(config_path("workflows", "active.txt"))
 touch(config_path("workflows", "running.txt"))
-if !ispath(config_path("user_uuid"))
-    uuid = UUIDs.uuid4()
-    write(config_path("user_uuid"), "$uuid")
-end
-
 

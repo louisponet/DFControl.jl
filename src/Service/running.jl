@@ -2,7 +2,7 @@ const JOB_QUEUE = Ref(Dict{String, Tuple{Int, Jobs.JobState}}())
 
 function main_loop(s::Server)
     job_dirs_procs = Dict()
-    queue!(JOB_QUEUE[], s, true)
+    queue!(JOB_QUEUE[], s.scheduler, true)
     println((timestamp = Dates.now(), username = ENV["USER"], host = gethostname(), pid=getpid()))
     for (j, info) in JOB_QUEUE[]
         if info[2] == Jobs.Running 
@@ -14,7 +14,7 @@ function main_loop(s::Server)
     log_mtimes = mtime.(joinpath.((config_path("logs/servers"),), readdir(config_path("logs/servers"))))
     
     while true
-        queue!(JOB_QUEUE[], s)
+        queue!(JOB_QUEUE[], s.scheduler, false)
         handle_workflow_runners!(job_dirs_procs)
         handle_job_submission!(s, job_dirs_procs)
         # handle_workflow_submission!(s, job_dirs_procs)
@@ -86,23 +86,22 @@ function handle_workflow_runners!(job_dirs_procs)
 end
 
 function spawn_task(s::Server, jobdir)
-    id = next_jobid()
     println((timestamp = Dates.now(), jobdir = jobdir, jobid = id, state = Jobs.Submitted))
-    info = Service.submit(s, jobdir)
-    JOB_QUEUE[][jobdir] = info
+    id = Servers.submit(s.scheduler, jobdir)
+    JOB_QUEUE[][jobdir] = (id, Jobs.Submitted)
     return Threads.@spawn begin
         with_logger(job_logger(id)) do
             println((jobdir = jobdir,))
             sleep(3*SLEEP_TIME)
-            info = Service.state(jobdir)
+            info = state(jobdir)
             println((timestamp = Dates.now(), state = info))
             while info == Jobs.Pending || info == Jobs.Running || info == Jobs.Submitted
                 sleep(SLEEP_TIME)
-                ninfo = Service.state(jobdir)
+                ninfo = state(jobdir)
                 ninfo != info && @info (timestamp = Dates.now(), state = info) 
                 info = ninfo
             end
-            JOB_QUEUE[][jobdir] = (JOB_QUEUE[][jobdir][1], Jobs.Running)
+            JOB_QUEUE[][jobdir] = (id, Jobs.Running)
             println((timestamp = Dates.now(), state = Jobs.PostProcessing))
             Service.outputdata(jobdir, map(x -> splitext(splitpath(x.infile)[end])[1], FileIO.read_job_script(joinpath(jobdir, "job.tt"))[2]))
             JOB_QUEUE[][jobdir] = (JOB_QUEUE[][jobdir][1], Jobs.Completed)

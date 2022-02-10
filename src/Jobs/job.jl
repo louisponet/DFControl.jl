@@ -1,7 +1,7 @@
 const VERSION_DIR_NAME = ".versions"
 const TEMP_CALC_DIR = "outputs"
 
-@enum JobState BootFail Pending Running Completed Cancelled Deadline Failed NodeFail OutOfMemory Preempted Requeued Resizing Revoked Suspended Timeout Submitted Unknown PostProcessing
+@enum JobState BootFail Pending Running Completed Cancelled Deadline Failed NodeFail OutOfMemory Preempted Requeued Resizing Revoked Suspended Timeout Submitted Unknown PostProcessing Saved
 
 """
     Job(name::String, structure::Structure;
@@ -362,4 +362,14 @@ function Servers.pull(j::Job, f, t)
     @assert ispath(j, f) "File $f not found in jobdir."
     pull(Server(j.server), joinpath(j, f), t)
 end
+
+function timestamp(jobdir::AbstractString)
+    scriptpath = joinpath(jobdir, "job.tt")
+    if ispath(scriptpath)
+        return unix2datetime(mtime(scriptpath))
+    else
+        return DateTime(0)
+    end
+end
+
 

@@ -510,20 +510,17 @@ Archives `job` by copying it's contents to `archive_directory` alongside a `resu
 """
 function archive(job::Job, archive_directory::AbstractString, description::String = "";
                  present = nothing)
-    @assert !isarchived(job) "Job was already archived"
+    @assert !Jobs.isarchived(job) "Job was already archived"
     final_dir = config_path("jobs", "archived", archive_directory)
     @assert !ispath(final_dir) "A archived job already exists in $archive_directory"
 
     cleanup(job)
 
     @assert present === nothing "Presenting is currently broken."
-    present !== nothing && set_present!(job, present)
 
     Servers.pull(Server(job.server), abspath(job), final_dir)
     !isempty(description) && write(joinpath(final_dir, "description.txt"), description)
-    push!(JOB_REGISTRY.archived, final_dir)
     @info "Archived job at $final_dir. If you're done with this one, it is safe to delete the directory at $(job.dir) on Server(\"$(job.server)\")."
-    Jobs.maybe_register_job(final_dir)
     return nothing
 end
 

@@ -47,10 +47,10 @@ end
 @testset "registry" begin
     job = load(test_server, Job(testjobpath))
     rm(testjobpath, recursive=true)
-    prevlen = length(Jobs.registered_jobs())
+    prevlen = length(Client.registered_jobs(test_server))
     save(job)
-    @test length(Jobs.registered_jobs()) == prevlen + 1
-    @test Jobs.registered_jobs()[end][1] == job.dir
+    @test length(Client.registered_jobs(test_server)) == prevlen + 1
+    @test Client.registered_jobs(test_server)[end][1] == job.dir
 end
 
 # @testset "execs" begin

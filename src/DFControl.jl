@@ -43,9 +43,4 @@ include("Display/Display.jl")
 
 @reexport using .Client
 
-function __init__()
-    Servers.maybe_create_localhost()
-    return
-end
-
 end

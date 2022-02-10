@@ -54,13 +54,22 @@ function save(jobdir::String, files; kwargs...)
         write(joinpath(dir, name), f)
     end
 
-    Jobs.maybe_register_job(jobdir)
+    JOB_QUEUE[][dir] = (-1, Jobs.Saved)
     return version
 end
 
-
 job_versions(args...) = Jobs.job_versions(args...)
-registered_jobs(args...) = Jobs.registered_jobs(args...)
+
+function registered_jobs(jobdir::String)
+    queue!(JOB_QUEUE[], local_server().scheduler, false)
+    dirs = Tuple{String,DateTime}[]
+    for (dir, info) in JOB_QUEUE[]
+        if occursin(jobdir, dir)
+            push!(dirs, (dir, Jobs.timestamp(dir)))
+        end
+    end
+    return sort(dirs, by = x -> x[2], rev=true)
+end
 
 function running_jobs(fuzzy)
     out = Tuple{String, Int}[]
@@ -111,8 +120,6 @@ finished(job::Job) = readdir(finished_dir(job))
 #                """; port = d.port)
 # end
 
-mods_test() = Base.loaded_modules
-
 """
     submit(dir::String, workflow::Bool)
 
@@ -127,15 +134,6 @@ function submit(job_dir::String, workflow::Bool)
         open(PENDING_JOBS_FILE, "a", lock=true) do f
             return write(f, job_dir * "\n")
         end
-    end
-end
-
-# The actual submitting
-function submit(s::Server, job_dir::String)
-    if s.scheduler == Servers.Bash
-        return bash_submit(job_dir)
-    elseif s.scheduler == Servers.Slurm
-        return slurm_submit(job_dir)
     end
 end
 
@@ -232,25 +230,11 @@ end
 
 rm_version!(jobdir::String, version::Int) = Jobs.rm_version!(load(Job(jobdir)), version)
 
-queue(args...) = queue!(Dict{String, Tuple{Int, Jobs.JobState}}(), args...)
-
-function queue!(q, s::Server, init=false)
-    if s.scheduler == Servers.Bash
-        return bash_queue!(q, init) 
-    elseif s.scheduler == Servers.Slurm
-        return slurm_queue!(q, init) 
-    end
-end
-
-function abort(job_dir::String)
+function Servers.abort(job_dir::String)
     @assert haskey(JOB_QUEUE[], job_dir) "No job exists in dir: $job_dir!"
-    id = JOB_QUEUE[][job_dir][1]
     s = local_server()
-    if s.scheduler == Servers.Bash
-        out = bash_abort(id) 
-    elseif s.scheduler == Servers.Slurm
-        out = slurm_abort(id) 
-    end
-    JOB_QUEUE[][job_dir] = (JOB_QUEUE[][job_dir][1], Jobs.Cancelled)
-    return out
+    id = JOB_QUEUE[][job_dir][1]
+    Servers.abort(s.scheduler, id)
+    JOB_QUEUE[][job_dir] = (id, Jobs.Cancelled)
+    return id
 end

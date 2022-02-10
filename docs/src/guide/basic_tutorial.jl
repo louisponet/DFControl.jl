@@ -45,35 +45,34 @@ set_kpoints!(scf_calculation, (6, 6, 6, 1, 1, 1))
 
 scf_calculation = Calculation("scf", :calculation => "scf"; exec = pw_exec,
                                   data = [InputData(:k_points, :automatic,
-                                                    (6, 6, 6, 1, 1, 1))])  # We can now define our job:  job = Job("Si", structure, [scf_calculation], :ecutwfc => 20, :conv_thr => 1e-6; dir="job")  # Additional calculations would be be added to the list `[scf_calculation]`. # The flag => value pairs will set the specified flags to that value for all calculations in the job
+                                                    (6, 6, 6, 1, 1, 1))])
+# We can now define our job:  job = Job("Si", structure, [scf_calculation], :ecutwfc => 20, :conv_thr => 1e-6; dir="job")
+# Additional calculations would be be added to the list `[scf_calculation]`.
+# The flag => value pairs will set the specified flags to that value for all calculations in the job
 # that allow recognize that flag, so it's ideal for things like cutoffs and smearing etc.
 
 if false#hide
 job = Job("Si", structure, [scf_calculation], :ecutwfc => 40.0, :occupations => "smearing", :degauss=>0.01, :conv_thr => 1e-6, :nbnd => 18;
-            #kwargs
             dir = dir, server="localhost", environment="default")
 end#hide
 
 # We are now ready to submit the job, which will run in the current working directory
 if false #hide
-    submit(job)
+submit(job)
 else #hide
     global job = load(Job(joinpath(splitdir(pathof(DFControl))[1], "..", "docs","src","assets", "job")))#hide
     pop!(job) #hide
 end #hide
 
 # This will generate and save all calculation files, and the corresponding job script (`job.tt`),
-# and subsequently run the job.
-# First submission through `sbatch job.tt` will be tried, if that fails then the script will run
-# through `bash job.tt`. 
+# to the server specified in `job.server`, and then the job will be submitted on the server.
 
 # After the job finishes the outputs can be parsed through
 outputdata(job)
-# or for a specific calculation
+# this returns a dictionary with the input names as keys and a Dict with parsed outputs as values.
+# i.e.
 outputdata(job)["scf"]
-
-# This also demonstrates how a calculation can be referenced using its name
-# (remember that we named the calculation "scf" when creating it).
+# takes the outputdata of the input that we previously named "scf" when creating it.
 
 # Now that the scf calculation finished succesfully, the next step is usually to
 # have a look at the bandstructure. For this we generate a bands calculation,
@@ -82,8 +81,8 @@ outputdata(job)["scf"]
 
 bands_calc = Calculations.gencalc_bands(job["scf"], Structures.high_symmetry_kpath(job.structure, 20))
 
-# Observe the :calculation => "bands", and automatic setting of the :verbosity => "high" flags.
-# We now push! this calculation to the job queue
+# Observe the `:calculation => "bands"`, and automatic setting of the `:verbosity => "high"` flags.
+# We now `push!` this calculation to the job queue.
 push!(job, bands_calc)
 
 # However, since we know the scf succeeded there is no need to rerun it.
@@ -96,7 +95,7 @@ job
 # Seeing that all is right we submit the job again
 job.dir = "job"; #hide
 if false #hide
-    submit(job)
+submit(job)
 else #hide
     global job = load(Job(joinpath(splitdir(pathof(DFControl))[1], "..", "docs","src","assets", "job")));#hide
 end #hide
