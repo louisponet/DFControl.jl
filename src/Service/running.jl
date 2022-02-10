@@ -3,7 +3,7 @@ const JOB_QUEUE = Ref(Dict{String, Tuple{Int, Jobs.JobState}}())
 function main_loop(s::Server)
     job_dirs_procs = Dict()
     queue!(JOB_QUEUE[], s.scheduler, true)
-    println((timestamp = Dates.now(), username = ENV["USER"], host = gethostname(), pid=getpid()))
+    @info (timestamp = Dates.now(), username = ENV["USER"], host = gethostname(), pid=getpid())
     for (j, info) in JOB_QUEUE[]
         if info[2] == Jobs.Running 
             job_dirs_procs[j] = spawn_task(s, j)
@@ -29,7 +29,7 @@ function main_loop(s::Server)
                     run(`pkill $t`)
                 end
             end
-            println((timestamp = Dates.now(), message = "self destructing complete"))
+            @info (timestamp = Dates.now(), message = "self destructing complete")
             exit()
         end
             
@@ -45,7 +45,7 @@ function print_log(s, job_dirs_procs)
         ntasks = 0
         nprocs = 0
     end
-    println((timestamp = Dates.now(), ntasks = ntasks, nprocs = nprocs))
+    @info (timestamp = Dates.now(), ntasks = ntasks, nprocs = nprocs)
 end
 
 function monitor_issues(log_mtimes)
@@ -70,7 +70,7 @@ function handle_workflow_runners!(job_dirs_procs)
                     @error "Task failed with $(t.result)"
                 else
                     t_ = fetch(t)
-                    println((timestamp = Dates.now(), jobdir = k, state=Jobs.Completed))
+                    @info (timestamp = Dates.now(), jobdir = k, state=Jobs.Completed)
                 end
                 push!(to_rm, k)
             end
@@ -87,14 +87,14 @@ end
 
 function spawn_task(s::Server, jobdir)
     id = Servers.submit(s.scheduler, jobdir)
-    println((timestamp = Dates.now(), jobdir = jobdir, jobid = id, state = Jobs.Submitted))
+    @info (timestamp = Dates.now(), jobdir = jobdir, jobid = id, state = Jobs.Submitted)
     JOB_QUEUE[][jobdir] = (id, Jobs.Submitted)
     return Threads.@spawn begin
         with_logger(job_logger(id)) do
-            println((jobdir = jobdir,))
+            @info (jobdir = jobdir,)
             sleep(3*SLEEP_TIME)
             info = state(jobdir)
-            println((timestamp = Dates.now(), state = info))
+            @info (timestamp = Dates.now(), state = info)
             while info == Jobs.Pending || info == Jobs.Running || info == Jobs.Submitted
                 sleep(SLEEP_TIME)
                 ninfo = state(jobdir)
@@ -102,7 +102,7 @@ function spawn_task(s::Server, jobdir)
                 info = ninfo
             end
             JOB_QUEUE[][jobdir] = (id, Jobs.Running)
-            println((timestamp = Dates.now(), state = Jobs.PostProcessing))
+            @info (timestamp = Dates.now(), state = Jobs.PostProcessing)
             Service.outputdata(jobdir, map(x -> splitext(splitpath(x.infile)[end])[1], FileIO.read_job_script(joinpath(jobdir, "job.tt"))[2]))
             JOB_QUEUE[][jobdir] = (JOB_QUEUE[][jobdir][1], Jobs.Completed)
         end
