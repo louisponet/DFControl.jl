@@ -8,7 +8,7 @@
 
 using DFControl
 using UUIDs#hide
-s = Server(name="localhost", port=8080, domain = "localhost", scheduler = Bash(), uuid = uuid4(), julia_exec=Sys.BINDIR * "/julia")#hide
+s = Server(name="localhost", port=8080, domain = "localhost", scheduler = Servers.Bash(), uuid = string(uuid4()), julia_exec=Sys.BINDIR * "/julia")#hide
 if !exists(s)#hide
     save(s)#hide
 end#hide
