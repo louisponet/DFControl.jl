@@ -1200,6 +1200,8 @@ function qe_read_calculation(filename; exec = Exec(; exec = "pw.x"), outfile=spl
         if k_option == :automatic
             s_line = split(lines[i+1])
             k_data = parse.(Int, s_line)
+        elseif i + 1 > length(lines)
+            k_data = nothing
         else
             nks    = parse(Int, lines[i+1])
             k_data = Vector{NTuple{4,Float64}}(undef, nks)
@@ -1312,13 +1314,15 @@ function save(calculation::Calculation{QE}, structure,
                     write(f, "$(uppercase(String(dat.name)))\n")
                 end
             end
-            if dat.name == :k_points && dat.option != :automatic
-                write(f, "$(length(dat.data))\n")
-                write_dat(dat.data)
-            else
-                write_dat(dat.data)
+            if dat.data !== nothing
+                if dat.name == :k_points && dat.option != :automatic
+                    write(f, "$(length(dat.data))\n")
+                    write_dat(dat.data)
+                else
+                    write_dat(dat.data)
+                end
+                write(f, "\n")
             end
-            write(f, "\n")
         end
     end
     #TODO handle writing hubbard and magnetization better
@@ -1335,7 +1339,7 @@ function write_data(f, data)
         write(f, "$data\n")
     elseif typeof(data) <: Vector && length(data[1]) == 1
         write(f, join(string.(data), " "))
-    else
+    else 
         for x in data
             for y in x
                 write(f, " $y")
