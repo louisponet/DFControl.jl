@@ -210,7 +210,7 @@ Returns the state of a job.
 function state(jobdir::String; server = "localhost")
     return JSON3.read(HTTP.get(Server(server), "/job_state/" * jobdir).body, Jobs.JobState)
 end
-state(job::Job) = state(job.dir, server=job.server)
+state(job::Job) = state(abspath(job), server=job.server)
 
 """
     isrunning(job::Job)
