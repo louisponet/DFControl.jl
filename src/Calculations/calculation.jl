@@ -434,34 +434,35 @@ function sanitize_flags!(cs::Vector{<:Calculation}, str::Structure, name, outdir
     starts = Float64[]
     θs = Float64[]
     ϕs = Float64[]
-    ismagcalc = isnc ? true : Structures.ismagnetic(str)
-    if (ismagcalc && isnc) || any(x -> get(x, :noncolin, false), cs)
-        for m in mags
-            tm = normalize(m)
-            if norm(m) == 0
-                push!.((starts, θs, ϕs), 0.0)
-            else
-                θ = acos(tm[3]) * 180 / π
-                ϕ = atan(tm[2], tm[1]) * 180 / π
-                start = norm(m)
-                push!(θs, θ)
-                push!(ϕs, ϕ)
-                push!(starts, start)
+    ismagcalc = isnc ? true : Structures.ismagnetic(str) || any(x->haskey(x, :tot_magnetization), cs)
+    if ismagcalc
+        if  isnc || any(x -> get(x, :noncolin, false), cs)
+            for m in mags
+                tm = normalize(m)
+                if norm(m) == 0
+                    push!.((starts, θs, ϕs), 0.0)
+                else
+                    θ = acos(tm[3]) * 180 / π
+                    ϕ = atan(tm[2], tm[1]) * 180 / π
+                    start = norm(m)
+                    push!(θs, θ)
+                    push!(ϕs, ϕ)
+                    push!(starts, start)
+                end
+            end
+            push!(flags_to_set, :noncolin => true)
+        else
+            for m in mags
+                push!.((θs, ϕs), 0.0)
+                if norm(m) == 0
+                    push!(starts, 0)
+                else
+                    push!(starts, sign(sum(m)) * norm(m))
+                end
             end
         end
-        push!(flags_to_set, :noncolin => true)
-    elseif ismagcalc
-        for m in mags
-            push!.((θs, ϕs), 0.0)
-            if norm(m) == 0
-                push!(starts, 0)
-            else
-                push!(starts, sign(sum(m)) * norm(m))
-            end
-        end
+        append!(flags_to_set, [:starting_magnetization => starts, :angle1 => θs, :angle2 => ϕs, :nspin => 2])
     end
-    append!(flags_to_set, [:starting_magnetization => starts, :angle1 => θs, :angle2 => ϕs])
-    ismagcalc && !isnc && push!(flags_to_set, :nspin => 2)
     for c in cs
         set_flags!(c, :prefix => "$name", :outdir => "$outdir"; print = false)
         if ispw(c)

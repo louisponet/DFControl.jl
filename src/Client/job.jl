@@ -237,7 +237,7 @@ Returns the last `Calculation` for which an output file was created.
 """
 function last_running_calculation(job::Job)
     server = Server(job.server)
-    resp = HTTP.get(server, "/last_running_calculation/" * job.dir)
+    resp = HTTP.get(server, "/last_running_calculation/" * abspath(job))
     if resp.status == 204
         return nothing
     else
@@ -335,6 +335,8 @@ function fill_execs(job::Job, server::Server)
                     end
                 end
             end
+        else
+            replacements[e] = Database.load(server, e)
         end
     end
     for (e, rep) in replacements
