@@ -15,7 +15,7 @@ mutable struct InputData
     data   :: Any
 end
 function InputData(dict::JSON3.Object)
-    if dict[:data] isa Vector
+    if dict[:data] isa AbstractVector 
         if dict[:data][1] isa AbstractVector
             data = NTuple{length(dict[:data][1]), Float64}[]
             for d_ in dict[:data]
