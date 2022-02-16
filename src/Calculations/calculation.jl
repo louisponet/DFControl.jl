@@ -15,13 +15,17 @@ mutable struct InputData
     data   :: Any
 end
 function InputData(dict::JSON3.Object)
-    if dict[:data][1] isa AbstractVector
-        data = NTuple{length(dict[:data][1]), Float64}[]
-        for d_ in dict[:data]
-            push!(data, (d_...,))
+    if dict[:data] isa Vector
+        if dict[:data][1] isa AbstractVector
+            data = NTuple{length(dict[:data][1]), Float64}[]
+            for d_ in dict[:data]
+                push!(data, (d_...,))
+            end
+        else
+            data = [dict[:data]...,]
         end
     else
-        data = [dict[:data]...,]
+        data = dict[:data]
     end
     return InputData(Symbol(dict[:name]), Symbol(dict[:option]), data)
 end

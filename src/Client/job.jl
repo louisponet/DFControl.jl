@@ -117,7 +117,8 @@ function save(job::Job, workflow::Union{Nothing, Workflow} = nothing)
     @assert job.environment != "" "Please set job environment."
     environment = load(server, Environment(job.environment))
     @assert environment isa Environment "Environment with name $(job.environment) not found!"
-    
+
+    jdir = copy(job.dir)
     job.dir = tmpdir
     write(job, environment)
     if workflow !== nothing
@@ -132,7 +133,7 @@ function save(job::Job, workflow::Union{Nothing, Workflow} = nothing)
         end
     end
     
-    job.dir = apath
+    job.dir = jdir
     rm(tmpdir, recursive=true)
   
     resp_job_version = JSON3.read(HTTP.post(server, "/jobs/" * apath, files_to_send).body,
