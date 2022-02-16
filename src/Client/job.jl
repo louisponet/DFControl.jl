@@ -118,7 +118,7 @@ function save(job::Job, workflow::Union{Nothing, Workflow} = nothing)
     environment = load(server, Environment(job.environment))
     @assert environment isa Environment "Environment with name $(job.environment) not found!"
 
-    jdir = copy(job.dir)
+    jdir = job.dir
     job.dir = tmpdir
     write(job, environment)
     if workflow !== nothing
