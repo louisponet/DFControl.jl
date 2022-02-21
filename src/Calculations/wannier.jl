@@ -13,7 +13,7 @@ Generates a Wannier90 calculation to follow on the supplied `nscf` calculation. 
 The `nscf` needs to have a valid output since it will be used in conjunction with `Emin` to find the required amount of bands and energy window for the Wannier90 calculation.
 """
 function gencalc_wan(nscf::Calculation{QE}, structure::Structure, bands, Emin, wanflags...; Epad = 5.0,
-                     wanexec = Exec(; exec = "wannier90.x", dir = ""))
+                     wanexec = Exec(; name="wannier90", exec = "wannier90.x", dir = ""))
     projs = vcat(map(structure.atoms) do x
                      ps = x.projections
                      @assert !isempty(ps) "Please first set projections for all atoms in the Structure."
@@ -47,7 +47,7 @@ function gencalc_wan(nscf::Calculation{QE}, structure::Structure, bands, Emin, w
     wancalculations = Calculation{Wannier90}[]
     for wanfil in wannames
         push!(wancalculations,
-              Calculation(; name = wanfil,
+              Calculation(; name = wanfil, infile = wanfil * ".win", outfile = wanfil * ".wout",
                                      flags = copy(wanflags), data = [kdata],
                                      exec  = wanexec, run = true))
     end
