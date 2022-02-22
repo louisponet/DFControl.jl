@@ -489,7 +489,7 @@ function initialize_config_dir(s::Server)
         mkpath_ = x -> server_command(s, `mkdir -p $x`)
         touch_ = x -> server_command(s, `touch $x`)
     end
-    if !ispath_(config_path_(""))
+    if !ispath_(config_path_("storage/pseudos"))
         paths = [config_path_(""),
                  config_path_("jobs"),
                  config_path_("workflows"),
