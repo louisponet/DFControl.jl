@@ -26,7 +26,7 @@ testjobpath = joinpath(testdir, "testassets", "test_job")
                                                         [4, 4, 4, 1, 1, 1])])]
     job = Job(name, str, calculations, :ecutwfc => 40.0, :occupations => "smearing", :degauss=>0.01, :conv_thr => 1e-6, :nbnd => 18;
                 #kwargs
-                dir = dir, server="localhost")
+                dir = dir, server=gethostname())
 
 
     set_pseudos!(job, :test)

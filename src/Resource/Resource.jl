@@ -139,7 +139,7 @@ function AuthHandler(req)
 end     
 
 function run()
-    s = Server("localhost")
+    s = Server(gethostname())
     CURRENT_SERVER[] = s
     port, server = listenany(ip"0.0.0.0", 8080)
     s.port = port

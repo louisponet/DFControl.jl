@@ -45,7 +45,7 @@ The `kwargs...` will be passed to the [`Job`](@ref) constructor.
     metadata::Dict{Symbol,Any} = Dict{Symbol,Any}()
     version::Int = -1
     copy_temp_folders::Bool = false
-    server::String = "localhost"
+    server::String = gethostname()
     environment::String = ""
     function Job(name, structure, calculations, dir, header, metadata, version,
                  copy_temp_folders, server, environment)

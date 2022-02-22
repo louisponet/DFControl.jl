@@ -167,12 +167,14 @@ function load_config(username, domain; name="localhost")
         end
     end
 end
-load_config(s::Server; kwargs...) = load_config(s.username, s.domain; kwargs...)
+Base.gethostname(s::Server) = split(server_command(s.username, s.domain, `hostname`).stdout)[1]
+function load_config(s::Server)
+    name = gethostname(s) 
+    return load_config(s.username, s.domain; name = name)
+end
 
 ssh_string(s::Server) = s.username * "@" * s.domain
 http_string(s::Server) = s.local_port != 0 ? "http://localhost:$(s.local_port)" : "http://$(s.domain):$(s.port)"
-
-
 
 function HTTP.request(method::String, s::Server, url, body; checkalive = true, kwargs...)
     if checkalive
@@ -272,6 +274,7 @@ function start(s::Server)
         
     @assert !t "Self destruction was previously triggered, signalling issues on the Server.\nPlease investigate and if safe, remove ~/.julia/config/DFControl/self_destruct"
 
+    hostname = gethostname(s)
     # Here we clean up previous connections and commands
     if !islocal(s)
         t = getfirst(x->occursin("ssh -f $(ssh_string(s))", x), split(read(pipeline(`ps aux` , stdout = `grep Resource`), String), "\n"))
@@ -283,10 +286,10 @@ function start(s::Server)
             t = deepcopy(s)
             t.domain = "localhost"
             t.local_port = 0
-            t.name = "localhost"
+            t.name = gethostname(s)
             tf = tempname()
             JSON3.write(tf,  t)
-            push(tf, s, "~/.julia/config/DFControl/storage/servers/localhost.json")
+            push(tf, s, "~/.julia/config/DFControl/storage/servers/$hostname.json")
         end
     end
         
@@ -300,8 +303,8 @@ function start(s::Server)
     function checktime()
         curtime = 0
         try
-            cmd = "stat -c %Z  ~/.julia/config/DFControl/storage/servers/localhost.json"
-            curtime = islocal(s) ? mtime(config_path("storage", "servers", "localhost.json")) : parse(Int, server_command(s.username, s.domain, cmd)[1])
+            cmd = "stat -c %Z  ~/.julia/config/DFControl/storage/servers/$(hostname).json"
+            curtime = islocal(s) ? mtime(config_path("storage", "servers", "$(hostname).json")) : parse(Int, server_command(s.username, s.domain, cmd)[1])
         catch
             nothing
         end
@@ -310,12 +313,12 @@ function start(s::Server)
     firstime = checktime()
 
     if s.domain != "localhost"
-        julia_cmd = """$(s.julia_exec) --startup-file=no -t auto -e "using DFControl; DFControl.Resource.run()" &> ~/.julia/config/DFControl/logs/errors.log"""
+        julia_cmd = """$(s.julia_exec) --startup-file=no -t auto -e "using DFControl; DFControl.Resource.run()" &> ~/.julia/config/DFControl/logs/$(hostname)/errors.log"""
         run(Cmd(`ssh -f $(ssh_string(s)) $julia_cmd`, detach=true))
     else
         scrpt = "using DFControl; DFControl.Resource.run()"
         e = s.julia_exec
-        julia_cmd = `$(e) --startup-file=no -t auto -e $(scrpt) '&''>' '~'/.julia/config/DFControl/errors.log '&'`
+        julia_cmd = `$(e) --startup-file=no -t auto -e $(scrpt) '&''>' '~'/.julia/config/DFControl/logs/$(hostname)/errors.log '&'`
         run(Cmd(julia_cmd, detach=true), wait=false)
     end
         

@@ -2,8 +2,8 @@ using DFControl, Test
 using UUIDs
 testdir = @__DIR__
 @time begin
-    if exists(Server(name="localhost"))
-        test_server = Server("localhost")
+    if exists(Server(name=gethostname()))
+        test_server = Server(gethostname())
         if Servers.isalive(test_server)
             try
                 Servers.kill(test_server)
@@ -14,14 +14,14 @@ testdir = @__DIR__
         created_new_server = false
     else
         created_new_server = true
-        test_server = Server(name="localhost", domain="localhost", julia_exec = joinpath(Sys.BINDIR, "julia"), uuid=string(uuid4()))
+        test_server = Server(name=gethostname(), domain="localhost", julia_exec = joinpath(Sys.BINDIR, "julia"), uuid=string(uuid4()))
         save(test_server) 
     end
     @async DFControl.Resource.run()
-    while !Servers.isalive(Server("localhost"))
+    while !Servers.isalive(Server(gethostname()))
         sleep(0.1)
     end
-    testserver = Server("localhost")
+    testserver = Server(gethostname())
     @time @testset "constants" begin
         include("constant_tests.jl")
     end
@@ -48,6 +48,6 @@ testdir = @__DIR__
     end
     include("cleanup.jl")
     if created_new_server
-        rm(DFC.config_path("storage/servers/localhost.json"))
+        rm(DFC.config_path("storage/servers/$(gethostname()).json"))
     end
 end

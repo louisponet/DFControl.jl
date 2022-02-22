@@ -8,7 +8,7 @@
 
 using DFControl
 using UUIDs#hide
-s = Server(name="localhost", port=8080, domain = "localhost", scheduler = Servers.Bash(), uuid = string(uuid4()), julia_exec=Sys.BINDIR * "/julia")#hide
+s = Server(name=gethostname(), port=8080, domain = "localhost", scheduler = Servers.Bash(), uuid = string(uuid4()), julia_exec=Sys.BINDIR * "/julia")#hide
 if !exists(s)#hide
     save(s)#hide
 end#hide
@@ -59,7 +59,7 @@ scf_calculation = Calculation("scf", :calculation => "scf"; exec = pw_exec,
 
 if false#hide
 job = Job("Si", structure, [scf_calculation], :ecutwfc => 40.0, :occupations => "smearing", :degauss=>0.01, :conv_thr => 1e-6, :nbnd => 18;
-            dir = dir, server="localhost", environment="default")
+            dir = dir, server=gethostname(), environment="default")
 end#hide
 
 # We are now ready to submit the job, which will run in the current working directory

@@ -73,7 +73,7 @@ function registered_jobs(server::Server, fuzzy::String="")
     return reverse(JSON3.read(resp.body, Vector{Tuple{String,DateTime}}))
 end
       
-function running_jobs(fuzzy=""; server="localhost")
+function running_jobs(fuzzy=""; server=gethostname())
     resp = HTTP.get(server, "/running_jobs/" * fuzzy)
     return reverse(JSON3.read(resp.body, Vector{Tuple{String, Int}}))
 end
@@ -203,18 +203,18 @@ abort(job::Job) = abort(job.dir; server= job.server)
 
 """
     state(job::Job)
-    state(jobdir::String; server="localhost"))
+    state(jobdir::String; server=gethostname()))
 
 Returns the state of a job.
 """
-function state(jobdir::String; server = "localhost")
+function state(jobdir::String; server = gethostname())
     return JSON3.read(HTTP.get(Server(server), "/job_state/" * jobdir).body, Jobs.JobState)
 end
 state(job::Job) = state(abspath(job), server=job.server)
 
 """
     isrunning(job::Job)
-    isrunning(jobdir::String, server="localhost")
+    isrunning(jobdir::String, server=gethostname())
 
 Returns whether a job is running or not. If the job was
 submitted using `slurm`, a `QUEUED` status also counts as
@@ -261,7 +261,7 @@ end
 
 """
     last_version(job::Job)
-    last_version(jobdir::String; server="localhost")
+    last_version(s::Server, jobdir::String)
 
 Returns the last version number of `job`.
 """

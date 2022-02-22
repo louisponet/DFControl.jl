@@ -70,7 +70,7 @@ The pseudos will be searched for in the `server`.
 Structures.set_pseudos!(job::Job, args...; server=job.server,kwargs...) =
     Structures.set_pseudos!(job.structure, args...; server=server, kwargs...)
     
-function Structures.set_pseudos!(str::Structures.Structure, set; server = "localhost", specifier = "", kwargs...)
+function Structures.set_pseudos!(str::Structures.Structure, set; server = gethostname(), specifier = "", kwargs...)
     atsyms = unique(map(x -> x.element.symbol, str.atoms))
     return Structures.set_pseudos!(str, pseudos(Server(server), set, atsyms, specifier);
                                    kwargs...)

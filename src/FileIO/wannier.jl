@@ -235,7 +235,8 @@ function wan_read_calculation(filename::String, T = Float64;
     dir, file = splitdir(filename)
     flags[:preprocess] = Calculations.hasflag(exec,
                                               :pp) ? true : false
-    return Calculation(; name = splitext(file)[1], flags = flags,
+    name = splitext(file)[1]
+    return Calculation(; name = name, flags = flags, infile = name*".win", outfile = name*".wout",
                                   data = data, exec = exec, kwargs...), structure
 end
 
