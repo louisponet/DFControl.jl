@@ -15,7 +15,8 @@ testdir = @__DIR__
     else
         created_new_server = true
         test_server = Server(name=gethostname(), domain="localhost", julia_exec = joinpath(Sys.BINDIR, "julia"), uuid=string(uuid4()))
-        save(test_server) 
+        save(test_server)
+        Servers.initialize_config_dir(test_server)
     end
     @async DFControl.Resource.run()
     while !Servers.isalive(Server(gethostname()))
