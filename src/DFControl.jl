@@ -14,7 +14,7 @@ const CIF2CELLPATH = Sys.iswindows() ?
                      joinpath(DEPS_DIR, "python2", "Scripts", "cif2cell") :
                      joinpath(dirname(@__DIR__), "deps", "python2", "bin", "cif2cell")
 
-config_path(path...) = joinpath(CONFIG_DIR, path...)
+config_path(path...) = joinpath(CONFIG_DIR, gethostname(), path...)
 
 using LinearAlgebra
 using Reexport
