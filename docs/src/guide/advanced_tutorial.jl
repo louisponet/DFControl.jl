@@ -10,6 +10,7 @@ using UUIDs#hide
 s = Server(name="localhost", port=8080, domain = "localhost", scheduler = Servers.Bash(), uuid = string(uuid4()), julia_exec=Sys.BINDIR * "/julia")#hide
 if !exists(s)#hide
     save(s)#hide
+    Servers.initialize_config_dir(s)#hide
 end#hide
 @async DFC.Resource.run()#hide
 tjob = load(Job(joinpath(splitdir(pathof(DFControl))[1], "..", "docs","src","assets", "job")))#hide

@@ -11,6 +11,7 @@ using UUIDs#hide
 s = Server(name=gethostname(), port=8080, domain = "localhost", scheduler = Servers.Bash(), uuid = string(uuid4()), julia_exec=Sys.BINDIR * "/julia")#hide
 if !exists(s)#hide
     save(s)#hide
+    Servers.initialize_config_dir(s)#hide
 end#hide
     
 if !Servers.isalive(s)#hide
