@@ -32,7 +32,7 @@ function server_logger()
 end
 
 function restapi_logger()
-    p = config_path("logs/$(gethostname())")
+    p = config_path("logs/daemon/$(gethostname())")
     mkpath(p)
     FileLogger(joinpath(p, "restapi.log"); append = false)
 end

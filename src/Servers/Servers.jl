@@ -286,7 +286,7 @@ function start(s::Server)
             t = deepcopy(s)
             t.domain = "localhost"
             t.local_port = 0
-            t.name = gethostname(s)
+            t.name = hostname
             tf = tempname()
             JSON3.write(tf,  t)
             push(tf, s, "~/.julia/config/DFControl/storage/servers/$hostname.json")
@@ -313,7 +313,7 @@ function start(s::Server)
     firstime = checktime()
 
     if s.domain != "localhost"
-        julia_cmd = """$(s.julia_exec) --startup-file=no -t auto -e "using DFControl; DFControl.Resource.run()" &> ~/.julia/config/DFControl/logs/$(hostname)/errors.log"""
+        julia_cmd = """$(s.julia_exec) --startup-file=no -t auto -e "using DFControl; DFControl.Resource.run()" &> ~/.julia/config/DFControl/logs/daemon/$(hostname)/errors.log"""
         run(Cmd(`ssh -f $(ssh_string(s)) $julia_cmd`, detach=true))
     else
         scrpt = "using DFControl; DFControl.Resource.run()"
