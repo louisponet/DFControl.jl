@@ -20,7 +20,7 @@ function load(server::Server, j::Job)
         dir = j.dir
     end
     dir = abspath(server, dir)
-    if !ispath(server, dir)
+    if !ispath(server, joinpath(dir, "job.tt"))
         
         @warn "No valid job found in $dir. Here are similar options:"
         return first.(registered_jobs(server, dir))
