@@ -149,7 +149,7 @@ Utils.searchdir(s::Server, dir, str) = joinpath.(dir, filter(x->occursin(str, x)
 parse_config(config) = JSON3.read(config, Server)
 read_config(config_file) = parse_config(read(config_file, String))
 
-function load_config(username, domain; name="localhost")
+function load_config(username, domain)
     if domain == "localhost"
         p = config_path("storage/servers/localhost.json")
         if ispath(p)
@@ -158,7 +158,8 @@ function load_config(username, domain; name="localhost")
             return nothing
         end
     else
-        cmd = "cat ~/.julia/config/DFControl/storage/servers/$name.json"
+        hostname = gethostname(username, domain)
+        cmd = "cat ~/.julia/config/DFControl/$hostname/storage/servers/$hostname.json"
         t = server_command(username, domain, cmd)
         if t.exitcode != 0
             return nothing
@@ -167,11 +168,10 @@ function load_config(username, domain; name="localhost")
         end
     end
 end
-Base.gethostname(s::Server) = split(server_command(s.username, s.domain, `hostname`).stdout)[1]
-function load_config(s::Server)
-    name = gethostname(s) 
-    return load_config(s.username, s.domain; name = name)
-end
+Base.gethostname(username::String, domain::String) = split(server_command(username, domain, `hostname`).stdout)[1]
+Base.gethostname(s::Server) = gethostname(s.username, s.domain)
+load_config(s::Server) = 
+     load_config(s.username, s.domain)
 
 ssh_string(s::Server) = s.username * "@" * s.domain
 http_string(s::Server) = s.local_port != 0 ? "http://localhost:$(s.local_port)" : "http://$(s.domain):$(s.port)"
@@ -319,9 +319,6 @@ function start(s::Server)
 
     p = "~/.julia/config/DFControl/$hostname/logs/errors.log"
     if s.domain != "localhost"
-        if server_command(s, `ls $p`).exitcode != 0
-            server_command(s, `mkdir $p`)
-        end
         julia_cmd = """$(s.julia_exec) --startup-file=no -t auto -e "using DFControl; DFControl.Resource.run()" &> $p"""
         run(Cmd(`ssh -f $(ssh_string(s)) $julia_cmd`, detach=true))
     else
@@ -482,22 +479,21 @@ end
 
 function initialize_config_dir(s::Server)
     if islocal(s)
-        ispath_(x) = ispath(x)
-        config_path_(x...) = config_path(x...)
-        touch_(x) = touch(x)
-        mkpath_(x) = mkpath(x)
+        ispath_ = x -> ispath(x)
+        config_path_ =  x -> config_path(x)
+        touch_ = x -> touch(x)
+        mkpath_ = x -> mkpath(x)
     else
-        ispath_(x) = server_command(s, `ls $x`).exitcode == 0
-        config_path_(x...) = (hostname = split(server_command(s, `hostname`).stdout)[1]; joinpath("~/.julia/config/DFControl/$hostname", x...))
-        mkpath_(x) = server_command(s, `mkdir -p $x`)
-        touch_(x) = server_command(s, `touch $x`)
+        ispath_ = x -> server_command(s, `ls $x`).exitcode == 0
+        config_path_ = x -> (hostname = split(server_command(s, `hostname`).stdout)[1]; joinpath("~/.julia/config/DFControl/$hostname", x))
+        mkpath_ = x -> server_command(s, `mkdir -p $x`)
+        touch_ = x -> server_command(s, `touch $x`)
     end
-    if !ispath_(config_path_())
-        paths = [config_path_(),
+    if !ispath_(config_path_(""))
+        paths = [config_path_(""),
                  config_path_("jobs"),
                  config_path_("workflows"),
                  config_path_("logs"),
-                 config_path_("logs/"),
                  config_path_("logs/jobs"),
                  config_path_("logs/runtimes"),
                  config_path_("storage"),
@@ -511,7 +507,7 @@ function initialize_config_dir(s::Server)
         end
         for p in ("pending.txt", "archived.txt", "active.txt", "running.txt")
             for t in ("jobs", "workflows")
-                touch_(config_path_(t, p))
+                touch_(config_path_(joinpath(t, p)))
             end
         end
     end
