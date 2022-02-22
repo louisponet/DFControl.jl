@@ -360,7 +360,7 @@ end
 
 function Servers.pull(j::Job, f, t)
     @assert ispath(j, f) "File $f not found in jobdir."
-    pull(Server(j.server), joinpath(j, f), t)
+    Servers.pull(Server(j.server), joinpath(j, f), t)
 end
 
 function timestamp(jobdir::AbstractString)

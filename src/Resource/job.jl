@@ -31,5 +31,5 @@ running_jobs(req) = Service.running_jobs(path(req))
 HTTP.@register(ROUTER, "GET", "/running_jobs/", running_jobs)
 HTTP.@register(ROUTER, "GET", "/running_jobs/*", running_jobs)
 
-abort_job(req) = Service.abort(path(req))
+abort_job(req) = Servers.abort(path(req))
 HTTP.@register(ROUTER, "GET", "/abort/*", abort_job)

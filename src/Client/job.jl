@@ -195,33 +195,33 @@ If the last running calculation happened to be a `Calculation{QE}`, the correct 
 For other codes the process is not smooth, and restarting is not guaranteed.
 """
 function abort(server::Server, dir::String)
-    @assert isrunning(dir; server=server) "Is this job running?"
+    @assert isrunning(server, dir) "Is this job running?"
     id = JSON3.read(HTTP.get(Server(server), "/abort/" * dir).body, Int)
     @info "Aborted job $id"
 end
-abort(job::Job) = abort(job.dir; server= job.server)
+abort(job::Job) = abort(Server(job.server), abspath(job))
 
 """
     state(job::Job)
-    state(jobdir::String; server=gethostname()))
+    state(s::Server, jobdir::String)
 
 Returns the state of a job.
 """
-function state(jobdir::String; server = gethostname())
-    return JSON3.read(HTTP.get(Server(server), "/job_state/" * jobdir).body, Jobs.JobState)
+function state(s::Server, jobdir::String)
+    return JSON3.read(HTTP.get(s, "/job_state/" * jobdir).body, Jobs.JobState)
 end
-state(job::Job) = state(abspath(job), server=job.server)
+state(job::Job) = state(Server(job.server), abspath(job))
 
 """
     isrunning(job::Job)
-    isrunning(jobdir::String, server=gethostname())
+    isrunning(s::Server, jobdir::String)
 
 Returns whether a job is running or not. If the job was
 submitted using `slurm`, a `QUEUED` status also counts as
 running.
 """
-function isrunning(args...; kwargs...)
-    s = state(args...; kwargs...)
+function isrunning(args...)
+    s = state(args...)
     return s == Jobs.Running || s == Jobs.Pending || s == Jobs.Submitted
 end
 
