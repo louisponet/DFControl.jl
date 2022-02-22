@@ -138,34 +138,34 @@ function AuthHandler(req)
     return HTTP.Response(401, "unauthorized")
 end     
 
-function initialize_config_dir()
-    if !ispath(config_path())
-        paths = [config_path(),
-                 config_path("jobs"),
-                 config_path("workflows"),
-                 config_path("logs"),
-                 config_path("logs/"),
-                 config_path("logs/jobs"),
-                 config_path("logs/runtimes"),
-                 config_path("storage"),
-                 config_path("storage/servers"),
-                 config_path("storage/execs"),
-                 config_path("storage/pseudos"),
-                 config_path("storage/environments")]
+# function initialize_config_dir()
+#     if !ispath(config_path())
+#         paths = [config_path(),
+#                  config_path("jobs"),
+#                  config_path("workflows"),
+#                  config_path("logs"),
+#                  config_path("logs/"),
+#                  config_path("logs/jobs"),
+#                  config_path("logs/runtimes"),
+#                  config_path("storage"),
+#                  config_path("storage/servers"),
+#                  config_path("storage/execs"),
+#                  config_path("storage/pseudos"),
+#                  config_path("storage/environments")]
 
-        for p in paths
-            mkpath(p)
-        end
-        for p in ("pending.txt", "archived.txt", "active.txt", "running.txt")
-            for t in ("jobs", "workflows")
-                touch(config_path(t, p))
-            end
-        end
-    end
-end
+#         for p in paths
+#             mkpath(p)
+#         end
+#         for p in ("pending.txt", "archived.txt", "active.txt", "running.txt")
+#             for t in ("jobs", "workflows")
+#                 touch(config_path(t, p))
+#             end
+#         end
+#     end
+# end
 
 function run()
-    initialize_config_dir()
+    # initialize_config_dir()
     s = Server(gethostname())
     CURRENT_SERVER[] = s
     port, server = listenany(ip"0.0.0.0", 8080)

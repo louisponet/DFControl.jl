@@ -274,6 +274,7 @@ function start(s::Server)
         
     @assert !t "Self destruction was previously triggered, signalling issues on the Server.\nPlease investigate and if safe, remove ~/.julia/config/DFControl/self_destruct"
 
+    initialize_config_dir(s)
     hostname = gethostname(s)
     # Here we clean up previous connections and commands
     if !islocal(s)
@@ -289,7 +290,7 @@ function start(s::Server)
             t.name = hostname
             tf = tempname()
             JSON3.write(tf,  t)
-            push(tf, s, "~/.julia/config/DFControl/storage/servers/$hostname.json")
+            push(tf, s, "~/.julia/config/DFControl/$hostname/storage/servers/$hostname.json")
         end
     end
         
@@ -303,8 +304,12 @@ function start(s::Server)
     function checktime()
         curtime = 0
         try
-            cmd = "stat -c %Z  ~/.julia/config/DFControl/storage/servers/$(hostname).json"
-            curtime = islocal(s) ? mtime(config_path("storage", "servers", "$(hostname).json")) : parse(Int, server_command(s.username, s.domain, cmd)[1])
+            if islocal(s)
+                return mtime(config_path("storage", "servers", "$(hostname).json"))
+            else
+                cmd = "stat -c %Z  ~/.julia/config/DFControl/$hostname/storage/servers/$(hostname).json"
+                return parse(Int, server_command(s.username, s.domain, cmd)[1])
+            end
         catch
             nothing
         end
@@ -312,17 +317,17 @@ function start(s::Server)
     end
     firstime = checktime()
 
+    p = "~/.julia/config/DFControl/$hostname/logs/errors.log"
     if s.domain != "localhost"
-        p = "~/.julia/config/DFControl/logs/daemon/$(hostname)"
         if server_command(s, `ls $p`).exitcode != 0
             server_command(s, `mkdir $p`)
         end
-        julia_cmd = """$(s.julia_exec) --startup-file=no -t auto -e "using DFControl; DFControl.Resource.run()" &> ~/.julia/config/DFControl/$(hostname)_errors.log"""
+        julia_cmd = """$(s.julia_exec) --startup-file=no -t auto -e "using DFControl; DFControl.Resource.run()" &> $p"""
         run(Cmd(`ssh -f $(ssh_string(s)) $julia_cmd`, detach=true))
     else
         scrpt = "using DFControl; DFControl.Resource.run()"
         e = s.julia_exec
-        julia_cmd = `$(e) --startup-file=no -t auto -e $(scrpt) '&''>' '~'/.julia/config/DFControl/$(hostname)_errors.log '&'`
+        julia_cmd = `$(e) --startup-file=no -t auto -e $(scrpt) '&''>' $(p) '&'`
         run(Cmd(julia_cmd, detach=true), wait=false)
     end
         
@@ -473,6 +478,43 @@ Base.abspath(s::Server, p) =
 function Base.mtime(s::Server, p)
     resp = HTTP.get(s, "/mtime/" * p)
     JSON3.read(resp.body, Float64)
+end
+
+function initialize_config_dir(s::Server)
+    if islocal(s)
+        ispath_(x) = ispath(x)
+        config_path_(x...) = config_path(x...)
+        touch_(x) = touch(x)
+        mkpath_(x) = mkpath(x)
+    else
+        ispath_(x) = server_command(s, `ls $x`).exitcode == 0
+        config_path_(x...) = (hostname = split(server_command(s, `hostname`).stdout)[1]; joinpath("~/.julia/config/DFControl/$hostname", x...))
+        mkpath_(x) = server_command(s, `mkdir -p $x`)
+        touch_(x) = server_command(s, `touch $x`)
+    end
+    if !ispath_(config_path_())
+        paths = [config_path_(),
+                 config_path_("jobs"),
+                 config_path_("workflows"),
+                 config_path_("logs"),
+                 config_path_("logs/"),
+                 config_path_("logs/jobs"),
+                 config_path_("logs/runtimes"),
+                 config_path_("storage"),
+                 config_path_("storage/servers"),
+                 config_path_("storage/execs"),
+                 config_path_("storage/pseudos"),
+                 config_path_("storage/environments")]
+
+        for p in paths
+            mkpath_(p)
+        end
+        for p in ("pending.txt", "archived.txt", "active.txt", "running.txt")
+            for t in ("jobs", "workflows")
+                touch_(config_path_(t, p))
+            end
+        end
+    end
 end
 
     
