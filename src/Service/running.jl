@@ -11,7 +11,7 @@ function main_loop(s::Server)
     end
 
     # Used to identify if multiple servers are running in order to selfdestruct 
-    log_mtimes = mtime.(joinpath.((config_path("logs/servers/$(gethostname())"),), readdir(config_path("logs/servers/$(gethostname())"))))
+    log_mtimes = mtime.(joinpath.((config_path("logs/runtimes/"),), readdir(config_path("logs/runtimes/"))))
     
     while true
         queue!(JOB_QUEUE[], s.scheduler, false)
@@ -49,7 +49,7 @@ function print_log(s, job_dirs_procs)
 end
 
 function monitor_issues(log_mtimes)
-    new_mtimes = mtime.(joinpath.((config_path("logs/servers/$(gethostname())"),), readdir(config_path("logs/servers/$(gethostname())"))))
+    new_mtimes = mtime.(joinpath.((config_path("logs/runtimes"),), readdir(config_path("logs/runtimes"))))
     if length(new_mtimes) != length(log_mtimes)
         @error "More Server logs got created signalling a server was started while a previous was running."
         touch(config_path("self_destruct"))

@@ -19,25 +19,25 @@ const QUEUE_FILE = config_path("jobs", "queue.json")
 const SLEEP_TIME = 10.0
 
 function daemon_logger()
-    p = config_path("logs/daemon/$(gethostname())")
+    p = config_path("logs/daemon")
     mkpath(p)
     FileLogger(joinpath(p, "daemon.log"); append = false)
 end
 
 function server_logger()
-    p = config_path("logs/servers/$(gethostname())")
+    p = config_path("logs/runtimes")
     mkpath(p)
     serverid = length(readdir(p)) + 1
     return FileLogger(config_path(joinpath(p, "$serverid.log")); append = false)
 end
 
 function restapi_logger()
-    p = config_path("logs/daemon/$(gethostname())")
+    p = config_path("logs/daemon")
     mkpath(p)
     FileLogger(joinpath(p, "restapi.log"); append = false)
 end
 function job_logger(id::Int)
-    p = config_path("logs/jobs/$(gethostname())")
+    p = config_path("logs/jobs")
     mkpath(p)
     FileLogger(joinpath(p, "$id.log"))
 end
