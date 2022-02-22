@@ -313,12 +313,18 @@ function start(s::Server)
     firstime = checktime()
 
     if s.domain != "localhost"
+        p = "~/.julia/config/DFControl/logs/daemon/$(hostname)"
+        if server_command(s, `ls $p`).exitcode != 0
+            server_command(s, `mkdir $p`)
+        end
         julia_cmd = """$(s.julia_exec) --startup-file=no -t auto -e "using DFControl; DFControl.Resource.run()" &> ~/.julia/config/DFControl/logs/daemon/$(hostname)/errors.log"""
         run(Cmd(`ssh -f $(ssh_string(s)) $julia_cmd`, detach=true))
     else
         scrpt = "using DFControl; DFControl.Resource.run()"
+        p = joinpath(homedir(), ".julia/config/DFControl/logs/daemon/", hostname)
+        mkpath(p)
         e = s.julia_exec
-        julia_cmd = `$(e) --startup-file=no -t auto -e $(scrpt) '&''>' '~'/.julia/config/DFControl/logs/$(hostname)/errors.log '&'`
+        julia_cmd = `$(e) --startup-file=no -t auto -e $(scrpt) '&''>' '~'/.julia/config/DFControl/logs/daemon/$(hostname)/errors.log '&'`
         run(Cmd(julia_cmd, detach=true), wait=false)
     end
         
