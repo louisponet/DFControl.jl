@@ -7,7 +7,7 @@
 using DFControl
 
 using UUIDs#hide
-s = Server(name="localhost", port=8080, domain = "localhost", scheduler = Servers.Bash(), uuid = string(uuid4()), julia_exec=Sys.BINDIR * "/julia")#hide
+s = Server(name=gethostname(), port=8080, domain = "localhost", scheduler = Servers.Bash(), uuid = string(uuid4()), julia_exec=Sys.BINDIR * "/julia")#hide
 if !exists(s)#hide
     save(s)#hide
     Servers.initialize_config_dir(s)#hide
@@ -16,7 +16,7 @@ end#hide
 tjob = load(Job(joinpath(splitdir(pathof(DFControl))[1], "..", "docs","src","assets", "job")))#hide
 tjob2 = load(Job(joinpath(splitdir(pathof(DFControl))[1], "..", "docs","src","assets", "Job2")))#hide
 if false#hide
-job = load(Server("localhost"), Job("job"))
+job = load(Server(gethostname()), Job("job"))
 else#hide
     global job = deepcopy(tjob)#hide
     job.dir= "job" #hide
