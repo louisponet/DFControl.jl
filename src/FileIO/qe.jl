@@ -62,12 +62,16 @@ function parse_Hubbard_block(f)
     occupations = []
     magmoms = []
     line = readline(f)
-    cur_spin = :up
-    while strip(line) != "--- exit write_ns ---"
+    # We start with signalling it's noncolin, then if the first spin 1 is found
+    # we change it to :up or :down. Otherwise we know it is just noncolin.
+    cur_spin = :noncolin
+    curid = 0
+    while !isempty(line) && strip(line) != "--- exit write_ns ---"
         line = readline(f)
-        if line[1:4] == "atom"
+        if occursin("Tr[ns", line)
+            curid += 1
             sline = split(line)
-            push!(ids, parse(Int, sline[2]))
+            push!(ids, curid)
             if occursin("up, down, total", line)
                 push!(traces,
                       NamedTuple{(:up, :down, :total)}(parse.(Float64,
@@ -76,66 +80,41 @@ function parse_Hubbard_block(f)
             else
                 push!(traces, (total = parse(Float64, sline[end]),))
             end
-            if occursin("spin", readline(f))
-                vals = [zeros(4), zeros(4)]  
-                vecs = [zeros(4,4), zeros(4,4)]  
-                occ  = [zeros(4,4), zeros(4,4)]  
-                for (is, spin) in enumerate((:up, :down))
-                    t = readline(f)# should be eigvals
-                    if strip(t)[1:4]  == "spin"
-                        readline(f)
-                    end
-                    vals[is] = parse.(Float64, split(readline(f)))
-                    dim = length(vals[is])
-                    readline(f) #eigvectors
-                    vecs[is] = zeros(dim, dim)
-                    for i in 1:dim
-                        vecs[is][i, :] = parse.(Float64, split(readline(f)))
-                    end
-                    readline(f) #occupations
-                    occ[is] = zeros(dim, dim)
-                    for i in 1:dim
-                        occ[is][i, :] = parse.(Float64, split(readline(f)))
-                    end
-                end
-                push!(magmoms, parse(Float64, split(readline(f))[end]))
-                push!(eigvals, (up = vals[1], down=vals[2]))
-                push!(eigvec, (up = vecs[1], down=vecs[2]))
-                push!(occupations, (up = occ[1], down=occ[2]))
+        elseif occursin("moment", line)
+            push!(magmoms, parse(Float64, split(line)[end]))
+        elseif occursin("atomic mx, my, mz", line)
+            push!(magmoms, parse.(Float64, split(line)[end-2:end]))
+        elseif occursin("spin", lowercase(line))
+            if parse(Int, line[end]) == 1
+                cur_spin = :up
             else
-                alleig = parse.(Float64, split(readline(f)))
-                dim = length(alleig)
-                if iseven(dim)
-                    push!(eigvals, (up = alleig[1:2:end], down = alleig[2:2:end]))
-                else
-                    push!(eigvals, alleig)
-                end
-                   
-                tmat = zeros(dim, dim)
-                readline(f)
-                for i in 1:dim
-                    tmat[i, :] = parse.(Float64, split(readline(f)))
-                end
-                if iseven(dim)
-                    push!(eigvec, (up = tmat[:,1:2:end], down = tmat[:,2:2:end]))
-                else
-                    push!(eigvec, copy(tmat))
-                end
-                    
-                readline(f)
-                for i in 1:dim
-                    tmat[i, :] = parse.(Float64, split(readline(f)))
-                end
-                if iseven(dim)
-                    push!(occupations, (up = tmat[:,1:2:end], down = tmat[:,2:2:end]))
-                else
-                    push!(occupations, copy(tmat))
-                end
-                if iseven(dim)
-                    push!(magmoms, parse.(Float64, split(readline(f))[end-2:end]))
-                else
-                    push!(magmoms, parse.(Float64, split(readline(f))[end]))
-                end
+                cur_spin = :down
+            end
+        elseif occursin("eigenvalues", line)
+            if cur_spin == :up  # means first spin
+                t = parse.(Float64, split(readline(f)))
+                vs = (up = t, down = zeros(length(t)))
+                push!(eigvals, vs)
+                push!(eigvec, (up = zeros(length(t), length(t)), down = zeros(length(t), length(t))))
+                push!(occupations, (up = zeros(length(t), length(t)), down = zeros(length(t), length(t))))
+            elseif cur_spin == :down
+                eigvals[curid].down .= parse.(Float64, split(readline(f)))
+            else
+                vs = parse.(Float64, split(readline(f)))
+                push!(eigvals, vs)
+                l = length(vs)
+                push!(eigvec, zeros(l, l))
+                push!(occupations, zeros(l, l))
+            end
+        elseif occursin("eigenvectors", line)
+            v = cur_spin == :noncolin ? eigvec[curid] : eigvec[curid][cur_spin]
+            for i = 1:size(v, 1)
+                v[i, :] .= parse.(Float64, split(readline(f)))
+            end
+        elseif occursin("occupation matrix", line)
+            v = cur_spin == :noncolin ? occupations[curid] : occupations[curid][cur_spin]
+            for i = 1:size(v, 1)
+                v[i, :] .= parse.(Float64, split(readline(f)))
             end
         end
     end
@@ -522,6 +501,7 @@ const QE_PW_PARSE_FUNCTIONS = ["C/m^2" => qe_parse_polarization,
                                "Begin final coordinates" => (x, y, z) -> x[:converged] = true,
                                "atom number" => qe_parse_magnetization,
                                "--- enter write_ns ---" => qe_parse_Hubbard,
+                               "HUBBARD OCCUPATIONS" => qe_parse_Hubbard,
                                "Hubbard energy" => qe_parse_Hubbard_energy,
                                "init_run" => qe_parse_timing,
                                "Starting magnetic structure" => qe_parse_starting_magnetization,
