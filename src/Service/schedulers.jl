@@ -3,7 +3,10 @@ using ..Servers: Bash, Slurm, Scheduler
 function queue!(q, s::Scheduler, init)
     if init
         if ispath(QUEUE_FILE)
-            copy!(q, JSON3.read(read(QUEUE_FILE), Dict{String, Tuple{Int, Jobs.JobState}}))
+            t = read(QUEUE_FILE)
+            if !isempty(t)
+                copy!(q, JSON3.read(read(QUEUE_FILE), Dict{String, Tuple{Int, Jobs.JobState}}))
+            end
         end
     end
     for (dir, info) in q
