@@ -1029,14 +1029,17 @@ function separate(f, A::AbstractVector{T}) where {T}
 end
 
 """
-    qe_read_calculation(filename, T=Float64; exec=Exec(exec="pw.x"), run=true, structure_name="noname")
+    qe_read_calculation(file)
 
 Reads a Quantum Espresso calculation file. The `QE_EXEC` inside execs gets used to find which flags are allowed in this calculation file, and convert the read values to the correct Types.
 Returns a `Calculation{QE}` and the `Structure` that is found in the calculation.
 """
-function qe_read_calculation(filename; exec = Exec(; exec = "pw.x"), outfile=splitext(splitdir(filename)[2])[1] * ".out", kwargs...)
-    @assert ispath(filename) "$filename is not a valid path."
-    contents = readlines(filename)
+function qe_read_calculation(file)
+    if !occursin("\n", file)
+        contents = readlines(file)
+    else
+        contents = split(file, "\n")
+    end
 
     lines = map(contents) do l
         id = findfirst(isequal('!'), l)
@@ -1083,22 +1086,15 @@ function qe_read_calculation(filename; exec = Exec(; exec = "pw.x"), outfile=spl
 
         pseudos = Dict{Symbol,String}()
         pseudo_match = find_pop!("pseudo_dir")
-        if pseudo_match === nothing 
-            pseudo_dir = splitdir(filename)[1]
-        else
-            pseudo_dir = strip(pseudo_match.captures[end], ''')
-            if pseudo_dir == "."
-                pseudo_dir = splitdir(filename)[1]
-            end
-        end
+        pseudo_dir = pseudo_match !== nothing ? strip(pseudo_match.captures[end], ''') : "."
 
         atsyms = Symbol[]
         for k in 1:ntyp
             push!(used_lineids, i_species + k)
             sline = strip_split(lines[i_species + k])
             atsym = Symbol(sline[1])
-            ppath = joinpath(pseudo_dir, sline[end])
-            pseudos[atsym] = ispath(ppath) ? read(ppath, String) : ""
+            ppath = pseudo_dir != "." ? joinpath(pseudo_dir, sline[end]) : sline[end]
+            pseudos[atsym] = ppath
             push!(atsyms, atsym)
         end
 
@@ -1194,10 +1190,7 @@ function qe_read_calculation(filename; exec = Exec(; exec = "pw.x"), outfile=spl
     end
 
     pop!.((flags,), [:prefix, :outdir], nothing)
-    dir, file = splitdir(filename)
-    name = splitext(file)[1]
-    return Calculation(; name = name, flags = flags,
-                           data = datablocks, exec = exec, infile=file, outfile=outfile, kwargs...), structure
+    return (flags = flags, data = datablocks, structure = structure)
 end
 
 function qe_writeflag(f, flag, value)

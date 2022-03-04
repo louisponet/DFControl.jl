@@ -23,15 +23,23 @@ function load(server::Server, j::Job)
     if !ispath(server, joinpath(dir, "job.tt"))
         
         @warn "No valid job found in $dir. Here are similar options:"
-        return first.(registered_jobs(server, dir))
+        return first.(registered_jobs(server, j.dir))
     end
-    resp = HTTP.get(server, "/jobs/" * abspath(server, dir))
+    resp = HTTP.get(server, "/jobs/" * dir)
     # Supplied dir was not a valid path, so we ask
     # previously registered jobs on the server that
     # contain dir.
-    job = Job(JSON3.read(resp.body))
-    job.server = server.name
-    return job
+    t           = JSON3.read(resp.body)
+    name        = t[:name]
+    header      = t[:header]
+    environment = t[:environment]
+    calculations, structure = FileIO.parse_calculations(t[:calculations])
+    for a in structure.atoms
+        a.pseudo = get(t[:pseudos], a.pseudo, "")
+    end
+    version = j.version == -1 ? last_version(server, j.dir) : j.version
+    
+    return Job(name, structure, calculations, j.dir, header, version, j.copy_temp_folders, server.name, environment)
 end
 
 function request_job_dir(dir::String, server::Server)

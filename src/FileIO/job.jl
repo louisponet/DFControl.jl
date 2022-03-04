@@ -311,19 +311,18 @@ end
 function parse_calculations(calcs)
     structures = Structure[]
     outcalcs = Calculation[]
-    for (ic, calc) in enumerate(calcs)
-        infile = splitpath(calc.infile)[end]
-        if Calculations.is_wannier_exec(calc.exec) && !isempty(outcalcs) && outcalcs[end].infile == infile
+    for calc in calcs
+        exec = Exec(calc[:exec])
+        infile = splitpath(calc[:infile])[end]
+        if Calculations.is_wannier_exec(exec) && !isempty(outcalcs) && outcalcs[end].infile == infile
             Calculations.set_flags!(outcalcs[end], :preprocess => outcalcs[end].run, print=false)
             empty!(outcalcs[end].exec.flags)
         else
-            c = calculationparser(calc.exec)(calc.infile; exec = calc.exec, infile = infile, outfile = splitext(splitpath(calc.outfile)[end])[1] *".out", run = calc.run)
-            if c[2] !== nothing
-                push!(structures, c[2])
+            c = calculationparser(exec)(calc[:contents])
+            if c.structure !== nothing
+                push!(structures, c.structure)
             end
-            if c[1] !== nothing
-                push!(outcalcs, c[1])
-            end
+            push!(outcalcs, Calculation(calc[:name], c.flags, c.data, exec, calc[:run], calc[:infile], calc[:outfile]))
         end
     end
     if !isempty(structures)
@@ -332,6 +331,7 @@ function parse_calculations(calcs)
         structure = Structure()
         @warn "No valid structures could be read from calculation files."
     end
+    
     return (calculations = outcalcs, structure=structure)
 end
 

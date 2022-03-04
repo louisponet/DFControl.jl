@@ -79,7 +79,7 @@ function extract_structure(cell_block, atoms_block, projections_block,
     return Structure(Mat3(cell), atoms)
 end
 
-function wan_read_calculation(::Type{T}, f::IO) where {T}
+function wan_read_calculation(f::IO)
     flags       = Dict{Symbol,Any}()
     data        = InputData[]
     atoms_block = nothing
@@ -125,7 +125,7 @@ function wan_read_calculation(::Type{T}, f::IO) where {T}
 
             elseif block_name == :kpoint_path
                 line = readline(f)
-                k_path_array = Array{Tuple{Symbol,Array{T,1}},1}()
+                k_path_array = Array{Tuple{Symbol,Array{Float64,1}},1}()
                 while !occursin("end", lowercase(line))
                     if occursin("!", line) || line == ""
                         line = readline(f)
@@ -133,9 +133,9 @@ function wan_read_calculation(::Type{T}, f::IO) where {T}
                     end
                     split_line = split(line)
                     push!(k_path_array,
-                          (Symbol(split_line[1]), parse_string_array(T, split_line[2:4])))
+                          (Symbol(split_line[1]), parse.(Float64, split_line[2:4])))
                     push!(k_path_array,
-                          (Symbol(split_line[5]), parse_string_array(T, split_line[6:8])))
+                          (Symbol(split_line[5]), parse.(Float64, split_line[6:8])))
                     line = readline(f)
                 end
                 push!(data, InputData(:kpoint_path, :none, k_path_array))
@@ -149,9 +149,9 @@ function wan_read_calculation(::Type{T}, f::IO) where {T}
                 else
                     option = :ang
                 end
-                cell_param = Matrix{T}(undef, 3, 3)
+                cell_param = Matrix{Float64}(undef, 3, 3)
                 for i in 1:3
-                    cell_param[i, :] = parse_line(T, line)
+                    cell_param[i, :] = parse_line(Float64, line)
                     line = readline(f)
                 end
                 cell_block = InputData(:unit_cell_cart, option, Mat3(cell_param))
@@ -160,7 +160,7 @@ function wan_read_calculation(::Type{T}, f::IO) where {T}
 
             elseif block_name == :atoms_frac || block_name == :atoms_cart
                 line   = readline(f)
-                atoms  = Dict{Symbol,Array{Point3{T},1}}()
+                atoms  = Dict{Symbol,Array{Point3{Float64},1}}()
                 option = :ang
                 while !occursin("end", lowercase(line))
                     if occursin("!", line) || line == ""
@@ -174,7 +174,7 @@ function wan_read_calculation(::Type{T}, f::IO) where {T}
                     end
                     split_line = strip_split(line)
                     atom       = Symbol(split_line[1])
-                    position   = Point3(parse_string_array(T, split_line[2:4]))
+                    position   = Point3(parse.(Float64, split_line[2:4]))
                     if !haskey(atoms, atom)
                         atoms[atom] = [position]
                     else
@@ -187,13 +187,13 @@ function wan_read_calculation(::Type{T}, f::IO) where {T}
 
             elseif block_name == :kpoints
                 line     = readline(f)
-                k_points = Array{NTuple{3,T},1}()
+                k_points = Array{NTuple{3,Float64},1}()
                 while !occursin("end", lowercase(line))
                     if line == ""
                         line = readline(f)
                         continue
                     end
-                    push!(k_points, (parse_line(T, line)...,))
+                    push!(k_points, (parse_line(Float64, line)...,))
                     line = readline(f)
                 end
                 push!(data, InputData(:kpoints, :none, k_points))
@@ -213,31 +213,31 @@ function wan_read_calculation(::Type{T}, f::IO) where {T}
     return (flags=flags, data=data, atoms=atoms_block, cell=cell_block, projections=proj_block)
 end
 
-wan_read_calculation(f::IO) = wan_read_calculation(Float64, f)
-
 """
-    wan_read_calculation(filename::String, T=Float64; run=true, exec=Exec(exec="wannier90.x"), structure_name="NoName")
+    wan_read_calculation(file::String)
 
 Reads a `Calculation{Wannier90}` and the included `Structure` from a WANNIER90 calculation file.
 """
-function wan_read_calculation(filename::String, T = Float64;
+function wan_read_calculation(file::String;
                               exec = Exec(; exec = "wannier90.x"), kwargs...)
     flags       = Dict{Symbol,Any}()
     data        = InputData[]
     atoms_block = nothing
     cell_block  = nothing
     proj_block  = nothing
-    open(filename, "r") do f
-        return flags, data, atoms_block, cell_block, proj_block = wan_read_calculation(T, f)
+    if !occursin("\n", file) && ispath(file)
+        f = open(file, "r")
+        flags, data, atoms_block, cell_block, proj_block = wan_read_calculation(f)
+        close(f)
+    else
+        b = IOBuffer(file)
+        flags, data, atoms_block, cell_block, proj_block = wan_read_calculation(b)
+        close(b)
     end
+        
     structure = extract_structure(cell_block, atoms_block, proj_block,
                                   get(flags, :spinors, false))
-    dir, file = splitdir(filename)
-    flags[:preprocess] = Calculations.hasflag(exec,
-                                              :pp) ? true : false
-    name = splitext(file)[1]
-    return Calculation(; name = name, flags = flags, infile = name*".win", outfile = name*".wout",
-                                  data = data, exec = exec, kwargs...), structure
+    return (flags = flags, data = data, structure = structure)
 end
 
 function wan_parse_array_value(eltyp, value_str)

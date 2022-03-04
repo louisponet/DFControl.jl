@@ -42,19 +42,18 @@ The `kwargs...` will be passed to the [`Job`](@ref) constructor.
     calculations::Vector{Calculation} = Calculation[]
     dir::String = pwd()
     header::Vector{String} = String[]
-    metadata::Dict{Symbol,Any} = Dict{Symbol,Any}()
     version::Int = -1
     copy_temp_folders::Bool = false
     server::String = gethostname()
     environment::String = ""
-    function Job(name, structure, calculations, dir, header, metadata, version,
+    function Job(name, structure, calculations, dir, header, version,
                  copy_temp_folders, server, environment)
         if !isempty(dir)
             if dir[end] == '/'
                 dir = dir[1:end-1]
             end
         end
-        out = new(name, structure, calculations, dir, header, metadata, version,
+        out = new(name, structure, calculations, dir, header, version,
                   copy_temp_folders, server, environment)
         return out
     end
@@ -71,8 +70,6 @@ function Job(job_name::String, structure::Structure, calculations::Vector{<:Calc
     return out
 end
 Job(dir::AbstractString; kwargs...) = Job(;dir=dir, kwargs...)
-Job(dict::JSON3.Object) = Job(dict[:name], Structure(dict[:structure]), Calculation.(dict[:calculations]), dict[:dir], dict[:header],
-                              Dict(dict[:metadata]), dict[:version], dict[:copy_temp_folders], dict[:server], dict[:environment])
 
 StructTypes.StructType(::Type{Job}) = StructTypes.Mutable()
 

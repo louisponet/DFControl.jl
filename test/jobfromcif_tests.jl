@@ -65,6 +65,7 @@ testjobpath = joinpath(testdir, "testassets", "test_job")
     save(job)
 
     job2 = load(test_server, Job(abspath(job)))
+    
     for (c1, c2) in zip(job2.calculations, job.calculations)
         @test c1 == c2
     end

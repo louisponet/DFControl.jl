@@ -1,4 +1,4 @@
-function load(job::Job)
+function read_job_info(job::Job)
     job_dir = job.dir
     orig_dir = job_dir
     scriptpath = joinpath(job_dir, "job.tt")
@@ -10,17 +10,38 @@ function load(job::Job)
     metadata::Dict{Symbol, Any} = ispath(joinpath(job_dir, ".metadata.jld2")) ? JLD2.load(joinpath(job_dir, ".metadata.jld2"))["metadata"] : Dict{Symbol, Any}()
 
     name, tcalcs, header, environment = FileIO.read_job_script(scriptpath)
-    calculations, structure = FileIO.parse_calculations(tcalcs)
-    job = Job(name         = name,
-              dir          = orig_dir,
-              version      = version,
-              metadata     = metadata,
-              structure    = structure,
-              calculations = calculations,
-              header       = header,
-              environment  = environment)
-    return job
+    cs = map(tcalcs) do x
+        infile = splitdir(x.infile)[2]
+        outfile = splitdir(x.outfile)[2]
+        return (name = splitext(infile)[1], infile = infile, outfile = outfile, contents = read(x.infile, String), exec=x.exec, run=x.run)
+    end
+    
+    # TODO Define a better way of working with pseudos
+    upf_files = filter(x->occursin(".UPF",x), readdir(job_dir))
+    pseudos = Dict([n => read(joinpath(job_dir, n), String) for n in upf_files])
+    
+    return Dict(:name => name,
+                :version => version,
+                :header => header,
+                :environment => environment,
+                :calculations => cs,
+                :pseudos => pseudos) 
 end
+
+function load(job::Job)
+    inf = read_job_info(job)
+    
+    name        = inf[:name]
+    header      = inf[:header]
+    environment = inf[:environment]
+    calculations, structure = FileIO.parse_calculations(inf[:calculations])
+    for a in structure.atoms
+        a.pseudo = get(inf[:pseudos], a.pseudo, "")
+    end
+    return Job(name, structure, calculations, job.dir, header, inf[:version], job.copy_temp_folders, job.server, environment)
+    
+end
+
 function save(jobdir::String, files; kwargs...)
 
     if jobdir[end] == '/'

@@ -194,7 +194,7 @@ Set `flag` in all the appropriate calculations to the `value`.
 Base.setindex!(c::Calculation, dat, key) = set_flags!(c, key => dat)
 
 """
-    set_flags!(c::Calculation, flags::Pair{Symbol, Any}...; print=true)
+    set_flags!(c::Calculation, flags::Pair{Symbol, Any}...; print=true, force=false)
 
 Sets multiple flags in one go. Flag validity and type are verified.
 
@@ -204,9 +204,9 @@ Sets multiple flags in one go. Flag validity and type are verified.
 Sets the flags in the names to the flags specified.
 This only happens if the specified flags are valid for the names.
 
-The values that are supplied will be checked whether they are valid.
+If `force=false`, the values that are supplied will be checked whether they are valid, otherwise they will always be set.
 """
-function set_flags!(c::Calculation{T}, flags...; print = true) where {T}
+function set_flags!(c::Calculation{T}, flags...; print = true, force=false) where {T}
     found_keys = Symbol[]
     for (flag, value) in flags
         flag_type = flagtype(c, flag)
@@ -242,8 +242,12 @@ function set_flags!(c::Calculation{T}, flags...; print = true) where {T}
             c.flags[flag] = value
             print && (@info "$(c.name): -> $flag:\n      $old_data set to: $value\n")
         else
-            print &&
-                @warn "Flag $flag was ignored since it could not be found in the allowed flags for calculation $(c.name)"
+            if !force
+                print &&
+                    @warn "Flag $flag was ignored since it could not be found in the allowed flags for calculation $(c.name)"
+            else
+                c.flags[flag] = value
+            end
         end
     end
     return found_keys, c
