@@ -1243,12 +1243,20 @@ function save(calculation::Calculation{QE}, structure,
 
         controls = Dict{Symbol,Dict{Symbol,Any}}()
 
-        for (flag, val) in calculation.flags
-            block, variable = Calculations.qe_block_variable(calculation, flag)
-            if !haskey(controls, block.name)
-                controls[block.name] = Dict{Symbol,Any}()
+        function add_flag(block, flag, val)
+            if !haskey(controls, block)
+                controls[block] = Dict{Symbol,Any}()
             end
-            controls[block.name][flag] = val
+            controls[block][flag] = val
+        end
+            
+        for (flag, val) in calculation.flags
+            if val isa NamedTuple
+                add_flag(val.block, flag, val.value)
+            else
+                block, variable = Calculations.qe_block_variable(calculation, flag)
+                add_flag(block.name, flag, val)
+            end
         end
 
         #Here we try to figure out the correct order of the control blocks

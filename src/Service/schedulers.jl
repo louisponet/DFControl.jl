@@ -34,11 +34,15 @@ function Servers.jobstate(::Bash, id::Int)
     return p.exitcode == 1 ? Jobs.Completed : Jobs.Running
 end
 
-Servers.submit(b::Bash, j::String) = 
+Servers.submit(::Bash, j::String) = 
     Int(getpid(run(Cmd(`bash job.tt`, detach=true, dir=j), wait=false)))
 
-Servers.abort(b::Bash, id::Int) = 
-    run(`pkill $id`)
+function Servers.abort(::Bash, id::Int)
+    pids = [parse(Int, split(s)[1]) for s in readlines(`ps -s $id`)[2:end]]
+    for p in pids
+        run(ignorestatus(`kill $p`))
+    end
+end
 
 ## SLURM ##
 function Servers.jobstate(::Slurm, id::Int)
