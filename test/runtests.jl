@@ -23,28 +23,28 @@ testdir = @__DIR__
         sleep(0.1)
     end
     testserver = Server(gethostname())
-    @time @testset "constants" begin
+    @testset "constants" begin
         include("constant_tests.jl")
     end
-    @time @testset "documenation" begin
+    @testset "documenation" begin
         include("documentation_tests.jl")
     end
-    @time @testset "Setting defaults" begin
+    @testset "Setting defaults" begin
         include("defaults_tests.jl")
     end
-    @time @testset "Database" begin
+    @testset "Database" begin
         include("database_tests.jl")
     end
-    @time @testset "Job from CIF file" begin
+    @testset "Job from CIF file" begin
         include("jobfromcif_tests.jl")
     end
-    @time @testset "Display tests" begin
+    @testset "Display tests" begin
         include("display_tests.jl")
     end
-    @time @testset "Job control tests" begin
+    @testset "Job control tests" begin
         include("job_control_tests.jl")
     end
-    @time @testset "Remove defaults" begin
+    @testset "Remove defaults" begin
         include("rmdefaults_tests.jl")
     end
     include("cleanup.jl")

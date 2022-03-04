@@ -1034,7 +1034,7 @@ end
 Reads a Quantum Espresso calculation file. The `QE_EXEC` inside execs gets used to find which flags are allowed in this calculation file, and convert the read values to the correct Types.
 Returns a `Calculation{QE}` and the `Structure` that is found in the calculation.
 """
-function qe_read_calculation(filename; exec = Exec(; exec = "pw.x"), outfile=splitext(filename)[1] * ".out", kwargs...)
+function qe_read_calculation(filename; exec = Exec(; exec = "pw.x"), outfile=splitext(splitdir(filename)[2])[1] * ".out", kwargs...)
     @assert ispath(filename) "$filename is not a valid path."
     contents = readlines(filename)
 
@@ -1110,7 +1110,7 @@ function qe_read_calculation(filename; exec = Exec(; exec = "pw.x"), outfile=spl
         atoms = Tuple{Symbol,Point3{Float64}}[]         
         for k in 1:nat
             push!(used_lineids, i_positions + k)
-            sline = split(lines[i_positions+k])
+            sline = split(lines[i_positions + k])
             atsym = Symbol(sline[1])
             point = Point3(parse.(Float64, sline[2:4]))
             push!(atoms, (atsym, point))
@@ -1121,42 +1121,42 @@ function qe_read_calculation(filename; exec = Exec(; exec = "pw.x"), outfile=spl
 
     for m in matches
         sym = Symbol(m.captures[1])
-        typ = Calculations.flagtype(QE, exec, sym)
-        v   = typ == String ? m.captures[3] : lowercase(m.captures[3])
-        # normal flag
-        if eltype(typ) <: Bool
-            v = replace(v, "." => "")
-        elseif eltype(typ) <: Number
-            v = replace(v, "d" => "e")
-        elseif typ === Nothing
-            @warn "Flag $sym not found in allowed flags and will be ignored."
-            continue
-        end
-        if typ <: AbstractArray
-            typ = eltype(typ)
-        end
-        tval = typ != String ? parse.((typ,), split(v)) : strip(v, ''')
-        parsed_val = length(tval) == 1 ? tval[1] : tval
-        
-        if m.captures[2] === nothing
-            flags[sym] = parsed_val
+        if occursin("'", m.captures[3])
+            flags[sym] = strip(m.captures[3], ''')
         else
-            # Since arrays can be either ntyp or nat dimensionally, we
-            # assume nat since that's the biggest, similarly we assume
-            # 7,4,nat for the multidim arrays
-            ids = parse.(Int, split(m.captures[2], ","))
-            if !haskey(flags, sym)
-                if length(ids) == 1
-                    flags[sym] = length(parsed_val) == 1 ? zeros(typ, nat) : fill(zeros(typ, length(parsed_val)), nat)
-                elseif length(ids) == 2
-                    flags[sym] = length(parsed_val) == 1 ? zeros(typ, nat, nat) : fill(zeros(typ, length(parsed_val)), nat, nat)
-                elseif length(ids) == 3
-                    flags[sym] = zeros(typ, 7, 4, nat)
-                elseif length(ids) == 4
-                    flags[sym] = zeros(typ, 7, 7, 4, nat)
-                end
+            # normal flag
+            v = replace(replace(replace(lowercase(m.captures[3]), ".true." => "true"), ".false." => "false"), "'" => "")
+            
+            if match(r"\d\.?d-?\d", v) !== nothing # At least one number present
+                v = replace(v, "d" => "e")
             end
-            flags[sym][ids...] = parsed_val
+            if match(r".\s+.", v) !== nothing # Multiple entries
+                parsed_val = Meta.parse.(split(v))
+            else
+                tval = Meta.parse(v)
+                parsed_val = tval isa Symbol ? string(tval) : tval
+            end
+            
+            if m.captures[2] === nothing
+                flags[sym] = parsed_val
+            else
+                # Since arrays can be either ntyp or nat dimensionally, we
+                # assume nat since that's the biggest, similarly we assume
+                # 7,4,nat for the multidim arrays
+                ids = parse.(Int, split(m.captures[2], ","))
+                if !haskey(flags, sym)
+                    if length(ids) == 1
+                        flags[sym] = length(parsed_val) == 1 ? zeros(nat) : fill(zeros(length(parsed_val)), nat)
+                    elseif length(ids) == 2
+                        flags[sym] = length(parsed_val) == 1 ? zeros(nat, nat) : fill(zeros(length(parsed_val)), nat, nat)
+                    elseif length(ids) == 3
+                        flags[sym] = zeros(7, 4, nat)
+                    elseif length(ids) == 4
+                        flags[sym] = zeros(7, 7, 4, nat)
+                    end
+                end
+                flags[sym][ids...] = parsed_val
+            end
         end
     end
     

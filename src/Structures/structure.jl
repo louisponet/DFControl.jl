@@ -23,7 +23,7 @@ end
 StructTypes.StructType(::Type{Structure}) = StructTypes.Struct()
 
 function Base.:(==)(str1::Structure, str2::Structure)
-    return str1.cell == str2.cell && str1.atoms == str2.atoms
+    return norm(str1.cell - str2.cell) < 1e-6Ang && str1.atoms == str2.atoms
 end
 
 "Uses cif2cell to Meta.parse a cif file, then returns the parsed structure."

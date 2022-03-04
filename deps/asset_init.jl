@@ -11,7 +11,7 @@ end
 function fort2julia(f_type)
     f_type = lowercase(f_type)
     if f_type == "real"
-        return Float32
+        return Float64
     elseif f_type == "real(kind=dp)"
         return Float64
     elseif f_type == "complex(kind=dp)"

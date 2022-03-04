@@ -73,18 +73,6 @@ Creates a new [`Calculation`](@ref) from the `template`, setting the `flags` of 
     run::Bool = true
     infile::String = name * ".in"
     outfile::String = name * ".out"
-    function Calculation{p}(name, flags, data, exec, run, infile,
-                            outfile) where {p}
-        out = new{p}(name, Dict{Symbol,Any}(), data, exec, run, infile,
-                     outfile)
-        set_flags!(out, flags...; print = false)
-        for (f, v) in flags
-            if !hasflag(out, f)
-                @warn "Flag $f was not valid for calculation $name."
-            end
-        end
-        return out
-    end
 end
 
 function Calculation(name, flags, data, exec, run, infile,
@@ -102,7 +90,7 @@ function Calculation(name, flags, data, exec, run, infile,
 end
 
 function Calculation(name, flags...; kwargs...)
-    return Calculation(; name = name, flags = flags, kwargs...)
+    return Calculation(; name = name, flags = Dict(flags), kwargs...)
 end
 
 function Calculation(template::Calculation, name, newflags...;
@@ -266,8 +254,7 @@ function convert_flags!(calculation::Calculation)
     for (flag, value) in calculation.flags
         flagtype_ = flagtype(calculation, flag)
         if flagtype_ == Nothing
-            @warn "Flag $flag was not found in allowed flags for exec $(calculation.exec). Removing flag."
-            rm_flags!(calculation, flag)
+            @warn "Flag $flag was not found in allowed flags for exec $(calculation.exec)."
             continue
         end
         if !(isa(value, flagtype_) || eltype(value) <: flagtype_)
@@ -293,7 +280,7 @@ function Base.:(==)(d1::InputData, d2::InputData)
 end
 
 function Base.:(==)(i1::Calculation, i2::Calculation)
-    return all(x -> x in (:outdata, :dir, :run) ? true : getfield(i1, x) == getfield(i2, x),
+    return all(x -> getfield(i1, x) == getfield(i2, x),
                fieldnames(Calculation))
 end
 
