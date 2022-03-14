@@ -1031,7 +1031,9 @@ end
 function qe_parse_flags(inflags, nat::Int=0)
     flags = Dict{Symbol, Any}()
 
-    for (sym, m) in inflags
+    for m_ in inflags
+        sym = Symbol(m_.captures[1])
+        m = m_.captures[2:end]
         if occursin("'", m[2])
             flags[sym] = strip(m[2], ''')
         else
@@ -1097,20 +1099,20 @@ function qe_read_calculation(file)
      
     flagreg = r"([\w\d]+)(?:\(((?:\s*,*\d+\s*,*)*)\))?\s*=\s*([^!,\n]*)"
     unused_ids = Int[]
-    flagmatches = Dict{Symbol, Dict{Symbol, Vector{Union{Nothing, String}}}}()
+    flagmatches = Dict{Symbol, Vector{RegexMatch}}()
     curv = nothing
     blockreg = r"&([\w\d]+)"
     for (i, l) in enumerate(lines)
         m = match(blockreg, l)
         if m !== nothing
             block = Symbol(lowercase(m.captures[1]))
-            flagmatches[block] = Dict{Symbol, Vector{String}}()
+            flagmatches[block] = RegexMatch[]
             curv = flagmatches[block]
             continue
         end
         m = match(flagreg, l)
         if m !== nothing
-            curv[Symbol(m.captures[1])] = m.captures[2:end]
+            push!(curv, m)
             continue
         end
         push!(unused_ids, i)
@@ -1132,9 +1134,9 @@ function qe_read_calculation(file)
     end
     if haskey(flagmatches, :system)
         sysblock = pop!(flagmatches, :system)
-        nat = parse(Int, pop!(sysblock, :nat)[end])
-        ntyp = parse(Int, pop!(sysblock, :ntyp)[end])
-        ibrav = parse(Int, pop!(sysblock, :ibrav)[end])
+        nat = parse(Int, getfirst(x -> x.captures[1] == "nat", sysblock).captures[end])
+        ntyp = parse(Int, getfirst(x -> x.captures[1] == "ntyp", sysblock).captures[end])
+        ibrav = parse(Int, getfirst(x -> x.captures[1] == "ibrav", sysblock).captures[end])
         @assert ibrav == 0 || ibrav === nothing "ibrav different from 0 not allowed."
         i_species = findcard("atomic_species")
         i_cell = findcard("cell_parameters")
@@ -1172,7 +1174,7 @@ function qe_read_calculation(file)
         sysflags = qe_parse_flags(sysblock, nat)
         structure = extract_structure!(sysflags, (option = cell_option, data=cell), atsyms,
                                    (option = atoms_option, data=atoms), (data=pseudos,))
-        delete!.((sysflags,), [:A, :celldm_1, :celldm])
+        delete!.((sysflags,), (:A, :celldm_1, :celldm, :ibrav, :nat, :ntyp))
         delete!.((sysflags,),
                  [:Hubbard_U, :Hubbard_J0, :Hubbard_alpha, :Hubbard_beta, :Hubbard_J])
         delete!.((sysflags,), [:starting_magnetization, :angle1, :angle2, :nspin]) #hubbard and magnetization flags

@@ -120,16 +120,31 @@ function df_show(io::IO, job::Job)
 end
 
 function write_flags(io, fls, prestr = "")
-    fl = maximum(length.(string.(keys(fls))))
+    flags = String[]
+    vals  = String[]
     for (f, v) in fls
-        fs = string(f)
+        if v isa AbstractArray
+            for i in findall(!iszero, v)
+                push!(flags, string(f) * "($(join(Tuple(i), ",")))")
+                push!(vals, string(v[i]))
+            end
+        else
+            push!(flags, string(f))
+            push!(vals, string(v))
+        end
+    end
+    fl = maximum(length, flags)
+    sp = sortperm(flags, by=length)
+    for s in sp
+        fs, v = flags[s], vals[s]
         l = length(fs)
         for i in 1:fl-l
             fs *= " "
         end
-        dfprintln(io, crayon"cyan", prestr * "\t$fs", crayon"yellow", " => ",
-                  crayon"magenta", "$v")
+        dfprintln(io, crayon"cyan", prestr * "  $fs", crayon"yellow", " => ",
+                  crayon"magenta", v, crayon"reset")
     end
+    dfprintln(io,"")
 end
 
 function df_show(io::IO, c::Calculation)
@@ -146,8 +161,9 @@ function df_show(io::IO, c::Calculation)
         for (b, bflags) in c.flags
             if bflags isa Dict
                 if !isempty(bflags)
-                    dfprintln(io, crayon"green", "\t&$b", crayon"reset")
-                    write_flags(io, bflags, "\t\t")
+                    dfprintln(io, crayon"green", "  &$b", crayon"reset")
+                    write_flags(io, bflags, "  ")
+                    
                 end
             else
                 write_flags_separately = true
