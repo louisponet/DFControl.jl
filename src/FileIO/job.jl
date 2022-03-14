@@ -331,7 +331,7 @@ function parse_calculations(calcs)
         structure = Structure()
         @warn "No valid structures could be read from calculation files."
     end
-    
+    Calculations.rm_tmp_flags!.(outcalcs)    
     return (calculations = outcalcs, structure=structure)
 end
 

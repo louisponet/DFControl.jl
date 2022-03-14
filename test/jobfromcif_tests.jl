@@ -21,7 +21,7 @@ testjobpath = joinpath(testdir, "testassets", "test_job")
                                       data = [InputData(:k_points, :automatic,
                                                         [6, 6, 6, 1, 1, 1])]),
                     Calculation(; name = "scf", exec = pw_exec,
-                                      flags = Dict(:calculation => "scf", :verbosity => "high"),
+                                      flags = Dict(:control => Dict(:calculation => "scf", :verbosity => "high")),
                                       data = [InputData(:k_points, :automatic,
                                                         [4, 4, 4, 1, 1, 1])])]
     job = Job(name, str, calculations, :ecutwfc => 40.0, :occupations => "smearing", :degauss=>0.01, :conv_thr => 1e-6, :nbnd => 18;

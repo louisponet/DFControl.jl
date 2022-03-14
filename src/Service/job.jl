@@ -30,7 +30,6 @@ end
 
 function load(job::Job)
     inf = read_job_info(job)
-    
     name        = inf[:name]
     header      = inf[:header]
     environment = inf[:environment]

@@ -1028,6 +1028,51 @@ function separate(f, A::AbstractVector{T}) where {T}
     return reverse(true_part), reverse(false_part)
 end
 
+function qe_parse_flags(inflags, nat::Int=0)
+    flags = Dict{Symbol, Any}()
+
+    for (sym, m) in inflags
+        if occursin("'", m[2])
+            flags[sym] = strip(m[2], ''')
+        else
+            # normal flag
+            v = replace(replace(replace(lowercase(m[2]), ".true." => "true"), ".false." => "false"), "'" => "")
+            
+            if match(r"\d\.?d-?\d", v) !== nothing # At least one number present
+                v = replace(v, "d" => "e")
+            end
+            if match(r".\s+.", v) !== nothing # Multiple entries
+                parsed_val = Meta.parse.(split(v))
+            else
+                tval = Meta.parse(v)
+                parsed_val = tval isa Symbol ? string(tval) : tval
+            end
+            
+            if m[1] === nothing
+                flags[sym] = parsed_val
+            else
+                # Since arrays can be either ntyp or nat dimensionally, we
+                # assume nat since that's the biggest, similarly we assume
+                # 7,4,nat for the multidim arrays
+                ids = parse.(Int, split(m[1], ","))
+                if !haskey(flags, sym)
+                    if length(ids) == 1
+                        flags[sym] = length(parsed_val) == 1 ? zeros(nat) : fill(zeros(length(parsed_val)), nat)
+                    elseif length(ids) == 2
+                        flags[sym] = length(parsed_val) == 1 ? zeros(nat, nat) : fill(zeros(length(parsed_val)), nat, nat)
+                    elseif length(ids) == 3
+                        flags[sym] = zeros(7, 4, nat)
+                    elseif length(ids) == 4
+                        flags[sym] = zeros(7, 7, 4, nat)
+                    end
+                end
+                flags[sym][ids...] = parsed_val
+            end
+        end
+    end
+    return flags
+end
+
 """
     qe_read_calculation(file)
 
@@ -1050,18 +1095,27 @@ function qe_read_calculation(file)
         end
     end |> x -> filter(!isempty, x)
      
-    reg = r"([\w\d]+)(?:\(((?:\s*,*\d+\s*,*)*)\))?\s*=\s*([^!,\n]*)"
-    tmatches = map(x -> match(reg, x), lines)
-    unused_ids = findall(isnothing, tmatches)
-    matches = filter(!isnothing, tmatches)
-
-    function find_pop!(flag)
-        id = findfirst(x -> x.captures[1] == flag, matches)
-        if id !== nothing
-            matches[id], matches[end] = matches[end], matches[id]
-            return pop!(matches)
+    flagreg = r"([\w\d]+)(?:\(((?:\s*,*\d+\s*,*)*)\))?\s*=\s*([^!,\n]*)"
+    unused_ids = Int[]
+    flagmatches = Dict{Symbol, Dict{Symbol, Vector{Union{Nothing, String}}}}()
+    curv = nothing
+    blockreg = r"&([\w\d]+)"
+    for (i, l) in enumerate(lines)
+        m = match(blockreg, l)
+        if m !== nothing
+            block = Symbol(lowercase(m.captures[1]))
+            flagmatches[block] = Dict{Symbol, Vector{String}}()
+            curv = flagmatches[block]
+            continue
         end
+        m = match(flagreg, l)
+        if m !== nothing
+            curv[Symbol(m.captures[1])] = m.captures[2:end]
+            continue
+        end
+        push!(unused_ids, i)
     end
+        
     function findcard(s)
         idid = findfirst(i -> occursin(s, lowercase(lines[i])), unused_ids)
         return idid !== nothing ? unused_ids[idid] : nothing
@@ -1069,24 +1123,27 @@ function qe_read_calculation(file)
         
     used_lineids = Int[]
 
-    natmatch = find_pop!("nat")
-    ntypmatch = find_pop!("ntyp")
-    nat = natmatch !== nothing ? parse(Int, natmatch.captures[end]) : nothing
-    ntyp = ntypmatch !== nothing ? parse(Int, ntypmatch.captures[end]) : nothing
-    ibravmatch = find_pop!("ibrav")
-    ibrav = ibravmatch !== nothing ? parse(Int, ibravmatch.captures[end]) : nothing
-    @assert ibrav == 0 || ibrav === nothing "ibrav different from 0 not allowed."
-
-    if nat !== nothing && ntyp !== nothing
-                
+    allflags = Dict{Symbol, Dict{Symbol, Any}}()
+    for (b, flgs) in flagmatches
+        if b == :system
+            continue
+        end
+        allflags[b] = qe_parse_flags(flgs)
+    end
+    if haskey(flagmatches, :system)
+        sysblock = pop!(flagmatches, :system)
+        nat = parse(Int, pop!(sysblock, :nat)[end])
+        ntyp = parse(Int, pop!(sysblock, :ntyp)[end])
+        ibrav = parse(Int, pop!(sysblock, :ibrav)[end])
+        @assert ibrav == 0 || ibrav === nothing "ibrav different from 0 not allowed."
         i_species = findcard("atomic_species")
         i_cell = findcard("cell_parameters")
         i_positions = findcard("atomic_positions")
         push!(used_lineids, i_species)
 
         pseudos = Dict{Symbol,String}()
-        pseudo_match = find_pop!("pseudo_dir")
-        pseudo_dir = pseudo_match !== nothing ? strip(pseudo_match.captures[end], ''') : "."
+        pseudo_match = haskey(allflags, :control) ? pop!(allflags[:control], :pseudo_dir, nothing) : nothing
+        pseudo_dir = pseudo_match !== nothing ? pseudo_match : "."
 
         atsyms = Symbol[]
         for k in 1:ntyp
@@ -1111,59 +1168,15 @@ function qe_read_calculation(file)
             point = Point3(parse.(Float64, sline[2:4]))
             push!(atoms, (atsym, point))
         end
-    end
-        
-    flags = Dict{Symbol, Any}()
 
-    for m in matches
-        sym = Symbol(m.captures[1])
-        if occursin("'", m.captures[3])
-            flags[sym] = strip(m.captures[3], ''')
-        else
-            # normal flag
-            v = replace(replace(replace(lowercase(m.captures[3]), ".true." => "true"), ".false." => "false"), "'" => "")
-            
-            if match(r"\d\.?d-?\d", v) !== nothing # At least one number present
-                v = replace(v, "d" => "e")
-            end
-            if match(r".\s+.", v) !== nothing # Multiple entries
-                parsed_val = Meta.parse.(split(v))
-            else
-                tval = Meta.parse(v)
-                parsed_val = tval isa Symbol ? string(tval) : tval
-            end
-            
-            if m.captures[2] === nothing
-                flags[sym] = parsed_val
-            else
-                # Since arrays can be either ntyp or nat dimensionally, we
-                # assume nat since that's the biggest, similarly we assume
-                # 7,4,nat for the multidim arrays
-                ids = parse.(Int, split(m.captures[2], ","))
-                if !haskey(flags, sym)
-                    if length(ids) == 1
-                        flags[sym] = length(parsed_val) == 1 ? zeros(nat) : fill(zeros(length(parsed_val)), nat)
-                    elseif length(ids) == 2
-                        flags[sym] = length(parsed_val) == 1 ? zeros(nat, nat) : fill(zeros(length(parsed_val)), nat, nat)
-                    elseif length(ids) == 3
-                        flags[sym] = zeros(7, 4, nat)
-                    elseif length(ids) == 4
-                        flags[sym] = zeros(7, 7, 4, nat)
-                    end
-                end
-                flags[sym][ids...] = parsed_val
-            end
-        end
-    end
-    
-    if nat !== nothing && ntyp !== nothing
-                    
-        structure = extract_structure!(flags, (option = cell_option, data=cell), atsyms,
+        sysflags = qe_parse_flags(sysblock, nat)
+        structure = extract_structure!(sysflags, (option = cell_option, data=cell), atsyms,
                                    (option = atoms_option, data=atoms), (data=pseudos,))
-        delete!.((flags,), [:ibrav, :nat, :ntyp, :A, :celldm_1, :celldm])
-        delete!.((flags,),
+        delete!.((sysflags,), [:A, :celldm_1, :celldm])
+        delete!.((sysflags,),
                  [:Hubbard_U, :Hubbard_J0, :Hubbard_alpha, :Hubbard_beta, :Hubbard_J])
-        delete!.((flags,), [:starting_magnetization, :angle1, :angle2, :nspin]) #hubbard and magnetization flags
+        delete!.((sysflags,), [:starting_magnetization, :angle1, :angle2, :nspin]) #hubbard and magnetization flags
+        allflags[:system] = sysflags
     else
         structure = nothing
     end
@@ -1188,9 +1201,7 @@ function qe_read_calculation(file)
         end
         push!(datablocks, InputData(:k_points, k_option, k_data))
     end
-
-    pop!.((flags,), [:prefix, :outdir], nothing)
-    return (flags = flags, data = datablocks, structure = structure)
+    return (flags = allflags, data = datablocks, structure = structure)
 end
 
 function qe_writeflag(f, flag, value)
@@ -1240,50 +1251,25 @@ function save(calculation::Calculation{QE}, structure,
         end
         writeflag(flag_data) = qe_writeflag(f, flag_data[1], flag_data[2])
         write_dat(data) = write_data(f, data)
-
-        controls = Dict{Symbol,Dict{Symbol,Any}}()
-
-        function add_flag(block, flag, val)
-            if !haskey(controls, block)
-                controls[block] = Dict{Symbol,Any}()
+        for name in unique([[:control, :system, :electrons, :ions, :cell]; keys(calculation.flags)...])
+            if haskey(calculation.flags, name)
+                flags = calculation.flags[name]
+                write(f, "&$name\n")
+                if name == :system
+                    nat  = length(structure.atoms)
+                    ntyp = length(unique(structure.atoms))
+                    # A     = 1.0
+                    ibrav = 0
+                    write(f, "  ibrav = $ibrav\n")
+                    # write(f,"  A = $A\n")
+                    write(f, "  nat = $nat\n")
+                    write(f, "  ntyp = $ntyp\n")
+                end
+                map(writeflag, [(flag, data) for (flag, data) in flags])
+                write(f, "/\n\n")
             end
-            controls[block][flag] = val
-        end
-            
-        for (flag, val) in calculation.flags
-            if val isa NamedTuple
-                add_flag(val.block, flag, val.value)
-            else
-                block, variable = Calculations.qe_block_variable(calculation, flag)
-                add_flag(block.name, flag, val)
-            end
         end
 
-        #Here we try to figure out the correct order of the control blocks
-        # first we find the order of the pw.x calculations, the rest should follow.
-        blocks2file = []
-        for name in [:control, :system, :electrons, :ions, :cell]
-            push!(blocks2file, name => pop!(controls, name, nothing))
-        end
-        for name in keys(controls)
-            push!(blocks2file, name => pop!(controls, name, nothing))
-        end
-        filter!(x -> x[2] !== nothing, blocks2file)
-        for (name, flags) in blocks2file
-            write(f, "&$name\n")
-            if name == :system
-                nat  = length(structure.atoms)
-                ntyp = length(unique(structure.atoms))
-                # A     = 1.0
-                ibrav = 0
-                write(f, "  ibrav = $ibrav\n")
-                # write(f,"  A = $A\n")
-                write(f, "  nat = $nat\n")
-                write(f, "  ntyp = $ntyp\n")
-            end
-            map(writeflag, [(flag, data) for (flag, data) in flags])
-            write(f, "/\n\n")
-        end
         if calculation.exec.exec == "pw.x"
             write_structure(f, calculation, structure)
         end
@@ -1307,9 +1293,9 @@ function save(calculation::Calculation{QE}, structure,
         end
     end
     #TODO handle writing hubbard and magnetization better
-    delete!.((calculation.flags,),
+    delete!.((calculation,),
              (:Hubbard_U, :Hubbard_J0, :Hubbard_J, :Hubbard_alpha, :Hubbard_beta,
-              :starting_magnetization, :angle1, :angle2, :pseudo_dir))
+              :starting_magnetization, :angle1, :angle2, :pseudo_dir, :outdir, :prefix))
     return
 end
 
@@ -1376,7 +1362,8 @@ function qe_generate_pw2wancalculation(c::Calculation{Wannier90}, nscf::Calculat
     pw2wanexec = Exec(exec ="pw2wannier90.x", dir=nscf.exec.dir, modules = nscf.exec.modules)
     run = get(c, :preprocess, false) && c.run
     name = "pw2wan_$(flags[:seedname])"
-    return Calculation(; name = name, 
-                           flags = flags, data = InputData[],
+    out = Calculation(; name = name, data = InputData[],
                            exec = pw2wanexec, run = run, infile = name*".in", outfile=name*".out")
+    Calculations.set_flags!(out, flags...; print=false)
+    return out 
 end

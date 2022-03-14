@@ -142,31 +142,18 @@ function df_show(io::IO, c::Calculation)
     dfprintln(io, s)
 
     if !isempty(c.flags)
-        if eltype(c) == QE
-            namelist_flags = Dict{Symbol,Dict{Symbol,Any}}()
-            info = Calculations.qe_calculation_info(c)
-            if info !== nothing
-                flag_keys = keys(c.flags)
-                for i in info.control
-                    for f in i.flags
-                        if f.name ∈ flag_keys
-                            if haskey(namelist_flags, i.name)
-                                namelist_flags[i.name][f.name] = c[f.name]
-                            else
-                                namelist_flags[i.name] = Dict{Symbol,Any}()
-                                namelist_flags[i.name][f.name] = c[f.name]
-                            end
-                        end
-                    end
-                end
-                for (inf, flgs) in namelist_flags
-                    dfprintln(io, crayon"green", "\t&$inf", crayon"reset")
-                    write_flags(io, flgs, "\t\t")
+        write_flags_separately = false
+        for (b, bflags) in c.flags
+            if bflags isa Dict
+                if !isempty(bflags)
+                    dfprintln(io, crayon"green", "\t&$b", crayon"reset")
+                    write_flags(io, bflags, "\t\t")
                 end
             else
-                write_flags(io, c.flags)
-            end
-        else
+                write_flags_separately = true
+            end 
+        end
+        if write_flags_separately
             write_flags(io, c.flags)
         end
     end

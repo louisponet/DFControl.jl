@@ -90,7 +90,9 @@ function Calculation(name, flags, data, exec, run, infile,
 end
 
 function Calculation(name, flags...; kwargs...)
-    return Calculation(; name = name, flags = Dict(flags), kwargs...)
+    out = Calculation(; name = name, kwargs...)
+    set_flags!(out, flags...; print=false)
+    return out
 end
 
 function Calculation(template::Calculation, name, newflags...;
@@ -173,13 +175,66 @@ Returns the flag with given symbol.
 Searches through the job's calculations for the requested flag.
 A `Dict` will be returned with calculation names as the keys and the flags as values.
 """
-Base.getindex(c::Calculation, n::Symbol) = haskey(c, n) ? c.flags[n] : throw(KeyError(n))
+function Base.getindex(c::Calculation, n::Symbol)
+    if haskey(c, n)
+        get(c, n)
+    else
+        throw(KeyError(n))
+    end
+end
 
-Base.haskey(c::Calculation, n::Symbol) = haskey(c.flags, n)
-Base.get(c::Calculation, args...) = get(c.flags, args...)
-Base.pop!(c::Calculation, args...) = pop!(c.flags, args...)
+function Base.haskey(c::Calculation, n::Symbol)
+    haskey(c.flags, n) && return true
+    for flgs in values(c.flags)
+        flgs isa Dict && haskey(flgs, n) && return true
+    end
+    return false
+end
 
-hasflag(c::Calculation, s::Symbol) = haskey(c.flags, s)
+function Base.get(c::Calculation, n::Symbol, v)
+    if haskey(c.flags, n)
+        return c.flags[n]
+    else
+        for flgs in values(c.flags)
+            flgs isa Dict && haskey(flgs, n) && return flgs[n]
+        end
+        return v
+    end
+end
+function Base.get(c::Calculation, n::Symbol)
+    tv = get(c, n, nothing)
+    tv === nothing && throw(KeyError(n))
+    return tv
+end
+    
+function Base.pop!(c::Calculation, n::Symbol, v)
+    if haskey(c.flags, n)
+        pop!(c.flags, n)
+    else
+        for flgs in values(c.flags)
+            flgs isa Dict && haskey(flgs, n) && return pop!(flgs,n)
+        end
+        return v
+    end
+end
+function Base.pop!(c::Calculation, n::Symbol)
+    tv = pop!(c, n, nothing)
+    tv === nothing && throw(KeyError(n))
+    return tv
+end
+        
+function Base.delete!(c::Calculation, n)
+    if haskey(c.flags, n)
+        delete!(c.flags, n)
+    else
+        for flgs in values(c.flags)
+            flgs isa Dict && haskey(flgs, n) && return delete!(flgs, n)
+        end
+        return c.flags
+    end
+end
+
+hasflag(c::Calculation, s::Symbol) = haskey(c, s)
 hasflag(c::Calculation, s) = false
 
 """
@@ -203,10 +258,8 @@ Sets multiple flags in one go. Flag validity and type are verified.
 
 Sets the flags in the names to the flags specified.
 This only happens if the specified flags are valid for the names.
-
-If `force=false`, the values that are supplied will be checked whether they are valid, otherwise they will always be set.
 """
-function set_flags!(c::Calculation{T}, flags...; print = true, force=false) where {T}
+function set_flags!(c::Calculation{T}, flags...; print = true) where {T}
     found_keys = Symbol[]
     for (flag, value) in flags
         flag_type = flagtype(c, flag)
@@ -215,65 +268,79 @@ function set_flags!(c::Calculation{T}, flags...; print = true, force=false) wher
             try
                 if isa(value, AbstractVector{<:AbstractVector}) &&
                    flag_type <: AbstractVector
-                    value = [convert.(eltype(flag_type), v) for v in value]
+                    tvalue = [convert.(eltype(flag_type), v) for v in value]
                 elseif flag == :starting_ns_eigenvalue
                     if length(size(value)) == 3
-                        value = convert.(Float32, value)
+                        tvalue = convert.(Float32, value)
                     else
                         nat = div(length(value), 7*4)
-                        value = convert.(Float32, reshape(value, (7,4,nat)))
+                        tvalue = convert.(Float32, reshape(value, (7,4,nat)))
                     end
                 elseif flag == :Hubbard_occupations
                     if length(size(value)) == 4
-                        value = convert.(Float32, value)
+                        tvalue = convert.(Float32, value)
                     else
                         nat = div(length(value), 7*7*4)
-                        value = convert.(Float32, reshape(value, (7, 7,4,nat)))
+                        tvalue = convert.(Float32, reshape(value, (7, 7,4,nat)))
                     end
                 else
-                    value = convert(flag_type, value)
+                    tvalue = convert(flag_type, value)
                 end
             catch
                 print &&
-                    (@warn "Filename '$(c.name)':\n  Could not convert '$value' into '$flag_type'.\n    Flag '$flag' not set.\n")
+                    (@warn "'$(c.name)':\n  Could not convert '$value' into '$flag_type'.\n    Flag '$flag' not set.\n")
                 continue
             end
-            old_data = haskey(c.flags, flag) ? c.flags[flag] : ""
-            c.flags[flag] = value
-            print && (@info "$(c.name): -> $flag:\n      $old_data set to: $value\n")
-        else
-            if !force
-                print &&
-                    @warn "Flag $flag was ignored since it could not be found in the allowed flags for calculation $(c.name)"
+            old_data = haskey(c, flag) ? c[flag] : ""
+            
+            if eltype(c) == QE
+                block, _ = qe_block_variable(c, flag)
+                if block == :error
+                    error("""Block for flag $flag could not be found, please set it manually using <c>.flags[<block>][$flag] = $value""")
+                end
+                if !haskey(c.flags, block.name)
+                    c.flags[block.name] = Dict{Symbol, Any}(flag => value)
+                else
+                    c.flags[block.name][flag] = value
+                end
             else
                 c.flags[flag] = value
             end
+            print && (@info "$(c.name): -> $flag:\n      $old_data set to: $value\n")
+        else
+            @warn """$flag could not be found in allowed flags,
+                     please set it manually using <c>.flags[$flag] = $value"""
         end
     end
     return found_keys, c
 end
 
 "Runs through all the set flags and checks if they are allowed and set to the correct value"
-function convert_flags!(calculation::Calculation)
-    for (flag, value) in calculation.flags
-        flagtype_ = flagtype(calculation, flag)
-        if flagtype_ == Nothing
-            @warn "Flag $flag was not found in allowed flags for exec $(calculation.exec)."
-            continue
-        end
-        if !(isa(value, flagtype_) || eltype(value) <: flagtype_)
-            try
-                if isbitstype(eltype(value))
-                    if length(value) > 1
-                        calculation[flag] = convert(flagtype_, value)
+function convert_flags!(calculation::Calculation, flags=calculation.flags)
+    for (flag, value) in flags
+        if value isa Dict
+            convert_flags!(calculation, value)
+        else
+                
+            flagtype_ = flagtype(calculation, flag)
+            if flagtype_ == Nothing
+                @warn "Flag $flag was not found in allowed flags for exec $(calculation.exec)."
+                continue
+            end
+            if !(isa(value, flagtype_) || eltype(value) <: flagtype_)
+                try
+                    if isbitstype(eltype(value))
+                        if length(value) > 1
+                            calculation[flag] = convert(flagtype_, value)
+                        else
+                            calculation[flag] = convert(eltype(flagtype_), value)
+                        end
                     else
-                        calculation[flag] = convert(eltype(flagtype_), value)
+                        calculation[flag] = convert.(flagtype_, value)
                     end
-                else
-                    calculation[flag] = convert.(flagtype_, value)
+                catch
+                    error("Input $(calculation.name): Could not convert :$flag of value $value to the correct type ($flagtype_), please set it to the correct type.")
                 end
-            catch
-                error("Input $(calculation.name): Could not convert :$flag of value $value to the correct type ($flagtype_), please set it to the correct type.")
             end
         end
     end
