@@ -159,7 +159,7 @@ function projections_string(at::Atom)
 end
 
 function Base.:(==)(at1::Atom, at2::Atom)
-    return at1.name == at2.name && norm(at1.position_cart - at2.position_cart) < 1e-6Ang
+    return at1.name == at2.name && norm(at1.position_cart - at2.position_cart) < 1e-6Ang && at1.dftu == at2.dftu
 end
 
 """

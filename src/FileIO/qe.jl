@@ -415,13 +415,13 @@ function qe_parse_timing(out, line, f)
                 end
                 push!(parent.children, td)
             end
-        elseif sline[1] == "PWSCF" # Final PWSCF report
-            push!(out[:timing],
-                  TimingData("PWSCF", qe_parse_time(sline[3]), qe_parse_time(sline[5]),
-                                 1, TimingData[]))
         end
         line = strip(readline(f))
     end
+    sline = split(line)
+    push!(out[:timing],
+          TimingData("PWSCF", qe_parse_time(sline[3]), qe_parse_time(sline[5]),
+                         1, TimingData[]))
     # cleanup
     for td in out[:timing]
         id = findfirst(x -> x == ':', td.name)
@@ -1221,12 +1221,10 @@ function qe_writeflag(f, flag, value)
                 end
             end
         end
-    elseif isa(value, Array)
-        cids = CartesianIndices(value)
-        for i in eachindex(value)
-            if !iszero(value[i])
-                write(f, "  $(flag)$(Tuple(cids[i])) = $(value[i])\n")
-            end
+    elseif isa(value, AbstractArray)
+        cids = findall(!iszero, value)
+        for i in cids
+            write(f, "  $(flag)$(Tuple(i)) = $(value[i])\n")
         end
     elseif isa(value, AbstractString)
         write(f, "  $flag = '$value'\n")
