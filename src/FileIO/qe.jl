@@ -503,6 +503,7 @@ const QE_PW_PARSE_FUNCTIONS = ["C/m^2" => qe_parse_polarization,
                                "--- enter write_ns ---" => qe_parse_Hubbard,
                                "HUBBARD OCCUPATIONS" => qe_parse_Hubbard,
                                "Hubbard energy" => qe_parse_Hubbard_energy,
+                               "HUBBARD ENERGY" => qe_parse_Hubbard_energy,
                                "init_run" => qe_parse_timing,
                                "Starting magnetic structure" => qe_parse_starting_magnetization,
                                "Simplified LDA+U calculation" => qe_parse_starting_simplified_dftu]
