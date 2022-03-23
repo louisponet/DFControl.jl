@@ -144,6 +144,11 @@ Base.joinpath(s::Server, p...) = joinpath(s.root_jobdir, p...)
 Base.ispath(s::Server, p...) =
     JSON3.read(HTTP.get(s, "/ispath/" * joinpath(p...)).body, Bool)
 
+function Base.rm(s::Server, p)
+    @assert ispath(s, p) "$p:\nfile or dir not found"
+    HTTP.post(s, "/rm/" * p)
+end
+
 Utils.searchdir(s::Server, dir, str) = joinpath.(dir, filter(x->occursin(str, x), readdir(s, dir))) 
 
 parse_config(config) = JSON3.read(config, Server)

@@ -42,6 +42,9 @@ HTTP.@register(ROUTER, "GET", "/server_config", get_server_config)
 Base.ispath(req::HTTP.Request) = ispath(path(req))
 HTTP.@register(ROUTER, "GET", "/ispath/*", ispath)
 
+Base.rm(req::HTTP.Request) = rm(path(req), recursive=true)
+HTTP.@register(ROUTER, "GET", "/rm/*", rm)
+
 Base.readdir(req::HTTP.Request) = readdir(path(req))
 HTTP.@register(ROUTER, "GET", "/readdir/*", readdir)
 
