@@ -8,6 +8,10 @@ function write_job_header(f, job::Job, environment)
             write(f, line * "\n")
         end
     end
+    s = Servers.Server(job.server)
+    if ispath(s, "/etc/profile")
+        write(f, "source /etc/profile\n")
+    end
     modules = AbstractString[] 
     for e in map(x->x.exec, job.calculations)
         for m in e.modules
@@ -305,6 +309,7 @@ function read_job_script(job_file::String)
     environment = runtime.name
     deleteat!(header, findall(x -> occursin("#SBATCH", x), header))
     deleteat!(header, findall(x -> occursin("export", x), header))
+    deleteat!(header, findall(x -> occursin("source /etc/profile", x), header))
     return (name, calcs, header, environment) 
 end
 

@@ -9,6 +9,7 @@ using ..Structures
 using ..Jobs
 using ..Database
 using ..DFControl: Point,Point3, Vec3, SVector, Mat3, Mat4, Band, TimingData
+using ..Servers
 
 include("qe.jl")
 include("wannier.jl")
