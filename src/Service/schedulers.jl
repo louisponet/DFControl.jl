@@ -47,7 +47,11 @@ end
 ## SLURM ##
 function Servers.jobstate(::Slurm, id::Int)
     cmd = `sacct -u $(ENV["USER"]) --format=State -j $id -P`
-    state = readlines(cmd)[2]
+    lines = readlines(cmd)
+    if length(lines) <= 1
+        return Jobs.Unknown
+    end
+    state = lines[2]
     if state == "PENDING"
         return Jobs.Pending
     elseif state == "RUNNING"
