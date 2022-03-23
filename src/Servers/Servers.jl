@@ -147,6 +147,7 @@ Base.ispath(s::Server, p...) =
 function Base.rm(s::Server, p)
     @assert ispath(s, p) "$p:\nfile or dir not found"
     HTTP.post(s, "/rm/" * p)
+    return nothing
 end
 
 Utils.searchdir(s::Server, dir, str) = joinpath.(dir, filter(x->occursin(str, x), readdir(s, dir))) 
