@@ -1041,7 +1041,7 @@ function qe_parse_flags(inflags, nat::Int=0)
             # normal flag
             v = replace(replace(replace(lowercase(m[2]), ".true." => "true"), ".false." => "false"), "'" => "")
             
-            if match(r"\d\.?d-?\d", v) !== nothing # At least one number present
+            if match(r"\d\.?d[-+]?\d", v) !== nothing # At least one number present
                 v = replace(v, "d" => "e")
             end
             if match(r".\s+.", v) !== nothing # Multiple entries
