@@ -285,7 +285,7 @@ function read_job_script(job_file::String)
     for e in ues
         t = Database.replacements(e)
         if !isempty(t)
-            b = getfirst(x -> e.dir == x.dir && e.exec == x.exec, t)
+            b = getfirst(x -> Path(e.dir) == Path(x.dir) && e.exec == x.exec, t)
             if b !== nothing
                 e.name = b.name
                 e.modules = b.modules
@@ -294,7 +294,7 @@ function read_job_script(job_file::String)
             e.modules = modules
         end
     end
-            
+    
     for c in calcs
         e1 = c.exec
         for e in ues
