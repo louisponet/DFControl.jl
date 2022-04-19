@@ -181,9 +181,9 @@ function read_job_line(line)
     for (e, flags) in exec_and_flags
         dir, efile = splitdir(e)
         dir = replace(dir, "~" => homedir())
-        if occursin("pw2wannier90", efile)
-            continue
-        end
+        # if occursin("pw2wannier90", efile)
+        #     continue
+        # end
         if occursin("mpi", e)
             push!(execs, Exec(exec=efile, dir=dir, flags=Calculations.parse_mpi_flags(flags)))
         elseif efile == "wannier90.x"
@@ -242,7 +242,6 @@ function read_job_script(job_file::String)
         readline(f)
         while !eof(f)
             line = readline(f)
-            
             isempty(line) && continue
             
             if occursin("#SBATCH", line)
@@ -281,7 +280,7 @@ function read_job_script(job_file::String)
         modules = String[]
     end
     #TODO cleanup
-    ues = unique(map(x->x.exec, filter(y->y.run, calcs)))
+    ues = unique(map(x->x.exec, calcs))
     for e in ues
         t = Database.replacements(e)
         if !isempty(t)
@@ -336,7 +335,20 @@ function parse_calculations(calcs)
         structure = Structure()
         @warn "No valid structures could be read from calculation files."
     end
-    Calculations.rm_tmp_flags!.(outcalcs)    
+    Calculations.rm_tmp_flags!.(outcalcs)
+
+    to_rm = Int[]
+    for (ic, c) in enumerate(outcalcs)
+        id2 = findnext(x->x.name == c.name, outcalcs, ic+2)
+        if id2 !== nothing && Calculations.is_wannier_exec(c.exec)
+            push!(to_rm, ic + 1)
+            push!(to_rm, id2)
+            Calculations.set_flags!(c, :preprocess => c.run, print=false)
+            Calculations.set_flags!(c, :wannier_plot => get(outcalcs[ic+1], :write_unk, false), print=false)
+        end
+    end
+    deleteat!(outcalcs, to_rm)     
+
     return (calculations = outcalcs, structure=structure)
 end
 

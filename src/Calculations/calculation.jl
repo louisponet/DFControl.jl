@@ -84,7 +84,7 @@ function Calculation(name, flags, data, exec, run, infile,
     elseif exec.exec ∈ Calculations.ELK_EXECS
         p = ELK
     else
-        @warn "Package not identified from execs $(exec.exec)."
+        error("Package not identified from execs $(exec.exec).")
     end
     return Calculation{p}(name, flags, data, exec, run, infile, outfile)
 end

@@ -1296,7 +1296,7 @@ function save(calculation::Calculation{QE}, structure,
     #TODO handle writing hubbard and magnetization better
     delete!.((calculation,),
              (:Hubbard_U, :Hubbard_J0, :Hubbard_J, :Hubbard_alpha, :Hubbard_beta,
-              :starting_magnetization, :angle1, :angle2, :pseudo_dir, :outdir, :prefix))
+              :starting_magnetization, :angle1, :angle2, :pseudo_dir))
     return
 end
 

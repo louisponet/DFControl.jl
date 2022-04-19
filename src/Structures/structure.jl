@@ -41,6 +41,19 @@ function cif2structure(cif_file::String)
     return t.structure
 end
 
+function name(str::Structure)
+    els = unique(map(x -> x.element, str.atoms))
+    nats = map(x -> length(str[x]), els)
+    d = gcd(nats)
+    n = ""
+    for (na, el) in zip(nats, els)
+        i = div(na, d)
+        n *= i == 1 ? string(el.symbol) : "$(el.symbol)$i"
+    end
+    return n
+end
+    
+
 # TODO extend base.merge
 "Takes a vector of structures and merges all the attributes of the atoms."
 function mergestructures(structures::Vector{Structure})

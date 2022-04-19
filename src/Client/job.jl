@@ -110,6 +110,7 @@ function save(job::Job, workflow::Union{Nothing, Workflow} = nothing)
         @warn "Job had no name, changed it to: noname"
         job.name = "noname"
     end
+    job.name = replace(job.name, " " => "_")
     Structures.sanitize!(job.structure)
     Calculations.sanitize_flags!(job.calculations, job.structure, job.name,
                                  "./"*Jobs.TEMP_CALC_DIR)
@@ -122,6 +123,7 @@ function save(job::Job, workflow::Union{Nothing, Workflow} = nothing)
     apath = abspath(job)
 
     server = Server(job.server)
+    fill_execs(job, server)
     @assert job.environment != "" "Please set job environment."
     environment = load(server, Environment(job.environment))
     @assert environment isa Environment "Environment with name $(job.environment) not found!"
@@ -160,7 +162,6 @@ Saves and launches `job`.
 function submit(job::Job, workflow=nothing)
     @assert workflow === nothing "Workflows not implemented yet."
     server = Server(job.server)
-    fill_execs(job, server)
     save(job, workflow)
     return HTTP.put(server, "/jobs/" * abspath(job), workflow !== nothing)
 end
@@ -334,7 +335,7 @@ function fill_execs(job::Job, server::Server)
                 catch
                     possibilities = load(server, e)
                     if length(possibilities) == 1
-                        replacements[e] = load(server, Environment(possibilities[1]))
+                        replacements[e] = load(server, Exec(possibilities[1]))
                     else
                         error("""
                         Exec(\"$(e.name)\") not found on Server(\"$(server.name)\").
@@ -352,6 +353,7 @@ function fill_execs(job::Job, server::Server)
             if c.exec == e
                 c.exec.dir = rep.dir
                 c.exec.modules = rep.modules
+                c.exec.parallel = rep.parallel
             end
         end
     end

@@ -16,7 +16,7 @@ function gencalc_wan(nscf::Calculation{QE}, structure::Structure, bands, Emin, w
                      wanexec = Exec(; name="wannier90", exec = "wannier90.x", dir = ""))
     projs = vcat(map(structure.atoms) do x
                      ps = x.projections
-                     @assert !isempty(ps) "Please first set projections for all atoms in the Structure."
+                     # @assert !isempty(ps) "Please first set projections for all atoms in the Structure."
                      return ps
                  end...)
 
