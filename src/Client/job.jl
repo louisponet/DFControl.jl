@@ -98,7 +98,7 @@ If a previous job is present in the job directory (indicated by a valid job scri
 it will be copied to the `.versions` sub directory as the previous version of `job`,
 and the version of `job` will be incremented. 
 """
-function save(job::Job, workflow::Union{Nothing, Workflow} = nothing)
+function save(job::Job, workflow::Union{Nothing, Workflow} = nothing; fillexecs = true)
     @assert workflow === nothing "Workflows not implemented yet."
     # First we check whether the job is trying to be saved in a archived directory, absolutely not allowed
     @assert !isrunning(job) "Can't save a job in a directory where another is running."
@@ -123,7 +123,9 @@ function save(job::Job, workflow::Union{Nothing, Workflow} = nothing)
     apath = abspath(job)
 
     server = Server(job.server)
-    fill_execs(job, server)
+    if fillexecs
+        fill_execs(job, server)
+    end
     @assert job.environment != "" "Please set job environment."
     environment = load(server, Environment(job.environment))
     @assert environment isa Environment "Environment with name $(job.environment) not found!"
@@ -159,10 +161,10 @@ end
 
 Saves and launches `job`. 
 """
-function submit(job::Job, workflow=nothing)
+function submit(job::Job, workflow=nothing; kwargs...)
     @assert workflow === nothing "Workflows not implemented yet."
     server = Server(job.server)
-    save(job, workflow)
+    save(job, workflow; kwargs...)
     return HTTP.put(server, "/jobs/" * abspath(job), workflow !== nothing)
 end
 

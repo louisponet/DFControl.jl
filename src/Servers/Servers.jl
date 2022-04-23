@@ -407,15 +407,17 @@ end
 Pulls `remote` from the server to `loc`.
 """
 function pull(server::Server, remote::String, loc::String)
+    path = isdir(loc) ? joinpath(loc, splitpath(remote)[end]) : loc
     if islocal(server)
-        cp(remote, loc; force = true)
+        cp(remote, path; force = true)
     else
         out = Pipe()
         err = Pipe()
-        run(pipeline(`scp -r $(ssh_string(server) * ":" * remote) $loc`, stdout=out, stderr=err))
+        run(pipeline(`scp -r $(ssh_string(server) * ":" * remote) $path`, stdout=out, stderr=err))
         close(out.in)
         close(err.in)
     end
+    return path
 end
 
 """

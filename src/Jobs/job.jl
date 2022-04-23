@@ -254,7 +254,6 @@ needs to be to fit enough bands inside it, depending on the projections.
 """
 function set_wanenergies!(job::Job, nscf::Calculation, projwfc::Calculation,
                           threshold::Real; Epad = 5.0)
-    hasoutput_assert(projwfc)
     @assert Calculations.isprojwfc(projwfc) "Please specify a valid projwfc calculation."
     @assert Calculations.isnscf(nscf) "Please specify a valid nscf calculation."
     Emin = Emin_from_projwfc(job.structure, projwfc, threshold)
@@ -273,7 +272,7 @@ projections.
 function set_wanenergies!(job::Job, min_window_determinator::Real; kwargs...)
     nscf_calc = getfirst(Calculations.isnscf, job.calculations)
     projwfc_calc = getfirst(Calculations.isprojwfc, job.calculations)
-    if projwfc_calc === nothing || !hasoutput(projwfc_calculation)
+    if projwfc_calc === nothing
         @info "No projwfc calculation found with valid output, using $min_window_determinator as Emin"
         return set_wanenergies!(job, nscf_calc, min_window_determinator; kwargs...)
     else
