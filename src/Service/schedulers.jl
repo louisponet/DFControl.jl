@@ -76,7 +76,7 @@ function Servers.abort(::Bash, id::Int)
 end
 
 in_queue(s::Jobs.JobState) =
-    s in (Jobs.Saved, Jobs.Submitted, Jobs.Pending, Jobs.Running, Jobs.Configuring, Jobs.Completing, Jobs.Suspended)
+    s in (Jobs.Submitted, Jobs.Pending, Jobs.Running, Jobs.Configuring, Jobs.Completing, Jobs.Suspended)
     
 ## SLURM ##
 function Servers.jobstate(s::Slurm, id::Int)

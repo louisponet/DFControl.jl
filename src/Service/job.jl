@@ -74,7 +74,7 @@ function save(jobdir::String, files; kwargs...)
         write(joinpath(dir, name), f)
     end
 
-    JOB_QUEUE[].current_queue[dir] = (-1, Jobs.Saved)
+    JOB_QUEUE[].full_queue[dir] = (-1, Jobs.Saved)
     return version
 end
 
