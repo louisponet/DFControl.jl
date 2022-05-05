@@ -42,8 +42,6 @@ function job_logger(id::Int)
     FileLogger(joinpath(p, "$id.log"))
 end
 
-server_config() = Server(gethostname())
-local_server() = server_config()
 include("schedulers.jl")
 include("running.jl")
 include("calculation.jl")

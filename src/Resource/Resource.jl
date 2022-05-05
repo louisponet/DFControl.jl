@@ -1,7 +1,7 @@
 module Resource
 # This module handles all the handling, parsing and transforming HTTP commands,
 # and brokers between HTTP requests and Service that fullfils them. 
-using HTTP, JSON3, Dates, LoggingExtras, Sockets, UUIDs
+using HTTP, JSON3, Dates, LoggingExtras, Sockets, UUIDs, ThreadPools
 using ..DFControl: config_path
 using ..Service
 using ..Utils
@@ -36,8 +36,10 @@ end
 kill_server(req) = exit()
 HTTP.@register(ROUTER, "PUT", "/kill_server", kill_server)
 
-get_server_config(req) = Service.server_config()
+get_server_config(req) = Servers.local_server()
 HTTP.@register(ROUTER, "GET", "/server_config", get_server_config)
+
+HTTP.@register(ROUTER, "GET", "/isalive", true)
 
 Base.ispath(req::HTTP.Request) = ispath(path(req))
 HTTP.@register(ROUTER, "GET", "/ispath/*", ispath)
@@ -135,37 +137,14 @@ function AuthHandler(req)
     if HTTP.hasheader(req, "USER-UUID")
         uuid = HTTP.header(req, "USER-UUID")
         if UUID(uuid) == USER_UUID[]
-            return requestHandler(req)
+            t = ThreadPools.spawnbg() do
+                requestHandler(req)
+            end
+            return fetch(t)
         end
     end
     return HTTP.Response(401, "unauthorized")
 end     
-
-# function initialize_config_dir()
-#     if !ispath(config_path())
-#         paths = [config_path(),
-#                  config_path("jobs"),
-#                  config_path("workflows"),
-#                  config_path("logs"),
-#                  config_path("logs/"),
-#                  config_path("logs/jobs"),
-#                  config_path("logs/runtimes"),
-#                  config_path("storage"),
-#                  config_path("storage/servers"),
-#                  config_path("storage/execs"),
-#                  config_path("storage/pseudos"),
-#                  config_path("storage/environments")]
-
-#         for p in paths
-#             mkpath(p)
-#         end
-#         for p in ("pending.txt", "archived.txt", "active.txt", "running.txt")
-#             for t in ("jobs", "workflows")
-#                 touch(config_path(t, p))
-#             end
-#         end
-#     end
-# end
 
 function run()
     # initialize_config_dir()
@@ -174,16 +153,14 @@ function run()
     port, server = listenany(ip"0.0.0.0", 8080)
     s.port = port
     USER_UUID[] = UUID(s.uuid)
-    Threads.@spawn begin
-        with_logger(Service.restapi_logger()) do
-            @info (timestamp = Dates.now(), username = ENV["USER"], host = gethostname(), pid=getpid(), port=port)
-            
-            HTTP.serve(AuthHandler, "0.0.0.0", port, server=server)
-        end
+    @tspawnat 2 with_logger(Service.server_logger()) do
+        Service.main_loop(s)
     end
     Servers.save(s)
-    with_logger(Service.server_logger()) do
-        Service.main_loop(s)
+    with_logger(Service.restapi_logger()) do
+        @info (timestamp = Dates.now(), username = ENV["USER"], host = gethostname(), pid=getpid(), port=port)
+        
+        HTTP.serve(AuthHandler, "0.0.0.0", port, server=server)
     end
     close(server)
     return

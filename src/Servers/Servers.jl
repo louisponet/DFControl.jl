@@ -4,7 +4,7 @@ using ..DFControl: config_path
 using ..Utils
 using ..Database
 
-export Server, start
+export Server, start, kill,  local_server
 
 const SERVER_DIR = config_path("storage/servers")
 
@@ -139,13 +139,13 @@ end
 
 StructTypes.StructType(::Type{Server}) = StructTypes.Struct()
 islocal(s::Server) = s.domain == "localhost"
+local_server() = Server(gethostname())
 
 Base.joinpath(s::Server, p...) = joinpath(s.root_jobdir, p...)
 Base.ispath(s::Server, p...) =
     JSON3.read(HTTP.get(s, "/ispath/" * joinpath(p...)).body, Bool)
 
 function Base.rm(s::Server, p::String)
-    @assert ispath(s, p) "$p:\nfile or dir not found"
     HTTP.post(s, "/rm/" * p)
     return nothing
 end
@@ -182,20 +182,29 @@ load_config(s::Server) =
 ssh_string(s::Server) = s.username * "@" * s.domain
 http_string(s::Server) = s.local_port != 0 ? "http://localhost:$(s.local_port)" : "http://$(s.domain):$(s.port)"
 
-function HTTP.request(method::String, s::Server, url, body; checkalive = true, kwargs...)
-    if checkalive
-        maybe_start(s)
-    end
+function HTTP.request(method::String, s::Server, url, body; kwargs...)
     header = ["Type" => "$(typeof(body))", "USER-UUID" => s.uuid]
     return HTTP.request(method, string(http_string(s), url), header, JSON3.write(body); kwargs...)
 end
 
-function HTTP.request(method::String, s::Server, url; checkalive=true, kwargs...)
-    if checkalive
-        maybe_start(s)
-    end
+function HTTP.request(method::String, s::Server, url; kwargs...)
     header = ["USER-UUID" => s.uuid]
-    return HTTP.request(method, string(http_string(s), url), header; kwargs...)
+    try
+        return HTTP.request(method, string(http_string(s), url), header; connect_timeout=1, retries=2, kwargs...)
+    catch
+        tserver = load_config(s)
+        if tserver !== nothing
+            s.port = tserver.port
+            if s.local_port != 0
+                destroy_tunnel(s)
+                construct_tunnel(s)
+            end
+            resp = HTTP.request(method, string(http_string(s), url), header; connect_timeout=1, retries=2, kwargs...)
+            save(s)
+            return resp
+        end
+    end
+    return 
 end
 
 for f in (:get, :put, :post, :head)
@@ -223,7 +232,11 @@ function destroy_tunnel(s)
     t = getfirst(x->occursin("ssh -N -f -L $(s.local_port)", x), split(read(pipeline(`ps aux` , stdout = `grep $(s.local_port)`), String), "\n"))
         
     if t !== nothing
-        run(`kill $(split(t)[2])`)
+        try
+            run(`kill $(split(t)[2])`)
+        catch
+            nothing
+        end
     end
 end
 function construct_tunnel(s)
@@ -238,28 +251,10 @@ the return is `false`.
 """
 function isalive(s::Server)
     try
-        resp = HTTP.get(s, "/server_config", readtimeout=15, retry=false, checkalive=false)
-        return JSON3.read(resp.body, Server).username == s.username
+        HTTP.get(s, "/isalive", connect_timeout=2, retry=2)
+        return true
     catch
-        tserver = load_config(s)
-        if tserver !== nothing
-            s.port = tserver.port
-            if s.local_port != 0
-                destroy_tunnel(s)
-                construct_tunnel(s)
-            end
-                
-            try 
-                resp = HTTP.get(s, "/server_config", readtimeout=15, retry=false, checkalive=false)
-                t = JSON3.read(resp.body, Server).username == s.username
-                save(s)
-                return t
-            catch
-                return false
-            end
-        else
-            return false
-        end
+        return false
     end
 end
 
@@ -361,13 +356,6 @@ function start(s::Server)
     return
 end
 
-function maybe_start(s::Server)
-    if !isalive(s)
-        error("Server $(s.name) is not running.\nTry to start it with Servers.start(Server(\"$(s.name)\"))")
-    end
-    return s
-end
-
 """
     kill(s::Server)
 
@@ -429,7 +417,11 @@ function push(filename::String, server::Server, server_file::String)
     if islocal(server)
         cp(filename, server_file; force = true)
     else
-        run(`scp $filename $(ssh_string(server) * ":" * server_file)`)
+        out = Pipe()
+        err = Pipe()
+        run(pipeline(`scp $filename $(ssh_string(server) * ":" * server_file)`, stdout=out, stderr=err))
+        close(out.in)
+        close(err.in)
     end
 end
 

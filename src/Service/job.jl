@@ -81,7 +81,7 @@ end
 job_versions(args...) = Jobs.job_versions(args...)
 
 function registered_jobs(jobdir::String)
-    queue!(JOB_QUEUE[], local_server().scheduler, false)
+    queue!(JOB_QUEUE[], Servers.local_server().scheduler, false)
     dirs = Tuple{String,DateTime}[]
     queue = JOB_QUEUE[]
     for qu in (queue.current_queue, queue.full_queue)
@@ -260,7 +260,7 @@ rm_version!(jobdir::String, version::Int) = Jobs.rm_version!(load(Job(jobdir)), 
 
 function Servers.abort(job_dir::String)
     @assert haskey(JOB_QUEUE[].current_queue, job_dir) "No job exists in dir: $job_dir!"
-    s = local_server()
+    s = Servers.local_server()
     id = JOB_QUEUE[].current_queue[job_dir][1]
     Servers.abort(s.scheduler, id)
     delete!(JOB_QUEUE[].current_queue, job_dir)
