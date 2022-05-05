@@ -74,7 +74,7 @@ function save(jobdir::String, files; kwargs...)
         write(joinpath(dir, name), f)
     end
 
-    JOB_QUEUE[][dir] = (-1, Jobs.Saved)
+    JOB_QUEUE[].current_queue[dir] = (-1, Jobs.Saved)
     return version
 end
 
@@ -83,9 +83,12 @@ job_versions(args...) = Jobs.job_versions(args...)
 function registered_jobs(jobdir::String)
     queue!(JOB_QUEUE[], local_server().scheduler, false)
     dirs = Tuple{String,DateTime}[]
-    for (dir, info) in JOB_QUEUE[]
-        if occursin(jobdir, dir)
-            push!(dirs, (dir, Jobs.timestamp(dir)))
+    queue = JOB_QUEUE[]
+    for qu in (queue.current_queue, queue.full_queue)
+        for dir in keys(qu)
+            if occursin(jobdir, dir)
+                push!(dirs, (dir, Jobs.timestamp(dir)))
+            end
         end
     end
     return sort(dirs, by = x -> x[2], rev=true)
@@ -93,11 +96,9 @@ end
 
 function running_jobs(fuzzy)
     out = Tuple{String, Int}[]
-    for (j, info) in JOB_QUEUE[]
+    for (j, info) in JOB_QUEUE[].current_queue
         if occursin(fuzzy, j)
-            if info[2] == Jobs.Running || info[2] == Jobs.Pending || info[2] == Jobs.Submitted
-                push!(out, (j, info[1]))
-            end
+            push!(out, (j, info[1]))
         end
     end
     return out
@@ -175,8 +176,15 @@ end
 
 Returns the job state of the job in `job_dir`.
 """
-state(job_dir::String) =
-    haskey(JOB_QUEUE[], job_dir) ? JOB_QUEUE[][job_dir][2] : Jobs.Unknown
+function state(job_dir::String)
+    if haskey(JOB_QUEUE[].current_queue, job_dir)
+        return JOB_QUEUE[].current_queue[job_dir][2]
+    elseif haskey(JOB_QUEUE[].full_queue, job_dir)
+        return JOB_QUEUE[].full_queue[job_dir][2]
+    else
+        return Jobs.Unknown
+    end
+end
 
 function dirsize(path::String)
     totsize = 0.0
@@ -251,10 +259,11 @@ end
 rm_version!(jobdir::String, version::Int) = Jobs.rm_version!(load(Job(jobdir)), version)
 
 function Servers.abort(job_dir::String)
-    @assert haskey(JOB_QUEUE[], job_dir) "No job exists in dir: $job_dir!"
+    @assert haskey(JOB_QUEUE[].current_queue, job_dir) "No job exists in dir: $job_dir!"
     s = local_server()
-    id = JOB_QUEUE[][job_dir][1]
+    id = JOB_QUEUE[].current_queue[job_dir][1]
     Servers.abort(s.scheduler, id)
-    JOB_QUEUE[][job_dir] = (id, Jobs.Cancelled)
+    delete!(JOB_QUEUE[].current_queue, job_dir)
+    JOB_QUEUE[].full_queue[job_dir] = (id, Jobs.Cancelled)
     return id
 end

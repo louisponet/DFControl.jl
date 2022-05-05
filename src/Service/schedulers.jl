@@ -32,6 +32,11 @@ function queue!(q, s::Scheduler, init)
         squeue = queue(s)
         for (d, i) in q.current_queue
             if d in keys(squeue)
+                state = squeue[d]
+            else
+                state = jobstate(s, i[1])
+            end
+            if in_queue(state)
                 q.current_queue[d] = (i[1], squeue[d])
             else
                 delete!(q.current_queue, d)
@@ -47,6 +52,8 @@ function queue(sc::Slurm)
     qlines = readlines(`squeue -u $(ENV["USER"]) --format=%Z_%T`)
     return Dict([(s = split(x, "_"); s[1] => jobstate(sc, x[2])) for x in qlines])
 end
+
+queue(sc::Bash) = Dict()
 
 ## BASH ##
 function Servers.jobstate(::Bash, id::Int)
@@ -69,7 +76,7 @@ function Servers.abort(::Bash, id::Int)
 end
 
 in_queue(s::Jobs.JobState) =
-    s in (Jobs.Pending, Jobs.Running, Jobs.Configuring, Jobs.Completing, Jobs.Suspended)
+    s in (Jobs.Saved, Jobs.Submitted, Jobs.Pending, Jobs.Running, Jobs.Configuring, Jobs.Completing, Jobs.Suspended)
     
 ## SLURM ##
 function Servers.jobstate(s::Slurm, id::Int)
