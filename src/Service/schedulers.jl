@@ -28,26 +28,25 @@ function queue!(q, s::Scheduler, init)
                 end
             end
         end
-    else
-        squeue = queue(s)
-        for (d, i) in q.current_queue
-            if d in keys(squeue)
-                state = squeue[d][2]
-            else
-                state = jobstate(s, i[1])
-            end
-            if in_queue(state)
-                q.current_queue[d] = squeue[d]
-            else
-                delete!(q.current_queue, d)
-                q.full_queue[d] = (i[1], jobstate(s, i[1]))
-            end
-        end
-        for k in setdiff(keys(squeue), keys(q.current_queue))
-            q.current_queue[k] = squeue[k]
-        end
-            
     end
+    squeue = queue(s)
+    for (d, i) in q.current_queue
+        if d in keys(squeue)
+            state = squeue[d][2]
+        else
+            state = jobstate(s, i[1])
+        end
+        if in_queue(state)
+            q.current_queue[d] = squeue[d]
+        else
+            delete!(q.current_queue, d)
+            q.full_queue[d] = (i[1], jobstate(s, i[1]))
+        end
+    end
+    for k in setdiff(keys(squeue), keys(q.current_queue))
+        q.current_queue[k] = squeue[k]
+    end
+        
     JSON3.write(QUEUE_FILE, q)
     return q
 end
