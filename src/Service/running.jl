@@ -1,4 +1,3 @@
-const JOB_QUEUE = Ref{QueueInfo}()
 
 mutable struct QueueInfo
     full_queue::Dict{String, Tuple{Int, Jobs.JobState}}
@@ -6,9 +5,11 @@ mutable struct QueueInfo
 end
 StructTypes.StructType(::Type{QueueInfo}) = StructTypes.Mutable()
 
+const JOB_QUEUE = Ref{QueueInfo}()
+
 function main_loop(s::Server, queue)
 
-    JOB_QUEUE[] = QueuInfo(Dict{String, Tuple{Int, Jobs.JobState}}(), Dict{String, Tuple{Int, Jobs.JobState}}())
+    JOB_QUEUE[] = QueueInfo(Dict{String, Tuple{Int, Jobs.JobState}}(), Dict{String, Tuple{Int, Jobs.JobState}}())
     queue!(JOB_QUEUE[], s.scheduler, true)
     @info (timestamp = Dates.now(), username = ENV["USER"], host = gethostname(), pid=getpid())
 
