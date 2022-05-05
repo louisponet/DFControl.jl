@@ -48,7 +48,7 @@ testjobpath = joinpath(testdir, "testassets", "test_job")
     end
 
     
-    save(job)
+    save(job, fillexecs=false)
     @test all(values(job[:ecutwfc]) .== 41.0)
     @test all(values(job[:ecutrho]) .== 236.0)
     @test job.version == 1
@@ -62,7 +62,7 @@ testjobpath = joinpath(testdir, "testassets", "test_job")
     for c in job.calculations
         pop!(c, :ecutrho, nothing)
     end
-    save(job)
+    save(job, fillexecs=false)
 
     job2 = load(test_server, Job(abspath(job)))
     
@@ -98,13 +98,13 @@ refjobpath =joinpath(testdir, "testassets", "reference_job")
     for (c1, c2) in zip(job2.calculations, job.calculations)
         @test c1 == c2
     end
-    save(job)
+    save(job, fillexecs=false)
     job = load(test_server, Job(testjobpath))
     
     for (c1, c2) in zip(job2.calculations, job.calculations)
         @test c1 == c2
     end
-    save(orig_job)
+    save(orig_job, fillexecs=false)
     for f in DFControl.Utils.searchdir(job2, ".out")
         cp(f, joinpath(job, splitdir(f)[2]), force=true)
     end

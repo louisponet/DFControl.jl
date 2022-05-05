@@ -1,28 +1,52 @@
-using ..Servers: Bash, Slurm, Scheduler
+using ..Servers: Bash, Slurm, Scheduler, jobstate
 
 function queue!(q, s::Scheduler, init)
     if init
         if ispath(QUEUE_FILE)
             t = read(QUEUE_FILE)
             if !isempty(t)
-                copy!(q, JSON3.read(read(QUEUE_FILE), Dict{String, Tuple{Int, Jobs.JobState}}))
+                tq = JSON3.read(t, QueueInfo)
+                copy!(q.full_queue, tq.full_queue)
+                copy!(q.current_queue, tq.current_queue)
             end
         end
-    end
-    for (dir, info) in q
-        if !isdir(dir)
-            pop!(q, dir)
-            continue
+        for qu in (q.full_queue, q.current_queue)
+            for (dir, info) in qu
+                if !isdir(dir)
+                    delete!(qu, dir)
+                    continue
+                end
+                id = info[1]
+                if in_queue(info[2])
+                    s = jobstate(s, id)
+                    if in_queue(s)
+                        delete!(q.full_queue, dir)
+                        q.current_queue[dir] = (id, s)
+                    else
+                        q.full_queue[dir] = (id, s)
+                    end
+                end
+            end
         end
-        id = info[1]
-        if info[2] == Jobs.Running || info[2] == Jobs.Pending || info[2] == Jobs.Submitted || info[2] == Jobs.Unknown
-            q[dir] = (id, Servers.jobstate(s, id))
+    else
+        squeue = queue(s)
+        for (d, i) in q.current_queue
+            if d in keys(squeue)
+                q.current_queue[d] = (i[1], squeue[d])
+            else
+                delete!(q.current_queue, d)
+                q.full_queue[d] = (i[1], jobstate(s, i[1]))
+            end
         end
     end
     JSON3.write(QUEUE_FILE, q)
     return q
 end
 
+function queue(sc::Slurm)
+    qlines = readlines(`squeue -u $(ENV["USER"]) --format=%Z_%T`)
+    return Dict([(s = split(x, "_"); s[1] => jobstate(sc, x[2])) for x in qlines])
+end
 
 ## BASH ##
 function Servers.jobstate(::Bash, id::Int)
@@ -44,20 +68,30 @@ function Servers.abort(::Bash, id::Int)
     end
 end
 
+in_queue(s::Jobs.JobState) =
+    s in (Jobs.Pending, Jobs.Running, Jobs.Configuring, Jobs.Completing, Jobs.Suspended)
+    
 ## SLURM ##
-function Servers.jobstate(::Slurm, id::Int)
+function Servers.jobstate(s::Slurm, id::Int)
     cmd = `sacct -u $(ENV["USER"]) --format=State -j $id -P`
     lines = readlines(cmd)
     if length(lines) <= 1
         return Jobs.Unknown
     end
-    state = lines[2]
+    return jobstate(s, lines[2])
+end
+
+function Servers.jobstate(::Slurm, state::String)
     if state == "PENDING"
         return Jobs.Pending
     elseif state == "RUNNING"
         return Jobs.Running
     elseif state == "COMPLETED"
         return Jobs.Completed
+    elseif state == "CONFIGURING"
+        return Jobs.Configuring
+    elseif state == "COMPLETING"
+        return Jobs.Completing
     elseif state == "CANCELLED"
         return Jobs.Cancelled
     elseif state == "BOOT_FAIL"

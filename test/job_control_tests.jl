@@ -48,7 +48,7 @@ end
     job = load(test_server, Job(testjobpath))
     rm(testjobpath, recursive=true)
     prevlen = length(Client.registered_jobs(test_server))
-    save(job)
+    save(job, fillexecs=false)
     @test length(Client.registered_jobs(test_server)) == prevlen + 1
     @test Client.registered_jobs(test_server)[end][1] == job.dir
 end
@@ -121,13 +121,13 @@ end
     job = load(test_server, Job(testjobpath))
     job[:nbnd] = 30
     curver = job.version
-    save(job)
+    save(job, fillexecs=false)
     @test job.version == curver + 1
-    save(job)
+    save(job, fillexecs=false)
     @test ispath(joinpath(job, Jobs.VERSION_DIR_NAME))
     @test ispath(joinpath(job, Jobs.VERSION_DIR_NAME, "$(curver+1)"))
     job[:nbnd] = 40
-    save(job)
+    save(job, fillexecs=false)
     @test job.version == curver + 3
     c = job["scf"]
     @test c[:nbnd] == 40

@@ -1,7 +1,7 @@
 const VERSION_DIR_NAME = ".versions"
 const TEMP_CALC_DIR = "outputs"
 
-@enum JobState BootFail Pending Running Completed Cancelled Deadline Failed NodeFail OutOfMemory Preempted Requeued Resizing Revoked Suspended Timeout Submitted Unknown PostProcessing Saved
+@enum JobState BootFail Pending Running Completed Configuring Completing Cancelled Deadline Failed NodeFail OutOfMemory Preempted Requeued Resizing Revoked Suspended Timeout Submitted Unknown PostProcessing Saved
 
 """
     Job(name::String, structure::Structure;

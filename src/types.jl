@@ -44,6 +44,9 @@ function bandgap(bands::Union{Iterators.Flatten,AbstractVector{<:AbstractBand}},
     for b in bands
         max = maximum(eigvals(b) .- fermi)
         min = minimum(eigvals(b) .- fermi)
+        if min <= 0.0 <= max
+            return 0.0
+        end
         if max_valence <= max <= 0.0
             max_valence = max
         end
