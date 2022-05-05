@@ -88,7 +88,7 @@ function Servers.jobstate(s::Slurm, id::Int)
     return jobstate(s, lines[2])
 end
 
-function Servers.jobstate(::Slurm, state::String)
+function Servers.jobstate(::Slurm, state::AbstractString)
     if state == "PENDING"
         return Jobs.Pending
     elseif state == "RUNNING"
