@@ -3,7 +3,7 @@ mutable struct QueueInfo
     full_queue::Dict{String, Tuple{Int, Jobs.JobState}}
     current_queue::Dict{String, Tuple{Int, Jobs.JobState}}
 end
-StructTypes.StructType(::Type{QueueInfo}) = StructTypes.Mutable()
+StructTypes.StructType(::Type{QueueInfo}) = StructTypes.Struct()
 
 const JOB_QUEUE = Ref{QueueInfo}()
 
