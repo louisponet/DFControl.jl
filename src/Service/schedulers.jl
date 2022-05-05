@@ -37,20 +37,24 @@ function queue!(q, s::Scheduler, init)
                 state = jobstate(s, i[1])
             end
             if in_queue(state)
-                q.current_queue[d] = (i[1], squeue[d])
+                q.current_queue[d] = squeue[d]
             else
                 delete!(q.current_queue, d)
                 q.full_queue[d] = (i[1], jobstate(s, i[1]))
             end
         end
+        for k in setdiff(keys(squeue), keys(q.current_queue))
+            q.current_queue[k] = squeue[k]
+        end
+            
     end
     JSON3.write(QUEUE_FILE, q)
     return q
 end
 
 function queue(sc::Slurm)
-    qlines = readlines(`squeue -u $(ENV["USER"]) --format=%Z_%T`)
-    return Dict([(s = split(x, "_"); s[1] => jobstate(sc, s[2])) for x in qlines])
+    qlines = readlines(`squeue -u $(ENV["USER"]) --format=%Z_%i_%T`)
+    return Dict([(s = split(x, "_"); s[1] => (parse(Int, s[2]), jobstate(sc, s[3]))) for x in qlines])
 end
 
 queue(sc::Bash) = Dict()
