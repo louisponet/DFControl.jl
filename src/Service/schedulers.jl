@@ -18,12 +18,12 @@ function queue!(q, s::Scheduler, init)
                 end
                 id = info[1]
                 if in_queue(info[2])
-                    s = jobstate(s, id)
-                    if in_queue(s)
+                    st = jobstate(s, id)
+                    if in_queue(st)
                         delete!(q.full_queue, dir)
-                        q.current_queue[dir] = (id, s)
+                        q.current_queue[dir] = (id, st)
                     else
-                        q.full_queue[dir] = (id, s)
+                        q.full_queue[dir] = (id, st)
                     end
                 end
             end
