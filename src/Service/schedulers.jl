@@ -50,7 +50,7 @@ end
 
 function queue(sc::Slurm)
     qlines = readlines(`squeue -u $(ENV["USER"]) --format=%Z_%T`)
-    return Dict([(s = split(x, "_"); s[1] => jobstate(sc, x[2])) for x in qlines])
+    return Dict([(s = split(x, "_"); s[1] => jobstate(sc, s[2])) for x in qlines])
 end
 
 queue(sc::Bash) = Dict()
