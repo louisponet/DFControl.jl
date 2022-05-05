@@ -32,7 +32,7 @@ function queue!(q, s::Scheduler, init)
         squeue = queue(s)
         for (d, i) in q.current_queue
             if d in keys(squeue)
-                state = squeue[d]
+                state = squeue[d][2]
             else
                 state = jobstate(s, i[1])
             end
