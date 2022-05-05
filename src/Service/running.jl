@@ -7,7 +7,7 @@ StructTypes.StructType(::Type{QueueInfo}) = StructTypes.Mutable()
 
 const JOB_QUEUE = Ref{QueueInfo}()
 
-function main_loop(s::Server, queue)
+function main_loop(s::Server)
 
     JOB_QUEUE[] = QueueInfo(Dict{String, Tuple{Int, Jobs.JobState}}(), Dict{String, Tuple{Int, Jobs.JobState}}())
     queue!(JOB_QUEUE[], s.scheduler, true)
