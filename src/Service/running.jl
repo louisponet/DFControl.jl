@@ -1,4 +1,4 @@
-
+using StructTypes
 mutable struct QueueInfo
     full_queue::Dict{String, Tuple{Int, Jobs.JobState}}
     current_queue::Dict{String, Tuple{Int, Jobs.JobState}}
