@@ -39,7 +39,7 @@ HTTP.@register(ROUTER, "PUT", "/kill_server", kill_server)
 get_server_config(req) = Servers.local_server()
 HTTP.@register(ROUTER, "GET", "/server_config", get_server_config)
 
-HTTP.@register(ROUTER, "GET", "/isalive", true)
+HTTP.@register(ROUTER, "GET", "/isalive", (res) -> true)
 
 Base.ispath(req::HTTP.Request) = ispath(path(req))
 HTTP.@register(ROUTER, "GET", "/ispath/*", ispath)

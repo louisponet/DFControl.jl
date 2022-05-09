@@ -498,7 +498,7 @@ it will be used as the `Emin` value from which to start counting the number of b
 projections.
 `extra_wan_flags` can be any extra flags for the Wannier90 calculation such as `write_hr` etc.
 """
-function Calculations.gencalc_wan(job::Job, min_window_determinator::Real,
+function Calculations.gencalc_wan(job::Job, min_window_determiator::Real,
                                   extra_wan_flags...; kwargs...)
     nscf_calc = getfirst(x -> Calculations.isnscf(x), job.calculations)
     nscf_calc === nothing && "Please first run an nscf calculation."

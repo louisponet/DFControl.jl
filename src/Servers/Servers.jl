@@ -251,8 +251,7 @@ the return is `false`.
 """
 function isalive(s::Server)
     try
-        HTTP.get(s, "/isalive", connect_timeout=2, retry=2)
-        return true
+        return HTTP.get(s, "/isalive", connect_timeout=2, retries=2) !== nothing
     catch
         return false
     end
