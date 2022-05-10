@@ -52,8 +52,8 @@ function queue!(q, s::Scheduler, init)
 end
 
 function queue(sc::Slurm)
-    qlines = readlines(`squeue -u $(ENV["USER"]) --format=%Z_%i_%T`)[2:end]
-    return Dict([(s = split(x, "_"); s[1] => (parse(Int, s[2]), jobstate(sc, s[3]))) for x in qlines])
+    qlines = readlines(`squeue -u $(ENV["USER"]) --format="%Z %i %T"`)[2:end]
+    return Dict([(s = split(x); s[1] => (parse(Int, s[2]), jobstate(sc, s[3]))) for x in qlines])
 end
 
 queue(sc::Bash) = Dict()
