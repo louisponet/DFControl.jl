@@ -17,11 +17,23 @@ function main_loop(s::Server)
     log_mtimes = mtime.(joinpath.((config_path("logs/runtimes/"),), readdir(config_path("logs/runtimes/"))))
     
     while true
-        queue!(JOB_QUEUE[], s.scheduler, false)
-        handle_job_submission!(JOB_QUEUE[], s)
-        # handle_workflow_submission!(s, job_dirs_procs)
+        try
+            queue!(JOB_QUEUE[], s.scheduler, false)
+        catch e
+            @error "queue error" e
+        end
+        try
+            handle_job_submission!(JOB_QUEUE[], s)
+        catch e
+            @error "job submission error" e
+        end
         monitor_issues(log_mtimes)
-        print_log(JOB_QUEUE[])
+
+        try  
+            print_log(JOB_QUEUE[])
+        catch
+            @error "logging error" e
+        end
         if ispath(config_path("self_destruct"))
             @info (timestamp = Dates.now(), message = "self_destruct found, self destructing...")
             exit()

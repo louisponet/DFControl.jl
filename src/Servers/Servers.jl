@@ -187,29 +187,10 @@ function HTTP.request(method::String, s::Server, url, body; kwargs...)
     return HTTP.request(method, string(http_string(s), url), header, JSON3.write(body); kwargs...)
 end
 
-function HTTP.request(method::String, s::Server, url; kwargs...)
+function HTTP.request(method::String, s::Server, url; connect_timeout=1, retries=2, kwargs...)
     header = ["USER-UUID" => s.uuid]
-    try
-        return HTTP.request(method, string(http_string(s), url), header; connect_timeout=1, retries=2, kwargs...)
-    catch
-        tserver = load_config(s)
-        if tserver !== nothing
-            s.port = tserver.port
-            if s.local_port != 0
-                destroy_tunnel(s)
-                construct_tunnel(s)
-            end
-            try
-                resp = HTTP.request(method, string(http_string(s), url), header; connect_timeout=1, retries=2, kwargs...)
-                save(s)
-                return resp
-            catch e
-                destroy_tunnel(s)
-                throw(e)
-            end
-        end
-    end
-    return 
+    
+    return HTTP.request(method, string(http_string(s), url), header; connect_timeout=connect_timeout, retries=retries, kwargs...)
 end
 
 for f in (:get, :put, :post, :head)
@@ -233,8 +214,11 @@ function rm(s::Server)
            rm(joinpath(SERVER_DIR, s.name * ".json"))
 end
 
+find_tunnel(s) =
+    getfirst(x->occursin("ssh -N -f -L $(s.local_port)", x), split(read(pipeline(`ps aux` , stdout = `grep $(s.local_port)`), String), "\n"))
+
 function destroy_tunnel(s)
-    t = getfirst(x->occursin("ssh -N -f -L $(s.local_port)", x), split(read(pipeline(`ps aux` , stdout = `grep $(s.local_port)`), String), "\n"))
+    t = find_tunnel(s)
     if t !== nothing
         try
             run(`kill $(split(t)[2])`)
@@ -243,6 +227,7 @@ function destroy_tunnel(s)
         end
     end
 end
+
 function construct_tunnel(s)
     run(Cmd(`ssh -N -f -L $(s.local_port):localhost:$(s.port) $(ssh_string(s))`, detach=true))
 end
@@ -269,39 +254,36 @@ Launches the daemon process on  the host [`Server`](@ref) `s`.
 function start(s::Server)
     @assert !isalive(s) "Server is already up and running."
     @info "Starting:\n$s"
+    hostname = gethostname(s)
     if islocal(s)
         t = ispath(config_path("self_destruct"))
     else
-        cmd = "cat ~/.julia/config/DFControl/self_destruct"
+        cmd = "cat ~/.julia/config/DFControl/$hostname/self_destruct"
         t = server_command(s, cmd).exitcode == 0
     end
-        
+           
     @assert !t "Self destruction was previously triggered, signalling issues on the Server.\nPlease investigate and if safe, remove ~/.julia/config/DFControl/self_destruct"
 
+    
     initialize_config_dir(s)
-    hostname = gethostname(s)
     # Here we clean up previous connections and commands
     if !islocal(s)
-        t = getfirst(x->occursin("ssh -f $(ssh_string(s))", x), split(read(pipeline(`ps aux` , stdout = `grep Resource`), String), "\n"))
-        if t !== nothing
-            run(`kill $(split(t)[2])`)
+        if s.local_port != 0
+            t = find_tunnel(s)
+            if t === nothing
+                construct_tunnel(s)
+            end
         end
        
-        if !islocal(s)
-            t = deepcopy(s)
-            t.domain = "localhost"
-            t.local_port = 0
-            t.name = hostname
-            tf = tempname()
-            JSON3.write(tf,  t)
-            push(tf, s, "~/.julia/config/DFControl/$hostname/storage/servers/$hostname.json")
-        end
+        t = deepcopy(s)
+        t.domain = "localhost"
+        t.local_port = 0
+        t.name = hostname
+        tf = tempname()
+        JSON3.write(tf,  t)
+        push(tf, s, "~/.julia/config/DFControl/$hostname/storage/servers/$hostname.json")
     end
         
-    if s.local_port != 0
-        destroy_tunnel(s)
-    end
-
     # Here we check what the modify time of the server-side localhost file is.
     # The server will rewrite the file with the correct port, which we use to see
     # whether the server started succesfully.
