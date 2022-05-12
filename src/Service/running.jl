@@ -33,6 +33,10 @@ end
 
 function print_log(queue)
     @info (timestamp = Dates.now(), njobs = length(queue.current_queue), nprocs = nprocs)
+    cpath = config_path("logs/daemon/restapi.log")
+    if filesize(cpath) > 1e8
+        write(cpath, "")
+    end
 end
 
 function monitor_issues(log_mtimes)
@@ -57,7 +61,7 @@ function handle_job_submission!(queue, s::Server)
     if length(lines) + njobs > s.max_concurrent_jobs
         
         to_submit = lines[1:s.max_concurrent_jobs - njobs]
-        open(PENDING_JOBS_FILE, "a") do f
+        open(PENDING_JOBS_FILE, "a", lock=true) do f
             for l in lines[s.max_concurrent_jobs - njobs + 1:end]
                 write(f, l * "\n")
             end
@@ -67,15 +71,25 @@ function handle_job_submission!(queue, s::Server)
     end
         
     if !isempty(to_submit)
+        curtries = 0
         while !isempty(to_submit)
             j = pop!(to_submit)
             try
                 id = Servers.submit(s.scheduler, j)
                 @info (timestamp = Dates.now(), jobdir = j, jobid = id, state = Jobs.Submitted)
                 queue.current_queue[j] = (id, Jobs.Submitted)
-            catch
-                sleep(SLEEP_TIME)
-                push!(to_submit, j)
+            catch e
+                if curtries < 3
+                    curtries += 1
+                    sleep(SLEEP_TIME)
+                    push!(to_submit, j)
+                else
+                    curtries = 0
+                    open(PENDING_JOBS_FILE, "a", lock=true) do f
+                        write(f, j * "\n")
+                    end
+                end
+                @error e
             end
         end
     end

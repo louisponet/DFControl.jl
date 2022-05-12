@@ -199,9 +199,14 @@ function HTTP.request(method::String, s::Server, url; kwargs...)
                 destroy_tunnel(s)
                 construct_tunnel(s)
             end
-            resp = HTTP.request(method, string(http_string(s), url), header; connect_timeout=1, retries=2, kwargs...)
-            save(s)
-            return resp
+            try
+                resp = HTTP.request(method, string(http_string(s), url), header; connect_timeout=1, retries=2, kwargs...)
+                save(s)
+                return resp
+            catch e
+                destroy_tunnel(s)
+                throw(e)
+            end
         end
     end
     return 
@@ -230,7 +235,6 @@ end
 
 function destroy_tunnel(s)
     t = getfirst(x->occursin("ssh -N -f -L $(s.local_port)", x), split(read(pipeline(`ps aux` , stdout = `grep $(s.local_port)`), String), "\n"))
-        
     if t !== nothing
         try
             run(`kill $(split(t)[2])`)
@@ -403,6 +407,10 @@ function pull(server::Server, remote::String, loc::String)
         run(pipeline(`scp -r $(ssh_string(server) * ":" * remote) $path`, stdout=out, stderr=err))
         close(out.in)
         close(err.in)
+        stderr = read(err, String)
+        if !isempty(stderr)
+            error("$stderr")
+        end
     end
     return path
 end
