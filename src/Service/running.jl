@@ -44,11 +44,7 @@ function main_loop(s::Server)
 end
 
 function print_log(queue)
-    @info (timestamp = Dates.now(), njobs = length(queue.current_queue), nprocs = nprocs)
-    cpath = config_path("logs/daemon/restapi.log")
-    if filesize(cpath) > 1e8
-        write(cpath, "")
-    end
+    @info (timestamp = string(Dates.now()), njobs = length(queue.current_queue), nprocs = nprocs)
 end
 
 function monitor_issues(log_mtimes)

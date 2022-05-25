@@ -41,7 +41,7 @@ function load(job::Job)
     
 end
 
-function save(jobdir::String, files; kwargs...)
+function save(jobdir::String, files::Vector; kwargs...)
 
     if jobdir[end] == '/'
         jobdir = jobdir[1:end-1]

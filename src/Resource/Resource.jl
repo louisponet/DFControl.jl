@@ -109,7 +109,7 @@ HTTP.@register(ROUTER, "PUT", "/environment/*", rm_environment!)
 # RUNNING
 function requestHandler(req)
     start = Dates.now()
-    @info (timestamp = start, event = "ServiceRequestBegin", tid = Threads.threadid(),
+    @info (timestamp = string(start), event = "Begin", tid = Threads.threadid(),
            method = req.method, target = req.target)
     local resp
     try
@@ -127,7 +127,7 @@ function requestHandler(req)
         resp = HTTP.Response(500, errormsg)
     end
     stop = Dates.now()
-    @info (timestamp = stop, event = "ServiceRequestEnd", tid = Threads.threadid(),
+    @info (timestamp = string(stop), event = "End", tid = Threads.threadid(),
            method = req.method, target = req.target, duration = Dates.value(stop - start),
            status = resp.status, bodysize = length(resp.body))
     return resp

@@ -4,7 +4,7 @@ using ..DFControl: config_path
 using ..Utils
 using ..Database
 
-export Server, start, kill,  local_server
+export Server, start, local_server
 
 const SERVER_DIR = config_path("storage/servers")
 
@@ -195,7 +195,7 @@ end
 
 for f in (:get, :put, :post, :head)
     str = uppercase(string(f))
-    @eval function HTTP.$(f)(s::Server, url, args...; kwargs...)
+    @eval function HTTP.$(f)(s::Server, url::AbstractString, args...; kwargs...)
         return HTTP.request("$($str)", s, url, args...; kwargs...)
     end
 end
@@ -346,7 +346,7 @@ end
 
 Kills the daemon process on [`Server`](@ref) `s`.
 """
-kill(s::Server) = HTTP.put(s, "/kill_server")
+Base.kill(s::Server) = HTTP.put(s, "/kill_server")
 
 function restart(s::Server)
     kill(s)
