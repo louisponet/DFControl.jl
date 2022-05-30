@@ -506,7 +506,8 @@ const QE_PW_PARSE_FUNCTIONS = ["C/m^2" => qe_parse_polarization,
                                "HUBBARD ENERGY" => qe_parse_Hubbard_energy,
                                "init_run" => qe_parse_timing,
                                "Starting magnetic structure" => qe_parse_starting_magnetization,
-                               "Simplified LDA+U calculation" => qe_parse_starting_simplified_dftu]
+                               "Simplified LDA+U calculation" => qe_parse_starting_simplified_dftu,
+                               "JOB DONE." => (x, y, z) -> x[:finished] = true]
 
 """
     qe_read_pw_output(filename::String; parse_funcs::Vector{Pair{String}}=Pair{String,<:Function}[])
@@ -518,6 +519,9 @@ The additional `parse_funcs` should be of the form:
 function qe_read_pw_output(filename::String;
                            parse_funcs::Vector{<:Pair{String}} = Pair{String}[])
     out = parse_file(filename, QE_PW_PARSE_FUNCTIONS; extra_parse_funcs = parse_funcs)
+    if !haskey(out, :finished)
+        out[:finished] = false
+    end
     if haskey(out, :in_alat) &&
        haskey(out, :in_cell) &&
        (haskey(out, :in_cart_positions) || haskey(out, :in_cryst_positions))
@@ -675,7 +679,8 @@ end
 function qe_read_projwfc_output(file, args...)
     out = Dict{Symbol,Any}()
     out[:states], out[:bands] = qe_read_projwfc(file)
-    out[:energies], out[:pdos] = pdos(file) 
+    out[:energies], out[:pdos] = pdos(file)
+    out[:finished] = isempty(out[:energies]) ? false : true
     return out
 end
 

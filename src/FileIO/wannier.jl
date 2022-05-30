@@ -423,7 +423,8 @@ function wan_parse_wannierise(out, line, f)
 end
 
 const WAN_PARSE_FUNCS = ["Extraction of optimally-connected subspace" => wan_parse_disentanglement,
-                         "Initial State" => wan_parse_wannierise]
+                         "Initial State" => wan_parse_wannierise,
+                         "All done:" => (x, y, z) -> x[:finished] = true]
 
 """
     wan_read_output(filename::AbstractString; parse_funcs::Vector{Pair{String,Function}}=Pair{String,Function}[])
@@ -436,7 +437,9 @@ Parsed info:
 """
 function wan_read_output(filename::AbstractString;
                          parse_funcs::Vector{<:Pair{String}} = Pair{String}[])
-    return parse_file(filename, WAN_PARSE_FUNCS; extra_parse_funcs = parse_funcs)
+    out = parse_file(filename, WAN_PARSE_FUNCS; extra_parse_funcs = parse_funcs)
+    out[:finished] = haskey(out, :finished) ? true : false
+    return out
 end
 
 function outfiles(c::Calculation{Wannier90})

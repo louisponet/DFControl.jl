@@ -43,6 +43,11 @@ function queue!(q, s::Scheduler, init)
             q.full_queue[d] = (i[1], state)
         end
     end
+    for d in keys(q.full_queue)
+        if !isdir(d)
+            delete!(q.full_queue, d)
+        end
+    end
     for (k, v) in squeue
         q.current_queue[k] = v
     end

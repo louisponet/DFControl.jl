@@ -19,3 +19,4 @@ submit_cmd(s::Bash)  = `bash`
 submit(s::S, jobdir::String) where {S<:Scheduler} = error("No submit method defined for $S.")
 abort(s::S, id::Int) where {S<:Scheduler} = error("No abort method defined for $S.")
 jobstate(s::S, id) where {S<:Scheduler} = error("No jobstate method defined for $S.")
+jobid(s::S, dir::AbstractString) where {S<:Scheduler} = error("No jobid method defined for $S.")
