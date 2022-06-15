@@ -123,10 +123,18 @@ function Base.string(e::Exec)
         if flag.value !== nothing
             if !isa(flag.value, AbstractString)
                 for v in flag.value
-                    str *= " $v"
+                    if v isa Bool
+                        str *= " .$v."
+                    else
+                        str *= " $v"
+                    end
                 end
             else
-                str *= " $(flag.value)"
+                if flag.value isa Bool
+                    str *= " .$(flag.value)."
+                else
+                    str *= " $(flag.value)"
+                end
             end
         end
     end

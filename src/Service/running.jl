@@ -82,22 +82,28 @@ function handle_job_submission!(queue, s::Server)
         curtries = 0
         while !isempty(to_submit)
             j = pop!(to_submit)
-            try
-                id = Servers.submit(s.scheduler, j)
-                @info (timestamp = Dates.now(), jobdir = j, jobid = id, state = Jobs.Submitted)
-                queue.current_queue[j] = (id, Jobs.Submitted)
-            catch e
-                if curtries < 3
-                    curtries += 1
-                    sleep(SLEEP_TIME)
-                    push!(to_submit, j)
-                else
+            if ispath(j)
+                
+                try
+                    id = Servers.submit(s.scheduler, j)
+                    @info (timestamp = Dates.now(), jobdir = j, jobid = id, state = Jobs.Submitted)
+                    queue.current_queue[j] = (id, Jobs.Submitted)
                     curtries = 0
-                    open(PENDING_JOBS_FILE, "a", lock=true) do f
-                        write(f, j * "\n")
+                catch e
+                    if curtries < 3
+                        curtries += 1
+                        sleep(SLEEP_TIME)
+                        push!(to_submit, j)
+                    else
+                        curtries = 0
+                        open(PENDING_JOBS_FILE, "a", lock=true) do f
+                            write(f, j * "\n")
+                        end
                     end
+                    @error e
                 end
-                @error e
+            else
+                @warn "Submission job at dir: $j is not a directory."
             end
         end
     end
