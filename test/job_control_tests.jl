@@ -25,6 +25,9 @@ testjobpath = joinpath(testassetspath, "test_job")
 
     out_str = outputdata(job)["scf"][:initial_structure]
     Structures.update_geometry!(job.structure, out_str)
+    for a in job.structure[element(:Ni)]
+        a.dftu.l = 2
+    end
     @test out_str == job.structure
 end
 

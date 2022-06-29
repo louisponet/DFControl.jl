@@ -93,8 +93,8 @@ refjobpath =joinpath(testdir, "testassets", "reference_job")
     for a in job.structure.atoms
         a.projections = [Projection("s"), Projection("p"), Projection("d")]
     end
-    wanexec = Exec("wan","wannier90.x", joinpath(homedir(), "Software/wannier90"))
-    append!(job, Calculations.gencalc_wan(job, 0.000011, wanexec = wanexec))
+    wanexec = Exec(name="wan",exec="wannier90.x", dir=joinpath(homedir(), "Software/wannier90"), parallel=false)
+    append!(job, Calculations.gencalc_wan(job, 0.000011, :wannier_plot => true, wanexec = wanexec))
     for (c1, c2) in zip(job2.calculations, job.calculations)
         @test c1 == c2
     end
@@ -103,6 +103,11 @@ refjobpath =joinpath(testdir, "testassets", "reference_job")
     
     for (c1, c2) in zip(job2.calculations, job.calculations)
         @test c1 == c2
+        @show c1.exec == c2.exec
+        @show c1.flags == c2.flags
+        @show c1.data == c2.data
+        @show c1.infile == c2.infile
+        @show c1.outfile, c2.outfile
     end
     save(orig_job, fillexecs=false)
     for f in DFControl.Utils.searchdir(job2, ".out")

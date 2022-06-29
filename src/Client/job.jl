@@ -398,12 +398,21 @@ function outputdata(server::Server, jobdir::String; calcs::Vector{String}=String
                           
     local_temp = tempname() * ".jld2"
     Servers.pull(server, tmp_path, local_temp)
-    dat = JLD2.load(local_temp)
+    
+    dat = Dict{String, Dict{Symbol, Any}}()
+    JLD2.jldopen(local_temp, "r") do file
+        for c in keys(file)
+            group = file[c]
+            dat[c] = Dict{Symbol, Any}()
+            for k in keys(group)
+                dat[c][Symbol(k)] = group[k]
+            end
+        end
+    end    
     rm(local_temp)
-    out = dat["outputdata"]
     if extra_parse_funcs !== nothing
         j = load(Server(server), Job(jobdir))
-        for k in keys(out)
+        for k in keys(dat)
             if !isempty(calcs) && k ∈ calcs
                 c = j[k]
                 n = c.name
@@ -411,7 +420,7 @@ function outputdata(server::Server, jobdir::String; calcs::Vector{String}=String
                     f = joinpath(jobdir, c.outfile)
                     local_f = tempname()
                     Servers.pull(server, f, local_f)
-                    FileIO.parse_file(local_f, extra_parse_funcs, out = out[n])
+                    FileIO.parse_file(local_f, extra_parse_funcs, out = dat[n])
                     rm(local_f)
                 catch
                     nothing
@@ -419,7 +428,7 @@ function outputdata(server::Server, jobdir::String; calcs::Vector{String}=String
             end
         end
     end
-    return out     
+    return dat     
 end
 
 """

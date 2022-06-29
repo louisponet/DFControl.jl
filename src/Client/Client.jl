@@ -21,5 +21,6 @@ export submit, save, isrunning, state, versions, last_version, switch_version!, 
        outputdata, readfermi, readbands, bandgap, archive, cleanup
 include("pseudos.jl")
 export configure_pseudoset, rm_pseudoset!, list_pseudosets
+include("firecrest.jl")
 
 end

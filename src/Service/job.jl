@@ -220,40 +220,33 @@ end
 exists_job(d::AbstractString) = ispath(d) && ispath(joinpath(d, "job.tt"))
 
 function outputdata(jobdir::String, calculations::Vector{String})
-    job = load(Job(jobdir))
+    job          = load(Job(jobdir))
     calculations = isempty(calculations) ? map(x->x.name, job.calculations) : calculations
+
     respath = joinpath(job, "results.jld2")
-    if ispath(respath)
-        datadict = JLD2.load(respath, "outputdata")
-    else
-        datadict = Dict{String,Dict{Symbol,Any}}()
-    end
-    stime = isempty(datadict) ? 0.0 : mtime(respath)
-    new_data = false
-    for c in calculations
-        calculation = job[c]
-        p = joinpath(job, calculation.outfile)
-        if mtime(p) > stime
-            try 
-                tout = outputdata(calculation, p)
-                if !isempty(tout)
-                    datadict[calculation.name] = tout
-                    new_data = true
+    stime = ispath(respath) ? mtime(respath) : 0.0
+
+    JLD2.jldopen(respath, "a+") do file
+        for c in calculations
+            calculation = job[c]
+            p = joinpath(job, calculation.outfile)
+            if mtime(p) > stime
+                group = haskey(file, c) ? file[c] : JLD2.Group(file, c)
+                try 
+                    tout = outputdata(calculation, p)
+                    if !isempty(tout) # So that previous succesful data is not overwritten
+                        for (k, v) in tout
+                            group[string(k)] = v
+                        end
+                    end
+                catch e
+                    @warn "Something went wrong reading output for calculation $c."
+                    @warn e
                 end
-            catch e
-                @warn "Something went wrong reading output for calculation $c."
-                @warn e
             end
         end
     end
-    if new_data
-        JLD2.jldsave(respath; outputdata=datadict)
-        return respath
-    elseif ispath(respath)
-        return respath
-    else
-        return nothing
-    end
+    return respath
 end
 
 rm_version!(jobdir::String, version::Int) = Jobs.rm_version!(load(Job(jobdir)), version)
