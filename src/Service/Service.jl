@@ -41,8 +41,7 @@ function job_logger(id::Int)
 end
 
 include("schedulers.jl")
-include("running.jl")
-include("calculation.jl")
+include("running.jl")uinclude("calculation.jl")
 include("pseudos.jl")
 include("job.jl")
 # include("execs.jl")
