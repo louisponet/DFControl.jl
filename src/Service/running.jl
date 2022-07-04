@@ -44,7 +44,7 @@ function main_loop(s::Server)
 end
 
 function print_log(queue)
-    @info (timestamp = string(Dates.now()), njobs = length(queue.current_queue), nprocs = nprocs)
+    # @info (timestamp = string(Dates.now()), njobs = length(queue.current_queue), nprocs = nprocs)
 end
 
 function monitor_issues(log_mtimes)
@@ -66,9 +66,11 @@ function handle_job_submission!(queue, s::Server)
     lines = filter(!isempty, readlines(PENDING_JOBS_FILE))
     write(PENDING_JOBS_FILE, "")
     njobs = length(queue.current_queue)
+    @info "Found $(length(lines)) jobs to submit..."
     if length(lines) + njobs > s.max_concurrent_jobs
         
         to_submit = lines[1:s.max_concurrent_jobs - njobs]
+        @info "Saving $(length(lines) - s.max_concurrent_jobs + njobs) jobs to submit later..."
         open(PENDING_JOBS_FILE, "a", lock=true) do f
             for l in lines[s.max_concurrent_jobs - njobs + 1:end]
                 write(f, l * "\n")
@@ -77,6 +79,7 @@ function handle_job_submission!(queue, s::Server)
     else
         to_submit = lines
     end
+    @info "Submitting $(length(to_submit)) jobs..."
         
     if !isempty(to_submit)
         curtries = 0
