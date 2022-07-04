@@ -2,8 +2,8 @@ using ..Servers: Bash, Slurm, Scheduler, jobstate
 
 function queue!(q, s::Scheduler, init)
     if init
-        if ispath(QUEUE_FILE)
-            t = read(QUEUE_FILE)
+        if ispath(QUEUE_FILE())
+            t = read(QUEUE_FILE())
             if !isempty(t)
                 tq = JSON3.read(t, QueueInfo)
                 copy!(q.full_queue, tq.full_queue)
@@ -52,7 +52,7 @@ function queue!(q, s::Scheduler, init)
         q.current_queue[k] = v
     end
         
-    JSON3.write(QUEUE_FILE, q)
+    JSON3.write(QUEUE_FILE(), q)
     return q
 end
 

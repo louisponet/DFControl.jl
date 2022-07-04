@@ -148,11 +148,11 @@ Writes the directory to either pending workflows or pending jobs file.
 """
 function submit(job_dir::String, workflow::Bool)
     if workflow
-        open(PENDING_WORKFLOWS_FILE, "a", lock=true) do f
+        open(PENDING_WORKFLOWS_FILE(), "a", lock=true) do f
             return write(f, job_dir * "\n")
         end
     else
-        open(PENDING_JOBS_FILE, "a", lock=true) do f
+        open(PENDING_JOBS_FILE(), "a", lock=true) do f
             return write(f, job_dir * "\n")
         end
     end

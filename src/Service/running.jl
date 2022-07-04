@@ -63,15 +63,15 @@ end
 # Jobs are submitted by the daemon, using supplied job jld2 from the caller (i.e. another machine)
 # Additional files are packaged with the job
 function handle_job_submission!(queue, s::Server)
-    lines = filter(!isempty, readlines(PENDING_JOBS_FILE))
-    write(PENDING_JOBS_FILE, "")
+    lines = filter(!isempty, readlines(PENDING_JOBS_FILE()))
+    write(PENDING_JOBS_FILE(), "")
     njobs = length(queue.current_queue)
     @info "Found $(length(lines)) jobs to submit..."
     if length(lines) + njobs > s.max_concurrent_jobs
         
         to_submit = lines[1:s.max_concurrent_jobs - njobs]
         @info "Saving $(length(lines) - s.max_concurrent_jobs + njobs) jobs to submit later..."
-        open(PENDING_JOBS_FILE, "a", lock=true) do f
+        open(PENDING_JOBS_FILE(), "a", lock=true) do f
             for l in lines[s.max_concurrent_jobs - njobs + 1:end]
                 write(f, l * "\n")
             end
@@ -99,7 +99,7 @@ function handle_job_submission!(queue, s::Server)
                         push!(to_submit, j)
                     else
                         curtries = 0
-                        open(PENDING_JOBS_FILE, "a", lock=true) do f
+                        open(PENDING_JOBS_FILE(), "a", lock=true) do f
                             write(f, j * "\n")
                         end
                     end
@@ -124,8 +124,8 @@ function spawn_worker(s::Server, jobdir)
 end
 
 function handle_workflow_submission!(s::Server, job_dirs_procs)
-    lines = filter(!isempty, readlines(PENDING_WORKFLOWS_FILE))
-    write(PENDING_WORKFLOWS_FILE, "")
+    lines = filter(!isempty, readlines(PENDING_WORKFLOWS_FILE()))
+    write(PENDING_WORKFLOWS_FILE(), "")
     for l in lines
         job_dirs_procs[l] = spawn_worker(s, l)
     end

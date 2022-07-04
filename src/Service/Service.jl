@@ -11,12 +11,10 @@ import ..Database: save, load, exists
 # const DAEMON_CONFIG_PATH = config_path("daemon.jld2")
 # delete_daemon_config!() = rm(DAEMON_CONFIG_PATH)
 
-const RUNNING_JOBS_FILE = config_path("jobs", "running.txt")
-const PENDING_JOBS_FILE = config_path("jobs", "pending.txt")
-const PENDING_WORKFLOWS_FILE = config_path("workflows", "pending.txt")
-const RUNNING_WORKFLOWS_FILE = config_path("workflows", "running.txt")
-const QUEUE_FILE = config_path("jobs", "queue.json")
-const SLEEP_TIME = 10.0
+PENDING_JOBS_FILE() = config_path("jobs", "pending.txt")
+PENDING_WORKFLOWS_FILE() = config_path("workflows", "pending.txt")
+QUEUE_FILE() = config_path("jobs", "queue.json")
+SLEEP_TIME = 10.0
 
 function daemon_logger()
     p = config_path("logs/daemon")
