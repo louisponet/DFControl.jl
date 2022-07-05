@@ -186,7 +186,7 @@ function Servers.jobstate(::HQ, state::AbstractString)
 end
 
 function Servers.submit(::HQ, j::String)
-    chmod(joinpath(j, "job.tt"), 777)
+    chmod(joinpath(j, "job.tt"), 0o777)
 
     time = split(filter(x->occursin("time=", x), readlines("job.tt"))[1], "=")[end]
     
