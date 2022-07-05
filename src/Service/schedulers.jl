@@ -1,4 +1,4 @@
-using ..Servers: Bash, Slurm, Scheduler, jobstate
+using ..Servers: Bash, Slurm, HQ, Scheduler, jobstate
 
 function queue!(q, s::Scheduler, init)
     if init
