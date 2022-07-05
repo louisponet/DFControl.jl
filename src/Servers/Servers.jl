@@ -53,7 +53,7 @@ function configure!(s::Server)
     end
     s.julia_exec = julia
     scheduler = Bash()
-    for t in (Slurm(),)
+    for t in (HQ(), Slurm())
         scmd = submit_cmd(t)
         if server_command(s, `which $scmd`).exitcode == 0
             scheduler = t

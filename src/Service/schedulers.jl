@@ -56,14 +56,9 @@ function queue!(q, s::Scheduler, init)
     return q
 end
 
-function queue(sc::Slurm)
-    qlines = readlines(`squeue -u $(ENV["USER"]) --format="%Z %i %T"`)[2:end]
-    return Dict([(s = split(x); s[1] => (parse(Int, s[2]), jobstate(sc, s[3]))) for x in qlines])
-end
-
-queue(sc::Bash) = Dict()
-
 ## BASH ##
+queue(::Bash) = Dict()
+
 function Servers.jobstate(::Bash, id::Int)
     out = Pipe()
     err = Pipe()
@@ -87,6 +82,11 @@ in_queue(s::Jobs.JobState) =
     s in (Jobs.Submitted, Jobs.Pending, Jobs.Running, Jobs.Configuring, Jobs.Completing, Jobs.Suspended)
     
 ## SLURM ##
+function queue(sc::Slurm)
+    qlines = readlines(`squeue -u $(ENV["USER"]) --format="%Z %i %T"`)[2:end]
+    return Dict([(s = split(x); s[1] => (parse(Int, s[2]), jobstate(sc, s[3]))) for x in qlines])
+end
+
 function Servers.jobstate(s::Slurm, id::Int)
     cmd = `sacct -u $(ENV["USER"]) --format=State -j $id -P`
     lines = readlines(cmd)
@@ -140,3 +140,63 @@ Servers.submit(::Slurm, j::String) =
 
 Servers.abort(s::Slurm, id::Int) = 
     run(`scancel $id`)
+
+#### HQ
+function queue(sc::HQ)
+    all_lines = readlines(`hq job list`)
+    start_id = findnext(x -> x[1] == '+', all_lines, 2)
+    endid = findnext(x -> x[1] == '+', all_lines, start_id + 1)
+    if endid === nothing
+        return Dict()
+    end
+    qlines = all_lines[start_id+1:endid-1]
+
+    jobinfos = [(s = split(x); (parse(Int, s[2]), jobstate(sc, s[4]))) for x in qlines]
+
+    workdir_line_id =
+        findfirst(x-> occursin("Working directory", x), readlines(`hq job info $(jobinfos[1][1])`))
+
+    workdir(id) = split(readlines(`hq job info $id`)[workdir_line_id])[end-1]
+    
+    return Dict([workdir(x[1]) => x for x in jobinfos])
+end
+
+function Servers.jobstate(s::HQ, id::Int)
+    lines = readlines(`hq job info $id`)
+    
+    if length(lines) <= 1
+        return Jobs.Unknown
+    end
+    return jobstate(s, split(lines[findfirst(x->occursin("State", x), lines)])[3])
+end
+
+function Servers.jobstate(::HQ, state::AbstractString)
+    if state == "WAITING"
+        return Jobs.Pending
+    elseif state == "RUNNING"
+        return Jobs.Running
+    elseif state == "FINISHED"
+        return Jobs.Completed
+    elseif state == "CANCELED"
+        return Jobs.Cancelled
+    elseif state == "FAILED"
+        return Jobs.Failed
+    end
+    return Jobs.Unknown
+end
+
+function Servers.submit(::HQ, j::String)
+    chmod(joinpath(j, "job.tt"), 777)
+
+    time = split(filter(x->occursin("time=", x), readlines("job.tt"))[1], "=")[end]
+    
+    
+    out = read(Cmd(`hq submit ./job.tt --time-request $time`, dir=j), String)
+    if !occursin("successfully", out)
+        error("Submission error for job in dir $j.")
+    end
+    return parse(Int, split(out)[end])
+end
+
+Servers.abort(::HQ, id::Int) = 
+    run(`hq job cancel $id`)
