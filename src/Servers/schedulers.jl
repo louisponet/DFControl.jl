@@ -21,6 +21,14 @@ submit_cmd(s::Slurm) = `sbatch`
 submit_cmd(s::Bash)  = `bash`
 submit_cmd(s::HQ)  = `hq`
 
+scheduler_directive_prefix(::Slurm) = "#SBATCH"
+scheduler_directive_prefix(::Bash) = "#"
+scheduler_directive_prefix(::HQ) = "#HQ"
+
+scheduler_name_flag(::Slurm) = "job-name"
+scheduler_name_flag(::Bash) = "job-name"
+scheduler_name_flag(::HQ) = "name"
+
 # These will be filled in by definitions in Service
 submit(s::S, jobdir::String) where {S<:Scheduler} = error("No submit method defined for $S.")
 abort(s::S, id::Int) where {S<:Scheduler} = error("No abort method defined for $S.")

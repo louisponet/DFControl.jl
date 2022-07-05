@@ -9,6 +9,8 @@ export Server, start, local_server
 const SERVER_DIR = config_path("storage/servers")
 
 include("schedulers.jl")
+scheduler_directive_prefix(s::Server) = scheduler_directive_prefix(s.scheduler)
+scheduler_name_flag(s::Server) = scheduler_name_flag(s.scheduler)
 
 """
     Server(name::String, username::String, domain::String, port::Int, scheduler::Scheduler, mountpoint::String,

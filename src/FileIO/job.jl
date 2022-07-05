@@ -1,5 +1,18 @@
+using ..Servers: scheduler_directive_prefix, scheduler_name_flag
+
 function write_job_header(f, job::Job, environment)
-    environment !== nothing && write(f, environment)
+    s = Servers.Server(job.server)
+    scheduler_directive = scheduler_directive_prefix(s)
+    
+    if environment !== nothing
+        write(f, "$scheduler_directive --$(scheduler_name_flag(s))=$(job.name) \n")
+        for flag in environment.scheduler_flags
+            write(f, "$scheduler_directive  $flag\n")
+        end
+        for flag in environment.exports
+            write(f, "export $flag\n")
+        end
+    end
     job_header = job.header
     for line in job_header
         if occursin("\n", line)
@@ -8,7 +21,6 @@ function write_job_header(f, job::Job, environment)
             write(f, line * "\n")
         end
     end
-    s = Servers.Server(job.server)
     if ispath(s, "/etc/profile")
         write(f, "source /etc/profile\n")
     end
@@ -131,7 +143,6 @@ function Base.write(job::Job, environment::Environment; kwargs...)
             
     open(joinpath(job, "job.tt"), "w") do f
         write(f, "#!/bin/bash\n")
-        write(f, "#SBATCH -J $(job.name) \n")
         write_job_header(f, job, environment)
         write_job_preamble(f, job)
         written_calculations = Calculation[]
@@ -243,9 +254,9 @@ function read_job_script(job_file::String)
         while !eof(f)
             line = readline(f)
             isempty(line) && continue
-            
-            if occursin("#SBATCH", line)
-                if occursin("-J", line) || occursin("--job-name", line)
+            #TODO : Bad 
+            if occursin("#SBATCH", line) || occursin("#HQ", line)
+                if occursin("-J", line) || occursin("name=", line)
                     name = String(split(split(line, "=")[end])[end])
                 else
                     push!(header, line)

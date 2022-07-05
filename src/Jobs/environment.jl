@@ -1,3 +1,4 @@
+using ..Servers: Slurm, Bash, HQ
 """
     Environment(MPI_command::String, scheduler_flags::Vector{String}, exports::Vector{String})
 
@@ -50,15 +51,6 @@ function environment_from_jobscript(scriptpath::String)
     n = Database.name(t)
     t.name = n === nothing ? t.name : n
     return t
-end
-
-function Base.write(f::IO, env::Environment)
-    for flag in env.scheduler_flags
-        write(f, "#SBATCH $flag\n")
-    end
-    for flag in env.exports
-        write(f, "export $flag\n")
-    end
 end
 
 function Base.rm(e::Environment)
