@@ -19,7 +19,7 @@ StructTypes.subtypekey(::Type{Scheduler}) = :type
 submit_cmd(s::S) where {S<:Scheduler} = error("No submit_cmd method defined for $S.")
 submit_cmd(s::Slurm) = `sbatch`
 submit_cmd(s::Bash)  = `bash`
-submit_cmd(s::Bash)  = `hq`
+submit_cmd(s::HQ)  = `hq`
 
 # These will be filled in by definitions in Service
 submit(s::S, jobdir::String) where {S<:Scheduler} = error("No submit method defined for $S.")
