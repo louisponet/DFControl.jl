@@ -188,7 +188,7 @@ end
 function Servers.submit(::HQ, j::String)
     chmod(joinpath(j, "job.tt"), 0o777)
 
-    time = split(filter(x->occursin("time=", x), readlines("job.tt"))[1], "=")[end]
+    time = split(filter(x->occursin("time=", x), readlines(joinpath(j, "job.tt")))[1], "=")[end]
     
     
     out = read(Cmd(`hq submit ./job.tt --time-request $time`, dir=j), String)
