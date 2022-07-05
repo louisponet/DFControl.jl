@@ -188,10 +188,7 @@ end
 function Servers.submit(::HQ, j::String)
     chmod(joinpath(j, "job.tt"), 0o777)
 
-    time = split(filter(x->occursin("time=", x), readlines(joinpath(j, "job.tt")))[1], "=")[end]
-    
-    
-    out = read(Cmd(`hq submit --time-request --cpus=all $time ./job.tt`, dir=j), String)
+    out = read(Cmd(`hq submit ./job.tt`, dir=j), String)
     if !occursin("successfully", out)
         error("Submission error for job in dir $j.")
     end
