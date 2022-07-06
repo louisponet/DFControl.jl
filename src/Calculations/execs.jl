@@ -318,7 +318,12 @@ function parse_qe_execflags(line::Vector{<:AbstractString})
     i = 1
     while i <= length(line)
         s = strip(line[i], '-')
-        push!(flags, ExecFlag(qe_execflag(Symbol(s)), parse(Int, line[i+1])))
+        if line[i+1][1] == '$'
+            f = line[i+1]
+        else
+            f = parse(Int, line[i+1])
+        end
+        push!(flags, ExecFlag(qe_execflag(Symbol(s)), f))
         i += 2
     end
     return flags
