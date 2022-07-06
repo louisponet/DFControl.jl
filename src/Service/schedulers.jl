@@ -151,7 +151,7 @@ function queue(sc::HQ)
     end
     qlines = all_lines[start_id+1:endid-1]
 
-    jobinfos = [(s = split(x); (parse(Int, s[2]), jobstate(sc, s[4]))) for x in qlines]
+    jobinfos = [(s = split(x); (parse(Int, s[2]), jobstate(sc, s[6]))) for x in qlines]
 
     workdir_line_id =
         findfirst(x-> occursin("Working directory", x), readlines(`hq job info $(jobinfos[1][1])`))
