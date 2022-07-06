@@ -71,7 +71,7 @@ else #hide
     pop!(job) #hide
 end #hide
 
-# This will generate and save all calculation files, and the corresponding job script (`job.tt`),
+# This will generate and save all calculation files, and the corresponding job script (`job.sh`),
 # to the server specified in `job.server`, and then the job will be submitted on the server.
 
 # After the job finishes the outputs can be parsed through

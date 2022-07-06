@@ -29,7 +29,7 @@ A [`Job`](@ref) embodies a set of [`Calculations`](@ref Calculation) to be ran i
 
 Creates a new job. The common flags will be attempted to be set in each of the `calculations`. The `kwargs...` are passed to the [`Job`](@ref) constructor. 
 
-    Job(job_dir::String, job_script="job.tt"; version=nothing, kwargs...)
+    Job(job_dir::String, job_script="job.sh"; version=nothing, kwargs...)
 
 Loads the job in the `dir`.
 If `job_dir` is not a valid job path, the previously saved jobs will be scanned for a job with a `dir` that
@@ -74,7 +74,7 @@ Job(dir::AbstractString; kwargs...) = Job(;dir=dir, kwargs...)
 StructTypes.StructType(::Type{Job}) = StructTypes.Mutable()
 
 #-------------------BEGINNING GENERAL SECTION-------------#
-scriptpath(job::Job) = joinpath(job, "job.tt")
+scriptpath(job::Job) = joinpath(job, "job.sh")
 submission_time(job::Job)  = mtime(scriptpath(job))
 
 runslocal(job::Job) = job.server == "localhost"
@@ -360,7 +360,7 @@ function Servers.pull(j::Job, f, t)
 end
 
 function timestamp(jobdir::AbstractString)
-    scriptpath = joinpath(jobdir, "job.tt")
+    scriptpath = joinpath(jobdir, "job.sh")
     if ispath(scriptpath)
         return unix2datetime(mtime(scriptpath))
     else

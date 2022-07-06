@@ -2,7 +2,7 @@
 # In this tutorial we will continue from the job created in the [Basic Tutorial](@ref),
 # and demonstrate some more advanced functionality that DFControl offers.
 
-# To load a previously saved job we here provide a valid job directory with a job.tt script
+# To load a previously saved job we here provide a valid job directory with a job.sh script
 # in it.
 using DFControl
 

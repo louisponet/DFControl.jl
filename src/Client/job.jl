@@ -20,7 +20,7 @@ function load(server::Server, j::Job)
         dir = j.dir
     end
     dir = abspath(server, dir)
-    if !ispath(server, joinpath(dir, "job.tt"))
+    if !ispath(server, joinpath(dir, "job.sh"))
         
         @warn "No valid job found in $dir. Here are similar options:"
         return first.(registered_jobs(server, j.dir))
@@ -90,7 +90,7 @@ end
 """
     save(job::Job)
 
-Saves the job's calculations and `job.tt` submission script in `job.dir`.
+Saves the job's calculations and `job.sh` submission script in `job.dir`.
 Some sanity checks will be performed on the validity of flags, execs, pseudopotentials, etc.
 The job will also be registered for easy retrieval at a later stage.
 

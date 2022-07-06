@@ -54,7 +54,7 @@ respective directory in the `.versions`.
 """
 function maybe_cp_main_version(job::Job)
     maindir = main_job_dir(job)
-    if ispath(joinpath(maindir, "job.tt"))
+    if ispath(joinpath(maindir, "job.sh"))
         tjob = load_job(maindir)
         cp(tjob, joinpath(tjob, VERSION_DIR_NAME, "$(job.version)"); force = true)
     end

@@ -69,7 +69,7 @@ function Servers.jobstate(::Bash, id::Int)
 end
 
 Servers.submit(::Bash, j::String) = 
-    Int(getpid(run(Cmd(`bash job.tt`, detach=true, dir=j), wait=false)))
+    Int(getpid(run(Cmd(`bash job.sh`, detach=true, dir=j), wait=false)))
 
 function Servers.abort(::Bash, id::Int)
     pids = [parse(Int, split(s)[1]) for s in readlines(`ps -s $id`)[2:end]]
@@ -136,7 +136,7 @@ function Servers.jobstate(::Slurm, state::AbstractString)
 end
 
 Servers.submit(::Slurm, j::String) =
-    parse(Int, split(read(Cmd(`sbatch job.tt`, dir=j), String))[end])
+    parse(Int, split(read(Cmd(`sbatch job.sh`, dir=j), String))[end])
 
 Servers.abort(s::Slurm, id::Int) = 
     run(`scancel $id`)
@@ -186,9 +186,9 @@ function Servers.jobstate(::HQ, state::AbstractString)
 end
 
 function Servers.submit(::HQ, j::String)
-    chmod(joinpath(j, "job.tt"), 0o777)
+    chmod(joinpath(j, "job.sh"), 0o777)
 
-    out = read(Cmd(`hq submit ./job.tt`, dir=j), String)
+    out = read(Cmd(`hq submit ./job.sh`, dir=j), String)
     if !occursin("successfully", out)
         error("Submission error for job in dir $j.")
     end

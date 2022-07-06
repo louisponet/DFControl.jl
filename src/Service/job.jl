@@ -1,7 +1,7 @@
 function read_job_info(job::Job)
     job_dir = job.dir
     orig_dir = job_dir
-    scriptpath = joinpath(job_dir, "job.tt")
+    scriptpath = joinpath(job_dir, "job.sh")
     if ispath(scriptpath)
         version = Jobs.version(job_dir)
     else
@@ -50,7 +50,7 @@ function save(jobdir::String, files::Dict; kwargs...)
     # Here we find the main directory, needed for if a job's local dir is a .versions one
     dir = Jobs.main_job_dir(jobdir)
     version = Jobs.last_job_version(dir) + 1
-    if ispath(joinpath(dir, "job.tt"))
+    if ispath(joinpath(dir, "job.sh"))
         tj = load(Job(dir))
         cp(tj, joinpath(tj, Jobs.VERSION_DIR_NAME, "$(tj.version)"); force = true)
     end
@@ -164,7 +164,7 @@ end
 Returns the last `Calculation` for which an output file was created.
 """
 function last_running_calculation(path::String)
-    scrpath = joinpath(path, "job.tt")
+    scrpath = joinpath(path, "job.sh")
     job = load(Job(path))
     t = mtime(Jobs.scriptpath(job))
     times = map(x -> (o = joinpath(job, x.outfile); ispath(o) ? mtime(o) : 0.0), job.calculations)
@@ -217,7 +217,7 @@ function clean_dir!(dir::AbstractString)
     end
 end
 
-exists_job(d::AbstractString) = ispath(d) && ispath(joinpath(d, "job.tt"))
+exists_job(d::AbstractString) = ispath(d) && ispath(joinpath(d, "job.sh"))
 
 function outputdata(jobdir::String, calculations::Vector{String})
     job          = load(Job(jobdir))

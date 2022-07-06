@@ -141,7 +141,7 @@ function Base.write(job::Job, environment::Environment; kwargs...)
         end
     end
             
-    open(joinpath(job, "job.tt"), "w") do f
+    open(joinpath(job, "job.sh"), "w") do f
         write(f, "#!/bin/bash\n")
         write_job_header(f, job, environment)
         write_job_preamble(f, job)
