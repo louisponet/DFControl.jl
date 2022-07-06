@@ -167,7 +167,7 @@ function Servers.jobstate(s::HQ, id::Int)
     if length(lines) <= 1
         return Jobs.Unknown
     end
-    return jobstate(s, split(lines[findfirst(x->occursin("State", x), lines)])[3])
+    return jobstate(s, split(lines[findfirst(x->occursin("State", x), lines)])[4])
 end
 
 function Servers.jobstate(::HQ, state::AbstractString)
