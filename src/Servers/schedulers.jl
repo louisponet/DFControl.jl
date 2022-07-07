@@ -9,6 +9,7 @@ end
     type::String="hq"
     server_command::Cmd=`hq`
 end
+StructTypes.StructType(::Type{Cmd}) = StructTypes.Struct()
 StructTypes.StructType(::Type{Scheduler}) = StructTypes.AbstractType()
 StructTypes.subtypes(::Type{Scheduler}) = (bash = Bash, slurm = Slurm, hq=HQ)
 
