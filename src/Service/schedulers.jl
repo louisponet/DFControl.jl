@@ -188,7 +188,7 @@ end
 function Servers.submit(h::HQ, j::String)
     chmod(joinpath(j, "job.sh"), 0o777)
 
-    out = read(Cmd(string.([split(h.server_command)..., "submit", "./job.sh"]), dir=j), String)
+    out = read(Cmd(Cmd(string.([split(h.server_command)..., "submit", "./job.sh"])), dir=j), String)
     if !occursin("successfully", out)
         error("Submission error for job in dir $j.")
     end
