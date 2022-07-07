@@ -143,7 +143,7 @@ Servers.abort(s::Slurm, id::Int) =
 
 #### HQ
 function queue(sc::HQ)
-    all_lines = readlines(`hq job list`)
+    all_lines = readlines(`$(sc.server_command) job list`)
     start_id = findnext(x -> x[1] == '+', all_lines, 2)
     endid = findnext(x -> x[1] == '+', all_lines, start_id + 1)
     if endid === nothing
@@ -154,15 +154,15 @@ function queue(sc::HQ)
     jobinfos = [(s = split(x); (parse(Int, s[2]), jobstate(sc, s[6]))) for x in qlines]
 
     workdir_line_id =
-        findfirst(x-> occursin("Working directory", x), readlines(`hq job info $(jobinfos[1][1])`))
+        findfirst(x-> occursin("Working directory", x), readlines(`$(sc.server_command) job info $(jobinfos[1][1])`))
 
-    workdir(id) = split(readlines(`hq job info $id`)[workdir_line_id])[end-1]
+    workdir(id) = split(readlines(`$(sc.server_command) job info $id`)[workdir_line_id])[end-1]
     
     return Dict([workdir(x[1]) => x for x in jobinfos])
 end
 
 function Servers.jobstate(s::HQ, id::Int)
-    lines = readlines(`hq job info $id`)
+    lines = readlines(`$(s.server_command) job info $id`)
     
     if length(lines) <= 1
         return Jobs.Unknown
@@ -185,15 +185,15 @@ function Servers.jobstate(::HQ, state::AbstractString)
     return Jobs.Unknown
 end
 
-function Servers.submit(::HQ, j::String)
+function Servers.submit(h::HQ, j::String)
     chmod(joinpath(j, "job.sh"), 0o777)
 
-    out = read(Cmd(`hq submit ./job.sh`, dir=j), String)
+    out = read(Cmd(`$(h.server_command) submit ./job.sh`, dir=j), String)
     if !occursin("successfully", out)
         error("Submission error for job in dir $j.")
     end
     return parse(Int, split(out)[end])
 end
 
-Servers.abort(::HQ, id::Int) = 
-    run(`hq job cancel $id`)
+Servers.abort(h::HQ, id::Int) = 
+    run(`$(h.server_command) job cancel $id`)
