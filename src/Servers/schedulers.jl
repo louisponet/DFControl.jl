@@ -7,6 +7,7 @@ end
 end
 @with_kw struct HQ <: Scheduler
     type::String="hq"
+    server_command::String="hq"
 end
 StructTypes.StructType(::Type{Scheduler}) = StructTypes.AbstractType()
 StructTypes.subtypes(::Type{Scheduler}) = (bash = Bash, slurm = Slurm, hq=HQ)
