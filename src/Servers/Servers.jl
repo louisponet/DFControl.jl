@@ -466,6 +466,11 @@ function Base.mtime(s::Server, p)
     JSON3.read(resp.body, Float64)
 end
 
+function Base.filesize(s::Server, p)
+    resp = HTTP.get(s, "/filesize/" * p)
+    JSON3.read(resp.body, Float64)
+end
+
 function initialize_config_dir(s::Server)
     if islocal(s)
         ispath_ = x -> ispath(x)

@@ -53,6 +53,9 @@ HTTP.@register(ROUTER, "GET", "/readdir/*", readdir)
 Base.mtime(req::HTTP.Request) = mtime(path(req))
 HTTP.@register(ROUTER, "GET", "/mtime/*", mtime)
 
+Base.filesize(req::HTTP.Request) = filesize(path(req))
+HTTP.@register(ROUTER, "GET", "/filesize/*", filesize)
+
 function execute_function(req)
     funcstr = Meta.parse(path(req))
     func = eval(funcstr)
