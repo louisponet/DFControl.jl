@@ -46,7 +46,7 @@ function configure!(s::Server)
         julia = joinpath(Sys.BINDIR, "julia")
     else
         julia = ask_input(String, "Julia Exec", s.julia_exec)
-        while server_command(s.username, s.domain, `which $julia`).exitcode != 0
+        while server_command(s.username, s.domain, "which $julia").exitcode != 0
             @warn "$julia, no such file or directory."
             julia = ask_input(String, "Julia Exec")
         end
@@ -55,17 +55,17 @@ function configure!(s::Server)
     scheduler = Bash()
     for t in (HQ(), Slurm())
         scmd = submit_cmd(t)
-        if server_command(s, `which $scmd`).exitcode == 0
+        if server_command(s, "which $scmd").exitcode == 0
             scheduler = t
             break
         end
     end
     s.scheduler = scheduler
     
-    hdir = server_command(s, `pwd`).stdout
+    hdir = server_command(s, "pwd").stdout
     dir = ask_input(String, "Default Jobs directory", hdir)
     if dir != hdir
-        while server_command(s, `ls $dir`).exitcode != 0
+        while server_command(s, "ls $dir").exitcode != 0
             @warn "$dir, no such file or directory."
             dir = ask_input(String, "Default Jobs directory")
         end
@@ -165,7 +165,7 @@ function load_config(username, domain)
         return parse_config(t.stdout)
     end
 end
-Base.gethostname(username::String, domain::String) = split(server_command(username, domain, `hostname`).stdout)[1]
+Base.gethostname(username::String, domain::String) = split(server_command(username, domain, "hostname").stdout)[1]
 Base.gethostname(s::Server) = gethostname(s.username, s.domain)
 load_config(s::Server) = 
      load_config(s.username, s.domain)
@@ -297,12 +297,12 @@ function start(s::Server)
     p = "~/.julia/config/DFControl/$hostname/logs/errors.log"
     if s.domain != "localhost"
         julia_cmd = replace("""$(s.julia_exec) --startup-file=no -t 10 -e "using DFControl; DFControl.Resource.run()" &> $p""", "'", "")
-        run(Cmd(`ssh -f $(ssh_string(s)) $julia_cmd`, detach=true))
+        run(Cmd(Cmd(["ssh", "-f", ssh_string(s), julia_cmd]), detach=true))
     else
         scrpt = "using DFControl; DFControl.Resource.run()"
         e = s.julia_exec
-        julia_cmd = `$(e) --startup-file=no -t auto -e $(scrpt) '&''>' $(p) '&'`
-        run(Cmd(julia_cmd, detach=true), wait=false)
+        julia_cmd = "$(e) --startup-file=no -t auto -e $(scrpt) &> $(p) &"
+        run(Cmd(Cmd(string.(split(julia_cmd))), detach=true), wait=false)
     end
         
     #TODO: little hack here
@@ -406,7 +406,7 @@ function push(filename::String, server::Server, server_file::String)
 end
 
 "Executes a command through `ssh`."
-function server_command(username, domain, cmd)
+function server_command(username, domain, cmd::String)
     out = Pipe()
     err = Pipe()
     if domain == "localhost"
@@ -430,7 +430,7 @@ server_command(s::Server, cmd) = server_command(s.username, s.domain, cmd)
 
 function has_modules(s::Server)
     try 
-        server_command(s, `module avail`).code == 0
+        server_command(s, "module avail").code == 0
     catch
         false
     end
@@ -438,7 +438,7 @@ end
 
 function available_modules(s::Server)
     if has_modules(s)
-        return server_command(s, `module avail`)
+        return server_command(s, "module avail")
     else
         return String[]
     end
@@ -469,10 +469,10 @@ function initialize_config_dir(s::Server)
         touch_ = x -> touch(x)
         mkpath_ = x -> mkpath(x)
     else
-        ispath_ = x -> server_command(s, `ls $x`).exitcode == 0
-        config_path_ = x -> (hostname = split(server_command(s, `hostname`).stdout)[1]; joinpath("~/.julia/config/DFControl/$hostname", x))
-        mkpath_ = x -> server_command(s, `mkdir -p $x`)
-        touch_ = x -> server_command(s, `touch $x`)
+        ispath_ = x -> server_command(s, "ls $x").exitcode == 0
+        config_path_ = x -> (hostname = split(server_command(s, "hostname").stdout)[1]; joinpath("~/.julia/config/DFControl/$hostname", x))
+        mkpath_ = x -> server_command(s, "mkdir -p $x")
+        touch_ = x -> server_command(s, "touch $x")
     end
     if !ispath_(config_path_("storage/pseudos"))
         paths = [config_path_(""),
