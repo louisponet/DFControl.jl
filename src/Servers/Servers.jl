@@ -263,10 +263,7 @@ function start(s::Server)
     # Here we clean up previous connections and commands
     if !islocal(s)
         if s.local_port != 0
-            t = find_tunnel(s)
-            if t === nothing
-                construct_tunnel(s)
-            end
+            destroy_tunnel(s)
         end
        
         t = deepcopy(s)
