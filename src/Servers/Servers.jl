@@ -157,12 +157,15 @@ read_config(config_file) = parse_config(read(config_file, String))
 
 function load_config(username, domain)
     hostname = gethostname(username, domain)
-    cmd = "cat ~/.julia/config/DFControl/$hostname/storage/servers/$hostname.json"
-    t = server_command(username, domain, cmd)
-    if t.exitcode != 0
-        return nothing
+    if domain == "localhost"
+        return parse_config(read(config_path("storage","servers","$hostname.json"),String))
     else
-        return parse_config(t.stdout)
+        t = server_command(username, domain, "cat ~/.julia/config/DFControl/$hostname/storage/servers/$hostname.json")
+        if t.exitcode != 0
+            return nothing
+        else
+            return parse_config(t.stdout)
+        end
     end
 end
 Base.gethostname(username::String, domain::String) = split(server_command(username, domain, "hostname").stdout)[1]
@@ -280,29 +283,29 @@ function start(s::Server)
     # whether the server started succesfully.
     function checktime()
         curtime = 0
-        try
+        # try
             if islocal(s)
                 return mtime(config_path("storage", "servers", "$(hostname).json"))
             else
                 cmd = "stat -c %Z  ~/.julia/config/DFControl/$hostname/storage/servers/$(hostname).json"
                 return parse(Int, server_command(s.username, s.domain, cmd)[1])
             end
-        catch
-            nothing
-        end
+        # catch
+        #     nothing
+        # end
         return curtime
     end
     firstime = checktime()
 
     p = "~/.julia/config/DFControl/$hostname/logs/errors.log"
+    scrpt = "using DFControl; DFControl.Resource.run()"
     if s.domain != "localhost"
-        julia_cmd = replace("""$(s.julia_exec) --startup-file=no -t 10 -e "using DFControl; DFControl.Resource.run()" &> $p""", "'", "")
-        run(Cmd(Cmd(["ssh", "-f", ssh_string(s), julia_cmd]), detach=true))
+        julia_cmd = replace("""$(s.julia_exec) --startup-file=no -t 10 -e "using DFControl; DFControl.Resource.run()" &> $p""", "'" => "")
+        run(Cmd(`ssh -f $(ssh_string(s)) $julia_cmd`, detach=true))
     else
-        scrpt = "using DFControl; DFControl.Resource.run()"
         e = s.julia_exec
-        julia_cmd = "$(e) --startup-file=no -t auto -e $(scrpt) &> $(p) &"
-        run(Cmd(Cmd(string.(split(julia_cmd))), detach=true), wait=false)
+        julia_cmd = Cmd([e, "--startup-file=no", "-t", "auto", "-e", scrpt, "&>", p, "&"])
+        run(Cmd(julia_cmd, detach=true), wait=false)
     end
         
     #TODO: little hack here
