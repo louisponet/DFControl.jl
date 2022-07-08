@@ -179,7 +179,7 @@ function submit(jobs::Vector{Job}, run = true)
         outbucket = outbuckets[i]
         execs = unique(vcat([map(x->x.exec, j.calculations) for j in bucket]...))
         
-        replacements = verify_execs(execs, server)
+        replacements = fill_execs(server, execs)
         Threads.@threads for ij in 1:length(bucket)
             job = bucket[ij]
             for c in job.calculations
@@ -325,8 +325,20 @@ end
 
 ##### EXECS #######
 function fill_execs(job::Job, server::Server)
+    replacements = fill_execs(server,unique(map(x->x.exec, filter(x->x.run, job.calculations))))
+    for (e, rep) in replacements
+        for c in job.calculations
+            if c.exec == e
+                c.exec.dir = rep.dir
+                c.exec.modules = rep.modules
+                c.exec.parallel = rep.parallel
+            end
+        end
+    end
+end
+function fill_execs(server::Server, execs::Vector)
     replacements = Dict{Exec, Exec}()
-    for e in unique(map(x->x.exec, filter(x->x.run, job.calculations)))
+    for e in execs
         if !Database.exists(server, e)
             n = Database.name(server, e)
             if n !== nothing
@@ -350,16 +362,9 @@ function fill_execs(job::Job, server::Server)
             replacements[e] = Database.load(server, e)
         end
     end
-    for (e, rep) in replacements
-        for c in job.calculations
-            if c.exec == e
-                c.exec.dir = rep.dir
-                c.exec.modules = rep.modules
-                c.exec.parallel = rep.parallel
-            end
-        end
-    end
+    return replacements
 end
+    
 
 ########## ENVIRONMENTS #############
 """

@@ -28,8 +28,7 @@ end
 
 "Uses cif2cell to Meta.parse a cif file, then returns the parsed structure."
 function cif2structure(cif_file::String)
-    tmpdir = dirname(cif_file)
-    tmpfile = joinpath(tmpdir, "tmp.in")
+    tmpfile = tempname()
     @assert splitext(cif_file)[2] == ".cif" error("Please specify a valid cif calculation file")
     if Sys.which("cif2cell") === nothing 
         run(`$(DFControl.PYTHONPATH) $(DFControl.CIF2CELLPATH) $cif_file --no-reduce -p quantum-espresso -o $tmpfile`)
