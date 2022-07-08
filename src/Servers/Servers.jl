@@ -296,7 +296,7 @@ function start(s::Server)
 
     p = "~/.julia/config/DFControl/$hostname/logs/errors.log"
     if s.domain != "localhost"
-        julia_cmd = """$(Cmd(string.(split(s.julia_exec)))) --startup-file=no -t 10 -e "using DFControl; DFControl.Resource.run()" &> $p"""
+        julia_cmd = replace("""$(s.julia_exec) --startup-file=no -t 10 -e "using DFControl; DFControl.Resource.run()" &> $p""", "'", "")
         run(Cmd(`ssh -f $(ssh_string(s)) $julia_cmd`, detach=true))
     else
         scrpt = "using DFControl; DFControl.Resource.run()"
@@ -410,9 +410,9 @@ function server_command(username, domain, cmd)
     out = Pipe()
     err = Pipe()
     if domain == "localhost"
-        process = run(pipeline(ignorestatus(`$cmd`), stdout=out, stderr=err))
+        process = run(pipeline(ignorestatus(Cmd(string.(split(cmd)))), stdout=out, stderr=err))
     else
-        process = run(pipeline(ignorestatus(`ssh $(username * "@" * domain) $cmd`), stdout=out, stderr=err))
+        process = run(pipeline(ignorestatus(Cmd(["ssh", "$(username * "@" * domain)",  string.(split(cmd))...])), stdout=out, stderr=err))
     end
     close(out.in)
     close(err.in)
