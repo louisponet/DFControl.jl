@@ -156,22 +156,13 @@ parse_config(config) = JSON3.read(config, Server)
 read_config(config_file) = parse_config(read(config_file, String))
 
 function load_config(username, domain)
-    if domain == "localhost"
-        p = config_path("storage/servers/localhost.json")
-        if ispath(p)
-            return read_config(p)
-        else
-            return nothing
-        end
+    hostname = gethostname(username, domain)
+    cmd = "cat ~/.julia/config/DFControl/$hostname/storage/servers/$hostname.json"
+    t = server_command(username, domain, cmd)
+    if t.exitcode != 0
+        return nothing
     else
-        hostname = gethostname(username, domain)
-        cmd = "cat ~/.julia/config/DFControl/$hostname/storage/servers/$hostname.json"
-        t = server_command(username, domain, cmd)
-        if t.exitcode != 0
-            return nothing
-        else
-            return parse_config(t.stdout)
-        end
+        return parse_config(t.stdout)
     end
 end
 Base.gethostname(username::String, domain::String) = split(server_command(username, domain, `hostname`).stdout)[1]
