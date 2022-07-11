@@ -35,7 +35,8 @@ function load(job::Job)
     environment = inf[:environment]
     calculations, structure = FileIO.parse_calculations(inf[:calculations])
     for a in structure.atoms
-        a.pseudo = get(inf[:pseudos], a.pseudo, "")
+        f = get(inf[:pseudos], a.element.symbol, "")
+        a.pseudo = Structures.Pseudo(job.server, f, "")
     end
     return Job(name, structure, calculations, job.dir, header, inf[:version], job.copy_temp_folders, job.server, environment)
     
