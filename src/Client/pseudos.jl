@@ -1,3 +1,4 @@
+using ..Structures: Pseudo
 function pseudos(server::Server, pseudoset, atsyms::Vector{Symbol}, fuzzy = "")
     pseudo_paths = list_pseudoset(server, pseudoset, fuzzy)
     ps = Dict{Symbol,String}()
@@ -6,10 +7,7 @@ function pseudos(server::Server, pseudoset, atsyms::Vector{Symbol}, fuzzy = "")
         if path === nothing
             error("No pseudo for atom $a found in set $pseudoset.")
         end
-        t = tempname()
-        Servers.pull(server, path, t)
-        ps[a] = read(t, String)
-        rm(t)
+        ps[a] = Pseudo(server.name, path, "")
     end
     return ps
 end
