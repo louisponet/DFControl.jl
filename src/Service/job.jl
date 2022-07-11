@@ -18,7 +18,7 @@ function read_job_info(job::Job)
     
     # TODO Define a better way of working with pseudos
     upf_files = filter(x->occursin(".UPF",x), readdir(job_dir))
-    pseudos = Dict([n => read(joinpath(job_dir, n), String) for n in upf_files])
+    pseudos = Dict([Symbol(splitext(n)[1]) => realpath(joinpath(job_dir, n)) for n in upf_files])
     
     return Dict(:name => name,
                 :version => version,
@@ -218,53 +218,6 @@ function clean_dir!(dir::AbstractString)
 end
 
 exists_job(d::AbstractString) = ispath(d) && ispath(joinpath(d, "job.sh"))
-
-function outputdata(jobdir::String, calculations::Vector{String})
-    job          = load(Job(jobdir))
-    calculations = isempty(calculations) ? map(x->x.name, job.calculations) : calculations
-
-    respath = joinpath(job, "results.jld2")
-    stime = ispath(respath) ? mtime(respath) : 0.0
-    outdata_names = Dict{String, Vector{String}}()
-    JLD2.jldopen(respath, "a+") do file
-        for c in calculations
-            calculation = job[c]
-            p = joinpath(job, calculation.outfile)
-            if ispath(p)
-                outdata_names[c] = String[]
-                group = haskey(file, c) ? file[c] : JLD2.Group(file, c)
-                if mtime(p) > stime
-                    try 
-                        tout = outputdata(calculation, p)
-                        if !isempty(tout) # So that previous succesful data is not overwritten
-                            for (k, v) in tout
-                                group[string(k)] = v
-                                push!(outdata_names[c], string(k))
-                            end
-                        end
-                    catch e
-                        @warn "Something went wrong reading output for calculation $c."
-                        @warn e
-                    end
-                else
-                    outdata_names[c] = keys(group)
-                end
-            end
-        end
-    end
-    return outdata_names
-end
-
-function outputdata(jobdir::String, calculation::String, ks::Vector{String})
-    respath = joinpath(jobdir, "results.jld2")
-    outdata = Dict{String, Any}()
-    JLD2.jldopen(respath, "r") do file
-        for k in ks
-            outdata[k] = file[calculation][k]
-        end
-    end
-    return outdata
-end
 
 rm_version!(jobdir::String, version::Int) = Jobs.rm_version!(load(Job(jobdir)), version)
 

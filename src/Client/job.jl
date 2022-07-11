@@ -12,30 +12,31 @@ function load(server::Server, j::Job)
     if isempty(j.dir)
         return first.(registered_jobs(server, j.dir))
     end
-    if j.version == last_version(server, j.dir)
+    @time if j.version == last_version(server, j.dir)
         dir = Jobs.main_job_dir(j.dir)
     elseif !occursin(Jobs.VERSION_DIR_NAME, j.dir) && j.version != -1
         dir = Jobs.version_dir(Jobs.main_job_dir(j.dir), j.version)
     else
         dir = j.dir
     end
-    dir = abspath(server, dir)
+    @time dir = abspath(server, dir)
     if !ispath(server, joinpath(dir, "job.sh"))
         
         @warn "No valid job found in $dir. Here are similar options:"
         return first.(registered_jobs(server, j.dir))
     end
-    resp = HTTP.get(server, "/jobs/" * dir)
+    @time resp = HTTP.get(server, "/jobs/" * dir)
     # Supplied dir was not a valid path, so we ask
     # previously registered jobs on the server that
     # contain dir.
-    t           = JSON3.read(resp.body)
+    @time t           = JSON3.read(resp.body)
     name        = t[:name]
     header      = t[:header]
     environment = t[:environment]
-    calculations, structure = FileIO.parse_calculations(t[:calculations])
+    @time calculations, structure = FileIO.parse_calculations(t[:calculations])
     for a in structure.atoms
-        a.pseudo = get(t[:pseudos], a.pseudo, "")
+        f = get(t[:pseudos], a.element.symbol, "")
+        a.pseudo = Structures.Pseudo(server.name, f, "")
     end
     version = j.version == -1 ? last_version(server, j.dir) : j.version
     
@@ -132,6 +133,16 @@ function save(job::Job, workflow::Union{Nothing, Workflow} = nothing; fillexecs 
 
     jdir = job.dir
     job.dir = tmpdir
+
+    # Here we lazily pull pseudos that are not located on the server we're sending stuff to
+    for a in job.structure.atoms
+        if a.pseudo.server !== job.server
+            a.pseudo.pseudo = read(Server(a.pseudo.server), a.pseudo.path, String)
+            a.pseudo.server = job.server
+            a.pseudo.path = joinpath(job, "$(a.element.symbol).UPF") 
+        end
+    end
+            
     write(job, environment)
     if workflow !== nothing
         write(workflow, job)
@@ -142,6 +153,16 @@ function save(job::Job, workflow::Union{Nothing, Workflow} = nothing; fillexecs 
         for f in files
             fp = joinpath(r, f)
             files_to_send[split(fp, tmpdir)[2][2:end]] = read(fp, String)
+        end
+    end
+
+    # If needed here we create symlinks on the server side to the pseudos
+    for a in job.structure.atoms
+        if isempty(a.pseudo.pseudo)
+            linkpath = joinpath(job, "$(a.element.symbol).UPF")
+            # First remove the prev existing file
+            rm(server, linkpath)
+            symlink(server, a.pseudo.path, linkpath)
         end
     end
     
@@ -382,28 +403,22 @@ function environment_from_jobscript(server::Server, name::String, scriptpath::St
 end
 
 ######## OUTPUTS ############
-outputdata(job::Job; kwargs...) =
-    outputdata(Server(job.server), job.dir; kwargs...)
+ 
     
 """
     outputdata(job::Job; server = job.server, calcs::Vector{String}=String[])
-    outputdata(jobdir::String; server = job.server, calcs::Vector{String}=String[])
     
 Finds the output files for each of the calculations of a [`Job`](@ref), and groups all the parsed data into a dictionary.
 """
-function outputdata(server::Server, jobdir::String; calcs::Vector{String}=String[])
-    server = Server(server)
-    jobdir = isabspath(jobdir) ? jobdir : joinpath(server, jobdir)
-    resp = HTTP.patch(server, "/outputdata/" * jobdir, calcs)
-    if resp.status == 204
-        error("No outputdata found yet. Is the job running?")
-    end
-    outnames = JSON3.read(resp.body,
-               Dict{String, Vector{String}})
-    out = Dict{String, Dict{String, Any}}()
-    for (n, d) in outnames
-        resp = HTTP.patch(server, "/outputdata/" * joinpath(jobdir, n), d)
-        out[n] = JSON3.read(resp.body, Dict{String, Any}())
+function outputdata(job::Job; calcs=map(x->x.name, job.calculations))
+    server = Server(job.server)
+    out = Dict{String, Dict{Symbol, Any}}()
+    for c in calcs
+        calculation = job[c]
+        p = joinpath(job, calculation.outfile)
+        if ispath(server, p)
+            out[c] = FileIO.outputdata(calculation, IOBuffer(read(server, p)))
+        end
     end
     return out
 end

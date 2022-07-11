@@ -1149,7 +1149,7 @@ function qe_parse_calculation(file)
         i_positions = findcard("atomic_positions")
         push!(used_lineids, i_species)
 
-        pseudos = Dict{Symbol,String}()
+        pseudos = Dict{Symbol,Pseudo}()
         pseudo_match = haskey(allflags, :control) ? pop!(allflags[:control], :pseudo_dir, nothing) : nothing
         pseudo_dir = pseudo_match !== nothing ? pseudo_match : "."
 
@@ -1159,7 +1159,7 @@ function qe_parse_calculation(file)
             sline = strip_split(lines[i_species + k])
             atsym = Symbol(sline[1])
             ppath = pseudo_dir != "." ? joinpath(pseudo_dir, sline[end]) : sline[end]
-            pseudos[atsym] = ppath
+            pseudos[atsym] = Pseudo("", ppath, "")
             push!(atsyms, atsym)
         end
 

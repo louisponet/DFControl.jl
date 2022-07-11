@@ -358,7 +358,7 @@ function parse_calculations(calcs)
             Calculations.set_flags!(c, :wannier_plot => get(outcalcs[ic+1], :write_unk, false), print=false)
         end
     end
-    deleteat!(outcalcs, to_rm)     
+    deleteat!(outcalcs, to_rm)
 
     return (calculations = outcalcs, structure=structure)
 end

@@ -50,6 +50,9 @@ HTTP.@register(ROUTER, "GET", "/read/*", read)
 Base.rm(req::HTTP.Request) = rm(path(req), recursive=true)
 HTTP.@register(ROUTER, "POST", "/rm/*", rm)
 
+Base.symlink(req::HTTP.Request) = symlink(JSON3.read(req.body, Vector{String})...)
+HTTP.@register(ROUTER, "POST", "/symlink/", symlink)
+
 Base.readdir(req::HTTP.Request) = readdir(path(req))
 HTTP.@register(ROUTER, "GET", "/readdir/*", readdir)
 

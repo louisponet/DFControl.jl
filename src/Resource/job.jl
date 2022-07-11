@@ -24,16 +24,6 @@ HTTP.@register(ROUTER, "PUT", "/rm_version/*", rm_version!)
 last_running_calculation(req) = Service.last_running_calculation(path(req))
 HTTP.@register(ROUTER, "GET", "/last_running_calculation/*", last_running_calculation)
 
-outputdata(req) = Service.outputdata(path(req), JSON3.read(req.body, Vector{String}))
-
-function retrieve_outputdata(req)
-    p = path(req)
-    jpath, calc = splitdir(p)
-    return Service.outputdata(jpath, calc, JSON3.read(req.body, Vector{String}))
-end
-HTTP.@register(ROUTER, "PATCH", "/outputdata/*", outputdata)
-HTTP.@register(ROUTER, "GET", "/outputdata/*", retrieve_outputdata)
-
 running_jobs(req) = Service.running_jobs(path(req))
 HTTP.@register(ROUTER, "GET", "/running_jobs/", running_jobs)
 HTTP.@register(ROUTER, "GET", "/running_jobs/*", running_jobs)

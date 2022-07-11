@@ -166,6 +166,11 @@ Base.joinpath(s::Server, p...) = joinpath(s.root_jobdir, p...)
 Base.ispath(s::Server, p...) =
     JSON3.read(HTTP.get(s, "/ispath/" * joinpath(p...)).body, Bool)
 
+function Base.symlink(s::Server, p, p2)
+    HTTP.post(s, "/symlink/", [p, p2])
+    return nothing
+end
+
 function Base.rm(s::Server, p::String)
     HTTP.post(s, "/rm/" * p)
     return nothing
@@ -233,6 +238,7 @@ function rm(s::Server)
     return ispath(joinpath(SERVER_DIR, s.name * ".json")) &&
            rm(joinpath(SERVER_DIR, s.name * ".json"))
 end
+
 
 find_tunnel(s) =
     getfirst(x->occursin("ssh -N -f -L $(s.local_port)", x), split(read(pipeline(`ps aux` , stdout = `grep $(s.local_port)`), String), "\n"))

@@ -87,6 +87,14 @@ end
 
 element(z::Int) = getfirst(x -> x.Z == z, ELEMENTS)
 
+struct Pseudo
+    server::String
+    path::String
+    pseudo::String
+end
+StructTypes.StructType(::Type{Pseudo}) = StructTypes.Struct()
+Base.write(f, p::Pseudo) = write(f, p.pseudo)
+
 # TODO Multiple l per atom in Elk??
 #We use angstrom everywhere
 """
@@ -109,7 +117,7 @@ See documentation for [`Element`](@ref) for further information on this attribut
     position_cart::Point3{typeof(0.0Ang)}
     position_cryst::Point3{Float64}
     element::Element = element(name)
-    pseudo::String = ""
+    pseudo::Pseudo = Pseudo("", "", "")
     projections::Vector{Projection} = Projection[]
     magnetization::Vec3{Float64} = zero(Vec3{Float64})
     dftu::DFTU = DFTU()
