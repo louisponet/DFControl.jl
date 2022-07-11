@@ -48,7 +48,7 @@ Base.read(req::HTTP.Request) = read(path(req))
 HTTP.@register(ROUTER, "GET", "/read/*", read)
 
 Base.write(req::HTTP.Request) = write(path(req), req.body)
-HTTP.@register(ROUTER, "POST", "/write/*", read)
+HTTP.@register(ROUTER, "POST", "/write/*", write)
 
 Base.rm(req::HTTP.Request) = rm(path(req), recursive=true)
 HTTP.@register(ROUTER, "POST", "/rm/*", rm)
