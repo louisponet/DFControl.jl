@@ -103,11 +103,6 @@ refjobpath =joinpath(testdir, "testassets", "reference_job")
     
     for (c1, c2) in zip(job2.calculations, job.calculations)
         @test c1 == c2
-        @show c1.exec == c2.exec
-        @show c1.flags == c2.flags
-        @show c1.data == c2.data
-        @show c1.infile == c2.infile
-        @show c1.outfile, c2.outfile
     end
     save(orig_job, fillexecs=false)
     for f in DFControl.Utils.searchdir(job2, ".out")

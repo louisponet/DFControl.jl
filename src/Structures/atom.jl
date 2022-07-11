@@ -87,13 +87,14 @@ end
 
 element(z::Int) = getfirst(x -> x.Z == z, ELEMENTS)
 
-struct Pseudo
+mutable struct Pseudo
     server::String
     path::String
     pseudo::String
 end
 StructTypes.StructType(::Type{Pseudo}) = StructTypes.Struct()
-Base.write(f, p::Pseudo) = write(f, p.pseudo)
+Base.write(f::AbstractString, p::Pseudo, args...) = write(f, p.pseudo, args...)
+Base.write(f::IO, p::Pseudo) = write(f, p.pseudo)
 
 # TODO Multiple l per atom in Elk??
 #We use angstrom everywhere
