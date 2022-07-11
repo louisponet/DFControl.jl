@@ -303,6 +303,8 @@ for (f, strs) in zip((:cp, :mv), (("copy", "Copies"), ("move", "Moves")))
                         continue
                     elseif file == TEMP_CALC_DIR && !(temp || job.copy_temp_folders)
                         continue
+                    elseif islink(file)
+                        continue
                     end
                 end
                 if joinpath(job, file) == abspath(dest)

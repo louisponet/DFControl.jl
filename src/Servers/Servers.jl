@@ -181,7 +181,7 @@ function Base.read(s::Server, path::String, type=nothing)
     return type === nothing ? t : type(t)
 end
 function Base.write(s::Server, path::String, v)
-    resp = HTTP.post(s, "/write/" * path, v)
+    resp = HTTP.post(s, "/write/" * path, Vector{UInt8}(v))
     return JSON3.read(resp.body, Int)
 end
 
