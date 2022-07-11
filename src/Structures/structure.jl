@@ -35,7 +35,7 @@ function cif2structure(cif_file::String)
     else
         run(`cif2cell $cif_file --no-reduce -p quantum-espresso -o $tmpfile`)
     end
-    t = DFC.FileIO.qe_read_calculation(tmpfile)
+    t = DFC.FileIO.qe_parse_calculation(tmpfile)
     rm(tmpfile)
     return t.structure
 end

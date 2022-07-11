@@ -1,6 +1,6 @@
 
 function readoutput(calculation::Calculation{Wannier90}, file; kwargs...)
-    return wan_read_output(file; kwargs...)
+    return wan_parse_output(file; kwargs...)
 end
 
 #THIS IS THE MOST HORRIBLE FUNCTION I HAVE EVER CREATED!!!
@@ -79,7 +79,7 @@ function extract_structure(cell_block, atoms_block, projections_block,
     return Structure(Mat3(cell), atoms)
 end
 
-function wan_read_calculation(f::IO)
+function wan_parse_calculation(f::IO)
     flags       = Dict{Symbol,Any}()
     data        = InputData[]
     atoms_block = nothing
@@ -214,11 +214,11 @@ function wan_read_calculation(f::IO)
 end
 
 """
-    wan_read_calculation(file::String)
+    wan_parse_calculation(file::String)
 
 Reads a `Calculation{Wannier90}` and the included `Structure` from a WANNIER90 calculation file.
 """
-function wan_read_calculation(file::String;
+function wan_parse_calculation(file::String;
                               exec = Exec(; exec = "wannier90.x"), kwargs...)
     flags       = Dict{Symbol,Any}()
     data        = InputData[]
@@ -227,11 +227,11 @@ function wan_read_calculation(file::String;
     proj_block  = nothing
     if !occursin("\n", file) && ispath(file)
         f = open(file, "r")
-        flags, data, atoms_block, cell_block, proj_block = wan_read_calculation(f)
+        flags, data, atoms_block, cell_block, proj_block = wan_parse_calculation(f)
         close(f)
     else
         b = IOBuffer(file)
-        flags, data, atoms_block, cell_block, proj_block = wan_read_calculation(b)
+        flags, data, atoms_block, cell_block, proj_block = wan_parse_calculation(b)
         close(b)
     end
         
@@ -427,7 +427,7 @@ const WAN_PARSE_FUNCS = ["Extraction of optimally-connected subspace" => wan_par
                          "All done:" => (x, y, z) -> x[:finished] = true]
 
 """
-    wan_read_output(filename::AbstractString; parse_funcs::Vector{Pair{String,Function}}=Pair{String,Function}[])
+    wan_parse_output(filename::AbstractString; parse_funcs::Vector{Pair{String,Function}}=Pair{String,Function}[])
 
 Reads an outputfile for wannier.
 Parsed info:
@@ -435,9 +435,9 @@ Parsed info:
     :wannierise,
     :final_state,
 """
-function wan_read_output(filename::AbstractString;
+function wan_parse_output(filename::AbstractString;
                          parse_funcs::Vector{<:Pair{String}} = Pair{String}[])
-    out = parse_file(filename, WAN_PARSE_FUNCS; extra_parse_funcs = parse_funcs)
+    out = parse(filename, WAN_PARSE_FUNCS; extra_parse_funcs = parse_funcs)
     out[:finished] = haskey(out, :finished) ? true : false
     return out
 end

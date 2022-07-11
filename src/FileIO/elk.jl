@@ -61,12 +61,12 @@ function elk_parse_DFTU(atoms::Vector{Atom}, blocknames_flaglines::Dict{Symbol,A
 end
 
 """
-    elk_read_calculation(filename; execs=[Exec(exec="elk")], run=true, structure_name="noname")
+    elk_parse_calculation(filename; execs=[Exec(exec="elk")], run=true, structure_name="noname")
 
 Reads an Elk calculation file. The `ELK_EXEC` inside execs gets used to find which flags are allowed in this calculation file, and convert the read values to the correct Types.
 Returns a `Calculation{Elk}` and the `Structure` that is found in the calculation.
 """
-function elk_read_calculation(fn::String; exec = Exec(; exec = "elk"), run = true,
+function elk_parse_calculation(fn::String; exec = Exec(; exec = "elk"), run = true,
                               structure_name = "noname")
     blocknames_flaglines = Dict{Symbol,Any}()
     atoms = Atom[]
@@ -90,7 +90,7 @@ function elk_read_calculation(fn::String; exec = Exec(; exec = "elk"), run = tru
                 elseif blockname == :wannierExtra
                     @warn "Please supply the .win file instead of wannierExtra block for extracting the Wannier Calculation."
 
-                    wflags, wdata, ab, cb, proj_block = wan_read_calculation(f)
+                    wflags, wdata, ab, cb, proj_block = wan_parse_calculation(f)
                     continue
                     # push!(calculations, Calculation{Wannier90}("wannier", dir, wflags, wdata, execs, run))
                 elseif info !== nothing

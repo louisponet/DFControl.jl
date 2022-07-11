@@ -15,29 +15,33 @@ include("qe.jl")
 include("wannier.jl")
 include("job.jl")
 
-function parse_file(filename::AbstractString, parse_funcs::Vector{<:Pair{String}};out = Dict{Symbol,Any}(),
+function parse_file(f::IO, parse_funcs::Vector{<:Pair{String}};out = Dict{Symbol,Any}(),
                     extra_parse_funcs::Vector{<:Pair} = Pair{String,Function}[])
     
-    open(filename, "r") do f
-        lc = 0
-        while !eof(f)
-            line = strip(readline(f))
-            lc += 1
-            if isempty(line)
-                continue
-            end
-            for pf in (parse_funcs, extra_parse_funcs)
-                func = getfirst(x -> occursin(x[1], line), pf)
-                func === nothing && continue
-                try
-                    func[2](out, line, f)
-                catch
-                    @warn "File corruption or parsing error detected executing parse function \n$(func[2]) in file $filename at line $lc: \"$line\".\nTrying to continue smoothly."
-                end
+    lc = 0
+    while !eof(f)
+        line = strip(readline(f))
+        lc += 1
+        if isempty(line)
+            continue
+        end
+        for pf in (parse_funcs, extra_parse_funcs)
+            func = getfirst(x -> occursin(x[1], line), pf)
+            func === nothing && continue
+            try
+                func[2](out, line, f)
+            catch
+                @warn "File corruption or parsing error detected executing parse function \n$(func[2]) in file $filename at line $lc: \"$line\".\nTrying to continue smoothly."
             end
         end
     end
     return out
+end
+
+function parse_file(f::AbstractString, args...; kwargs...)
+    open(f, "r") do file
+        parse_file(file, args...;kwargs...)
+    end
 end
 
 function cif2structure(cif_file::String; structure_name = "NoName")
@@ -46,7 +50,7 @@ function cif2structure(cif_file::String; structure_name = "NoName")
     @assert splitext(cif_file)[2] == ".cif" error("Please specify a valid cif calculation file")
     run(`$pythonpath $cif2cellpath $cif_file --no-reduce -p quantum-espresso -o $tmpfile`)
 
-    bla, structure = qe_read_calculation(tmpfile; structure_name = structure_name)
+    bla, structure = qe_parse_calculation(tmpfile; structure_name = structure_name)
     rm(tmpfile)
     return structure
 end

@@ -1,7 +1,7 @@
 import Base: parse
 
 function readoutput(c::Calculation{QE}, file; kwargs...)
-    return qe_read_output(c, file; kwargs...)
+    return qe_parse_output(c, file; kwargs...)
 end
 
 #this is all pretty hacky with regards to the new structure and atom api. can for sure be a lot better!
@@ -35,13 +35,13 @@ function qe_parse_time(str::AbstractString)
     return t
 end
 
-function qe_read_output(c::Calculation{QE}, file, args...; kwargs...)
+function qe_parse_output(c::Calculation{QE}, file, args...; kwargs...)
     if Calculations.isprojwfc(c)
-        return qe_read_projwfc_output(file, args...)
+        return qe_parse_projwfc_output(file, args...)
     elseif Calculations.ishp(c)
-        return qe_read_hp_output(file, args...; kwargs...)
+        return qe_parse_hp_output(file, args...; kwargs...)
     elseif Calculations.ispw(c)
-        return qe_read_pw_output(file, args...; kwargs...)
+        return qe_parse_pw_output(file, args...; kwargs...)
     end
 end
 
@@ -510,15 +510,15 @@ const QE_PW_PARSE_FUNCTIONS = ["C/m^2" => qe_parse_polarization,
                                "JOB DONE." => (x, y, z) -> x[:finished] = true]
 
 """
-    qe_read_pw_output(filename::String; parse_funcs::Vector{Pair{String}}=Pair{String,<:Function}[])
+    qe_parse_pw_output(str::String; parse_funcs::Vector{Pair{String}}=Pair{String,<:Function}[])
 
 Reads a pw quantum espresso calculation, returns a dictionary with all found data in the file.
 The additional `parse_funcs` should be of the form:
 `func(out_dict, line, f)` with `f` the file. 
 """
-function qe_read_pw_output(filename::String;
+function qe_parse_pw_output(str;
                            parse_funcs::Vector{<:Pair{String}} = Pair{String}[])
-    out = parse_file(filename, QE_PW_PARSE_FUNCTIONS; extra_parse_funcs = parse_funcs)
+    out = parse_file(str, QE_PW_PARSE_FUNCTIONS; extra_parse_funcs = parse_funcs)
     if !haskey(out, :finished)
         out[:finished] = false
     end
@@ -635,7 +635,7 @@ function qe_read_pw_output(filename::String;
 end
 
 """
-    qe_read_kpdos(filename::String,column=1;fermi=0)
+    qe_parse_kpdos(file,column=1;fermi=0)
 
 Reads the k_resolved partial density of states from a Quantum Espresso projwfc output file.
 Only use this if the flag kresolveddos=true in the projwfc calculation file!! The returned matrix can be readily plotted using heatmap() from Plots.jl!
@@ -644,8 +644,8 @@ fermi  = 0 (possible fermi offset of the read energy values)
 Return:         Array{Float64,2}(length(k_points),length(energies)) ,
 (ytickvals,yticks)
 """
-function qe_read_kpdos(filename::String, column = 1; fermi = 0)
-    read_tmp = readdlm(filename, Float64; comments = true)
+function qe_parse_kpdos(file, column = 1; fermi = 0)
+    read_tmp = readdlm(file, Float64; comments = true)
     zmat     = zeros(typeof(read_tmp[1]), Int64(read_tmp[end, 1]), div(size(read_tmp)[1], Int64(read_tmp[end, 1])))
     for i1 in 1:size(zmat)[1]
         for i2 in 1:size(zmat)[2]
@@ -664,21 +664,21 @@ function qe_read_kpdos(filename::String, column = 1; fermi = 0)
 end
 
 """
-    qe_read_pdos(filename::String)
+    qe_parse_pdos(file)
 
 Reads partial dos file.
 """
-function qe_read_pdos(filename::String)
-    read_tmp = readdlm(filename; skipstart = 1)
+function qe_parse_pdos(file)
+    read_tmp = readdlm(file; skipstart = 1)
     energies = read_tmp[:, 1]
     values   = read_tmp[:, 2:end]
 
     return energies, values
 end
 
-function qe_read_projwfc_output(file, args...)
+function qe_parse_projwfc_output(file, args...)
     out = Dict{Symbol,Any}()
-    out[:states], out[:bands] = qe_read_projwfc(file)
+    out[:states], out[:bands] = qe_parse_projwfc(file)
     out[:energies], out[:pdos] = pdos(file)
     out[:finished] = isempty(out[:energies]) ? false : true
     return out
@@ -699,7 +699,7 @@ function pdos(file)
     soc = occursin(".5", files[1])
     @assert !isempty(files) "No pdos files found in calculation directory $(c.dir)"
     files = joinpath.((dir,), files)
-    energies, = kresolved ? FileIO.qe_read_kpdos(files[1]) : FileIO.qe_read_pdos(files[1])
+    energies, = kresolved ? FileIO.qe_parse_kpdos(files[1]) : FileIO.qe_parse_pdos(files[1])
     totdos = Dict{Symbol, Dict{Structures.Orbital, Array}}()
     for atsym in atsyms
         totdos[atsym] = Dict{Structures.Orbital, Array}()
@@ -712,12 +712,12 @@ function pdos(file)
                 end
                 atdos = totdos[atsym][orb]
                 if magnetic && !occursin(".5", f)
-                    tu = FileIO.qe_read_kpdos(f, 2)[2]
-                    td = FileIO.qe_read_kpdos(f, 3)[2]
+                    tu = FileIO.qe_parse_kpdos(f, 2)[2]
+                    td = FileIO.qe_parse_kpdos(f, 3)[2]
                     atdos[:, 1] .+= reduce(+, tu; dims = 2) ./ size(tu, 2)
                     atdos[:, 2] .+= reduce(+, td; dims = 2) ./ size(tu, 2)
                 else
-                    t = FileIO.qe_read_kpdos(f, 1)[2]
+                    t = FileIO.qe_parse_kpdos(f, 1)[2]
                     atdos .+= (reshape(reduce(+, t; dims = 2), size(atdos, 1)) ./ size(t, 2))
                 end
             end
@@ -730,9 +730,9 @@ function pdos(file)
                 end
                 atdos = totdos[atsym][orb]
                 if magnetic && !occursin(".5", f)
-                    atdos .+= FileIO.qe_read_pdos(f)[2][:, 1:2]
+                    atdos .+= FileIO.qe_parse_pdos(f)[2][:, 1:2]
                 else
-                    atdos .+= FileIO.qe_read_pdos(f)[2][:, 1]
+                    atdos .+= FileIO.qe_parse_pdos(f)[2][:, 1]
                 end
             end
         end
@@ -741,7 +741,7 @@ function pdos(file)
 end
 
 """
-    qe_read_projwfc(filename::String)
+    qe_parse_projwfc(filename::String)
 
 Reads the output file of a projwfc.x calculation.
 Each kpoint will have as many energy dos values as there are bands in the scf/nscf calculation that
@@ -750,7 +750,7 @@ Returns:
     states: [(:atom_id, :wfc_id, :j, :l, :m),...] where each j==0 for a non spin polarized calculation.
     kpdos : kpoint => [(:e, :ψ, :ψ²), ...] where ψ is the coefficient vector in terms of the states.
 """
-function qe_read_projwfc(filename::String)
+function qe_parse_projwfc(filename)
     lines = readlines(filename) .|> strip
 
     i_prob_sizes = findfirst(x -> !isempty(x) && x[1:4] == "Prob", lines)
@@ -881,7 +881,7 @@ end
 const QE_HP_PARSE_FUNCS = ["will be perturbed" => qe_parse_pert_at,
                            "Hubbard U parameters:" => qe_parse_Hubbard_U]
 
-function qe_read_hp_output(file; parse_funcs = Pair{String,<:Function}[])
+function qe_parse_hp_output(file; parse_funcs = Pair{String,<:Function}[])
     out = parse_file(file, QE_HP_PARSE_FUNCS; extra_parse_funcs = parse_funcs)
     dir = splitdir(file)[1]
     hub_files = searchdir(dir, ".Hubbard_parameters.dat")
@@ -1082,13 +1082,13 @@ function qe_parse_flags(inflags, nat::Int=0)
 end
 
 """
-    qe_read_calculation(file)
+    qe_parse_calculation(file)
 
 Reads a Quantum Espresso calculation file. The `QE_EXEC` inside execs gets used to find which flags are allowed in this calculation file, and convert the read values to the correct Types.
 Returns a `Calculation{QE}` and the `Structure` that is found in the calculation.
 """
-function qe_read_calculation(file)
-    if !occursin("\n", file)
+function qe_parse_calculation(file)
+    if file isa IO
         contents = readlines(file)
     else
         contents = split(file, "\n")

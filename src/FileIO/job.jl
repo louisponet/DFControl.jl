@@ -235,11 +235,11 @@ end
 
 function calculationparser(exec::Exec)
     if Calculations.is_qe_exec(exec)
-        qe_read_calculation
+        qe_parse_calculation
     elseif Calculations.is_wannier_exec(exec)
-        wan_read_calculation
+        wan_parse_calculation
     elseif Calculations.is_elk_exec(exec)
-        elk_read_calculation
+        elk_parse_calculation
     end
 end
 

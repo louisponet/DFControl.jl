@@ -386,54 +386,26 @@ outputdata(job::Job; kwargs...) =
     outputdata(Server(job.server), job.dir; kwargs...)
     
 """
-    outputdata(job::Job; server = job.server, calcs::Vector{String}=String[], extra_parse_funcs = nothing)
-    outputdata(jobdir::String; server = job.server, calcs::Vector{String}=String[], extra_parse_funcs = nothing)
+    outputdata(job::Job; server = job.server, calcs::Vector{String}=String[])
+    outputdata(jobdir::String; server = job.server, calcs::Vector{String}=String[])
     
 Finds the output files for each of the calculations of a [`Job`](@ref), and groups all the parsed data into a dictionary.
 """
-function outputdata(server::Server, jobdir::String; calcs::Vector{String}=String[], extra_parse_funcs = nothing)
+function outputdata(server::Server, jobdir::String; calcs::Vector{String}=String[])
     server = Server(server)
     jobdir = isabspath(jobdir) ? jobdir : joinpath(server, jobdir)
-    resp = HTTP.get(server, "/outputdata/" * jobdir, calcs)
+    resp = HTTP.patch(server, "/outputdata/" * jobdir, calcs)
     if resp.status == 204
         error("No outputdata found yet. Is the job running?")
     end
-    tmp_path = JSON3.read(resp.body,
-                          String)
-                          
-    local_temp = tempname() * ".jld2"
-    Servers.pull(server, tmp_path, local_temp)
-    
-    dat = Dict{String, Dict{Symbol, Any}}()
-    JLD2.jldopen(local_temp, "r") do file
-        for c in keys(file)
-            group = file[c]
-            dat[c] = Dict{Symbol, Any}()
-            for k in keys(group)
-                dat[c][Symbol(k)] = group[k]
-            end
-        end
-    end    
-    rm(local_temp)
-    if extra_parse_funcs !== nothing
-        j = load(Server(server), Job(jobdir))
-        for k in keys(dat)
-            if !isempty(calcs) && k ∈ calcs
-                c = j[k]
-                n = c.name
-                try
-                    f = joinpath(jobdir, c.outfile)
-                    local_f = tempname()
-                    Servers.pull(server, f, local_f)
-                    FileIO.parse_file(local_f, extra_parse_funcs, out = dat[n])
-                    rm(local_f)
-                catch
-                    nothing
-                end
-            end
-        end
+    outnames = JSON3.read(resp.body,
+               Dict{String, Vector{String}})
+    out = Dict{String, Dict{String, Any}}()
+    for (n, d) in outnames
+        resp = HTTP.patch(server, "/outputdata/" * joinpath(jobdir, n), d)
+        out[n] = JSON3.read(resp.body, Dict{String, Any}())
     end
-    return dat     
+    return out
 end
 
 """

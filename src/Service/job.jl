@@ -252,8 +252,18 @@ function outputdata(jobdir::String, calculations::Vector{String})
             end
         end
     end
-    # return outdata_names
-    return respath
+    return outdata_names
+end
+
+function outputdata(jobdir::String, calculation::String, ks::Vector{String})
+    respath = joinpath(jobdir, "results.jld2")
+    outdata = Dict{String, Any}()
+    JLD2.jldopen(respath, "r") do file
+        for k in ks
+            outdata[k] = file[calculation][k]
+        end
+    end
+    return outdata
 end
 
 rm_version!(jobdir::String, version::Int) = Jobs.rm_version!(load(Job(jobdir)), version)

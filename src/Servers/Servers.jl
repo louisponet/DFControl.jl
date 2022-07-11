@@ -213,7 +213,7 @@ function HTTP.request(method::String, s::Server, url; connect_timeout=1, retries
     return HTTP.request(method, string(http_string(s), url), header; connect_timeout=connect_timeout, retries=retries, kwargs...)
 end
 
-for f in (:get, :put, :post, :head)
+for f in (:get, :put, :post, :head, :patch)
     str = uppercase(string(f))
     @eval function HTTP.$(f)(s::Server, url::AbstractString, args...; kwargs...)
         return HTTP.request("$($str)", s, url, args...; kwargs...)
