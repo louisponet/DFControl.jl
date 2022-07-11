@@ -33,7 +33,7 @@ function configure_pseudoset(set_name::String, dir::String)
     pseudos = Dict{Symbol,Vector{String}}([el.symbol => String[]
                                            for el in Structures.ELEMENTS])
     for pseudo_string in files
-        element = Symbol(titlecase(String(split(split(pseudo_string, ".")[1], "_")[1])))
+        element = Symbol(titlecase(String(split(split(replace(pseudo_string, "-" => "_"), ".")[1], "_")[1])))
         if haskey(pseudos, element)
             push!(pseudos[element], joinpath(dir, pseudo_string))
         end
