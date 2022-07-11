@@ -1,7 +1,7 @@
 using ..Structures: Pseudo
 function pseudos(server::Server, pseudoset, atsyms::Vector{Symbol}, fuzzy = "")
     pseudo_paths = list_pseudoset(server, pseudoset, fuzzy)
-    ps = Dict{Symbol,String}()
+    ps = Dict{Symbol,Pseudo}()
     for a in atsyms
         path = get(pseudo_paths, a, nothing)
         if path === nothing

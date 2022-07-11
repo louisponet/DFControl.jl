@@ -135,7 +135,7 @@ function save(job::Job, workflow::Union{Nothing, Workflow} = nothing; fillexecs 
     pseudos = unique(y->y[1], map(x->(x.element.symbol, x.pseudo), job.structure.atoms))
     for (el, p) in pseudos
         if p.server !== job.server
-            p.pseudo = read(Server(p.server), p.path, String)
+            p.pseudo = isempty(p.pseudo) ? read(Server(p.server), p.path, String) : p.pseudo
             p.server = job.server
             p.path = joinpath(job, "$el.UPF") 
             for a in job.structure[element(el)]
