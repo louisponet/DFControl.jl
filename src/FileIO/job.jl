@@ -135,12 +135,6 @@ Kwargs will be passed down to various writetojob functions.
 """
 function Base.write(job::Job, environment::Union{Nothing, Environment}; kwargs...)
 
-    if any(x ->eltype(x) == QE, job.calculations)
-        for a in unique(job.structure.atoms)
-            write(joinpath(job, "$(a.element.symbol).UPF"), a.pseudo)
-        end
-    end
-            
     open(joinpath(job, "job.sh"), "w") do f
         write(f, "#!/bin/bash\n")
         write_job_header(f, job, environment)

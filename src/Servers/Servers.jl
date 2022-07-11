@@ -180,6 +180,10 @@ function Base.read(s::Server, path::String, type=nothing)
     t = JSON3.read(resp.body, Vector{UInt8})
     return type === nothing ? t : type(t)
 end
+function Base.write(s::Server, path::String, v)
+    resp = HTTP.post(s, "/write/" * path, v)
+    return JSON3.read(resp.body, Int)
+end
 
 Utils.searchdir(s::Server, dir, str) = joinpath.(dir, filter(x->occursin(str, x), readdir(s, dir))) 
 

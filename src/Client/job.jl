@@ -131,19 +131,6 @@ function save(job::Job, workflow::Union{Nothing, Workflow} = nothing; fillexecs 
     environment = load(server, Environment(job.environment))
     @assert environment isa Environment "Environment with name $(job.environment) not found!"
 
-    # Here we lazily pull pseudos that are not located on the server we're sending stuff to
-    pseudos = unique(y->y[1], map(x->(x.element.symbol, x.pseudo), job.structure.atoms))
-    for (el, p) in pseudos
-        if p.server !== job.server
-            p.pseudo = isempty(p.pseudo) ? read(Server(p.server), p.path, String) : p.pseudo
-            p.server = job.server
-            p.path = joinpath(job, "$el.UPF") 
-            for a in job.structure[element(el)]
-                a.pseudo = p
-            end
-        end
-    end
-
     
     jdir = job.dir
     job.dir = tmpdir
@@ -168,22 +155,33 @@ function save(job::Job, workflow::Union{Nothing, Workflow} = nothing; fillexecs 
     resp_job_version = JSON3.read(HTTP.post(server, "/jobs/" * apath, files_to_send).body,
                           Int)
     @info "Job version: $(curver) => $(resp_job_version)."
-    # If needed here we create symlinks on the server side to the pseudos
+    
+    # Here we lazily pull pseudos that are not located on the server we're sending stuff to
+    pseudos = unique(y->y[1], map(x->(x.element.symbol, x.pseudo), job.structure.atoms))
     for (el, p) in pseudos
-        linkpath = joinpath(job, "$el.UPF")
-        if isempty(p.pseudo) && p.path != linkpath
-            # First remove the prev existing file
-            rm(server, linkpath)
-            symlink(server, p.path, linkpath)
-        else
-            # Pseudo should now be stored on the cluster and so we can make it empty
-            p.pseudo =""
+        if p.server !== job.server
+            p.pseudo = isempty(p.pseudo) ? read(Server(p.server), p.path, String) : p.pseudo
+            p.server = job.server
+            p.path = joinpath(job, "$el.UPF") 
+            for a in job.structure[element(el)]
+                a.pseudo = p
+            end
         end
-        for a in job.structure[element(el)]
-            a.pseudo = p
+        # Pseudo was not present yet
+        if !isempty(p.pseudo)
+            write(server, p.path, p.pseudo)
+            p.pseudo = ""
+        end
+        
+        linkpath = joinpath(job, "$el.UPF")
+        if p.path != linkpath
+            if ispath(server, linkpath)
+                rm(server, linkpath)
+            end
+            symlink(server, p.path, linkpath)
         end
     end
-    
+
     job.version = resp_job_version
     Calculations.rm_tmp_flags!.(job.calculations)
     return job
