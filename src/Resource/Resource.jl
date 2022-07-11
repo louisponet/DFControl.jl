@@ -47,7 +47,7 @@ HTTP.@register(ROUTER, "GET", "/ispath/*", ispath)
 Base.read(req::HTTP.Request) = read(path(req))
 HTTP.@register(ROUTER, "GET", "/read/*", read)
 
-Base.write(req::HTTP.Request) = write(path(req), req.body)
+Base.write(req::HTTP.Request) = write(path(req), JSON3.read(req.body, Vector{UInt8}))
 HTTP.@register(ROUTER, "POST", "/write/*", write)
 
 Base.rm(req::HTTP.Request) = rm(path(req), recursive=true)
