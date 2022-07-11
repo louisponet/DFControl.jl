@@ -12,28 +12,28 @@ function load(server::Server, j::Job)
     if isempty(j.dir)
         return first.(registered_jobs(server, j.dir))
     end
-    @time if j.version == last_version(server, j.dir)
+    if j.version == last_version(server, j.dir)
         dir = Jobs.main_job_dir(j.dir)
     elseif !occursin(Jobs.VERSION_DIR_NAME, j.dir) && j.version != -1
         dir = Jobs.version_dir(Jobs.main_job_dir(j.dir), j.version)
     else
         dir = j.dir
     end
-    @time dir = abspath(server, dir)
+    dir = abspath(server, dir)
     if !ispath(server, joinpath(dir, "job.sh"))
         
         @warn "No valid job found in $dir. Here are similar options:"
         return first.(registered_jobs(server, j.dir))
     end
-    @time resp = HTTP.get(server, "/jobs/" * dir)
+    resp = HTTP.get(server, "/jobs/" * dir)
     # Supplied dir was not a valid path, so we ask
     # previously registered jobs on the server that
     # contain dir.
-    @time t           = JSON3.read(resp.body)
+    t           = JSON3.read(resp.body)
     name        = t[:name]
     header      = t[:header]
     environment = t[:environment]
-    @time calculations, structure = FileIO.parse_calculations(t[:calculations])
+    calculations, structure = FileIO.parse_calculations(t[:calculations])
     for a in structure.atoms
         f = get(t[:pseudos], a.element.symbol, "")
         a.pseudo = Structures.Pseudo(server.name, f, "")
