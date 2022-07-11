@@ -133,7 +133,7 @@ function write_job_postamble(f, job::Job) end
 Writes all the calculation files and job file that are linked to a Job.
 Kwargs will be passed down to various writetojob functions.
 """
-function Base.write(job::Job, environment::Environment; kwargs...)
+function Base.write(job::Job, environment::Union{Nothing, Environment}; kwargs...)
 
     if any(x ->eltype(x) == QE, job.calculations)
         for a in unique(job.structure.atoms)

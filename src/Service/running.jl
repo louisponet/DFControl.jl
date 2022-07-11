@@ -9,6 +9,10 @@ const JOB_QUEUE = Ref{QueueInfo}()
 
 function main_loop(s::Server)
 
+    while !Servers.is_reachable(s.scheduler)
+        @warn "Can't reach scheduler"
+        sleep(SLEEP_TIME)
+    end
     JOB_QUEUE[] = QueueInfo(Dict{String, Tuple{Int, Jobs.JobState}}(), Dict{String, Tuple{Int, Jobs.JobState}}())
     queue!(JOB_QUEUE[], s.scheduler, true)
     @info (timestamp = Dates.now(), username = ENV["USER"], host = gethostname(), pid=getpid())

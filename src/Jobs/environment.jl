@@ -43,8 +43,15 @@ function environment_from_jobscript(scriptpath::String)
         MPI_command = ""
     end
     #TODO only works with slurm!!!
-    scheduler_flags = map(y -> strip(split(y, "SBATCH")[end]), filter(x -> occursin("#SBATCH", x), lines))
-    deleteat!(scheduler_flags, findall(x -> occursin("-J", x) || occursin("--job-name", x), scheduler_flags))
+    if any(x->occursin("SBATCH", x), lines)
+        scheduler_flags = map(y -> strip(split(y, "SBATCH")[end]), filter(x -> occursin("#SBATCH", x), lines))
+    elseif any(x->occursin("HQ", x), lines)
+        scheduler_flags = map(y -> strip(split(y, "HQ")[end]), filter(x -> occursin("#HQ", x), lines))
+    else
+        scheduler_flags = String[]
+    end
+        
+    deleteat!(scheduler_flags, findall(x -> occursin("-J", x) || occursin("name", x), scheduler_flags))
     exports = map(y -> strip(split(y, "export")[end]), filter(x -> occursin("export", x), lines))
     
     t = Environment("", MPI_command, scheduler_flags, exports)

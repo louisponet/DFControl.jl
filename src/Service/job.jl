@@ -225,27 +225,34 @@ function outputdata(jobdir::String, calculations::Vector{String})
 
     respath = joinpath(job, "results.jld2")
     stime = ispath(respath) ? mtime(respath) : 0.0
-
+    outdata_names = Dict{String, Vector{String}}()
     JLD2.jldopen(respath, "a+") do file
         for c in calculations
             calculation = job[c]
             p = joinpath(job, calculation.outfile)
-            if mtime(p) > stime
+            if ispath(p)
+                outdata_names[c] = String[]
                 group = haskey(file, c) ? file[c] : JLD2.Group(file, c)
-                try 
-                    tout = outputdata(calculation, p)
-                    if !isempty(tout) # So that previous succesful data is not overwritten
-                        for (k, v) in tout
-                            group[string(k)] = v
+                if mtime(p) > stime
+                    try 
+                        tout = outputdata(calculation, p)
+                        if !isempty(tout) # So that previous succesful data is not overwritten
+                            for (k, v) in tout
+                                group[string(k)] = v
+                                push!(outdata_names[c], string(k))
+                            end
                         end
+                    catch e
+                        @warn "Something went wrong reading output for calculation $c."
+                        @warn e
                     end
-                catch e
-                    @warn "Something went wrong reading output for calculation $c."
-                    @warn e
+                else
+                    outdata_names[c] = keys(group)
                 end
             end
         end
     end
+    # return outdata_names
     return respath
 end
 

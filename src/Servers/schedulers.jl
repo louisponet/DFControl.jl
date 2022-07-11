@@ -1,3 +1,5 @@
+using ..Utils: string2cmd
+
 abstract type Scheduler end
 @with_kw struct Slurm <: Scheduler
     type::String = "slurm"
@@ -22,6 +24,18 @@ submit_cmd(s::S) where {S<:Scheduler} = error("No submit_cmd method defined for 
 submit_cmd(s::Slurm) = `sbatch`
 submit_cmd(s::Bash)  = `bash`
 submit_cmd(s::HQ)  = `hq`
+
+function is_reachable(server_command::String)
+    t = run(string2cmd("which $server_command"), wait=false)
+    while !process_exited(t)
+        sleep(0.005)
+    end
+    return t.exitcode == 0
+end
+is_reachable(s::HQ) = is_reachable(s.server_command)
+is_reachable(::Slurm) = is_reachable("sbatch")
+is_reachable(::Bash) = true
+
 
 scheduler_directive_prefix(::Slurm) = "#SBATCH"
 scheduler_directive_prefix(::Bash) = "#"

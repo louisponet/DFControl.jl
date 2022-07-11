@@ -40,6 +40,7 @@ end
 
 Database.storage_directory(::Server) = "servers"
 
+
 function configure!(s::Server)
     s.port  = ask_input(Int, "Port", s.port)
     if s.domain == "localhost"
@@ -52,12 +53,32 @@ function configure!(s::Server)
         end
     end
     s.julia_exec = julia
-    scheduler = Bash()
+
+    # Try auto configuring the scheduler
+    scheduler = nothing
     for t in (HQ(), Slurm())
         scmd = submit_cmd(t)
         if server_command(s, "which $scmd").exitcode == 0
             scheduler = t
             break
+        end
+    end
+    if scheduler === nothing
+        choice = request("Couldn't identify the scheduler select one: ", RadioMenu(["SLURM", "HQ", "BASH"]))
+
+        if choice == 1
+            scheduler = Slurm()
+        elseif choice == 2
+            server_command = ask_input(String, "HQ command", "hq")
+        elseif choice == 3
+            scheduler = Bash()
+        else
+            return
+        end
+        
+        change_config == -1 && return
+        if change_config == 2
+            configure!(server)
         end
     end
     s.scheduler = scheduler
@@ -148,6 +169,11 @@ Base.ispath(s::Server, p...) =
 function Base.rm(s::Server, p::String)
     HTTP.post(s, "/rm/" * p)
     return nothing
+end
+function Base.read(s::Server, path::String, type=nothing)
+    resp = HTTP.get(s, "/read/" * path)
+    t = JSON3.read(resp.body, Vector{UInt8})
+    return type === nothing ? t : type(t)
 end
 
 Utils.searchdir(s::Server, dir, str) = joinpath.(dir, filter(x->occursin(str, x), readdir(s, dir))) 

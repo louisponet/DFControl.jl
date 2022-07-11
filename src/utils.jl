@@ -148,4 +148,8 @@ function loaded_modules_string()
 end
 export loaded_modules_string
 
+function string2cmd(str::AbstractString)
+    Cmd(string.(split(str)))
+end
+
 end

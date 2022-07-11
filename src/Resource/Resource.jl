@@ -44,6 +44,9 @@ HTTP.@register(ROUTER, "GET", "/isalive", (res) -> true)
 Base.ispath(req::HTTP.Request) = ispath(path(req))
 HTTP.@register(ROUTER, "GET", "/ispath/*", ispath)
 
+Base.read(req::HTTP.Request) = read(path(req))
+HTTP.@register(ROUTER, "GET", "/read/*", read)
+
 Base.rm(req::HTTP.Request) = rm(path(req), recursive=true)
 HTTP.@register(ROUTER, "POST", "/rm/*", rm)
 
