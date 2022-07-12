@@ -87,6 +87,41 @@ function running_jobs(fuzzy=""; server=gethostname())
     return reverse(JSON3.read(resp.body, Vector{Tuple{String, Int}}))
 end
 
+function write_calculations(job::Job; fillexecs=true)
+
+    if fillexecs
+        fill_execs(job, Server(job.server))
+    end
+    
+    Structures.sanitize!(job.structure)
+    Calculations.sanitize_flags!(job.calculations, job.structure, job.name,
+                                 "./"*Jobs.TEMP_CALC_DIR)
+    Jobs.sanitize_cutoffs!(job)
+    
+    calculations = [c.infile => IOBuffer() for c in job.calculations]
+    Threads.@threads for i in eachindex(job.calculations)
+        c = job.calculations[i]
+        write(calculations[i][2], c, job.structure)
+    end
+
+    wcalcs = filter(x -> eltype(x) == Wannier90, job.calculations)
+    if !isempty(wcalcs)
+        nscf = getfirst(x->Calculations.isnscf(x), job.calculations)
+        
+        @assert nscf !== nothing "No NSCF found to generate pw2wannier90 from."
+        @assert eltype(nscf) == QE "Only QE based Wannier90 jobs are supported."
+        
+        for c in wcalcs
+            pwcalc = FileIO.qe_generate_pw2wancalculation(c, nscf)
+            b = IOBuffer()
+            write(b, pwcalc, job.structure)
+            push!(calculations, pwcalc.infile => b)
+        end
+    end
+    return calculations
+end
+
+
 
 """
     save(job::Job)
@@ -112,48 +147,30 @@ function save(job::Job, workflow::Union{Nothing, Workflow} = nothing; fillexecs 
         job.name = "noname"
     end
     job.name = replace(job.name, " " => "_")
-    Structures.sanitize!(job.structure)
-    Calculations.sanitize_flags!(job.calculations, job.structure, job.name,
-                                 "./"*Jobs.TEMP_CALC_DIR)
-
-    Jobs.sanitize_cutoffs!(job)
 
     curver = job.version
 
-    tmpdir = mkpath(tempname())
     apath = abspath(job)
 
     server = Server(job.server)
-    if fillexecs
-        fill_execs(job, server)
-    end
     @assert job.environment != "" "Please set job environment."
     environment = load(server, Environment(job.environment))
     @assert environment isa Environment "Environment with name $(job.environment) not found!"
 
-    
-    jdir = job.dir
-    job.dir = tmpdir
-            
-    write(job, environment)
-    if workflow !== nothing
-        write(workflow, job)
-    end
+    file_buffers = write_calculations(job; fillexecs=fillexecs)
 
-    files_to_send = Dict{String,String}()
-    for (r, d, files) in walkdir(tmpdir)
-        for f in files
-            fp = joinpath(r, f)
-            files_to_send[split(fp, tmpdir)[2][2:end]] = read(fp, String)
-        end
-    end
+    job_buffer = IOBuffer()
 
-    job.dir = jdir
-    rm(tmpdir, recursive=true)
-    
-  
-    resp_job_version = JSON3.read(HTTP.post(server, "/jobs/" * apath, files_to_send).body,
+    resp_job_version = JSON3.read(HTTP.post(server, "/jobs/" * apath).body,
                           Int)
+                          
+    write(job_buffer, job, environment)
+    push!(file_buffers, "job.sh" => job_buffer)
+    for (n, buf) in file_buffers
+        write(server, joinpath(apath, n), buf)
+        close(buf)
+    end
+ 
     @info "Job version: $(curver) => $(resp_job_version)."
     
     # Here we lazily pull pseudos that are not located on the server we're sending stuff to

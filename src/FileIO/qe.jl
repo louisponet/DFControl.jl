@@ -1235,69 +1235,72 @@ function qe_writeflag(f, flag, value)
 end
 
 """
-    save(calculation::Calculation{QE}, structure, filename::String)
+    write(f, calculation::Calculation{QE}, structure)
 
-Writes a Quantum Espresso calculation file.
+Writes a string represenation to `f`.
 """
-function save(calculation::Calculation{QE}, structure,
-              filename::String)
+function Base.write(f::IO, calculation::Calculation{QE}, structure)
+    cursize = f.size
     if Calculations.hasflag(calculation, :calculation)
         Calculations.set_flags!(calculation,
                                 :calculation => replace(calculation[:calculation],
                                                         "_" => "-"); print = false)
     end
-    open(filename, "w") do f
-        if calculation.exec.exec == "ph.x"
-            write(f, "--\n")
-        end
-        writeflag(flag_data) = qe_writeflag(f, flag_data[1], flag_data[2])
-        write_dat(data) = write_data(f, data)
-        for name in unique([[:control, :system, :electrons, :ions, :cell]; keys(calculation.flags)...])
-            if haskey(calculation.flags, name)
-                flags = calculation.flags[name]
-                write(f, "&$name\n")
-                if name == :system
-                    nat  = length(structure.atoms)
-                    ntyp = length(unique(structure.atoms))
-                    # A     = 1.0
-                    ibrav = 0
-                    write(f, "  ibrav = $ibrav\n")
-                    # write(f,"  A = $A\n")
-                    write(f, "  nat = $nat\n")
-                    write(f, "  ntyp = $ntyp\n")
-                end
-                map(writeflag, [(flag, data) for (flag, data) in flags])
-                write(f, "/\n\n")
+    if calculation.exec.exec == "ph.x"
+        write(f, "--\n")
+    end
+    writeflag(flag_data) = qe_writeflag(f, flag_data[1], flag_data[2])
+    write_dat(data) = write_data(f, data)
+    for name in unique([[:control, :system, :electrons, :ions, :cell]; keys(calculation.flags)...])
+        if haskey(calculation.flags, name)
+            flags = calculation.flags[name]
+            write(f, "&$name\n")
+            if name == :system
+                nat  = length(structure.atoms)
+                ntyp = length(unique(structure.atoms))
+                # A     = 1.0
+                ibrav = 0
+                write(f, "  ibrav = $ibrav\n")
+                # write(f,"  A = $A\n")
+                write(f, "  nat = $nat\n")
+                write(f, "  ntyp = $ntyp\n")
             end
+            map(writeflag, [(flag, data) for (flag, data) in flags])
+            write(f, "/\n\n")
         end
+    end
 
-        if calculation.exec.exec == "pw.x"
-            write_structure(f, calculation, structure)
+    if calculation.exec.exec == "pw.x"
+        write_structure(f, calculation, structure)
+    end
+    for dat in calculation.data
+        if dat.name != :noname
+            if dat.option != :none
+                write(f, "$(uppercase(String(dat.name))) ($(dat.option))\n")
+            else
+                write(f, "$(uppercase(String(dat.name)))\n")
+            end
         end
-        for dat in calculation.data
-            if dat.name != :noname
-                if dat.option != :none
-                    write(f, "$(uppercase(String(dat.name))) ($(dat.option))\n")
-                else
-                    write(f, "$(uppercase(String(dat.name)))\n")
-                end
+        if dat.data !== nothing
+            if dat.name == :k_points && dat.option != :automatic
+                write(f, "$(length(dat.data))\n")
+                write_dat(dat.data)
+            else
+                write_dat(dat.data)
             end
-            if dat.data !== nothing
-                if dat.name == :k_points && dat.option != :automatic
-                    write(f, "$(length(dat.data))\n")
-                    write_dat(dat.data)
-                else
-                    write_dat(dat.data)
-                end
-                write(f, "\n")
-            end
+            write(f, "\n")
         end
     end
     #TODO handle writing hubbard and magnetization better
     delete!.((calculation,),
              (:Hubbard_U, :Hubbard_J0, :Hubbard_J, :Hubbard_alpha, :Hubbard_beta,
               :starting_magnetization, :angle1, :angle2, :pseudo_dir))
-    return
+    return f.size - cursize
+end
+function Base.write(f::AbstractString, c::Calculation{QE}, structure)
+    open(f, "w") do file
+        write(file, c, structure)
+    end
 end
 
 function write_data(f, data)

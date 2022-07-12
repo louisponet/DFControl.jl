@@ -216,6 +216,11 @@ function HTTP.request(method::String, s::Server, url, body; kwargs...)
     return HTTP.request(method, string(http_string(s), url), header, JSON3.write(body); kwargs...)
 end
 
+function HTTP.request(method::String, s::Server, url, body::Vector{UInt8}; kwargs...)
+    header = ["Type" => "$(typeof(body))", "USER-UUID" => s.uuid]
+    return HTTP.request(method, string(http_string(s), url), header, body; kwargs...)
+end
+
 function HTTP.request(method::String, s::Server, url; connect_timeout=1, retries=2, kwargs...)
     header = ["USER-UUID" => s.uuid]
     

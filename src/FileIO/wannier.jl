@@ -303,14 +303,18 @@ function wan_write_projections(f::IO, atoms::Vector{Atom})
 end
 
 """
-    save(calculation::Calculation{Wannier90}, structure, filename::String)
+    write(f, calculation::Calculation{Wannier90}, structure)
 
-Writes the `Calculation{Wannier90}` and `structure` to a file, that can be interpreted by WANNIER90.
+Writes the `Calculation{Wannier90}` and `structure` to f.
 The atoms in the structure must have projections defined.
 """
-function save(calculation::Calculation{Wannier90}, structure,
-              filename::String)
+function Base.write(f::IO, calculation::Calculation{Wannier90}, structure)
 
+    cursize = f.size
+    
+    preprocess = pop!(calculation, :preprocess, false)
+    wplot = pop!(calculation, :wannier_plot, false)
+    
     projs = vcat(map(structure.atoms) do x
                      ps = x.projections
                      # @assert !isempty(ps) "Please first set projections for all atoms in the Structure."
@@ -318,47 +322,53 @@ function save(calculation::Calculation{Wannier90}, structure,
                  end...)
 
     Structures.sanitize!(projs, Calculations.issoc(calculation))
-    
-    open(filename, "w") do f
-        for (flag, value) in calculation.flags
-            write_flag_line(f, flag, value)
-        end
+    for (flag, value) in calculation.flags
+        write_flag_line(f, flag, value)
+    end
+    write(f, "\n")
+
+    if structure != nothing
+        write(f, "begin unit_cell_cart\n")
+        writedlm(f, ustrip.(structure.cell'))
+        write(f, "end unit_cell_cart\n")
         write(f, "\n")
+    end
+    wan_write_projections(f, structure.atoms)
 
-        if structure != nothing
-            write(f, "begin unit_cell_cart\n")
-            writedlm(f, ustrip.(structure.cell'))
-            write(f, "end unit_cell_cart\n")
-            write(f, "\n")
-        end
-        wan_write_projections(f, structure.atoms)
+    write(f, "\n")
+    write(f, "begin atoms_frac\n")
+    for at in structure.atoms
+        pos = round.(at.position_cryst, digits = 5)
+        write(f, "$(at.name)  $(pos[1]) $(pos[2]) $(pos[3])\n")
+    end
+    write(f, "end atoms_frac\n")
+    write(f, "\n")
 
-        write(f, "\n")
-        write(f, "begin atoms_frac\n")
-        for at in structure.atoms
-            pos = round.(at.position_cryst, digits = 5)
-            write(f, "$(at.name)  $(pos[1]) $(pos[2]) $(pos[3])\n")
-        end
-        write(f, "end atoms_frac\n")
-        write(f, "\n")
-
-        for block in calculation.data
-            write(f, "begin $(block.name)\n")
-            if block.name == :kpoint_path
-                for i in 1:2:length(block.data)
-                    letter1, k_points1 = block.data[i]
-                    letter2, k_points2 = block.data[i+1]
-                    write(f,
-                          "$letter1 $(k_points1[1]) $(k_points1[2]) $(k_points1[3]) $letter2 $(k_points2[1]) $(k_points2[2]) $(k_points2[3])\n")
-                end
-
-            elseif block.name == :kpoints
-                for k in block.data
-                    write(f, "$(k[1]) $(k[2]) $(k[3])\n")
-                end
+    for block in calculation.data
+        write(f, "begin $(block.name)\n")
+        if block.name == :kpoint_path
+            for i in 1:2:length(block.data)
+                letter1, k_points1 = block.data[i]
+                letter2, k_points2 = block.data[i+1]
+                write(f,
+                      "$letter1 $(k_points1[1]) $(k_points1[2]) $(k_points1[3]) $letter2 $(k_points2[1]) $(k_points2[2]) $(k_points2[3])\n")
             end
-            write(f, "end $(block.name)\n\n")
+
+        elseif block.name == :kpoints
+            for k in block.data
+                write(f, "$(k[1]) $(k[2]) $(k[3])\n")
+            end
         end
+        write(f, "end $(block.name)\n\n")
+    end
+    
+    Calculations.set_flags!(calculation, :preprocess => preprocess, :wannier_plot => wplot; print=false)
+    
+    return f.size - cursize
+end
+function Base.write(f::AbstractString, calculation::Calculation{Wannier90}, structure)
+    open(f, "w") do file
+        write(file, calculation, structure)
     end
 end
 

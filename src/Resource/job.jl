@@ -1,4 +1,4 @@
-save_job(req) = Service.save(path(req), JSON3.read(req.body, Dict{String, String}))
+save_job(req) = Service.save(path(req))
 HTTP.@register(ROUTER, "POST", "/jobs", save_job)
 
 submit_job(req) = Service.submit(path(req), JSON3.read(req.body, Bool))

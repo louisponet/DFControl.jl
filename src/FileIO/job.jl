@@ -59,52 +59,43 @@ end
 function writetojob(f, job, calculation::Calculation, environment; kwargs...)
     filename   = calculation.infile
     should_run = calculation.run
-    save(calculation, job.structure, joinpath(job, calculation.infile); kwargs...)
     if !should_run
         write(f, "#")
     end
     writeexec(f, calculation.exec, environment)
     write(f, "< $filename > $(calculation.outfile)\n")
-    return (calculation,)
+    return (calculation_buffer,)
 end
 
 function writetojob(f, job, _calculation::Calculation{Wannier90}, environment; kwargs...)
     filename   = _calculation.infile
     should_run = _calculation.run
-    id         = findfirst(isequal(_calculation), job.calculations)
-    seedname   = _calculation.name
+    nscf = getfirst(x -> Calculations.isnscf(x), job.calculations)
+    
+    @assert nscf !== nothing "No NSCF found to generate pw2wannier90 from."
+    @assert eltype(nscf) == QE "Only QE based Wannier90 jobs are supported."
 
-    nscf_calc = getfirst(x -> Calculations.isnscf(x), job.calculations)
-    if nscf_calc !== nothing
-        # For elk the setup necessary for the wan_calc needs to be done before writing the wan calculation
-        # because it's inside elk.in
-        if eltype(nscf_calc) == QE
-            pw2wancalculation = qe_generate_pw2wancalculation(_calculation, nscf_calc)
-            preprocess = pop!(_calculation, :preprocess, false)
-            wannier_plot = pop!(_calculation, :wannier_plot, nothing)
+    pw2wan_exec = Exec(nscf.exec, exec="pw2wannier90.x")
 
-            if !preprocess || !should_run
-                write(f, "#")
-            end
-            writeexec(f, _calculation.exec, environment)
-            write(f,
-                  "-pp $filename > $(_calculation.outfile)\n")
+    preprocess   = get(_calculation, :preprocess, false)
 
-            save(_calculation, job.structure, joinpath(job, _calculation.infile); kwargs...)
-            writetojob(f, job, pw2wancalculation, environment; kwargs...)
-            _calculation[:preprocess] = preprocess
-            wannier_plot !== nothing && (_calculation[:wannier_plot] = wannier_plot)
-        elseif eltype(nscf_calc) == Elk
-            pw2wancalculation = job["elk2wannier"]
-        end
+    if !preprocess || !should_run
+        write(f, "#")
     end
+    writeexec(f, _calculation.exec, environment)
+    write(f,
+          "-pp $filename > $(_calculation.outfile)\n")
+
+    if !preprocess || !should_run
+        write(f, "#")
+    end
+    writeexec(f, pw2wan_exec, environment)
 
     if !should_run
         write(f, "#")
     end
     writeexec(f, _calculation.exec, environment)
     write(f, "$filename > $(_calculation.outfile)\n")
-    return (_calculation,)
 end
 
 #TODO: This should take scratch dir of server
@@ -128,31 +119,29 @@ function write_job_postamble(f, job::Job) end
 # end
 
 """
-    write(job::Job, environment::Environment; kwargs...)
+    write(f, job::Job, environment::Environment; kwargs...)
 
-Writes all the calculation files and job file that are linked to a Job.
+Writes the job script for the job.
 Kwargs will be passed down to various writetojob functions.
 """
-function Base.write(job::Job, environment::Union{Nothing, Environment}; kwargs...)
+function Base.write(job_buffer::IO, job::Job, environment::Union{Nothing, Environment}; kwargs...)
+    cursize = job_buffer.size
 
-    open(joinpath(job, "job.sh"), "w") do f
-        write(f, "#!/bin/bash\n")
-        write_job_header(f, job, environment)
-        write_job_preamble(f, job)
-        written_calculations = Calculation[]
-        abicalculations = filter(x -> eltype(x) == Abinit, job.calculations)
-        !isempty(abicalculations) && writetojob(f, job, abicalculations, environment; kwargs...)
-        elkcalculations = filter(x -> eltype(x) == Elk, job.calculations)
-        !isempty(elkcalculations) &&
-            append!(written_calculations, writetojob(f, job, elkcalculations, environment; kwargs...))
+    write(job_buffer, "#!/bin/bash\n")
+    write_job_header(job_buffer, job, environment)
+    write_job_preamble(job_buffer, job)
+    
+    # abicalculations = filter(x -> eltype(x) == Abinit, job.calculations)
+    # !isempty(abicalculations) && writetojob(job_buffer, job, abicalculations, environment; kwargs...)
+    # elkcalculations = filter(x -> eltype(x) == Elk, job.calculations)
+    # !isempty(elkcalculations) &&
+    #     push!(written_calculations, writetojob(job_buffer, job, elkcalculations, environment; kwargs...)...)
 
-        for i in job.calculations
-            if i ∉ written_calculations
-                append!(written_calculations, writetojob(f, job, i, environment; kwargs...))
-            end
-        end
-        return write_job_postamble(f, job)
+    for i in job.calculations
+        writetojob(job_buffer, job, i, environment; kwargs...)
     end
+    write_job_postamble(job_buffer, job)
+    return job_buffer.size - cursize
 end
 
 function read_job_line(line)
