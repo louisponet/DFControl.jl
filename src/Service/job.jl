@@ -42,7 +42,7 @@ function load(job::Job)
     
 end
 
-function save(jobdir::String; kwargs...)
+function save(jobdir::String, files; kwargs...)
 
     if jobdir[end] == '/'
         jobdir = jobdir[1:end-1]
@@ -68,6 +68,9 @@ function save(jobdir::String; kwargs...)
     
     # Needs to be done so the inputs `dir` also changes.
     mkpath(dir)
+    for (fname, f) in files
+        write(joinpath(dir, fname), f)
+    end
     
     JOB_QUEUE[].full_queue[dir] = (-1, Jobs.Saved)
     return version

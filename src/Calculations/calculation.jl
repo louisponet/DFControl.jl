@@ -308,7 +308,7 @@ function set_flags!(c::Calculation{T}, flags...; print = true) where {T}
             end
             print && (@info "$(c.name): -> $flag:\n      $old_data set to: $value\n")
         else
-            @warn """$flag could not be found in allowed flags,
+            print && @warn """$flag could not be found in allowed flags,
                      please set it manually using <c>.flags[$flag] = $value"""
         end
     end

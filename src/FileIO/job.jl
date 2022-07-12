@@ -64,7 +64,6 @@ function writetojob(f, job, calculation::Calculation, environment; kwargs...)
     end
     writeexec(f, calculation.exec, environment)
     write(f, "< $filename > $(calculation.outfile)\n")
-    return (calculation_buffer,)
 end
 
 function writetojob(f, job, _calculation::Calculation{Wannier90}, environment; kwargs...)
@@ -90,6 +89,7 @@ function writetojob(f, job, _calculation::Calculation{Wannier90}, environment; k
         write(f, "#")
     end
     writeexec(f, pw2wan_exec, environment)
+    write(f, "< pw2wan_$(splitext(filename)[1]).in > pw2wan_$(splitext(filename)[1]).out \n")
 
     if !should_run
         write(f, "#")
@@ -316,6 +316,7 @@ function parse_calculations(calcs)
             Calculations.set_flags!(outcalcs[end], :preprocess => outcalcs[end].run, print=false)
             empty!(outcalcs[end].exec.flags)
         else
+            @show calc[:contents]
             c = calculationparser(exec)(calc[:contents])
             if c.structure !== nothing
                 push!(structures, c.structure)
