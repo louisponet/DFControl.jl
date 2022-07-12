@@ -221,7 +221,7 @@ end
 function set_kpoints!(c::Calculation{QE}, k_grid::NTuple{6,Int}; print = true) #scf
     print &&
         !(isscf(c) || isvcrelax(c) || isrelax(c)) &&
-        (@warn "Expected calculation to be scf, vc-relax, relax.\nGot $calc.")
+        (@warn "Expected calculation to be scf, vc-relax, relax.")
     d = data(c, :k_points)
     if d !== nothing
         d.data = [k_grid...]
