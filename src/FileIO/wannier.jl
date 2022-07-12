@@ -1,6 +1,6 @@
 
-function readoutput(calculation::Calculation{Wannier90}, file; kwargs...)
-    return wan_parse_output(file; kwargs...)
+function readoutput(calculation::Calculation{Wannier90}, files...; kwargs...)
+    return wan_parse_output(files[1]; kwargs...)
 end
 
 #THIS IS THE MOST HORRIBLE FUNCTION I HAVE EVER CREATED!!!

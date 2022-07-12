@@ -132,12 +132,12 @@ end
 outputdata(job["scf"],joinpath(job, job["scf"].outfile), extra_parse_funcs = ["number of atoms/cell" => qe_parse_nat])
 ```
 """
-function outputdata(calculation::Calculation, file;
+function outputdata(calculation::Calculation, files...;
                     extra_parse_funcs::Vector{<:Pair{String}} = Pair{String}[],
                     print = true, overwrite = true)
-    t = readoutput(calculation, file; parse_funcs = extra_parse_funcs)
+    t = readoutput(calculation, files...; parse_funcs = extra_parse_funcs)
     return t === nothing ?
-                          parse_file(file,
+                          parse_file(files[1],
                                             extra_parse_funcs) : t
 end
 

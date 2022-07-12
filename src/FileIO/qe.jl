@@ -1,7 +1,7 @@
 import Base: parse
 
-function readoutput(c::Calculation{QE}, file; kwargs...)
-    return qe_parse_output(c, file; kwargs...)
+function readoutput(c::Calculation{QE}, files...; kwargs...)
+    return qe_parse_output(c, files...; kwargs...)
 end
 
 #this is all pretty hacky with regards to the new structure and atom api. can for sure be a lot better!
@@ -35,13 +35,13 @@ function qe_parse_time(str::AbstractString)
     return t
 end
 
-function qe_parse_output(c::Calculation{QE}, file, args...; kwargs...)
+function qe_parse_output(c::Calculation{QE}, files...; kwargs...)
     if Calculations.isprojwfc(c)
-        return qe_parse_projwfc_output(file, args...)
+        return qe_parse_projwfc_output(files...)
     elseif Calculations.ishp(c)
-        return qe_parse_hp_output(file, args...; kwargs...)
+        return qe_parse_hp_output(files[1]; kwargs...)
     elseif Calculations.ispw(c)
-        return qe_parse_pw_output(file, args...; kwargs...)
+        return qe_parse_pw_output(files[1]; kwargs...)
     end
 end
 
@@ -200,9 +200,9 @@ function qe_parse_cart_positions(out, line, f)
 end
 
 function qe_parse_pseudo(out, line, f)
-    !haskey(out, :pseudos) && (out[:pseudos] = Dict{Symbol,String}())
+    !haskey(out, :pseudos) && (out[:pseudos] = Dict{Symbol,Pseudo}())
     pseudopath = readline(f) |> strip
-    return out[:pseudos][Symbol(split(line)[5])] = ispath(pseudopath) ? read(pseudopath, String) : ""
+    return out[:pseudos][Symbol(split(line)[5])] = Pseudo("", pseudopath, "")
 end
 
 function qe_parse_fermi(out, line, f)
@@ -676,24 +676,19 @@ function qe_parse_pdos(file)
     return energies, values
 end
 
-function qe_parse_projwfc_output(file, args...)
+function qe_parse_projwfc_output(files...)
     out = Dict{Symbol,Any}()
-    out[:states], out[:bands] = qe_parse_projwfc(file)
-    out[:energies], out[:pdos] = pdos(file)
+    kresolved = occursin("ik", readline(files[1]))
+    out[:states], out[:bands] = qe_parse_projwfc(files[1])
+    out[:energies], out[:pdos] = pdos(files[2:end], kresolved)
     out[:finished] = isempty(out[:energies]) ? false : true
     return out
 end
 
-function pdos(file)
+function pdos(files, kresolved=false)
 
-    kresolved = occursin("ik", readline(file))
     
-    dir = splitdir(file)[1] 
-    files = filter(x -> occursin("#", x), searchdir(dir, "pdos"))
-
-    if isempty(files)
-        return (Float64[], Dict{Symbol, Array})
-    end
+    dir = splitdir(files[1])[1]
     atsyms = Symbol.(unique(map(x -> x[findfirst("(", x)[1]+1:findfirst(")", x)[1]-1],files)))
     magnetic = (x->occursin("ldosup",x) && occursin("ldosdw",x))(readline(files[1]))
     soc = occursin(".5", files[1])
@@ -754,7 +749,6 @@ function qe_parse_projwfc(filename)
     lines = readlines(filename) .|> strip
 
     i_prob_sizes = findfirst(x -> !isempty(x) && x[1:4] == "Prob", lines)
-    istart = findfirst(x -> x == "Atomic states used for projection", lines) + 2
 
     natomwfc = 0
     nx       = 0
@@ -762,9 +756,10 @@ function qe_parse_projwfc(filename)
     nkstot   = 0
     npwx     = 0
     nkb      = 0
-    if i_prob_sizes === nothing
+    if i_prob_sizes === nothing 
         error("Version of QE too low, cannot parse projwfc output")
     end
+    istart = findfirst(x -> x == "Atomic states used for projection", lines) + 2
     for i in i_prob_sizes+1:istart-3
         l = lines[i]
         if isempty(l)
@@ -1088,7 +1083,7 @@ Reads a Quantum Espresso calculation file. The `QE_EXEC` inside execs gets used 
 Returns a `Calculation{QE}` and the `Structure` that is found in the calculation.
 """
 function qe_parse_calculation(file)
-    if file isa IO
+    if file isa IO || !occursin("\n", file)
         contents = readlines(file)
     else
         contents = split(file, "\n")

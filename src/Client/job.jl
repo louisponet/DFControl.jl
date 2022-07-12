@@ -427,7 +427,26 @@ function outputdata(job::Job; calcs=map(x->x.name, job.calculations))
         calculation = job[c]
         p = joinpath(job, calculation.outfile)
         if ispath(server, p)
-            out[c] = FileIO.outputdata(calculation, IOBuffer(read(server, p)))
+            if Calculations.isprojwfc(calculation)
+                dos_files = searchdir(job, "pdos_a")
+                extra_files = String[] 
+                dir = mkdir(tempname())
+                for e in dos_files
+                    tfp = joinpath(dir, splitpath(e)[end])
+                    write(tfp, read(server, e))
+                    push!(extra_files, tfp)
+                end
+            else
+                extra_files = String[]
+            end
+            out[c] = FileIO.outputdata(calculation, IOBuffer(read(server, p)), extra_files...)
+            for strkey in (:initial_structure, :final_structure) 
+                if haskey(out[c], strkey)
+                    for a in out[c][strkey].atoms
+                        a.pseudo.server = job.server
+                    end
+                end
+            end
         end
     end
     return out

@@ -95,6 +95,14 @@ end
 StructTypes.StructType(::Type{Pseudo}) = StructTypes.Struct()
 Base.write(f::AbstractString, p::Pseudo, args...) = write(f, p.pseudo, args...)
 Base.write(f::IO, p::Pseudo) = write(f, p.pseudo)
+function Base.:(==)(p1::Pseudo, p2::Pseudo)
+    if !(isempty(p1.path) && isempty(p2.path) && isempty(p1.server) && isempty(p2.server))
+        return p1.path == p2.path && p1.server==p2.server
+    else
+        return p1.pseudo == p2.pseudo
+    end
+end
+        
 
 # TODO Multiple l per atom in Elk??
 #We use angstrom everywhere
