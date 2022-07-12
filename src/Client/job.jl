@@ -157,25 +157,21 @@ function save(job::Job, workflow::Union{Nothing, Workflow} = nothing; fillexecs 
     environment = load(server, Environment(job.environment))
     @assert environment isa Environment "Environment with name $(job.environment) not found!"
 
-    @time file_buffers = write_calculations(job; fillexecs=fillexecs)
+    file_buffers = write_calculations(job; fillexecs=fillexecs)
 
     job_buffer = IOBuffer()
 
                           
     write(job_buffer, job, environment)
     push!(file_buffers, "job.sh" => job_buffer)
-    # @time for (n, buf) in file_buffers
-    #     write(server, joinpath(apath, n), buf.data)
-    #     close(buf)
-    # end
-    @time resp_job_version = JSON3.read(HTTP.post(server, "/jobs/" * apath, Dict([n[1] => n[2].data for n in file_buffers])).body,
+    resp_job_version = JSON3.read(HTTP.post(server, "/jobs/" * apath, Dict([n[1] => n[2].data for n in file_buffers])).body,
                           Int)
  
     @info "Job version: $(curver) => $(resp_job_version)."
     
     # Here we lazily pull pseudos that are not located on the server we're sending stuff to
     pseudos = unique(y->y[1], map(x->(x.element.symbol, x.pseudo), job.structure.atoms))
-    @time for (el, p) in pseudos
+    for (el, p) in pseudos
         if p.server !== job.server
             p.pseudo = isempty(p.pseudo) ? read(Server(p.server), p.path, String) : p.pseudo
             p.server = job.server
