@@ -168,7 +168,7 @@ function save(job::Job, workflow::Union{Nothing, Workflow} = nothing; fillexecs 
     #     write(server, joinpath(apath, n), buf.data)
     #     close(buf)
     # end
-    @time resp_job_version = JSON3.read(HTTP.post(server, "/jobs/" * apath, file_buffers).body,
+    @time resp_job_version = JSON3.read(HTTP.post(server, "/jobs/" * apath, [n[1] => n[2].data for n in file_buffers]).body,
                           Int)
  
     @info "Job version: $(curver) => $(resp_job_version)."
