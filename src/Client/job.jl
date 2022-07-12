@@ -87,12 +87,19 @@ function running_jobs(fuzzy=""; server=gethostname())
     return reverse(JSON3.read(resp.body, Vector{Tuple{String, Int}}))
 end
 
-function write_calculations(job::Job; fillexecs=true)
+function write_calculations(job::Job; fillexecs=true, versioncheck=true)
 
-    if fillexecs
-        fill_execs(job, Server(job.server))
+    server = Server(job.server)
+    t = Threads.@spawn if fillexecs
+        fill_execs(job, server)
     end
-    
+    t1 = Threads.@spawn if !versioncheck
+        apath = joinpath(job, "job.sh")
+        if ispath(server, apath)
+            rm(server, apath)
+        end
+    end
+     
     Structures.sanitize!(job.structure)
     Calculations.sanitize_flags!(job.calculations, job.structure, job.name,
                                  "./"*Jobs.TEMP_CALC_DIR)
@@ -118,6 +125,8 @@ function write_calculations(job::Job; fillexecs=true)
             push!(calculations, pwcalc.infile => b)
         end
     end
+    fetch(t)
+    fetch(t1)
     return calculations
 end
 
@@ -134,7 +143,7 @@ If a previous job is present in the job directory (indicated by a valid job scri
 it will be copied to the `.versions` sub directory as the previous version of `job`,
 and the version of `job` will be incremented. 
 """
-function save(job::Job, workflow::Union{Nothing, Workflow} = nothing; fillexecs = true)
+function save(job::Job, workflow::Union{Nothing, Workflow} = nothing; kwargs...)
     @assert workflow === nothing "Workflows not implemented yet."
     # First we check whether the job is trying to be saved in a archived directory, absolutely not allowed
     @assert !isrunning(job) "Can't save a job in a directory where another is running."
@@ -157,7 +166,7 @@ function save(job::Job, workflow::Union{Nothing, Workflow} = nothing; fillexecs 
     environment = load(server, Environment(job.environment))
     @assert environment isa Environment "Environment with name $(job.environment) not found!"
 
-    file_buffers = write_calculations(job; fillexecs=fillexecs)
+    file_buffers = write_calculations(job; kwargs...)
 
     job_buffer = IOBuffer()
 
