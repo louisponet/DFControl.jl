@@ -316,7 +316,6 @@ function parse_calculations(calcs)
             Calculations.set_flags!(outcalcs[end], :preprocess => outcalcs[end].run, print=false)
             empty!(outcalcs[end].exec.flags)
         else
-            @show calc[:contents]
             c = calculationparser(exec)(calc[:contents])
             if c.structure !== nothing
                 push!(structures, c.structure)
