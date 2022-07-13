@@ -71,7 +71,7 @@ end
     end
 end
 
-@recipe function f(job::Job, ymin, ymax, occupy_ratio = 0.2; overlap_spin = false, plot_pdos=true)
+@recipe function f(job::Job, ymin, ymax, occupy_ratio = 0.2; overlap_spin = false, plot_pdos=true, outdat=Client.outputdata(job))
     palette_ = ismissing(Plots.default(:palette)) ? :default : Plots.default(:palette)
     tc = Plots.plot_color(pop!(plotattributes, :seriescolor,
                                               RGB.(Plots.color_list(Plots.palette(palette_)))))
@@ -83,7 +83,6 @@ end
     if !any(x -> eltype(x) == QE, job.calculations)
         error("output plotting only implemented for QE jobs.")
     end
-    outdat = Client.outputdata(job)
     if !haskey(plotattributes, :fermi)
         frmi = readfermi(job, outdat)
     else

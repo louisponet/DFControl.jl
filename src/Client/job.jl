@@ -87,17 +87,11 @@ function running_jobs(fuzzy=""; server=gethostname())
     return reverse(JSON3.read(resp.body, Vector{Tuple{String, Int}}))
 end
 
-function write_calculations(job::Job; fillexecs=true, versioncheck=true)
+function write_calculations(job::Job; fillexecs=true)
 
     server = Server(job.server)
     t = Threads.@spawn if fillexecs
         fill_execs(job, server)
-    end
-    t1 = Threads.@spawn if !versioncheck
-        apath = joinpath(job, "job.sh")
-        if ispath(server, apath)
-            rm(server, apath)
-        end
     end
      
     Structures.sanitize!(job.structure)
@@ -126,7 +120,6 @@ function write_calculations(job::Job; fillexecs=true, versioncheck=true)
         end
     end
     fetch(t)
-    fetch(t1)
     return calculations
 end
 
@@ -143,7 +136,7 @@ If a previous job is present in the job directory (indicated by a valid job scri
 it will be copied to the `.versions` sub directory as the previous version of `job`,
 and the version of `job` will be incremented. 
 """
-function save(job::Job, workflow::Union{Nothing, Workflow} = nothing; kwargs...)
+function save(job::Job, workflow::Union{Nothing, Workflow} = nothing; versioncheck=true, kwargs...)
     @assert workflow === nothing "Workflows not implemented yet."
     # First we check whether the job is trying to be saved in a archived directory, absolutely not allowed
     @assert !isrunning(job) "Can't save a job in a directory where another is running."
@@ -166,6 +159,11 @@ function save(job::Job, workflow::Union{Nothing, Workflow} = nothing; kwargs...)
     environment = load(server, Environment(job.environment))
     @assert environment isa Environment "Environment with name $(job.environment) not found!"
 
+    t1 = Threads.@spawn if versioncheck
+        resp_job_version = JSON3.read(HTTP.put(server, "/increment_version/" * apath), Int)
+        job.version = resp_job_version
+        @info "Job version: $(curver) => $(resp_job_version)."
+    end
     file_buffers = write_calculations(job; kwargs...)
 
     job_buffer = IOBuffer()
@@ -173,10 +171,8 @@ function save(job::Job, workflow::Union{Nothing, Workflow} = nothing; kwargs...)
                           
     write(job_buffer, job, environment)
     push!(file_buffers, "job.sh" => job_buffer)
-    resp_job_version = JSON3.read(HTTP.post(server, "/jobs/" * apath, Dict([n[1] => n[2].data for n in file_buffers])).body,
-                          Int)
+    HTTP.post(server, "/jobs/" * apath, Dict([n[1] => n[2].data for n in file_buffers]))
  
-    @info "Job version: $(curver) => $(resp_job_version)."
     
     # Here we lazily pull pseudos that are not located on the server we're sending stuff to
     pseudos = unique(y->y[1], map(x->(x.element.symbol, x.pseudo), job.structure.atoms))
@@ -203,8 +199,7 @@ function save(job::Job, workflow::Union{Nothing, Workflow} = nothing; kwargs...)
             symlink(server, p.path, linkpath)
         end
     end
-
-    job.version = resp_job_version
+    fetch(t1)
     Calculations.rm_tmp_flags!.(job.calculations)
     return job
 end

@@ -42,8 +42,7 @@ function load(job::Job)
     
 end
 
-function save(jobdir::String, files; kwargs...)
-
+function increment_version(jobdir::String)
     if jobdir[end] == '/'
         jobdir = jobdir[1:end-1]
     end
@@ -64,16 +63,17 @@ function save(jobdir::String, files; kwargs...)
             cp(f, dir; force = true)
         end
     end
+    return version
+end
 
-    
+function save(jobdir::String, files; kwargs...)
+    dir = Jobs.main_job_dir(jobdir)
     # Needs to be done so the inputs `dir` also changes.
     mkpath(dir)
     for (fname, f) in files
         write(joinpath(dir, fname), f)
     end
-    
     JOB_QUEUE[].full_queue[dir] = (-1, Jobs.Saved)
-    return version
 end
 
 job_versions(args...) = Jobs.job_versions(args...)

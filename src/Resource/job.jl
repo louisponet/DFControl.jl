@@ -1,3 +1,6 @@
+increment_version(req) = Service.increment_version(path(req))
+HTTP.@register(ROUTER, "PUT", "/increment_version/*", increment_version)
+
 save_job(req) = Service.save(path(req), JSON3.read(req.body, Dict{String, Vector{UInt8}}))
 HTTP.@register(ROUTER, "POST", "/jobs", save_job)
 
