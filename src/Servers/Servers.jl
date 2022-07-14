@@ -163,26 +163,42 @@ islocal(s::Server) = s.domain == "localhost"
 local_server() = Server(gethostname())
 
 Base.joinpath(s::Server, p...) = joinpath(s.root_jobdir, p...)
-Base.ispath(s::Server, p...) =
+Base.ispath(s::Server, p...) = islocal(s) ? ispath(p...) :
     JSON3.read(HTTP.get(s, "/ispath/" * joinpath(p...)).body, Bool)
 
 function Base.symlink(s::Server, p, p2)
-    HTTP.post(s, "/symlink/", [p, p2])
-    return nothing
+    if islocal(s)
+        symlink(p, p2)
+    else
+        HTTP.post(s, "/symlink/", [p, p2])
+        return nothing
+    end
 end
 
 function Base.rm(s::Server, p::String)
-    HTTP.post(s, "/rm/" * p)
-    return nothing
+    if islocal(s)
+        isdir(p) ? rm(p, recursive=true) : rm(p)
+    else
+        HTTP.post(s, "/rm/" * p)
+        return nothing
+    end
 end
 function Base.read(s::Server, path::String, type=nothing)
-    resp = HTTP.get(s, "/read/" * path)
-    t = JSON3.read(resp.body, Vector{UInt8})
-    return type === nothing ? t : type(t)
+    if islocal(s)
+        return type === nothing ? read(path) : read(path, type)
+    else
+        resp = HTTP.get(s, "/read/" * path)
+        t = JSON3.read(resp.body, Vector{UInt8})
+        return type === nothing ? t : type(t)
+    end
 end
 function Base.write(s::Server, path::String, v)
-    resp = HTTP.post(s, "/write/" * path, Vector{UInt8}(v))
-    return JSON3.read(resp.body, Int)
+    if islocal(s)
+        write(path, v)
+    else
+        resp = HTTP.post(s, "/write/" * path, Vector{UInt8}(v))
+        return JSON3.read(resp.body, Int)
+    end
 end
 
 Utils.searchdir(s::Server, dir, str) = joinpath.(dir, filter(x->occursin(str, x), readdir(s, dir))) 
@@ -243,7 +259,7 @@ function Distributed.addprocs(server::Server, nprocs::Int = 1, args...; kwargs..
     return proc
 end
 
-function rm(s::Server)
+function Base.rm(s::Server)
     return ispath(joinpath(SERVER_DIR, s.name * ".json")) &&
            rm(joinpath(SERVER_DIR, s.name * ".json"))
 end
@@ -494,13 +510,21 @@ Base.abspath(s::Server, p) =
     isabspath(p) ? p : joinpath(s, p)
 
 function Base.mtime(s::Server, p)
-    resp = HTTP.get(s, "/mtime/" * p)
-    JSON3.read(resp.body, Float64)
+    if islocal(s)
+        return mtime(p)
+    else
+        resp = HTTP.get(s, "/mtime/" * p)
+        return JSON3.read(resp.body, Float64)
+    end
 end
 
 function Base.filesize(s::Server, p)
-    resp = HTTP.get(s, "/filesize/" * p)
-    JSON3.read(resp.body, Float64)
+    if islocal(s)
+        return filesize(p)
+    else
+        resp = HTTP.get(s, "/filesize/" * p)
+        return JSON3.read(resp.body, Float64)
+    end
 end
 
 function initialize_config_dir(s::Server)

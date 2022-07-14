@@ -19,18 +19,27 @@ function main_loop(s::Server)
 
     # Used to identify if multiple servers are running in order to selfdestruct 
     log_mtimes = mtime.(joinpath.((config_path("logs/runtimes/"),), readdir(config_path("logs/runtimes/"))))
-    
-    while true
+
+    queuelock = ReentrantLock()
+    t = Threads.@spawn while true
+        lock(queuelock)
         try
             queue!(JOB_QUEUE[], s.scheduler, false)
         catch e
             @error "queue error" e
         end
+        unlock(queuelock)
+        sleep(SLEEP_TIME)
+    end
+    Threads.@spawn while true
         try
-            handle_job_submission!(JOB_QUEUE[], s)
+            handle_job_submission!(JOB_QUEUE[], s, queuelock)
         catch e
             @error "job submission error" e
         end
+        sleep(SLEEP_TIME)
+    end
+    Threads.@spawn while true
         monitor_issues(log_mtimes)
 
         try  
@@ -45,6 +54,7 @@ function main_loop(s::Server)
             
         sleep(SLEEP_TIME)
     end
+    fetch(t)
 end
 
 function print_log(queue)
@@ -66,7 +76,7 @@ end
    
 # Jobs are submitted by the daemon, using supplied job jld2 from the caller (i.e. another machine)
 # Additional files are packaged with the job
-function handle_job_submission!(queue, s::Server)
+function handle_job_submission!(queue, s::Server, queuelock)
     lines = filter(!isempty, readlines(PENDING_JOBS_FILE()))
     write(PENDING_JOBS_FILE(), "")
     njobs = length(queue.current_queue)
@@ -91,7 +101,9 @@ function handle_job_submission!(queue, s::Server)
                 try
                     id = Servers.submit(s.scheduler, j)
                     @info (timestamp = Dates.now(), jobdir = j, jobid = id, state = Jobs.Submitted)
+                    lock(queuelock)
                     queue.current_queue[j] = (id, Jobs.Submitted)
+                    unlock(queuelock)
                     curtries = 0
                 catch e
                     if curtries < 3

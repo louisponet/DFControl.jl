@@ -160,7 +160,7 @@ function save(job::Job, workflow::Union{Nothing, Workflow} = nothing; versionche
     @assert environment isa Environment "Environment with name $(job.environment) not found!"
 
     t1 = Threads.@spawn if versioncheck
-        resp_job_version = JSON3.read(HTTP.put(server, "/increment_version/" * apath), Int)
+        resp_job_version = JSON3.read(HTTP.put(server, "/increment_version/" * apath).body, Int)
         job.version = resp_job_version
         @info "Job version: $(curver) => $(resp_job_version)."
     end
@@ -196,7 +196,11 @@ function save(job::Job, workflow::Union{Nothing, Workflow} = nothing; versionche
             if ispath(server, linkpath)
                 rm(server, linkpath)
             end
-            symlink(server, p.path, linkpath)
+            try
+                symlink(server, p.path, linkpath)
+            catch
+                nothing
+            end
         end
     end
     fetch(t1)
