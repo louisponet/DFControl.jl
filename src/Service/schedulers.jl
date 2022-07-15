@@ -89,11 +89,15 @@ end
 
 function Servers.jobstate(s::Slurm, id::Int)
     cmd = `sacct -u $(ENV["USER"]) --format=State -j $id -P`
-    lines = readlines(cmd)
-    if length(lines) <= 1
+    try
+        lines = readlines(cmd)
+        if length(lines) <= 1
+            return Jobs.Unknown
+        end
+        return jobstate(s, lines[2])
+    catch
         return Jobs.Unknown
     end
-    return jobstate(s, lines[2])
 end
 
 function Servers.jobstate(::Slurm, state::AbstractString)
