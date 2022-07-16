@@ -1,6 +1,7 @@
 using ..Servers: Bash, Slurm, HQ, Scheduler, jobstate
 
 function queue!(q, s::Scheduler, init)
+
     if init
         if ispath(QUEUE_FILE())
             t = read(QUEUE_FILE())
@@ -29,34 +30,50 @@ function queue!(q, s::Scheduler, init)
             end
         end
     end
-    squeue = queue(s)
-    for (d, i) in q.current_queue
-        if haskey(squeue, d)
-            state = pop!(squeue, d)[2]
-        else
-            state = jobstate(s, i[1])
+    
+    # Here we check whether the scheduler died while the server was running and try to restart and resubmit   
+    if maybe_scheduler_restart(s)
+        for (d, i) in q.current_queue
+            if isdir(d)
+                q.full_queue[d] = (-1, Jobs.Saved)
+                submit(d, false)
+            end
+            pop!(q.current_queue, d)
         end
-        if in_queue(state)
-            q.current_queue[d] = (i[1], state)
-        else
-            delete!(q.current_queue, d)
-            q.full_queue[d] = (i[1], state)
+    else
+        squeue = queue(s)
+        
+        for (d, i) in q.current_queue
+            if haskey(squeue, d)
+                state = pop!(squeue, d)[2]
+            else
+                state = jobstate(s, i[1])
+            end
+            if in_queue(state)
+                q.current_queue[d] = (i[1], state)
+            else
+                delete!(q.current_queue, d)
+                q.full_queue[d] = (i[1], state)
+            end
         end
+        for (k, v) in squeue
+            q.current_queue[k] = v
+        end
+            
     end
+    
     for d in keys(q.full_queue)
         if !isdir(d)
             delete!(q.full_queue, d)
         end
     end
-    for (k, v) in squeue
-        q.current_queue[k] = v
-    end
-        
+    
     JSON3.write(QUEUE_FILE(), q)
     return q
 end
 
 ## BASH ##
+maybe_scheduler_restart(::Bash) = false
 queue(::Bash) = Dict()
 
 function Servers.jobstate(::Bash, id::Int)
@@ -82,6 +99,18 @@ in_queue(s::Jobs.JobState) =
     s in (Jobs.Submitted, Jobs.Pending, Jobs.Running, Jobs.Configuring, Jobs.Completing, Jobs.Suspended)
     
 ## SLURM ##
+function maybe_scheduler_restart(::Slurm)
+    if occursin("error", read(run(`squeue --me`), String))
+        if occursin("(null)", read(run(Cmd(`slurmd`)), String))
+            error("Can not start slurmctld automatically...")
+        else
+            return true
+        end
+    else
+        return false
+    end
+end
+
 function queue(sc::Slurm)
     qlines = readlines(`squeue -u $(ENV["USER"]) --format="%Z %i %T"`)[2:end]
     return Dict([(s = split(x); s[1] => (parse(Int, s[2]), jobstate(sc, s[3]))) for x in qlines])
@@ -146,8 +175,28 @@ Servers.abort(s::Slurm, id::Int) =
     run(`scancel $id`)
 
 #### HQ
+function maybe_scheduler_restart(sc::HQ)
+    cmd = Cmd(string.([split(sc.server_command)..., "server", "info"]))
+    if occursin("No online", read(cmd, String))
+        run(Cmd(string.([split(sc.server_command)..., "server", "start"]), detach=true), wait=false)
+        sleep(0.01)
+        tries = 0
+        while occursin("No online", read(cmd, String)) && tries < 10
+            sleep(0.01)
+            tries += 1
+        end
+        if tries == 10
+            error("HQ server not reachable")
+        end
+        return true
+    else
+        return false
+    end
+end
+        
 function queue(sc::HQ)
     all_lines = readlines(Cmd(string.([split(sc.server_command)..., "job", "list"])))
+
     start_id = findnext(x -> x[1] == '+', all_lines, 2)
     endid = findnext(x -> x[1] == '+', all_lines, start_id + 1)
     if endid === nothing
