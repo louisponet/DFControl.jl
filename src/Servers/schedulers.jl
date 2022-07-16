@@ -10,6 +10,7 @@ end
 @with_kw struct HQ <: Scheduler
     type::String="hq"
     server_command::String="hq"
+    allocs::Vector{String} = String[]
 end
 StructTypes.StructType(::Type{Cmd}) = StructTypes.Struct()
 StructTypes.StructType(::Type{Scheduler}) = StructTypes.AbstractType()
