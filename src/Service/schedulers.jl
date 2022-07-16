@@ -176,12 +176,20 @@ Servers.abort(s::Slurm, id::Int) =
 
 #### HQ
 function maybe_scheduler_restart(sc::HQ)
-    cmd = Cmd(Cmd(string.([split(sc.server_command)..., "server", "info"])), ignorestatus=true)
-    if occursin("No online", read(cmd, String))
+    function readinfo()
+        out = Pipe()
+        err = Pipe()
+        run(pipeline(Cmd(Cmd(string.([split(sc.server_command)..., "server", "info"])), ignorestatus=true), stdout=out, stderr=err))
+        close(out.in)
+        close(err.in)
+        return read(err, String)
+    end
+    
+    if occursin("No online", readinfo())
         run(Cmd(Cmd(string.([split(sc.server_command)..., "server", "start"])), detach=true), wait=false)
         sleep(0.01)
         tries = 0
-        while occursin("No online", read(cmd, String)) && tries < 10
+        while occursin("No online", readinfo()) && tries < 10
             sleep(0.01)
             tries += 1
         end
