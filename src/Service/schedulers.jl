@@ -197,7 +197,7 @@ function maybe_scheduler_restart(sc::HQ)
             error("HQ server not reachable")
         else
             for ac in sc.allocs
-                run(Cmd(string.([split(sc.server_command)..., "alloc", "add ", split(ac)...])))
+                run(Cmd(string.([split(sc.server_command)..., "alloc", "add", split(ac)...])))
             end
         end
         return true
