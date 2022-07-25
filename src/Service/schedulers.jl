@@ -3,7 +3,6 @@ using ..Servers: Bash, Slurm, HQ, Scheduler, jobstate
 function queue!(q, s::Scheduler, init)
 
     if init
-        maybe_scheduler_restart(s)
         if ispath(QUEUE_FILE())
             t = read(QUEUE_FILE())
             if !isempty(t)
@@ -12,26 +11,14 @@ function queue!(q, s::Scheduler, init)
                 copy!(q.current_queue, tq.current_queue)
             end
         end
-        for qu in (q.full_queue, q.current_queue)
-            for (dir, info) in qu
-                if !isdir(dir)
-                    delete!(qu, dir)
-                    continue
-                end
-                id = info[1]
-                if in_queue(info[2])
-                    st = jobstate(s, id)
-                    if in_queue(st)
-                        delete!(q.full_queue, dir)
-                        q.current_queue[dir] = (id, st)
-                    else
-                        q.full_queue[dir] = (id, st)
-                    end
-                end
+    end
+    for qu in (q.full_queue, q.current_queue)
+        for (dir, info) in qu
+            if !isdir(dir)
+                delete!(qu, dir)
             end
         end
     end
-    
     # Here we check whether the scheduler died while the server was running and try to restart and resubmit   
     if maybe_scheduler_restart(s)
         for (d, i) in q.current_queue
@@ -61,12 +48,6 @@ function queue!(q, s::Scheduler, init)
             q.current_queue[k] = v
         end
             
-    end
-    
-    for d in keys(q.full_queue)
-        if !isdir(d)
-            delete!(q.full_queue, d)
-        end
     end
     
     JSON3.write(QUEUE_FILE(), q)
