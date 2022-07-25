@@ -3,6 +3,7 @@ using ..Servers: Bash, Slurm, HQ, Scheduler, jobstate
 function queue!(q, s::Scheduler, init)
 
     if init
+        maybe_scheduler_restart(s)
         if ispath(QUEUE_FILE())
             t = read(QUEUE_FILE())
             if !isempty(t)
