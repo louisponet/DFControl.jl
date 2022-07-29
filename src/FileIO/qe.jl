@@ -69,6 +69,7 @@ function parse_Hubbard_block(f)
     while !isempty(line) && strip(line) != "--- exit write_ns ---"
         line = readline(f)
         if occursin("Tr[ns", line)
+            line = replace(line, "-" => " -")
             curid += 1
             sline = split(line)
             push!(ids, curid)
