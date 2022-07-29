@@ -177,14 +177,27 @@ function maybe_scheduler_restart(sc::HQ)
         end
         if tries == 10
             error("HQ server not reachable")
-        else
-            for ac in sc.allocs
-                run(Cmd(string.([split(sc.server_command)..., "alloc", "add", split(ac)...])))
-            end
         end
+
+        maybe_restart_allocs(sc)
         return true
     else
+        maybe_restart_allocs(sc)
         return false
+    end
+end
+
+function maybe_restart_allocs(sc::HQ)
+    alloc_lines = readlines(Cmd(Cmd(string.([split(sc.server_command)..., "alloc", "list"]))))
+    if length(alloc_lines) == 3 # no allocs -> add all
+        allocs_to_add = sc.allocs
+    else
+        alloc_args = map(a -> replace(a, "," => " "), alloc_lines[4:end-1])
+        allocs_to_add = filter(a -> !any(x -> x == strip(split(a, "--")), alloc_args), sc.allocs)
+    end
+        
+    for ac in allocs_to_add
+        run(Cmd(string.([split(sc.server_command)..., "alloc", "add", split(ac)...])))
     end
 end
         
