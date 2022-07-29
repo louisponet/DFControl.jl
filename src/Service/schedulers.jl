@@ -192,8 +192,8 @@ function maybe_restart_allocs(sc::HQ)
     if length(alloc_lines) == 3 # no allocs -> add all
         allocs_to_add = sc.allocs
     else
-        alloc_args = map(a -> replace(strip(split(a, "|")[end]), "," => " "), alloc_lines[4:end-1])
-        allocs_to_add = filter(a -> !any(x -> x == strip(split(a, "--")[end]), alloc_args), sc.allocs)
+        alloc_args = map(a -> replace(strip(split(a, "|")[end-1]), "," => " "), alloc_lines[4:end-1])
+        allocs_to_add = filter(a -> !any(x -> x == strip(split(a, "-- ")[end]), alloc_args), sc.allocs)
     end
         
     for ac in allocs_to_add
