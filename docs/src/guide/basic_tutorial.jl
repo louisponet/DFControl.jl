@@ -16,7 +16,7 @@ else#hide
     s = Servers.local_server()#hide
 end#hide
 if !isalive(s)#hide
-    start(s)#hide
+    @async DFC.Resource.run()#hide
 end#hide
 
 # First we download the cif file, extract the `Structure` and assign the right pseudos to it.
