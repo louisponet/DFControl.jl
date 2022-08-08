@@ -8,7 +8,7 @@ using Pkg: Pkg
 # 2. Run "julia make.jl" to generate the docs
 
 # Set to true to disable some checks and cleanup
-DEBUG = false
+DEBUG = true
 
 # Where to get files from and where to build them
 SRCPATH = joinpath(@__DIR__, "src")

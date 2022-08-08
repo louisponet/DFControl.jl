@@ -12,10 +12,11 @@ s = Server(name=gethostname(), port=8080, domain = "localhost", scheduler = Serv
 if !exists(s)#hide
     save(s)#hide
     Servers.initialize_config_dir(s)#hide
+else#hide
+    s = Servers.local_server()#hide
 end#hide
-    
-if !Servers.isalive(s)#hide
-    @async DFC.Resource.run()#hide
+if !isalive(s)#hide
+    start(s)#hide
 end#hide
 
 # First we download the cif file, extract the `Structure` and assign the right pseudos to it.

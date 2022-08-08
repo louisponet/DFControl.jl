@@ -11,12 +11,16 @@ s = Server(name=gethostname(), port=8080, domain = "localhost", scheduler = Serv
 if !exists(s)#hide
     save(s)#hide
     Servers.initialize_config_dir(s)#hide
+else#hide
+    s = Servers.local_server()#hide
 end#hide
-@async DFC.Resource.run()#hide
+if !isalive(s)#hide
+    start(s)#hide
+end#hide
 tjob = load(Job(joinpath(splitdir(pathof(DFControl))[1], "..", "docs","src","assets", "job")))#hide
 tjob2 = load(Job(joinpath(splitdir(pathof(DFControl))[1], "..", "docs","src","assets", "Job2")))#hide
 if false#hide
-job = load(Server(gethostname()), Job("job"))
+job = load(Servers.local_server(), Job("job"))
 else#hide
     global job = deepcopy(tjob)#hide
     job.dir= "job" #hide
