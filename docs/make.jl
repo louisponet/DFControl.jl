@@ -54,9 +54,10 @@ if !isalive(s)
     s = Servers.local_server()
     @info s
     tries = 0
-    while !isalive(s) && tries < 10
+    while !isalive(s) && tries < 20
         sleep(2)
-        @info t
+        @info t.result
+        tries += 1
     end
     @info isalive(Servers.local_server())
     @info readdir(Servers.local_server(), abspath(pwd()))
