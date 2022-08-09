@@ -334,7 +334,19 @@ function sanitize_cutoffs!(job::Job)
         ψcut = ψ_cut_calc[Calculations.ψ_cutoff_flag(ψ_cut_calc)]
     else
         pseudos = unique(map(x -> x.pseudo, job.structure.atoms))
-        all_cuts = map(x -> pseudo_cutoffs(x), pseudos) 
+        pseudo_strings = map(pseudos) do ps
+            if !isempty(ps.pseudo)
+                return ps.pseudo
+            else
+                s = Servers.Server(ps.server)
+                if isalive(s) && ispath(s, ps.path)
+                    return read(s, ps.path, String)
+                else
+                    return ""
+                end
+            end
+        end
+        all_cuts = map(x -> pseudo_cutoffs(x), pseudo_strings) 
         ψcut = maximum(x -> x[1], all_cuts)
         ρcut = maximum(x -> x[2], all_cuts)
         @assert ψcut != 0.0 "No energy cutoff was specified in any calculation, and the calculated cutoff from the pseudopotentials was 0.0.\nPlease manually set one."

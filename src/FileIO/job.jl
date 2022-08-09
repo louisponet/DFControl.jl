@@ -315,7 +315,7 @@ function parse_calculations(calcs)
         if Calculations.is_wannier_exec(exec) && !isempty(outcalcs) && outcalcs[end].infile == infile
             Calculations.set_flags!(outcalcs[end], :preprocess => outcalcs[end].run, print=false)
             empty!(outcalcs[end].exec.flags)
-        else
+        elseif !isempty(calc[:contents])
             c = calculationparser(exec)(calc[:contents])
             if c.structure !== nothing
                 push!(structures, c.structure)
