@@ -358,7 +358,7 @@ function start(s::Server)
         run(Cmd(`ssh -f $(ssh_string(s)) $julia_cmd`, detach=true))
     else
         e = s.julia_exec
-        julia_cmd = Cmd([e, "--startup-file=no", "-t", "auto", "-e", scrpt, "&>", p, "&"])
+        julia_cmd = Cmd([string.(split(e))..., "--startup-file=no", "-t", "auto", "-e", scrpt, "&>", p, "&"])
         run(Cmd(julia_cmd, detach=true), wait=false)
     end
         
