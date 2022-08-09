@@ -52,7 +52,7 @@ Requires = "^1"
 StaticArrays = "^1"
 StructTypes = "^1"
 UnitfulAtomic = "^1"
-julia = "^1"
+julia = "^1.6"
 ThreadPools = "^2"
 
 [extras]
