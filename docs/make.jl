@@ -42,13 +42,14 @@ using Literate
 using UUIDs
 s = Server(name=gethostname(), port=8080, domain = "localhost", scheduler = Servers.Bash(), uuid = string(uuid4()), julia_exec=Sys.BINDIR * "/julia")
 if !exists(s)
-    save(s)
     Servers.initialize_config_dir(s)
+    save(s)
 else
     s = Servers.local_server()
 end
 if !isalive(s)
     @info "Starting server here"
+    Servers.initialize_config_dir(s)
     t = @async DFC.Resource.run()
     s = Servers.local_server()
     @info s
