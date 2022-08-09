@@ -119,43 +119,47 @@ HTTP.register!(ROUTER, "PUT", "/environment/*", rm_environment!)
 
 
 # RUNNING
-function requestHandler(req)
-    start = Dates.now()
-    @info (timestamp = string(start), event = "Begin", tid = Threads.threadid(),
-           method = req.method, target = req.target)
-    local resp
-    try
-        obj = HTTP.handle(ROUTER, req)
-        if obj === nothing
-            resp = HTTP.Response(204)
-        else
-            resp = HTTP.Response(200, JSON3.write(obj))
+function requestHandler(handler)
+    return function f(req)
+        start = Dates.now()
+        @info (timestamp = string(start), event = "Begin", tid = Threads.threadid(),
+               method = req.method, target = req.target)
+        local resp
+        try
+            obj = handler(req)
+            if obj === nothing
+                resp = HTTP.Response(204)
+            else
+                resp = HTTP.Response(200, JSON3.write(obj))
+            end
+        catch e
+            s = IOBuffer()
+            showerror(s, e, catch_backtrace(); backtrace = true)
+            errormsg = String(resize!(s.data, s.size))
+            @error errormsg
+            resp = HTTP.Response(500, errormsg)
         end
-    catch e
-        s = IOBuffer()
-        showerror(s, e, catch_backtrace(); backtrace = true)
-        errormsg = String(resize!(s.data, s.size))
-        @error errormsg
-        resp = HTTP.Response(500, errormsg)
+        stop = Dates.now()
+        @info (timestamp = string(stop), event = "End", tid = Threads.threadid(),
+               method = req.method, target = req.target, duration = Dates.value(stop - start),
+               status = resp.status, bodysize = length(resp.body))
+        return resp
     end
-    stop = Dates.now()
-    @info (timestamp = string(stop), event = "End", tid = Threads.threadid(),
-           method = req.method, target = req.target, duration = Dates.value(stop - start),
-           status = resp.status, bodysize = length(resp.body))
-    return resp
 end
 
-function AuthHandler(req)
-    if HTTP.hasheader(req, "USER-UUID")
-        uuid = HTTP.header(req, "USER-UUID")
-        if UUID(uuid) == USER_UUID[]
-            t = ThreadPools.spawnbg() do
-                requestHandler(req)
+function AuthHandler(handler)
+    return function f(req)
+        if HTTP.hasheader(req, "USER-UUID")
+            uuid = HTTP.header(req, "USER-UUID")
+            if UUID(uuid) == USER_UUID[]
+                t = ThreadPools.spawnbg() do
+                    handler(req)
+                end
+                return fetch(t)
             end
-            return fetch(t)
         end
+        return HTTP.Response(401, "unauthorized")
     end
-    return HTTP.Response(401, "unauthorized")
 end     
 
 function run()
@@ -172,7 +176,7 @@ function run()
     with_logger(Service.restapi_logger()) do
         @info (timestamp = Dates.now(), username = ENV["USER"], host = gethostname(), pid=getpid(), port=port)
         
-        HTTP.serve(AuthHandler, "0.0.0.0", port, server=server)
+        HTTP.serve(ROUTER |> AuthHandler |> requestHandler, "0.0.0.0", port, server=server)
     end
     close(server)
     return
