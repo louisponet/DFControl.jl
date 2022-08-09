@@ -48,6 +48,7 @@ else
     s = Servers.local_server()
 end
 if !isalive(s)
+    @info "Starting server here"
     @async DFC.Resource.run()
 end
 
