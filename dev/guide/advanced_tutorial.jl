@@ -2,17 +2,14 @@
 # In this tutorial we will continue from the job created in the [Basic Tutorial](@ref),
 # and demonstrate some more advanced functionality that DFControl offers.
 
-# To load a previously saved job we here provide a valid job directory with a job.tt script
+# To load a previously saved job we here provide a valid job directory with a job.sh script
 # in it.
 using DFControl
 
-if !Servers.isalive(Server("localhost"))#hide
-    @async DFC.Resource.run()#hide
-end#hide
 tjob = load(Job(joinpath(splitdir(pathof(DFControl))[1], "..", "docs","src","assets", "job")))#hide
 tjob2 = load(Job(joinpath(splitdir(pathof(DFControl))[1], "..", "docs","src","assets", "Job2")))#hide
 if false#hide
-    global job = load(Job("job"))
+job = load(Servers.local_server(), Job("job"))
 else#hide
     global job = deepcopy(tjob)#hide
     job.dir= "job" #hide
@@ -24,7 +21,7 @@ end#hide
 
 # The next thing we may want to do is to change the directory where the job is running.
 if false#hide
-    job.dir = "Job2"
+job.dir = "Job2"
 else#hide
     global job = deepcopy(tjob2)#hide
     pop!(job)#hide
@@ -59,7 +56,6 @@ end#hide
 # ## [Plot Results](@id results_plotting)
 using Plots
 plot(job, -10, 1)
-
 # As we can see, again DFControl identifies the additional information that is now present in the job, and uses it
 # to display in the plot.
 
