@@ -50,17 +50,7 @@ end
 if !isalive(s)
     @info "Starting server here"
     Servers.initialize_config_dir(s)
-    t = @async DFC.Resource.run()
-    s = Servers.local_server()
-    @info s
-    tries = 0
-    while !isalive(s) && tries < 20
-        sleep(2)
-        @info t.result
-        tries += 1
-    end
-    @info isalive(Servers.local_server())
-    @info readdir(Servers.local_server(), abspath(pwd()))
+    @async DFC.Resource.run()
 end
 
 # Collect examples from the example index (src/index.md)

@@ -165,7 +165,7 @@ function run()
     port, server = listenany(ip"0.0.0.0", 8080)
     s.port = port
     USER_UUID[] = UUID(s.uuid)
-    @tspawnat 2 with_logger(Service.server_logger()) do
+    @tspawnat min(Threads.nthreads(), 2) with_logger(Service.server_logger()) do
         Service.main_loop(s)
     end
     Servers.save(s)
