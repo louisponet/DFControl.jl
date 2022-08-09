@@ -21,7 +21,7 @@ function Database.load(req::HTTP.Request)
         end
     end
 end
-HTTP.@register(ROUTER, "GET", "/database/storage/*", load)
+HTTP.register!(ROUTER, "GET", "/database/storage/*", load)
 
 function Database.save(req::HTTP.Request)
     p = path(req)
@@ -35,14 +35,14 @@ function Database.save(req::HTTP.Request)
         write(p, req.body)
     end
 end
-HTTP.@register(ROUTER, "POST", "/database/storage/*", save)
+HTTP.register!(ROUTER, "POST", "/database/storage/*", save)
 
 function database_rm(req)
     p = config_path(path(req))
     ispath(p)
     rm(p)
 end
-HTTP.@register(ROUTER, "PUT", "/database/storage/*", database_rm)
+HTTP.register!(ROUTER, "PUT", "/database/storage/*", database_rm)
 
 function Database.name(req)
     typ = Symbol(HTTP.header(req, "Type"))
@@ -50,5 +50,5 @@ function Database.name(req)
     return Database.name(val)
 end
     
-HTTP.@register(ROUTER, "GET", "/database/name", Database.name)
+HTTP.register!(ROUTER, "GET", "/database/name", Database.name)
  

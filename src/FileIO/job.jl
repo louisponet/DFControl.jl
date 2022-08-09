@@ -56,14 +56,15 @@ function writeexec(f, exec::Exec, environment)
     write(f, string(exec) * " ")
 end
 
+infile_outfile_str(c::Calculation) = "< $(c.infile) > $(c.outfile)"
+
 function writetojob(f, job, calculation::Calculation, environment; kwargs...)
-    filename   = calculation.infile
     should_run = calculation.run
     if !should_run
         write(f, "#")
     end
     writeexec(f, calculation.exec, environment)
-    write(f, "< $filename > $(calculation.outfile)\n")
+    write(f, infile_outfile_str(calculation))
 end
 
 function writetojob(f, job, _calculation::Calculation{Wannier90}, environment; kwargs...)
@@ -95,7 +96,7 @@ function writetojob(f, job, _calculation::Calculation{Wannier90}, environment; k
         write(f, "#")
     end
     writeexec(f, _calculation.exec, environment)
-    write(f, "$filename > $(_calculation.outfile)\n")
+    write(f, "$filename > $(_calculation.outfile)")
 end
 
 #TODO: This should take scratch dir of server
@@ -139,6 +140,7 @@ function Base.write(job_buffer::IO, job::Job, environment::Union{Nothing, Enviro
 
     for i in job.calculations
         writetojob(job_buffer, job, i, environment; kwargs...)
+        write(job_buffer, "\n")
     end
     write_job_postamble(job_buffer, job)
     return job_buffer.size - cursize
@@ -223,6 +225,8 @@ function calculationparser(exec::Exec)
         wan_parse_calculation
     elseif Calculations.is_elk_exec(exec)
         elk_parse_calculation
+    elseif Calculations.is_julia_exec(exec)
+        julia_parse_calculation
     end
 end
 

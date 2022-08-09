@@ -14,7 +14,8 @@ include("elk.jl")
 include("wannier.jl")
 include("abinit.jl")
 include("documentation.jl")
+include("julia.jl")
 
 export Exec, Calculation, InputData
-export Wannier90, QE, Abinit, Elk
+export Wannier90, QE, Abinit, Elk, Julia
 end

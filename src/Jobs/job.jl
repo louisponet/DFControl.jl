@@ -329,7 +329,7 @@ end
 function sanitize_cutoffs!(job::Job)
     ψcut, ρcut = 0.0, 0.0
     # the assumption is that the most important cutoff calculation is the scf/vcrelax that is ran first 
-    ψ_cut_calc = getfirst(x -> haskey(x, Calculations.ψ_cutoff_flag(x)), job.calculations)
+    ψ_cut_calc = getfirst(x -> Calculations.ψ_cutoff_flag(x) !== nothing && haskey(x, Calculations.ψ_cutoff_flag(x)), job.calculations)
     if ψ_cut_calc !== nothing
         ψcut = ψ_cut_calc[Calculations.ψ_cutoff_flag(ψ_cut_calc)]
     else
@@ -337,7 +337,7 @@ function sanitize_cutoffs!(job::Job)
         pseudo_strings = map(pseudos) do ps
             if !isempty(ps.pseudo)
                 return ps.pseudo
-            else
+            elseif !isempty(ps.server)
                 s = Servers.Server(ps.server)
                 if isalive(s) && ispath(s, ps.path)
                     return read(s, ps.path, String)
@@ -346,11 +346,15 @@ function sanitize_cutoffs!(job::Job)
                 end
             end
         end
-        all_cuts = map(x -> pseudo_cutoffs(x), pseudo_strings) 
-        ψcut = maximum(x -> x[1], all_cuts)
-        ρcut = maximum(x -> x[2], all_cuts)
-        @assert ψcut != 0.0 "No energy cutoff was specified in any calculation, and the calculated cutoff from the pseudopotentials was 0.0.\nPlease manually set one."
-        @info "No energy cutoff was specified in the scf calculation.\nCalculated ψcut=$ψcut."
+        if !isempty(pseudo_strings) && !all(isequal(nothing), pseudo_strings)
+            all_cuts = map(x -> pseudo_cutoffs(x), pseudo_strings) 
+            ψcut = maximum(x -> x[1], all_cuts)
+            ρcut = maximum(x -> x[2], all_cuts)
+            @assert ψcut != 0.0 "No energy cutoff was specified in any calculation, and the calculated cutoff from the pseudopotentials was 0.0.\nPlease manually set one."
+            @info "No energy cutoff was specified in the scf calculation.\nCalculated ψcut=$ψcut."
+        else
+            return @warn "No cutoffs found or set."
+        end
     end
     ρ_cut_calc = getfirst(x -> Calculations.hasflag(x, Calculations.ρ_cutoff_flag(x)),
                           job.calculations)

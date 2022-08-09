@@ -15,6 +15,7 @@ using ..Servers
 include("qe.jl")
 include("wannier.jl")
 include("job.jl")
+include("julia.jl")
 
 function parse_file(f::IO, parse_funcs::Vector{<:Pair{String}};out = Dict{Symbol,Any}(),
                     extra_parse_funcs::Vector{<:Pair} = Pair{String,Function}[])

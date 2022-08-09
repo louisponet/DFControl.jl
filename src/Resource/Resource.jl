@@ -34,36 +34,36 @@ function path(req::HTTP.Request)
 end
 
 kill_server(req) = exit()
-HTTP.@register(ROUTER, "PUT", "/kill_server", kill_server)
+HTTP.register!(ROUTER, "PUT", "/kill_server", kill_server)
 
 get_server_config(req) = Servers.local_server()
-HTTP.@register(ROUTER, "GET", "/server_config", get_server_config)
+HTTP.register!(ROUTER, "GET", "/server_config", get_server_config)
 
-HTTP.@register(ROUTER, "GET", "/isalive", (res) -> true)
+HTTP.register!(ROUTER, "GET", "/isalive", (res) -> true)
 
 Base.ispath(req::HTTP.Request) = ispath(path(req))
-HTTP.@register(ROUTER, "GET", "/ispath/*", ispath)
+HTTP.register!(ROUTER, "GET", "/ispath/*", ispath)
 
 Base.read(req::HTTP.Request) = read(path(req))
-HTTP.@register(ROUTER, "GET", "/read/*", read)
+HTTP.register!(ROUTER, "GET", "/read/*", read)
 
 Base.write(req::HTTP.Request) = write(path(req), req.body)
-HTTP.@register(ROUTER, "POST", "/write/*", write)
+HTTP.register!(ROUTER, "POST", "/write/*", write)
 
 Base.rm(req::HTTP.Request) = rm(path(req), recursive=true)
-HTTP.@register(ROUTER, "POST", "/rm/*", rm)
+HTTP.register!(ROUTER, "POST", "/rm/*", rm)
 
 Base.symlink(req::HTTP.Request) = symlink(JSON3.read(req.body, Vector{String})...)
-HTTP.@register(ROUTER, "POST", "/symlink/", symlink)
+HTTP.register!(ROUTER, "POST", "/symlink/", symlink)
 
 Base.readdir(req::HTTP.Request) = readdir(path(req))
-HTTP.@register(ROUTER, "GET", "/readdir/*", readdir)
+HTTP.register!(ROUTER, "GET", "/readdir/*", readdir)
 
 Base.mtime(req::HTTP.Request) = mtime(path(req))
-HTTP.@register(ROUTER, "GET", "/mtime/*", mtime)
+HTTP.register!(ROUTER, "GET", "/mtime/*", mtime)
 
 Base.filesize(req::HTTP.Request) = filesize(path(req))
-HTTP.@register(ROUTER, "GET", "/filesize/*", filesize)
+HTTP.register!(ROUTER, "GET", "/filesize/*", filesize)
 
 function execute_function(req)
     funcstr = Meta.parse(path(req))
@@ -77,7 +77,7 @@ function execute_function(req)
     return func(args...)
 end
 
-HTTP.@register(ROUTER, "GET", "/api/*", execute_function)
+HTTP.register!(ROUTER, "GET", "/api/*", execute_function)
 # PSEUDOS
 
 function pseudos(req)
@@ -85,37 +85,37 @@ function pseudos(req)
     fuzzy = fuzzy == "\"\"" ? "" : fuzzy
     return Service.pseudos(splitpath(req.target)[end], fuzzy)
 end
-HTTP.@register(ROUTER, "GET", "/pseudos/*", pseudos)
+HTTP.register!(ROUTER, "GET", "/pseudos/*", pseudos)
 
 pseudo_sets(req) = Service.pseudo_sets()
-HTTP.@register(ROUTER, "GET", "/pseudos", pseudo_sets)
+HTTP.register!(ROUTER, "GET", "/pseudos", pseudo_sets)
 
 configure_pseudoset(req) = Service.configure_pseudoset(JSON3.read(req.body,String), path(req))
-HTTP.@register(ROUTER, "POST", "/configure_pseudoset/*", configure_pseudoset)
+HTTP.register!(ROUTER, "POST", "/configure_pseudoset/*", configure_pseudoset)
 
 rm_pseudos!(req) = Service.rm_pseudos!(JSON3.read(req.body, String))
-HTTP.@register(ROUTER, "PUT", "/rm_pseudos", rm_pseudos!)
+HTTP.register!(ROUTER, "PUT", "/rm_pseudos", rm_pseudos!)
 # EXECS
 verify_exec(req) = Service.verify_exec(JSON3.read(req.body, Exec))
-HTTP.@register(ROUTER, "GET", "/verify_exec", verify_exec)
+HTTP.register!(ROUTER, "GET", "/verify_exec", verify_exec)
 
 known_execs(req) = (d = JSON3.read(req.body); Service.known_execs(d["exec"],d["dir"]))
-HTTP.@register(ROUTER, "GET", "/known_execs/", known_execs)
+HTTP.register!(ROUTER, "GET", "/known_execs/", known_execs)
 
 get_exec(req) = Calculations.load(Exec(splitpath(req.target)[end]))
-HTTP.@register(ROUTER, "GET", "/execs/*", get_exec)
+HTTP.register!(ROUTER, "GET", "/execs/*", get_exec)
 
 save_exec(req) = Calculations.save(JSON3.read(req.body, Exec))
-HTTP.@register(ROUTER, "POST", "/execs/", save_exec)
+HTTP.register!(ROUTER, "POST", "/execs/", save_exec)
 
 add_environment(req) = Jobs.save(JSON3.read(req.body, Jobs.Environment))
-HTTP.@register(ROUTER, "POST", "/environment/", add_environment)
+HTTP.register!(ROUTER, "POST", "/environment/", add_environment)
 
 get_environment(req) = Jobs.load(Environment(splitpath(req.target)[end]))
-HTTP.@register(ROUTER, "GET", "/environment/*", get_environment)
+HTTP.register!(ROUTER, "GET", "/environment/*", get_environment)
 
 rm_environment!(req) = rm(Environment(splitpath(req.target)[end]))
-HTTP.@register(ROUTER, "PUT", "/environment/*", rm_environment!)
+HTTP.register!(ROUTER, "PUT", "/environment/*", rm_environment!)
 
 
 # RUNNING

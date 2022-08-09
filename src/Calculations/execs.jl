@@ -337,7 +337,7 @@ const ELK_EXECS = ["elk", "elk-omp"]
 is_elk_exec(exec::Exec) = exec.exec ∈ ELK_EXECS
 
 allexecs() = vcat(RUN_EXECS, QE_EXECS, WAN_EXECS, ELK_EXECS)
-parseable_execs() = vcat(QE_EXECS, WAN_EXECS, ELK_EXECS)
+parseable_execs() = vcat(QE_EXECS, WAN_EXECS, ELK_EXECS, JULIA_EXECS)
 has_parseable_exec(l::String) = occursin(">", l) && any(occursin.(parseable_execs(), (l,)))
 
 isparseable(exec::Exec) = exec.exec ∈ parseable_execs()
