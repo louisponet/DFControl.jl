@@ -50,6 +50,9 @@ end
 if !isalive(s)
     @info "Starting server here"
     @async DFC.Resource.run()
+    @info Servers.local_server()
+    @info isalive(Servers.local_server())
+    @info readdir(Servers.local_server(), abspath(pwd()))
 end
 
 # Collect examples from the example index (src/index.md)
