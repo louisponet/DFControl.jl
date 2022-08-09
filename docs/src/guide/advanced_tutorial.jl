@@ -6,17 +6,6 @@
 # in it.
 using DFControl
 
-using UUIDs#hide
-s = Server(name=gethostname(), port=8080, domain = "localhost", scheduler = Servers.Bash(), uuid = string(uuid4()), julia_exec=Sys.BINDIR * "/julia")#hide
-if !exists(s)#hide
-    save(s)#hide
-    Servers.initialize_config_dir(s)#hide
-else#hide
-    s = Servers.local_server()#hide
-end#hide
-if !isalive(s)#hide
-    @async DFC.Resource.run()#hide
-end#hide
 tjob = load(Job(joinpath(splitdir(pathof(DFControl))[1], "..", "docs","src","assets", "job")))#hide
 tjob2 = load(Job(joinpath(splitdir(pathof(DFControl))[1], "..", "docs","src","assets", "Job2")))#hide
 if false#hide
@@ -67,7 +56,6 @@ end#hide
 # ## [Plot Results](@id results_plotting)
 using Plots
 plot(job, -10, 1)
-
 # As we can see, again DFControl identifies the additional information that is now present in the job, and uses it
 # to display in the plot.
 

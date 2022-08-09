@@ -39,6 +39,18 @@ using DFControl
 using Documenter
 using Literate
 
+using UUIDs
+s = Server(name=gethostname(), port=8080, domain = "localhost", scheduler = Servers.Bash(), uuid = string(uuid4()), julia_exec=Sys.BINDIR * "/julia")
+if !exists(s)
+    save(s)
+    Servers.initialize_config_dir(s)
+else
+    s = Servers.local_server()
+end
+if !isalive(s)
+    @async DFC.Resource.run()
+end
+
 # Collect examples from the example index (src/index.md)
 # The chosen examples are taken from the examples/ folder to be processed by Literate
 EXAMPLES = [String(m[1])

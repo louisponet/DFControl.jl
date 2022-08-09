@@ -474,6 +474,8 @@ const QE_PW_PARSE_FUNCTIONS = ["C/m^2" => qe_parse_polarization,
                                "lattice parameter" => qe_parse_lattice_parameter,
                                "number of Kohn-Sham states" => qe_parse_n_KS,
                                "crystal axes" => qe_parse_crystal_axes,
+                               "Exchange-correlation=" => (x, y, z) -> x[:hybrid] = true,
+                               "EXX self-consistency reached" => (x,y,z) -> x[:hybrid_converged] = true,
                                "reciprocal axes" => qe_parse_reciprocal_axes,
                                "atomic species   valence    mass" => qe_parse_atomic_species,
                                "number of atoms/cell" => qe_parse_nat,
@@ -621,8 +623,14 @@ function qe_parse_pw_output(str;
             end
         end
     end
-    out[:converged] = get(out, :converged, false) ? true :
-                      get(out, :scf_converged, false) && length(get(out, :total_force, Float64[])) < 2
+    if haskey(out, :hybrid)
+        out[:converged] = get(out, :hybrid_converged, false)
+    elseif get(out, :converged, false)
+        out[:converged] = true
+    else
+        out[:converged] = get(out, :scf_converged, false) &&
+                          length(get(out, :total_force, Float64[])) < 2
+    end
     if haskey(out, :scf_iteration)
         out[:n_scf] = length(findall(i -> out[:scf_iteration][i+1] < out[:scf_iteration][i],
                                      1:length(out[:scf_iteration])-1))
