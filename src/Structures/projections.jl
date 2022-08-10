@@ -62,7 +62,7 @@ function sanitize!(projs::Vector{Projection}, soc::Bool)
         size = soc ? 2 * proj.orbital.size : proj.orbital.size
         proj.start = id
         proj.last = id + size - 1
-        id += id
+        id = proj.last + 1
     end
     return projs
 end

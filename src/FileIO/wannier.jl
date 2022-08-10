@@ -22,11 +22,12 @@ function extract_atoms(atoms_block, proj_block, cell::Mat3, spinors = false)
                         continue
                     end
                     for proj in projs
-                        size = spinors ? 2 * length(proj) : length(proj)
+                        orb = Structures.orbital(proj)
+                        size = spinors ? 2 * length(orb) : length(orb)
                         push!(t_ats,
                               Atom(; name = pos_at, position_cart = cell * ps,
                                    position_cryst = ps,
-                                   projections = [Projection(Structures.orbital(proj),
+                                   projections = [Projection(orb,
                                                              t_start, t_start + size - 1)]))
                         t_start += size
                     end

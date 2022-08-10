@@ -213,3 +213,22 @@ function scale_bondlength!(at1::Atom, at2::Atom, scale::Real, cell::Mat3)
     set_position!(at1, new_p1, cell)
     return set_position!(at2, new_p2, cell)
 end
+
+Base.getindex(A::Matrix, a1::T , a2::T) where {T<:Union{Atom, Projection}} =
+    getindex(A, range(a1), range(a2))
+
+Base.getindex(A::Matrix, a::Atom) =
+    getindex(A, a, a)
+
+Base.getindex(A::Vector, a::Atom) =
+    getindex(A, range(a))
+
+Base.view(A::Matrix, a1::T, a2::T) where {T<:Union{Atom, Projection}} =
+    view(A, range(a1), range(a2))
+
+Base.view(A::Matrix, a::Union{Atom, Projection}) =
+    view(A, range(a), range(a))
+
+Base.view(A::Vector, a::Union{Atom, Projection}) =
+    view(A, range(a))
+
