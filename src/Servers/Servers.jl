@@ -4,7 +4,7 @@ using ..DFControl: config_path
 using ..Utils
 using ..Database
 
-export Server, start, local_server, isalive, configure_local
+export Server, start, local_server, isalive
 
 const SERVER_DIR = config_path("storage/servers")
 
