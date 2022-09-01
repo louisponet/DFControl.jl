@@ -119,6 +119,9 @@ function parse_Hubbard_block(f)
             end
         end
     end
+    if isempty(magmoms) && !isempty(occupations)
+        magmoms = [0.0 for i=1:length(occupations)]
+    end
     return [(id = i, trace = t, eigvals = val,
              eigvecs = vec,
              occupations = occ, magmom = m)

@@ -6,7 +6,6 @@ using ..Utils
 using ..Structures
 import ..Database: storage_directory, exists, load, save, Storable, verify
 
-# include("modules.jl")
 include("execs.jl")
 include("calculation.jl")
 include("qe.jl")
@@ -17,5 +16,5 @@ include("documentation.jl")
 include("julia.jl")
 
 export Exec, Calculation, InputData
-export Wannier90, QE, Abinit, Elk, Julia
+export Wannier90, QE, Abinit, Elk, Julia, set_flags!
 end

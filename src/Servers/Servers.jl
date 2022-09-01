@@ -4,7 +4,7 @@ using ..DFControl: config_path
 using ..Utils
 using ..Database
 
-export Server, start, local_server, isalive
+export Server, start, local_server, isalive, configure_local
 
 const SERVER_DIR = config_path("storage/servers")
 
@@ -40,6 +40,31 @@ end
 
 Database.storage_directory(::Server) = "servers"
 
+function configure_scheduler(s::Server)
+    scheduler = nothing
+    for t in (HQ(), Slurm())
+        scmd = submit_cmd(t)
+        if server_command(s, "which $scmd").exitcode == 0
+            scheduler = t
+            break
+        end
+    end
+    if scheduler === nothing
+        choice = request("Couldn't identify the scheduler select one: ", RadioMenu(["SLURM", "HQ", "BASH"]))
+
+        if choice == 1
+            scheduler = Slurm()
+        elseif choice == 2
+            scheduler = HQ(server_command = ask_input(String, "HQ command", "hq"))
+        elseif choice == 3
+            scheduler = Bash()
+        else
+            return
+        end
+    end
+    return scheduler
+end
+    
 
 function configure!(s::Server)
     s.port  = ask_input(Int, "Port", s.port)
@@ -55,34 +80,11 @@ function configure!(s::Server)
     s.julia_exec = julia
 
     # Try auto configuring the scheduler
-    scheduler = nothing
-    for t in (HQ(), Slurm())
-        scmd = submit_cmd(t)
-        if server_command(s, "which $scmd").exitcode == 0
-            scheduler = t
-            break
-        end
-    end
+    scheduler = configure_scheduler(s)
     if scheduler === nothing
-        choice = request("Couldn't identify the scheduler select one: ", RadioMenu(["SLURM", "HQ", "BASH"]))
-
-        if choice == 1
-            scheduler = Slurm()
-        elseif choice == 2
-            server_command = ask_input(String, "HQ command", "hq")
-        elseif choice == 3
-            scheduler = Bash()
-        else
-            return
-        end
-        
-        change_config == -1 && return
-        if change_config == 2
-            configure!(server)
-        end
+        return
     end
-    s.scheduler = scheduler
-    
+    s.scheduler = scheduler     
     hdir = server_command(s, "pwd").stdout
     dir = ask_input(String, "Default Jobs directory", hdir)
     if dir != hdir
@@ -106,7 +108,13 @@ function configure_local_port!(s::Server)
     end
 end
 
-# TODO put uuid generation here
+function configure_local()
+    host = gethostname()
+    user = ENV["USER"]
+    s = Server(name=host, user=user, domain="localhost")
+    configure!(s)
+end
+
 function Server(s::String)
     t = Server(name=s)
     if exists(t)
@@ -157,6 +165,7 @@ function Server(s::String)
     end
     return server
 end
+
 
 StructTypes.StructType(::Type{Server}) = StructTypes.Struct()
 islocal(s::Server) = s.domain == "localhost"

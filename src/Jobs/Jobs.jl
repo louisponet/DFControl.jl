@@ -13,5 +13,5 @@ include("environment.jl")
 include("job.jl")
 include("workflow.jl")
 include("versioning.jl")
-export Job, Environment, Workflow
+export Job, Environment, Workflow, set_flow!
 end

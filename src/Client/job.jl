@@ -441,7 +441,7 @@ end
     
 Finds the output files for each of the calculations of a [`Job`](@ref), and groups all the parsed data into a dictionary.
 """
-function outputdata(job::Job; calcs=map(x->x.name, job.calculations))
+function outputdata(job::Job; calcs=map(x->x.name, job.calculations), extra_parse_funcs=Dict())
     server = Server(job.server)
     out = Dict{String, Dict{Symbol, Any}}()
     for c in calcs
@@ -460,7 +460,7 @@ function outputdata(job::Job; calcs=map(x->x.name, job.calculations))
             else
                 extra_files = String[]
             end
-            out[c] = FileIO.outputdata(calculation, IOBuffer(read(server, p)), extra_files...)
+            out[c] = FileIO.outputdata(calculation, IOBuffer(read(server, p)), extra_files...; extra_parse_funcs = get(extra_parse_funcs, c, Pair{String}[]))
             for strkey in (:initial_structure, :final_structure) 
                 if haskey(out[c], strkey)
                     for a in out[c][strkey].atoms
