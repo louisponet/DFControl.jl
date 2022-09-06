@@ -4,7 +4,7 @@ using ..DFControl: config_path
 using ..Utils
 using ..Database
 
-export Server, start, local_server, isalive
+export Server, start, local_server, isalive, configure_local
 
 const SERVER_DIR = config_path("storage/servers")
 
@@ -104,6 +104,16 @@ function configure!(s::Server)
     s.uuid = string(uuid4())
 
     show(stdout, s)
+
+    @info "saving server configuration..."
+    save(s)
+
+    start_server = request("Start server?", RadioMenu(["yes", "no"]))
+    start_server == -1 && return
+    if start_server == 1
+        start(s)
+    end
+    return s
 end
 
 function configure_local_port!(s::Server)
