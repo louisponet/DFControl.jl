@@ -89,13 +89,21 @@ function configure!(s::Server)
     dir = ask_input(String, "Default Jobs directory", hdir)
     if dir != hdir
         while server_command(s, "ls $dir").exitcode != 0
-            @warn "$dir, no such file or directory."
-            dir = ask_input(String, "Default Jobs directory")
+            # @warn "$dir, no such file or directory."
+            local_choice = request("No such directory, creating one?", RadioMenu(["yes", "no"]))
+            if local_choice == 1
+                server_command(s, "mkdir -p $dir")
+            else
+                dir = ask_input(String, "Default Jobs directory")
+            end
         end
     end
     s.root_jobdir = dir
     s.max_concurrent_jobs = ask_input(Int, "Max Concurrent Jobs", s.max_concurrent_jobs)
+
     s.uuid = string(uuid4())
+
+    show(stdout, s)
 end
 
 function configure_local_port!(s::Server)
@@ -111,7 +119,7 @@ end
 function configure_local()
     host = gethostname()
     user = ENV["USER"]
-    s = Server(name=host, user=user, domain="localhost")
+    s = Server(name=host, username=user, domain="localhost")
     configure!(s)
 end
 
