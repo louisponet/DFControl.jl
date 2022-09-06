@@ -118,6 +118,11 @@ function configure_local_port!(s::Server)
     end
 end
 
+"""
+    configure_local()
+
+Runs through interactive configuration of the local [`Server`](@ref).
+"""
 function configure_local()
     host = gethostname()
     @assert !exists(Server(name=host)) "Local server already configured."
