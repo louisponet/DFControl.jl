@@ -14,7 +14,7 @@ function queue!(q, s::Scheduler, init)
     end
     for qu in (q.full_queue, q.current_queue)
         for (dir, info) in qu
-            if !isdir(dir)
+            if !ispath(joinpath(dir, "job.sh"))
                 delete!(qu, dir)
             end
         end
@@ -22,7 +22,7 @@ function queue!(q, s::Scheduler, init)
     # Here we check whether the scheduler died while the server was running and try to restart and resubmit   
     if maybe_scheduler_restart(s)
         for (d, i) in q.current_queue
-            if isdir(d)
+            if ispath(joinpath(d, "job.sh"))
                 q.full_queue[d] = (-1, Jobs.Saved)
                 submit(d, false)
             end
