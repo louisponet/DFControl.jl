@@ -21,7 +21,7 @@ function parse_file(f::IO, parse_funcs::Vector{<:Pair{String}};out = Dict{Symbol
                     extra_parse_funcs::Vector{<:Pair} = Pair{String,Function}[])
     
     lc = 0
-    while !eof(f)
+    while !eof(f) && !haskey(out, :finished)
         line = strip(readline(f))
         lc += 1
         if isempty(line)
