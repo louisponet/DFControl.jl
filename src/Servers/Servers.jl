@@ -89,13 +89,23 @@ function configure!(s::Server)
     dir = ask_input(String, "Default Jobs directory", hdir)
     if dir != hdir
         while server_command(s, "ls $dir").exitcode != 0
-            @warn "$dir, no such file or directory."
-            dir = ask_input(String, "Default Jobs directory")
+            # @warn "$dir, no such file or directory."
+            local_choice = request("No such directory, creating one?", RadioMenu(["yes", "no"]))
+            if local_choice == 1
+                result = server_command(s, "mkdir -p $dir")
+                if result.exitcode != 0
+                    @warn "Couldn't create $dir, try a different one."
+                end
+            else
+                dir = ask_input(String, "Default Jobs directory")
+            end
         end
     end
     s.root_jobdir = dir
     s.max_concurrent_jobs = ask_input(Int, "Max Concurrent Jobs", s.max_concurrent_jobs)
+
     s.uuid = string(uuid4())
+
 end
 
 function configure_local_port!(s::Server)
@@ -108,11 +118,27 @@ function configure_local_port!(s::Server)
     end
 end
 
+"""
+    configure_local()
+
+Runs through interactive configuration of the local [`Server`](@ref).
+"""
 function configure_local()
     host = gethostname()
+    @assert !exists(Server(name=host)) "Local server already configured."
     user = ENV["USER"]
-    s = Server(name=host, user=user, domain="localhost")
+    s = Server(name=host, username=user, domain="localhost")
     configure!(s)
+
+    @info "saving server configuration...", s
+    save(s)
+
+    start_server = request("Start server?", RadioMenu(["yes", "no"]))
+    start_server == -1 && return
+    if start_server == 1
+        start(s)
+    end
+    return s
 end
 
 function Server(s::String)
