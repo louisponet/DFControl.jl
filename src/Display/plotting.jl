@@ -150,7 +150,8 @@ end
 
     # PDOS part
     projwfc = Utils.getfirst(x -> Calculations.isprojwfc(x) && haskey(outdat, x.name), job.calculations)
-    if projwfc !== nothing && plot_pdos
+    plot_pdos = plot_pdos && projwfc !== nothing && haskey(outdat[projwfc.name], :energies)
+    if plot_pdos
         if bands isa NamedTuple && !overlap_spin
             doswindow = 3
             layout --> (1, 3)

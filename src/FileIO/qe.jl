@@ -682,19 +682,27 @@ end
 Reads partial dos file.
 """
 function qe_parse_pdos(file)
-    read_tmp = readdlm(file; skipstart = 1)
-    energies = read_tmp[:, 1]
-    values   = read_tmp[:, 2:end]
+    try
+        read_tmp = readdlm(file; skipstart = 1)
+        energies = read_tmp[:, 1]
+        values   = read_tmp[:, 2:end]
 
-    return energies, values
+        return energies, values
+    catch
+        @warn "Pdos file was empty: $file"
+        return Float64[], Matrix{Float64}(undef, 0, 0)
+    end
 end
 
 function qe_parse_projwfc_output(files...)
     out = Dict{Symbol,Any}()
     kresolved = occursin("ik", readline(files[1]))
     out[:states], out[:bands] = qe_parse_projwfc(files[1])
-    out[:energies], out[:pdos] = pdos(files[2:end], kresolved)
-    out[:finished] = isempty(out[:energies]) ? false : true
+    tp = pdos(files[2:end], kresolved)
+    if tp !== nothing
+        out[:energies], out[:pdos] = tp
+    end
+    out[:finished] = !haskey(out,:enegies) || isempty(out[:energies]) ? false : true
     return out
 end
 
@@ -707,45 +715,48 @@ function pdos(files, kresolved=false)
     soc = occursin(".5", files[1])
     @assert !isempty(files) "No pdos files found in calculation directory $(c.dir)"
     files = joinpath.((dir,), files)
-    energies, = kresolved ? FileIO.qe_parse_kpdos(files[1]) : FileIO.qe_parse_pdos(files[1])
-    totdos = Dict{Symbol, Dict{Structures.Orbital, Array}}()
-    for atsym in atsyms
-        totdos[atsym] = Dict{Structures.Orbital, Array}()
-        if kresolved
-            for f in filter(x->occursin("("*string(atsym)*")", x), files)
-                id1 = findlast("(", f) + 1
-                orb = soc ? Structures.orbital(f[id1, findnext("_", f, id1+1)-1]) : Structures.orbital(f[id1, findnext(")", f, id1+1)-1])
-                if !haskey(totdos[atsym], orb)
-                    totdos[atsym][orb] = magnetic && !soc ? zeros(size(energies, 1), 2) : zeros(size(energies, 1))
+    energies, = kresolved ? qe_parse_kpdos(files[1]) : qe_parse_pdos(files[1])
+    if !isempty(energies)
+        @show energies
+        totdos = Dict{Symbol, Dict{Structures.Orbital, Array}}()
+        for atsym in atsyms
+            totdos[atsym] = Dict{Structures.Orbital, Array}()
+            if kresolved
+                for f in filter(x->occursin("("*string(atsym)*")", x), files)
+                    id1 = findlast("(", f) + 1
+                    orb = soc ? Structures.orbital(f[id1, findnext("_", f, id1+1)-1]) : Structures.orbital(f[id1, findnext(")", f, id1+1)-1])
+                    if !haskey(totdos[atsym], orb)
+                        totdos[atsym][orb] = magnetic && !soc ? zeros(size(energies, 1), 2) : zeros(size(energies, 1))
+                    end
+                    atdos = totdos[atsym][orb]
+                    if magnetic && !occursin(".5", f)
+                        tu = qe_parse_kpdos(f, 2)[2]
+                        td = qe_parse_kpdos(f, 3)[2]
+                        atdos[:, 1] .+= reduce(+, tu; dims = 2) ./ size(tu, 2)
+                        atdos[:, 2] .+= reduce(+, td; dims = 2) ./ size(tu, 2)
+                    else
+                        t = qe_parse_kpdos(f, 1)[2]
+                        atdos .+= (reshape(reduce(+, t; dims = 2), size(atdos, 1)) ./ size(t, 2))
+                    end
                 end
-                atdos = totdos[atsym][orb]
-                if magnetic && !occursin(".5", f)
-                    tu = FileIO.qe_parse_kpdos(f, 2)[2]
-                    td = FileIO.qe_parse_kpdos(f, 3)[2]
-                    atdos[:, 1] .+= reduce(+, tu; dims = 2) ./ size(tu, 2)
-                    atdos[:, 2] .+= reduce(+, td; dims = 2) ./ size(tu, 2)
-                else
-                    t = FileIO.qe_parse_kpdos(f, 1)[2]
-                    atdos .+= (reshape(reduce(+, t; dims = 2), size(atdos, 1)) ./ size(t, 2))
-                end
-            end
-        else
-            for f in filter(x->occursin("("*string(atsym)*")", x), files)
-                id1 = findlast("(", f)[1] + 1
-                orb = soc ? Structures.orbital(f[id1:findnext("_", f, id1+1)[1]-1]) : Structures.orbital(f[id1:findnext(")", f, id1+1)[1]-1])
-                if !haskey(totdos[atsym], orb)
-                    totdos[atsym][orb] = magnetic && !soc ? zeros(size(energies, 1), 2) : zeros(size(energies, 1))
-                end
-                atdos = totdos[atsym][orb]
-                if magnetic && !occursin(".5", f)
-                    atdos .+= FileIO.qe_parse_pdos(f)[2][:, 1:2]
-                else
-                    atdos .+= FileIO.qe_parse_pdos(f)[2][:, 1]
+            else
+                for f in filter(x->occursin("("*string(atsym)*")", x), files)
+                    id1 = findlast("(", f)[1] + 1
+                    orb = soc ? Structures.orbital(f[id1:findnext("_", f, id1+1)[1]-1]) : Structures.orbital(f[id1:findnext(")", f, id1+1)[1]-1])
+                    if !haskey(totdos[atsym], orb)
+                        totdos[atsym][orb] = magnetic && !soc ? zeros(size(energies, 1), 2) : zeros(size(energies, 1))
+                    end
+                    atdos = totdos[atsym][orb]
+                    if magnetic && !occursin(".5", f)
+                        atdos .+= qe_parse_pdos(f)[2][:, 1:2]
+                    else
+                        atdos .+= qe_parse_pdos(f)[2][:, 1]
+                    end
                 end
             end
         end
+        return (energies = energies, pdos = totdos)
     end
-    return (energies = energies, pdos = totdos)
 end
 
 """

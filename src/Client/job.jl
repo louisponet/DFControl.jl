@@ -172,7 +172,15 @@ function save(job::Job, workflow::Union{Nothing, Workflow} = nothing; versionche
     write(job_buffer, job, environment)
     push!(file_buffers, "job.sh" => job_buffer)
     HTTP.post(server, "/jobs/" * apath, Dict([n[1] => n[2].data for n in file_buffers]))
- 
+
+    for c in job.calculations
+        if c.run
+            ofile = joinpath(job, c.outfile)
+            if ispath(server, ofile)
+                rm(server, ofile)
+            end
+        end
+    end
     
     # Here we lazily pull pseudos that are not located on the server we're sending stuff to
     pseudos = unique(y->y[1], map(x->(x.element.symbol, x.pseudo), job.structure.atoms))

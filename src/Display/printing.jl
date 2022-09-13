@@ -60,6 +60,7 @@ function df_show(io::IO, job::Job)
     else
         push!(fs, "unknown")
         push!(fns, "state")
+        state = Jobs.Unknown
         push!(fs, string(Jobs.Unknown))
     end
         
@@ -93,7 +94,7 @@ function df_show(io::IO, job::Job)
         dfprintln(io, crayon"cyan", "|", reset)
     end
     is = job.calculations
-    last = Servers.isalive(server) && ispath(server, Jobs.main_job_dir(job)) ? Client.last_running_calculation(job) : -1
+    last = Servers.isalive(server) && ispath(server, joinpath(Jobs.main_job_dir(job), "job.sh")) ? Client.last_running_calculation(job) : -1
     if !isempty(is)
         dfprintln(io, crayon"cyan", line, reset)
         dfprintln(io, reset, "(", crayon"green", "scheduled", reset, ", ", crayon"red",
