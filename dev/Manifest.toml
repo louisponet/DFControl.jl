@@ -64,8 +64,8 @@ version = "4.1.1"
 
 [[deps.DFControl]]
 deps = ["ANSIColoredPrinters", "BinDeps", "CodeTracking", "Colors", "Crayons", "Dates", "DelimitedFiles", "Distributed", "HTTP", "JLD2", "JSON3", "LinearAlgebra", "LoggingExtras", "Media", "Parameters", "Pkg", "ProgressMeter", "REPL", "Reexport", "Requires", "Sockets", "StaticArrays", "StructTypes", "ThreadPools", "UUIDs", "UnitfulAtomic", "fzf_jll", "spglib_jll"]
-git-tree-sha1 = "2660d3583a2501642a2b139124d8629fc2344c27"
-repo-rev = "6d2d5ef2d442764e71c84ff5fb7a4878ca8e069e"
+git-tree-sha1 = "95f23f2efb294e755e67cbdfeab7a312f1b484d4"
+repo-rev = "0ec070ee710c29831df976116130d258918dc5cb"
 repo-url = "https://github.com/louisponet/DFControl.jl.git"
 uuid = "1e31e15d-4957-550d-a244-318eced754ae"
 version = "0.5.3"
@@ -118,9 +118,9 @@ uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 
 [[deps.JLD2]]
 deps = ["FileIO", "MacroTools", "Mmap", "OrderedCollections", "Pkg", "Printf", "Reexport", "TranscodingStreams", "UUIDs"]
-git-tree-sha1 = "81b9477b49402b47fbe7f7ae0b252077f53e4a08"
+git-tree-sha1 = "6c38bbe47948f74d63434abed68bdfc8d2c46b99"
 uuid = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
-version = "0.4.22"
+version = "0.4.23"
 
 [[deps.JLLWrappers]]
 deps = ["Preferences"]
@@ -130,9 +130,9 @@ version = "1.4.1"
 
 [[deps.JSON3]]
 deps = ["Dates", "Mmap", "Parsers", "StructTypes", "UUIDs"]
-git-tree-sha1 = "fd6f0cae36f42525567108a42c1c674af2ac620d"
+git-tree-sha1 = "f1572de22c866dc92aea032bc89c2b137cbddd6a"
 uuid = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
-version = "1.9.5"
+version = "1.10.0"
 
 [[deps.LLVMOpenMP_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
