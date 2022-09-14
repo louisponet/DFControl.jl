@@ -17,7 +17,7 @@ function read_job_info(job::Job)
     end
     
     # TODO Define a better way of working with pseudos
-    upf_files = filter(x->occursin(".UPF",x), readdir(job_dir))
+    upf_files = filter(x->occursin(".UPF",x) && ispath(joinpath(job_dir), x), readdir(job_dir))
     pseudos = Dict([Symbol(splitext(n)[1]) => realpath(joinpath(job_dir, n)) for n in upf_files])
     
     return Dict(:name => name,
