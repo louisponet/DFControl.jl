@@ -82,8 +82,8 @@ in_queue(s::Jobs.JobState) =
     
 ## SLURM ##
 function maybe_scheduler_restart(::Slurm)
-    if occursin("error", read(run(`squeue -u $(ENV["USER"])`), String))
-        if occursin("(null)", read(run(Cmd(`slurmd`)), String))
+    if occursin("error", read(`squeue -u $(ENV["USER"])`, String))
+        if occursin("(null)", read(`slurmd`, String))
             error("Can not start slurmctld automatically...")
         else
             return true
