@@ -717,7 +717,6 @@ function pdos(files, kresolved=false)
     files = joinpath.((dir,), files)
     energies, = kresolved ? qe_parse_kpdos(files[1]) : qe_parse_pdos(files[1])
     if !isempty(energies)
-        @show energies
         totdos = Dict{Symbol, Dict{Structures.Orbital, Array}}()
         for atsym in atsyms
             totdos[atsym] = Dict{Structures.Orbital, Array}()

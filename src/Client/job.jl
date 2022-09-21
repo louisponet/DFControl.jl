@@ -159,7 +159,7 @@ function save(job::Job, workflow::Union{Nothing, Workflow} = nothing; versionche
     environment = load(server, Environment(job.environment))
     @assert environment isa Environment "Environment with name $(job.environment) not found!"
 
-    t1 = Threads.@spawn if versioncheck
+    if versioncheck
         resp_job_version = JSON3.read(HTTP.put(server, "/increment_version/" * apath).body, Int)
         job.version = resp_job_version
         @info "Job version: $(curver) => $(resp_job_version)."
@@ -211,7 +211,6 @@ function save(job::Job, workflow::Union{Nothing, Workflow} = nothing; versionche
             end
         end
     end
-    fetch(t1)
     Calculations.rm_tmp_flags!.(job.calculations)
     return job
 end
