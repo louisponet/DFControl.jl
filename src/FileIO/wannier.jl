@@ -446,9 +446,9 @@ Parsed info:
     :wannierise,
     :final_state,
 """
-function wan_parse_output(filename::AbstractString;
+function wan_parse_output(filename;
                          parse_funcs::Vector{<:Pair{String}} = Pair{String}[])
-    out = parse(filename, WAN_PARSE_FUNCS; extra_parse_funcs = parse_funcs)
+    out = parse_file(filename, WAN_PARSE_FUNCS; extra_parse_funcs = parse_funcs)
     out[:finished] = haskey(out, :finished) ? true : false
     return out
 end
