@@ -77,11 +77,12 @@ end
 # Jobs are submitted by the daemon, using supplied job jld2 from the caller (i.e. another machine)
 # Additional files are packaged with the job
 function handle_job_submission!(queue, s::Server, queuelock)
-    lines = filter(!isempty, readlines(PENDING_JOBS_FILE()))
-    write(PENDING_JOBS_FILE(), "")
+    lines = filter(!isempty, split(read(PENDING_JOBS_FILE(), String)))
+    open(PENDING_JOBS_FILE(), "w", lock=true) do f
+        write(f, "")
+    end
     njobs = length(queue.current_queue)
     if length(lines) + njobs > s.max_concurrent_jobs
-        
         to_submit = lines[1:s.max_concurrent_jobs - njobs]
         open(PENDING_JOBS_FILE(), "a", lock=true) do f
             for l in lines[s.max_concurrent_jobs - njobs + 1:end]
