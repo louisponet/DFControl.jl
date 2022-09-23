@@ -32,10 +32,10 @@ end
 function df_show(io::IO, job::Job)
     server = Server(job.server)
     reset = crayon"reset"
-    fieldns = [:name, :version]
-    fs = string.(filter(x -> !isempty(x), getfield.((job,), fieldns)))
+    fieldns = [:name, :dir, :version]
+    fs = string.(getfield.((job,), fieldns))
+    fs[2] = Jobs.main_job_dir(job)
     fns = string.(fieldns)
-    insert!(fns, 2, "dir")
     push!(fns, "server")
     if Servers.isalive(server) 
         push!(fs, "$(job.server), alive")
@@ -44,7 +44,6 @@ function df_show(io::IO, job::Job)
     end
         
     
-    insert!(fs, 2, Jobs.main_job_dir(job))
     push!(fns, "versions")
     if Servers.isalive(server)
         versions = Client.versions(job)
@@ -76,7 +75,7 @@ function df_show(io::IO, job::Job)
     end
     line *= "+"
     totlen = length(line)
-    dfprintln(io, crayon"cyan", line[div(lfns, 2)+6:end], reset)
+    dfprintln(io, crayon"cyan", line[div(lfns, 2)+4:end], reset)
     lfns = maximum(length.(string.(fns)))
     for (fn, f) in zip(fns, fs)
         isname = fn == "name"

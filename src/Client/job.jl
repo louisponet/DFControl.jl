@@ -456,7 +456,7 @@ function outputdata(job::Job; calcs=map(x->x.name, job.calculations), extra_pars
         p = joinpath(job, calculation.outfile)
         if ispath(server, p)
             if Calculations.isprojwfc(calculation)
-                dos_files = searchdir(job, "pdos_a")
+                dos_files = filter(x->any(y-> occursin(string(y.name), x), job.structure.atoms), searchdir(job, "pdos_a"))
                 extra_files = String[] 
                 dir = mkdir(tempname())
                 for e in dos_files
@@ -467,13 +467,17 @@ function outputdata(job::Job; calcs=map(x->x.name, job.calculations), extra_pars
             else
                 extra_files = String[]
             end
-            out[c] = FileIO.outputdata(calculation, IOBuffer(read(server, p)), extra_files...; extra_parse_funcs = get(extra_parse_funcs, c, Pair{String}[]))
-            for strkey in (:initial_structure, :final_structure) 
-                if haskey(out[c], strkey)
-                    for a in out[c][strkey].atoms
-                        a.pseudo.server = job.server
+            try
+                out[c] = FileIO.outputdata(calculation, IOBuffer(read(server, p)), extra_files...; extra_parse_funcs = get(extra_parse_funcs, c, Pair{String}[]))
+                for strkey in (:initial_structure, :final_structure) 
+                    if haskey(out[c], strkey)
+                        for a in out[c][strkey].atoms
+                            a.pseudo.server = job.server
+                        end
                     end
                 end
+            catch e
+                @warn "Error while reading output of calculation: $(c.name)\n" e
             end
         end
     end
