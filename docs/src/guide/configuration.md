@@ -16,7 +16,11 @@ Server("daint")
 
 This will set up all the required information and store it for later use. To start a [`Server`](@ref) simply call `start(server)`, which
 will launch the daemon externally.
-
+Make sure that the `host` address points to a persistent server, i.e. if a cluster has multiple frontend nodes, find the ip address of one particular one,
+and set that one as the `host` address.
+During the setup of an external server, it may ask whether a `local_tunnel` should be created. If enabled, a persistent ssh tunnel will be
+created from the local machine to the target host through which the http requests will be sent. This is useful when the remote is behind an
+authentication firewall.
 
 ## Pseudopotentials
 Pseudopotentials are grouped in sets, which are stored for later ease of use.

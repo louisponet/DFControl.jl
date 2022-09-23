@@ -67,7 +67,7 @@ function Servers.jobstate(::Bash, id::Int)
     return p.exitcode == 1 ? Jobs.Completed : Jobs.Running
 end
 
-Servers.submit(::Bash, j::String) = 
+Servers.submit(::Bash, j::AbstractString) = 
     Int(getpid(run(Cmd(`bash job.sh`, detach=true, dir=j), wait=false)))
 
 function Servers.abort(::Bash, id::Int)
@@ -150,7 +150,7 @@ function Servers.jobstate(::Slurm, state::AbstractString)
     return Jobs.Unknown
 end
 
-Servers.submit(::Slurm, j::String) =
+Servers.submit(::Slurm, j::AbstractString) =
     parse(Int, split(read(Cmd(`sbatch job.sh`, dir=j), String))[end])
 
 Servers.abort(s::Slurm, id::Int) = 
@@ -245,7 +245,7 @@ function Servers.jobstate(::HQ, state::AbstractString)
     return Jobs.Unknown
 end
 
-function Servers.submit(h::HQ, j::String)
+function Servers.submit(h::HQ, j::AbstractString)
     chmod(joinpath(j, "job.sh"), 0o777)
 
     out = read(Cmd(Cmd(string.([split(h.server_command)..., "submit", "./job.sh"])), dir=j), String)
