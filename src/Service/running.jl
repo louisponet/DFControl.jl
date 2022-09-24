@@ -77,7 +77,9 @@ end
 # Jobs are submitted by the daemon, using supplied job jld2 from the caller (i.e. another machine)
 # Additional files are packaged with the job
 function handle_job_submission!(queue, s::Server, queuelock)
-    lines = filter(!isempty, split(read(PENDING_JOBS_FILE(), String)))
+    lines = filter(!isempty, split(open(PENDING_JOBS_FILE(), "r", lock=true) do f
+        read(f, String)
+    end))
     open(PENDING_JOBS_FILE(), "w", lock=true) do f
         write(f, "")
     end
