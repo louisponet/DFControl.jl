@@ -6,15 +6,12 @@ function queue!(q, s::Scheduler, init)
         if ispath(QUEUE_FILE())
             t = read(QUEUE_FILE())
             if !isempty(t)
-                try
-                    tq = JSON3.read(t, QueueInfo)
-                    copy!(q.full_queue, tq.full_queue)
-                    copy!(q.current_queue, tq.current_queue)
-                    copy!(q.submit_queue, tq.submit_queue)
-                catch
                     tq = JSON3.read(t)
-                    copy!(q.full_queue, tq[:full_queue])
-                    copy!(q.current_queue, tq[:current_queue])
+                    copy!(q.full_queue, tq["full_queue"])
+                    copy!(q.current_queue, tq["current_queue"])
+                    if haskey(tq,"submit_queue")
+                        copy!(q.submit_queue, tq["submit_queue"])
+                    end
                 end
             end
         end
