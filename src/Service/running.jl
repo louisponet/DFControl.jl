@@ -82,6 +82,7 @@ function handle_job_submission!(queue, s::Server, queuelock)
         write(f, "")
         return o
     end))
+    @show lines
     njobs = length(queue.current_queue)
     if length(lines) + njobs > s.max_concurrent_jobs
         to_submit = lines[1:s.max_concurrent_jobs - njobs]
