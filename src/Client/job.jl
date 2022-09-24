@@ -224,7 +224,7 @@ function submit(job::Job, workflow=nothing; kwargs...)
     @assert workflow === nothing "Workflows not implemented yet."
     server = Server(job.server)
     save(job, workflow; kwargs...)
-    return HTTP.put(server, "/jobs/" * abspath(job), workflow !== nothing)
+    return HTTP.put(server, "/jobs/" * abspath(job))
 end
 
 function submit(jobs::Vector{Job}, run = true)

@@ -9,6 +9,7 @@ function queue!(q, s::Scheduler, init)
                 tq = JSON3.read(t, QueueInfo)
                 copy!(q.full_queue, tq.full_queue)
                 copy!(q.current_queue, tq.current_queue)
+                copy!(q.submit_queue, tq.submit_queue)
             end
         end
     end
@@ -24,7 +25,7 @@ function queue!(q, s::Scheduler, init)
         for (d, i) in q.current_queue
             if ispath(joinpath(d, "job.sh"))
                 q.full_queue[d] = (-1, Jobs.Saved)
-                submit(d, false)
+                push!(q.submit_queue, d)
             end
             pop!(q.current_queue, d)
         end

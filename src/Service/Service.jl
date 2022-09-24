@@ -11,7 +11,6 @@ import ..Database: save, load, exists
 # const DAEMON_CONFIG_PATH = config_path("daemon.jld2")
 # delete_daemon_config!() = rm(DAEMON_CONFIG_PATH)
 
-PENDING_JOBS_FILE() = config_path("jobs", "pending.txt")
 PENDING_WORKFLOWS_FILE() = config_path("workflows", "pending.txt")
 QUEUE_FILE() = config_path("jobs", "queue.json")
 SLEEP_TIME = 10.0

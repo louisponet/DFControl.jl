@@ -127,36 +127,6 @@ end
 queued(job::Job) = readdir(queued_dir(job))
 finished(job::Job) = readdir(finished_dir(job))
 
-# function submit_workflow(job::Job, funcs, d::Daemon = init_daemon())
-#     queue_steps(job, funcs)
-#     write_workflow_files(job)
-#     while !is_started(d)
-#         sleep(1)
-#     end
-#     return runexpr("""
-#                DFControl.spawn_worker(DAEMON, Job("$(job.dir)"))
-#                DFControl.save(DAEMON)
-#                """; port = d.port)
-# end
-
-"""
-    submit(dir::String, workflow::Bool)
-
-Writes the directory to either pending workflows or pending jobs file.
-"""
-function submit(job_dir::String, workflow::Bool)
-    if workflow
-        open(PENDING_WORKFLOWS_FILE(), "a", lock=true) do f
-            return write(f, job_dir * "\n")
-        end
-    else
-        @info (timestamp = Dates.now(), jobdir = job_dir,  state = Jobs.Submitted)
-        open(PENDING_JOBS_FILE(), "a", lock=true) do f
-            return write(f, job_dir * "\n")
-        end
-    end
-end
-
 """
     last_running_calculation(path::String)
 

@@ -164,15 +164,18 @@ function AuthHandler(handler)
     end
 end     
 
+const SUBMIT_CHANNEL = Ref{Channel{String}}()
+
 function run()
     # initialize_config_dir()
     s = Server(gethostname())
     CURRENT_SERVER[] = s
+    SUBMIT_CHANNEL[] = Channel{String}(Inf)
     port, server = listenany(ip"0.0.0.0", 8080)
     s.port = port
     USER_UUID[] = UUID(s.uuid)
     @tspawnat min(Threads.nthreads(), 2) with_logger(Service.server_logger()) do
-        Service.main_loop(s)
+        Service.main_loop(s, SUBMIT_CHANNEL[])
     end
     Servers.save(s)
     with_logger(Service.restapi_logger()) do

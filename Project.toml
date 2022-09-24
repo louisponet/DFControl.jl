@@ -51,9 +51,9 @@ Reexport = "^1"
 Requires = "^1"
 StaticArrays = "^1"
 StructTypes = "^1"
+ThreadPools = "^2"
 UnitfulAtomic = "^1"
 julia = "^1.6"
-ThreadPools = "^2"
 
 [extras]
 BinDeps = "9e28174c-4ba2-5203-b857-d8d62c4213ee"

@@ -1,10 +1,11 @@
+
 increment_version(req) = Service.increment_version(path(req))
 HTTP.register!(ROUTER, "PUT", "/increment_version/**", increment_version)
 
 save_job(req) = Service.save(path(req), JSON3.read(req.body, Dict{String, Vector{UInt8}}))
 HTTP.register!(ROUTER, "POST", "/jobs/**", save_job)
 
-submit_job(req) = Service.submit(path(req), JSON3.read(req.body, Bool))
+submit_job(req) = put!(SUBMIT_CHANNEL[], path(req))
 HTTP.register!(ROUTER, "PUT", "/jobs/**", submit_job)
 
 get_job(req) = Service.read_job_info(Job(path(req)))
