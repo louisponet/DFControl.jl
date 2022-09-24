@@ -103,9 +103,9 @@ function handle_job_submission!(queue, s::Server, queuelock)
                 
                 try
                     id = Servers.submit(s.scheduler, j)
-                    @info (timestamp = Dates.now(), jobdir = j, jobid = id, state = Jobs.Submitted)
+                    @info (timestamp = Dates.now(), jobdir = j, jobid = id, state = Jobs.Pending)
                     lock(queuelock)
-                    queue.current_queue[j] = (id, Jobs.Submitted)
+                    queue.current_queue[j] = (id, Jobs.Pending)
                     unlock(queuelock)
                     curtries = 0
                 catch e

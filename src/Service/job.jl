@@ -150,6 +150,7 @@ function submit(job_dir::String, workflow::Bool)
             return write(f, job_dir * "\n")
         end
     else
+        @info (timestamp = Dates.now(), jobdir = job_dir,  state = Jobs.Submitted)
         open(PENDING_JOBS_FILE(), "a", lock=true) do f
             return write(f, job_dir * "\n")
         end
