@@ -83,7 +83,7 @@ function handle_job_submission!(queue, s::Server, queuelock, submit_channel)
     while !isempty(submit_channel)
         push!(lines, take!(submit_channel))
     end
-    n_submit = s.max_concurrent_jobs - njobs
+    n_submit = min(s.max_concurrent_jobs - njobs, length(lines))
     for i in 1:n_submit
         j = lines[i]
         if ispath(j)
