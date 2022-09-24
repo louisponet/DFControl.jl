@@ -1,10 +1,10 @@
 using StructTypes
-mutable struct QueueInfo
-    full_queue::Dict{String, Tuple{Int, Jobs.JobState}}
-    current_queue::Dict{String, Tuple{Int, Jobs.JobState}}
-    submit_queue::Vector{String}
+Base.@kwdef mutable struct QueueInfo
+    full_queue::Dict{String, Tuple{Int, Jobs.JobState}} = Dict{String, Tuple{Int, Jobs.JobState}}()
+    current_queue::Dict{String, Tuple{Int, Jobs.JobState}} = Dict{String, Tuple{Int, Jobs.JobState}}()
+    submit_queue::Vector{String} = String[]
 end
-StructTypes.StructType(::Type{QueueInfo}) = StructTypes.Struct()
+StructTypes.StructType(::Type{QueueInfo}) = StructTypes.Mutable()
 
 const JOB_QUEUE = Ref{QueueInfo}()
 
@@ -14,7 +14,7 @@ function main_loop(s::Server, submit_channel)
     #     @warn "Can't reach scheduler..."
     #     sleep(SLEEP_TIME)
     # end
-    JOB_QUEUE[] = QueueInfo(Dict{String, Tuple{Int, Jobs.JobState}}(), Dict{String, Tuple{Int, Jobs.JobState}}(), String[])
+    JOB_QUEUE[] = QueueInfo()
     queue!(JOB_QUEUE[], s.scheduler, true)
     @info (timestamp = Dates.now(), username = ENV["USER"], host = gethostname(), pid=getpid())
 
