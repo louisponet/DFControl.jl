@@ -34,7 +34,7 @@ function main_loop(s::Server, submit_channel)
     end
     Threads.@spawn while true
         try
-            handle_job_submission!(JOB_QUEUE[], s, queuelock)
+            handle_job_submission!(JOB_QUEUE[], s, queuelock, submit_channel)
         catch e
             @error "job submission error" e
         end
