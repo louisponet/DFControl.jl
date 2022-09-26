@@ -73,6 +73,12 @@ function monitor_issues(log_mtimes)
         @error "More Server logs modification times differed than 1."
         touch(config_path("self_destruct"))
     end
+    daemon_log = config_path("logs/daemon/restapi.log")
+    if filesize(daemon_log) > 1e9
+        open(daemon_log, "w") do f
+            write(f, "")
+        end
+    end
 end
    
 # Jobs are submitted by the daemon, using supplied job jld2 from the caller (i.e. another machine)

@@ -477,7 +477,7 @@ function outputdata(job::Job; calcs=map(x->x.name, job.calculations), extra_pars
                     end
                 end
             catch e
-                @warn "Error while reading output of calculation: $(c.name)\n" e
+                @warn "Error while reading output of calculation: $(c)\n" e
             end
         end
     end
