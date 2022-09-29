@@ -54,8 +54,8 @@ using SnoopPrecompile
     if !alive
         @async Resource.run()
     end
-    if !exists(s, Environment("default"))
-        save(s, Environment(name="default"))
+    if !exists(Environment("default"))
+        save(Environment(name="default"))
     end
     # all calls in this block will be precompiled, regardless of whether
     # they belong to your package or not (on Julia 1.8 and higher)
