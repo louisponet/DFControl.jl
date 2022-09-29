@@ -65,7 +65,7 @@ using SnoopPrecompile
     j.environment = "default"
     redirect_stdout(devnull) do
         redirect_stderr(devnull) do
-            save(j)
+            save(j, fillexecs=false)
             print(j)
         end
     end
