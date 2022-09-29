@@ -152,7 +152,7 @@ Runs through interactive configuration of the local [`Server`](@ref).
 function configure_local(;interactive=true)
     host = gethostname()
     @assert !exists(Server(name=host)) "Local server already configured."
-    user = ENV["USER"]
+    user = get(ENV, "USER", "unknown_user")
     s = Server(name=host, username=user, domain="localhost")
     configure!(s; interactive=interactive)
 
@@ -182,7 +182,7 @@ function Server(s::String)
             @warn "A server with $name was already configured and will be overwritten."
         end
     elseif s == "localhost"
-        username = ENV["USER"]
+        username = get(ENV,"USER", "unknown_user")
         domain = "localhost"
         name = s
     else
