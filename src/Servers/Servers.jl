@@ -62,6 +62,9 @@ function configure_scheduler(s::Server; interactive=true)
             break
         end
     end
+    if scheduler !== nothing
+        return scheduler
+    end
     if interactive && scheduler === nothing
         choice = request("Couldn't identify the scheduler select one: ", RadioMenu(["SLURM", "HQ", "BASH"]))
 
