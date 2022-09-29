@@ -45,18 +45,32 @@ include("Display/Display.jl")
 
 using SnoopPrecompile
 
-# @precompile_setup begin
-#     # Putting some things in `setup` can reduce the size of the
-#     # precompile file and potentially make loading faster.
-    
-#     @precompile_all_calls begin
-#         # all calls in this block will be precompiled, regardless of whether
-#         # they belong to your package or not (on Julia 1.8 and higher)
-#         d = Dict(MyType(1) => list)
-#         x = get(d, MyType(2), nothing)
-#         last(d[MyType(1)])
-#     end
-# end
+@precompile_all_calls begin
+    if !exists(Server(name=gethostname()))
+        Servers.configure_local(interactive=false)
+    end
+    s = local_server()
+    alive = isalive(s)
+    if !alive
+        @async Resource.run()
+    end
+    if !exists(s, Environment("default"))
+        save(s, Environment(name="default"))
+    end
+    # all calls in this block will be precompiled, regardless of whether
+    # they belong to your package or not (on Julia 1.8 and higher)
+    j = load(s, Job(joinpath(@__DIR__, "../test/testassets/reference_job/")))
+    t = tempname()
+    j.dir = t
+    j.environment = "default"
+    redirect_stdout(devnull) do
+        redirect_stderr(devnull) do
+            save(j)
+            print(j)
+        end
+    end
+    rm(t, recursive=true)
+end
 
 
 end

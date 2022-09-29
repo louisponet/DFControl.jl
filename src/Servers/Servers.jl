@@ -40,8 +40,21 @@ end
 
 Database.storage_directory(::Server) = "servers"
 
-function configure_scheduler(s::Server)
+function configure_scheduler(s::Server; interactive=true)
     scheduler = nothing
+    if haskey(ENV, "DFC_SCHEDULER")
+         
+        sched = ENV["DFC_SCHEDULER"]
+        if occursin("hq", lowercase(sched))
+            cmd = get(ENV, "DFC_SCHEDULER_CMD", "hq")
+            return HQ(server_command=cmd)
+        elseif lowercase(sched) == "slurm"
+            return Slurm()
+        else
+            error("Scheduler $sched not recognized please set a different DFC_SCHEDULER environment var.")
+        end
+    end
+            
     for t in (HQ(), Slurm())
         scmd = submit_cmd(t)
         if server_command(s, "which $scmd").exitcode == 0
@@ -49,7 +62,7 @@ function configure_scheduler(s::Server)
             break
         end
     end
-    if scheduler === nothing
+    if interactive && scheduler === nothing
         choice = request("Couldn't identify the scheduler select one: ", RadioMenu(["SLURM", "HQ", "BASH"]))
 
         if choice == 1
@@ -61,51 +74,64 @@ function configure_scheduler(s::Server)
         else
             return
         end
+        return scheduler
+    else
+        return Bash()
     end
-    return scheduler
 end
     
 
-function configure!(s::Server)
-    s.port  = ask_input(Int, "Port", s.port)
+function configure!(s::Server; interactive=true)
+    if interactive
+        s.port  = ask_input(Int, "Port", s.port)
+    end
     if s.domain == "localhost"
         julia = joinpath(Sys.BINDIR, "julia")
     else
-        julia = ask_input(String, "Julia Exec", s.julia_exec)
-        while server_command(s.username, s.domain, "which $julia").exitcode != 0
-            @warn "$julia, no such file or directory."
-            julia = ask_input(String, "Julia Exec")
+        if interactive
+            julia = ask_input(String, "Julia Exec", s.julia_exec)
+            while server_command(s.username, s.domain, "which $julia").exitcode != 0
+                @warn "$julia, no such file or directory."
+                julia = ask_input(String, "Julia Exec")
+            end
+        else
+            julia = "julia"
         end
     end
     s.julia_exec = julia
 
     # Try auto configuring the scheduler
-    scheduler = configure_scheduler(s)
+    scheduler = configure_scheduler(s; interactive=interactive)
     if scheduler === nothing
         return
     end
     s.scheduler = scheduler     
     hdir = server_command(s, "pwd").stdout
-    dir = ask_input(String, "Default Jobs directory", hdir)
-    if dir != hdir
-        while server_command(s, "ls $dir").exitcode != 0
-            # @warn "$dir, no such file or directory."
-            local_choice = request("No such directory, creating one?", RadioMenu(["yes", "no"]))
-            if local_choice == 1
-                result = server_command(s, "mkdir -p $dir")
-                if result.exitcode != 0
-                    @warn "Couldn't create $dir, try a different one."
+    if interactive
+        dir = ask_input(String, "Default Jobs directory", hdir)
+        if dir != hdir
+            while server_command(s, "ls $dir").exitcode != 0
+                # @warn "$dir, no such file or directory."
+                local_choice = request("No such directory, creating one?", RadioMenu(["yes", "no"]))
+                if local_choice == 1
+                    result = server_command(s, "mkdir -p $dir")
+                    if result.exitcode != 0
+                        @warn "Couldn't create $dir, try a different one."
+                    end
+                else
+                    dir = ask_input(String, "Default Jobs directory")
                 end
-            else
-                dir = ask_input(String, "Default Jobs directory")
             end
         end
+        
+        s.root_jobdir = dir
+        s.max_concurrent_jobs = ask_input(Int, "Max Concurrent Jobs", s.max_concurrent_jobs)
+    else
+        s.root_jobdir = hdir
     end
-    s.root_jobdir = dir
-    s.max_concurrent_jobs = ask_input(Int, "Max Concurrent Jobs", s.max_concurrent_jobs)
 
     s.uuid = string(uuid4())
-
+    return s
 end
 
 function configure_local_port!(s::Server)
@@ -123,20 +149,21 @@ end
 
 Runs through interactive configuration of the local [`Server`](@ref).
 """
-function configure_local()
+function configure_local(;interactive=true)
     host = gethostname()
     @assert !exists(Server(name=host)) "Local server already configured."
     user = ENV["USER"]
     s = Server(name=host, username=user, domain="localhost")
-    configure!(s)
+    configure!(s; interactive=interactive)
 
     @info "saving server configuration...", s
     save(s)
-
-    start_server = request("Start server?", RadioMenu(["yes", "no"]))
-    start_server == -1 && return
-    if start_server == 1
-        start(s)
+    if interactive
+        start_server = request("Start server?", RadioMenu(["yes", "no"]))
+        start_server == -1 && return
+        if start_server == 1
+            start(s)
+        end
     end
     return s
 end
