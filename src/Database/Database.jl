@@ -76,8 +76,12 @@ module Database
     exists(s::Storable) = ispath(config_path(storage_path(s)))
     function exists(server, s::Storable)
         url = storage_url(s)
-        possibilities = JSON3.read(HTTP.get(server, splitdir(url)[1]).body, Vector{String})
-        return storage_name(s) ∈ possibilities
+        try
+            possibilities = JSON3.read(HTTP.get(server, splitdir(url)[1]).body, Vector{String})
+            return storage_name(s) ∈ possibilities
+        catch
+            return false
+        end
     end
 
     function replacements(s::S) where {S<:Storable}
