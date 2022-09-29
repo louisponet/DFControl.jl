@@ -4,12 +4,10 @@
 Since `DFControl` utilizes a client-server rest-api model, each server will have its own local deamon running, which stores
 certain server-side items such as pseudopotentials, [`Environments`](@ref Environment) and [`Execs`](@ref Exec).
 
-First start by setting up your local server:
-```julia
-Servers.configure_local()
-```
+Make sure that both `julia` and `DFControl` are installed on the target remote server before trying to create a connection to it.
+Also, it is necessary that your ssh keys are registered on the remote so that no passwords are required for `ssh` connections.
 
-To set up another [`Server`](@ref), in this case with `name = "daint"` an interactive menu can be called like:
+To up a new [`Server`](@ref), in this case with `name = "daint"` an interactive menu can be called like:
 ```julia
 Server("daint")
 ```
@@ -21,6 +19,14 @@ and set that one as the `host` address.
 During the setup of an external server, it may ask whether a `local_tunnel` should be created. If enabled, a persistent ssh tunnel will be
 created from the local machine to the target host through which the http requests will be sent. This is useful when the remote is behind an
 authentication firewall.
+
+To reconfigure a [`Server`](@ref) you can always do:
+```julia
+s = Server("daint")
+s.root_jobdir = "<where you want jobs to be saved>"
+save(s)
+```
+If a [`Server`](@ref) was running first stop it using `kill(server)`.
 
 ## Pseudopotentials
 Pseudopotentials are grouped in sets, which are stored for later ease of use.
