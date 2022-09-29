@@ -43,4 +43,20 @@ include("Display/Display.jl")
 
 @reexport using .Client
 
+using SnoopPrecompile
+
+# @precompile_setup begin
+#     # Putting some things in `setup` can reduce the size of the
+#     # precompile file and potentially make loading faster.
+    
+#     @precompile_all_calls begin
+#         # all calls in this block will be precompiled, regardless of whether
+#         # they belong to your package or not (on Julia 1.8 and higher)
+#         d = Dict(MyType(1) => list)
+#         x = get(d, MyType(2), nothing)
+#         last(d[MyType(1)])
+#     end
+# end
+
+
 end

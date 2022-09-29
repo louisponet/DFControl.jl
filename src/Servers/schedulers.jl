@@ -22,9 +22,9 @@ StructTypes.StructType(::Type{HQ})    = StructTypes.Struct()
 StructTypes.subtypekey(::Type{Scheduler}) = :type
 
 submit_cmd(s::S) where {S<:Scheduler} = error("No submit_cmd method defined for $S.")
-submit_cmd(s::Slurm) = `sbatch`
-submit_cmd(s::Bash)  = `bash`
-submit_cmd(s::HQ)  = `hq`
+submit_cmd(s::Slurm) = "sbatch"
+submit_cmd(s::Bash)  = "bash"
+submit_cmd(s::HQ)  = "hq"
 
 function is_reachable(server_command::String)
     t = run(string2cmd("which $server_command"), wait=false)

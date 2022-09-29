@@ -538,9 +538,9 @@ Tries to read the bands from a bands calculation that is present in `job`.
 """
 function readbands(job::Job, outdat=outputdata(job))
     calc = getfirst(x -> Calculations.isbands(x), job.calculations)
-    if calc === nothing || !haskey(outdat, calc.name)
+    if calc === nothing || !haskey(outdat, calc.name) || !haskey(outdat[calc.name], :bands)
         calc = getfirst(x -> Calculations.isnscf(x), job.calculations)
-        if calc === nothing || !haskey(outdat, calc.name)
+        if calc === nothing || !haskey(outdat, calc.name)|| !haskey(outdat[calc.name], :bands)
             @warn "Job does not have a valid bands output."
             return nothing
         end
