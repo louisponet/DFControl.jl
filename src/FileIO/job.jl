@@ -76,6 +76,7 @@ function writetojob(f, job, _calculation::Calculation{Wannier90}, environment; k
     @assert eltype(nscf) == QE "Only QE based Wannier90 jobs are supported."
 
     pw2wan_exec = Exec(nscf.exec, exec="pw2wannier90.x")
+    empty!(pw2wan_exec.flags)
 
     preprocess   = get(_calculation, :preprocess, false)
 
