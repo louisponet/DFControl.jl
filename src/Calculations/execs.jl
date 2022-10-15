@@ -308,7 +308,9 @@ const QE_EXECFLAGS = ExecFlag[ExecFlag(:nk, "kpoint-pools",
                               ExecFlag(:ni, "images",
                                        "Number of processes used for the images", 0, 1),
                                ExecFlag(:npool, "pools",
-                                       "Number of processes used for the pools", 0, 1)]
+                                       "Number of processes used for the pools", 0, 1),
+                               ExecFlag(:pd, "pencil decomposition",
+                                       "uses pencil decomposition for fft", false, 1)]
 
 qe_execflag(flag::AbstractString) = getfirst(x -> x.name == flag, QE_EXECFLAGS)
 qe_execflag(flag::Symbol) = getfirst(x -> x.symbol == flag, QE_EXECFLAGS)
@@ -321,7 +323,15 @@ function parse_qe_execflags(line::Vector{<:AbstractString})
         if line[i+1][1] == '$'
             f = line[i+1]
         else
-            f = parse(Int, line[i+1])
+            try
+                f = parse(Int, line[i+1])
+            catch
+                try
+                    f = parse(Bool, line[i+1])
+                catch
+                    f = line[i+1]
+                end
+            end
         end
         push!(flags, ExecFlag(qe_execflag(Symbol(s)), f))
         i += 2
