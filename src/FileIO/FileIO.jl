@@ -33,7 +33,7 @@ function parse_file(f::IO, parse_funcs::Vector{<:Pair{String}};out = Dict{Symbol
             try
                 func[2](out, line, f)
             catch
-                @warn "File corruption or parsing error detected executing parse function \n$(func[2]) in file $filename at line $lc: \"$line\".\nTrying to continue smoothly."
+                @warn "File corruption or parsing error detected executing parse function \n$(func[2]) in file $f at line $lc: \"$line\".\nTrying to continue smoothly."
             end
         end
     end

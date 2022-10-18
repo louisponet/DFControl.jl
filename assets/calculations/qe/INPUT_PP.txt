@@ -3,7 +3,7 @@
 ------------------------------------------------------------------------
 INPUT FILE DESCRIPTION
 
-Program: pp.x / PWscf / Quantum Espresso (version: 6.2)
+Program: pp.x / PWscf / Quantum Espresso (version: 7.0)
 ------------------------------------------------------------------------
 
 
@@ -40,6 +40,9 @@ combining them (see variables "weight" and "filepp" in &PLOT)
 
 All output quantities are in ATOMIC (RYDBERG) UNITS unless
 otherwise explicitly specified.
+All charge densities integrate to the NUMBER of electrons
+not to the total charge.
+All potentials have the dimension of an energy (e*V, not V).
 
 
 
@@ -130,12 +133,18 @@ NAMELIST: &INPUTPP
                    
                       21 = all-electron charge density (valence+core).
                            For PAW calculations only; requires a very dense real-space grid.
+                   
+                      22 = kinetic energy density (for meta-GGA and XDM only)
+                   
+                     123 = DORI: density overlap regions indicator
+                           (doi: 10.1021/ct500490b) Implemented by D. Yang & Q.Liu
    +--------------------------------------------------------------------
    
    ________________________________________________________________________
-   * IF plot_num=0 : 
+   * IF plot_num = 0 or 9 : 
    
-      OPTIONS FOR TOTAL CHARGE (PLOT_NUM=0):
+      OPTIONS FOR TOTAL CHARGE (PLOT_NUM=0)
+      OR FOR TOTAL MINUS ATOMIC CHARGE (PLOT_NUM=9):
       
       +--------------------------------------------------------------------
       Variable:       spin_component
@@ -185,7 +194,7 @@ NAMELIST: &INPUTPP
       Status:         OPTIONAL
       Description:    upper boundary of energy grid (in eV).
                       
-                      If not specified, LDOS is computed just for energy "emin"
+                      Defaults to Fermi energy.
       +--------------------------------------------------------------------
       
       +--------------------------------------------------------------------
@@ -341,6 +350,22 @@ NAMELIST: &INPUTPP
       +--------------------------------------------------------------------
       
        
+   * ELSE IF plot_num=22 : 
+   
+      OPTIONS FOR KINETIC ENERGY DENSITY (PLOT_NUM=22),
+      LSDA CASE ONLY:
+      
+      +--------------------------------------------------------------------
+      Variable:       spin_component
+      
+      Type:           INTEGER
+      Default:        0
+      Description:    0 = total density (default value),
+                      1 = spin up density,
+                      2 = spin down density.
+      +--------------------------------------------------------------------
+      
+       
    ENDIF
    ________________________________________________________________________
    
@@ -405,14 +430,13 @@ NAMELIST: &PLOT
                    
                    0  = format suitable for gnuplot   (1D)
                    
-                   1  = format suitable for contour.x (2D)
+                   1  = obsolete format no longer supported
                    
                    2  = format suitable for plotrho   (2D)
                    
                    3  = format suitable for XCRYSDEN  (2D or user-supplied 3D region)
                    
-                   4  = format suitable for gOpenMol  (3D)
-                        (formatted: convert to unformatted *.plt)
+                   4  = obsolete format no longer supported
                    
                    5  = format suitable for XCRYSDEN  (3D, using entire FFT grid)
                    
@@ -544,12 +568,12 @@ NAMELIST: &PLOT
                         are ignored, the entire FFT grid is written in the
                         XCRYSDEN format - works for any crystal axis (VERY FAST)
                       
-                      - If @ref e1, @ref e2, @ref e3, @ref x0 are present, and @ref e1, @ref e2, @ref e3 are parallel
-                        to xyz and parallel to crystal axis, a subset of the
-                        FFT grid that approximately covers the parallelepiped
-                        defined by @ref e1, @ref e2, @ref e3, @ref x0, is written (presently only
-                        if @ref output_format = 4, i.e. gopenmol format) - works only
-                        if the crystal axis are parallel to xyz
+                      - If @ref e1, @ref e2, @ref e3, @ref x0 are present,
+                        and @ref e1, @ref e2, @ref e3 are parallel to xyz
+                        and parallel to crystal axis, a subset of the FFT
+                        grid that approximately covers the parallelepiped
+                        defined by @ref e1, @ref e2, @ref e3, @ref x0, is
+                        written - untested, might be obsolete
                       
                       - Otherwise, the required 3D grid is generated from the
                         Fourier components (may be VERY slow)
@@ -584,4 +608,4 @@ NAMELIST: &PLOT
 ===END OF NAMELIST======================================================
 
 
-This file has been created by helpdoc utility on Mon Oct 23 19:37:11 CEST 2017
+This file has been created by helpdoc utility on Sat Dec 18 20:08:46 CET 2021

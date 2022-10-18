@@ -214,7 +214,9 @@ function set_kpoints!(c::Calculation{QE}, k_grid::NTuple{3,Int}; print = true) #
     else
         push!(c.data, InputData(:k_points, :crystal, kgrid(k_grid..., c)))
     end
-    prod(k_grid) > 100 && set_flags!(c, :verbosity => "high"; print = print)
+    if prod(k_grid) > 100
+        c[:control][:verbosity] = "high"
+    end
     return c
 end
 
@@ -229,7 +231,9 @@ function set_kpoints!(c::Calculation{QE}, k_grid::NTuple{6,Int}; print = true) #
     else
         push!(c.data, InputData(:k_points, :automatic, [k_grid...]))
     end
-    prod(k_grid[1:3]) > 100 && set_flags!(c, :verbosity => "high"; print = print)
+    if prod(k_grid[1:3]) > 100
+        c[:control][:verbosity] = "high"
+    end
     return c
 end
 
@@ -247,7 +251,7 @@ function set_kpoints!(c::Calculation{QE}, k_grid::Vector{<:NTuple{4}}; print = t
         num_k += k[4]
     end
     if num_k > 100.0
-        set_flags!(c, :verbosity => "high"; print = print)
+        c[:control][:verbosity] = "high"
         if print
             @info "Verbosity is set to high because num_kpoints > 100,\n
                        otherwise bands won't get printed."

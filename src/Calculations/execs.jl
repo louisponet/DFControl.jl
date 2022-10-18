@@ -297,7 +297,7 @@ end
 is_wannier_exec(exec::Exec) = exec.exec ∈ WAN_EXECS
 
 #QE
-const QE_EXECS = ["pw.x", "projwfc.x", "pp.x", "ld1.x", "ph.x", "pw2wannier90.x", "hp.x"]
+const QE_EXECS = ["pw.x", "projwfc.x", "pp.x", "ld1.x", "ph.x", "pw2wannier90.x", "hp.x", "dos.x", "bands.x"]
 
 const QE_EXECFLAGS = ExecFlag[ExecFlag(:nk, "kpoint-pools",
                                        "groups k-point parallelization into nk processor pools",

@@ -522,25 +522,29 @@ function sanitize_flags!(cs::Vector{<:Calculation}, str::Structure, name, outdir
         append!(flags_to_set, [:starting_magnetization => starts, :angle1 => θs, :angle2 => ϕs, :nspin => 2])
     end
     for c in cs
-        set_flags!(c, :prefix => "$name", :outdir => "$outdir"; print = false)
-        if ispw(c)
-            set_flags!(c, flags_to_set...; print = false)
-            if isnc
-                pop!(c, :nspin, nothing)
-            end
-            if isvcrelax(c)
-                #this is to make sure &ions and &cell are there in the calculation 
-                !hasflag(c, :ion_dynamics) &&
-                    set_flags!(c, :ion_dynamics => "bfgs"; print = false)
-                !hasflag(c, :cell_dynamics) &&
-                    set_flags!(c, :cell_dynamics => "bfgs"; print = false)
-            end
-            #TODO add all the required flags
-            @assert hasflag(c, :calculation) "Please set the flag for calculation with name: $(name(c))"
+        try
+            set_flags!(c, :prefix => "$name", :outdir => "$outdir"; print = false)
+            if ispw(c)
+                set_flags!(c, flags_to_set...; print = false)
+                if isnc
+                    pop!(c, :nspin, nothing)
+                end
+                if isvcrelax(c)
+                    #this is to make sure &ions and &cell are there in the calculation 
+                    !hasflag(c, :ion_dynamics) &&
+                        set_flags!(c, :ion_dynamics => "bfgs"; print = false)
+                    !hasflag(c, :cell_dynamics) &&
+                        set_flags!(c, :cell_dynamics => "bfgs"; print = false)
+                end
+                #TODO add all the required flags
+                @assert hasflag(c, :calculation) "Please set the flag for calculation with name: $(name(c))"
 
-            set_flags!(c, :pseudo_dir => "."; print = false)
+                set_flags!(c, :pseudo_dir => "."; print = false)
+            end
+            convert_flags!(c)
+        catch
+            @warn "Something went wrong trying to sanitize the flags for calc $(c.name)"
         end
-        convert_flags!(c)
     end
 
     return
