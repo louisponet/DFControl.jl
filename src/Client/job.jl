@@ -265,7 +265,6 @@ If the last running calculation happened to be a `Calculation{QE}`, the correct 
 For other codes the process is not smooth, and restarting is not guaranteed.
 """
 function abort(server::Server, dir::String)
-    @assert isrunning(server, dir) "Is this job running?"
     id = JSON3.read(HTTP.get(Server(server), "/abort/" * dir).body, Int)
     @info "Aborted job $id"
 end

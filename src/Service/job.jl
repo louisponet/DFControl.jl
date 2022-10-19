@@ -191,9 +191,9 @@ exists_job(d::AbstractString) = ispath(d) && ispath(joinpath(d, "job.sh"))
 rm_version!(jobdir::String, version::Int) = Jobs.rm_version!(load(Job(jobdir)), version)
 
 function Servers.abort(job_dir::String)
-    @assert haskey(JOB_QUEUE[].current_queue, job_dir) "No job exists in dir: $(job_dir)!"
+    @assert haskey(JOB_QUEUE[].full_queue, job_dir) "No job exists in dir: $(job_dir)!"
     s = Servers.local_server()
-    id = JOB_QUEUE[].current_queue[job_dir][1]
+    id = JOB_QUEUE[].full_queue[job_dir][1]
     Servers.abort(s.scheduler, id)
     delete!(JOB_QUEUE[].current_queue, job_dir)
     JOB_QUEUE[].full_queue[job_dir] = (id, Jobs.Cancelled)
