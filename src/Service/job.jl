@@ -193,9 +193,13 @@ rm_version!(jobdir::String, version::Int) = Jobs.rm_version!(load(Job(jobdir)), 
 function Servers.abort(job_dir::String)
     @assert haskey(JOB_QUEUE[].full_queue, job_dir) "No job exists in dir: $(job_dir)!"
     s = Servers.local_server()
-    id = JOB_QUEUE[].full_queue[job_dir][1]
-    Servers.abort(s.scheduler, id)
-    delete!(JOB_QUEUE[].current_queue, job_dir)
+    if haskey(JOB_QUEUE[].current_queue, job_dir)
+        id = JOB_QUEUE[].current_queue[job_dir][1]
+        Servers.abort(s.scheduler, id)
+        delete!(JOB_QUEUE[].current_queue, job_dir)
+    else
+        id = -1
+    end
     JOB_QUEUE[].full_queue[job_dir] = (id, Jobs.Cancelled)
     subid = findfirst(x-> x == job_dir, JOB_QUEUE[].submit_queue)
     if subid !== nothing
