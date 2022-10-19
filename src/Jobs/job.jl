@@ -277,7 +277,7 @@ function set_wanenergies!(job::Job, min_window_determinator::Real; kwargs...)
         return set_wanenergies!(job, nscf_calc, min_window_determinator; kwargs...)
     else
         @info "Valid projwfc output found, using $min_window_determinator as the dos threshold."
-        return set_wanenergies!(job, nscf_calc, projwfc_calculation,
+        return set_wanenergies!(job, nscf_calc, projwfc_calc,
                                 min_window_determinator; kwargs...)
     end
 end
