@@ -171,12 +171,21 @@ function Emin_from_projwfc(structure::Structure, states, bands::Vector{Band},
     return Emin
 end
 
-# for f in (:cp, :mv)
-#     @eval function Base.$f(i::Calculation{Wannier90}, dest::String; kwargs...)
-#         for glob in ("$(i.name)", "UNK") # seedname should also cover generated pw2wannier90 files
-#             for file in searchdir(i, glob)
-#                 $f(file, joinpath(dest, splitdir(f)[end]); kwargs...)
-#             end
-#         end
-#     end
-# end
+function remote_calcs(job, _calculation::Calculation{Wannier90})
+    calcs = RemoteHPC.Calculation[]
+    filename   = _calculation.infile
+    should_run = _calculation.run
+    nscf = getfirst(x -> Calculations.isnscf(x), job.calculations)
+    
+    @assert nscf !== nothing "No NSCF found to generate pw2wannier90 from."
+    @assert eltype(nscf) == QE "Only QE based Wannier90 jobs are supported."
+
+    pw2wan_exec = Exec(nscf.exec, exec="pw2wannier90.x")
+    pw2wan_exec.name = ""
+    empty!(pw2wan_exec.flags)
+
+    preprocess   = get(_calculation, :preprocess, false)
+    return [RemoteHPC.Calculation(_calculation.exec, "-pp $filename > $(_calculation.outfile)", preprocess || should_run),
+            RemoteHPC.Calculation(pw2wan_exec, "-pd .true. < pw2wan_$(splitext(filename)[1]).in > pw2wan_$(splitext(filename)[1]).out", preprocess || should_run),
+            RemoteHPC.Calculation(_calculation.exec, "$filename > $(_calculation.outfile)", should_run)]
+end

@@ -338,7 +338,7 @@ function sanitize_cutoffs!(job::Job)
             if !isempty(ps.pseudo)
                 return ps.pseudo
             elseif !isempty(ps.server)
-                s = Servers.Server(ps.server)
+                s = Server(ps.server)
                 if isalive(s) && ispath(s, ps.path)
                     return read(s, ps.path, String)
                 else
@@ -372,9 +372,9 @@ function sanitize_cutoffs!(job::Job)
     end
 end
 
-function Servers.pull(j::Job, f, t)
+function RemoteHPC.pull(j::Job, f, t)
     @assert ispath(j, f) "File $f not found in jobdir."
-    Servers.pull(Server(j.server), joinpath(j, f), t)
+    RemoteHPC.pull(Server(j.server), joinpath(j, f), t)
 end
 
 function timestamp(jobdir::AbstractString)

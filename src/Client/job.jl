@@ -1,5 +1,3 @@
-Servers.Server(j::Job) = Server(j.server)
-
 ##### JOB INTERACTIONS #########
 """
     load(server::Server, j::Job)
@@ -8,10 +6,7 @@ Tries to load the [`Job`](@ref) from `server` at directory `j.dir`.
 If no exact matching directory is found, a list of job directories that comprise
 `j.dir` will be returned.
 """
-function load(server::Server, j::Job)
-    if isempty(j.dir)
-        return first.(registered_jobs(server, j.dir))
-    end
+function RemoteHPC.load(server::Server, j::Job)
     if j.version == last_version(server, j.dir)
         dir = Jobs.main_job_dir(j.dir)
     elseif !occursin(Jobs.VERSION_DIR_NAME, j.dir) && j.version != -1
@@ -20,75 +15,71 @@ function load(server::Server, j::Job)
         dir = j.dir
     end
     dir = abspath(server, dir)
-    if !ispath(server, joinpath(dir, "job.sh"))
-        
-        @warn "No valid job found in $dir. Here are similar options:"
-        return first.(registered_jobs(server, j.dir))
+    
+    info = load(server, dir)
+    if info isa Vector
+        return info
     end
-    resp = HTTP.get(server, "/jobs/" * dir)
-    # Supplied dir was not a valid path, so we ask
-    # previously registered jobs on the server that
-    # contain dir.
-    t           = JSON3.read(resp.body)
-    name        = t[:name]
-    header      = t[:header]
-    environment = t[:environment]
-    calculations, structure = FileIO.parse_calculations(t[:calculations])
+    name = info[2].name
+    environment = info[2].environment
+    
+    remote_calculations = info[2].calculations
+
+    structures = Structure[]
+    outcalcs = Calculation[]
+    for calc in remote_calculations
+        exec = calc.exec
+        s = split(calc.args)
+        redir_id = findfirst(x -> x == '>', s)
+        infile  = redir_id === nothing ? "" : s[redir_id-1]
+        outfile = redir_id === nothing ? "" : s[end]
+        if Calculations.is_wannier_exec(exec) && !isempty(outcalcs) && outcalcs[end].infile == infile
+            Calculations.set_flags!(outcalcs[end], :preprocess => outcalcs[end].run, print=false)
+            empty!(outcalcs[end].exec.flags)
+        elseif !isempty(infile)
+            c = FileIO.calculationparser(exec)(IOBuffer(read(server, joinpath(j, infile))))
+            if c.structure !== nothing
+                push!(structures, c.structure)
+            end
+            push!(outcalcs, Calculation(splitext(infile)[1], c.flags, c.data, exec, calc.run, infile, outfile))
+        end
+    end
+    if !isempty(structures)
+        structure = Structures.mergestructures(structures)
+    else
+        structure = Structure()
+        @warn "No valid structures could be read from calculation files."
+    end
+    Calculations.rm_tmp_flags!.(outcalcs)
+
+    to_rm = Int[]
+    for (ic, c) in enumerate(outcalcs)
+        id2 = findnext(x->x.name == c.name, outcalcs, ic+2)
+        if id2 !== nothing && Calculations.is_wannier_exec(c.exec)
+            push!(to_rm, ic + 1)
+            push!(to_rm, id2)
+            Calculations.set_flags!(c, :preprocess => c.run, print=false)
+            Calculations.set_flags!(c, :wannier_plot => get(outcalcs[ic+1], :write_unk, false), print=false)
+        end
+    end
+    deleteat!(outcalcs, to_rm)
+
+    calculations = outcalcs
+
+    pseudos = Dict{Symbol, Pseudo}()
+    
+    for a in unique(map(x->x.element.symbol, structure.atoms))
+        pseudos[a] = Structures.Pseudo(server.name, realpath(server, joinpath(dir, "$a")), "") 
+    end
     for a in structure.atoms
-        f = get(t[:pseudos], a.element.symbol, "")
-        a.pseudo = Structures.Pseudo(server.name, f, "")
+        a.pseudo = pseudos[a.element.symbol]
     end
     version = j.version == -1 ? last_version(server, j.dir) : j.version
     
     return Job(name, structure, calculations, j.dir, header, version, j.copy_temp_folders, server.name, environment)
 end
 
-function request_job_dir(dir::String, server::Server)
-    resp = HTTP.get(server, "/registered_jobs/" * dir)
-    matching_jobs = reverse(JSON3.read(resp.body, Vector{Tuple{String,DateTime}}))
-    choices = ["$j -- $t" for (j, t) in matching_jobs]
-    if length(matching_jobs) == 1
-        return matching_jobs[1][1]
-    elseif length(matching_jobs) == 0
-        error("No jobs found matching $dir")
-    elseif isdefined(Base, :active_repl)
-        menu = RadioMenu(choices)
-        choice = request("Multiple matching jobs were found, choose one:", menu)
-        if choice != -1
-            return matching_jobs[choice][1]
-        else
-            return nothing
-        end
-    else
-        err_msg = "No concrete job for $dir found, closest matches are:"
-        for m in choices
-            err_msg = join([err_msg, m], "\n")
-        end
-        error(err_msg)
-    end
-end
-"""
-    registered_jobs(server::Server, fuzzy::AbstractString = "")
-
-Lists all the known [`Jobs`](@ref Job) directories that contain `fuzzy`.
-Intended to be used as:
-```julia
-job_dirs = registered_jobs("NiO")
-job = Job(job_dirs[1])
-```
-"""
-function registered_jobs(server::Server, fuzzy::String="")
-    resp = HTTP.get(server, "/registered_jobs/" * fuzzy)
-    return reverse(JSON3.read(resp.body, Vector{Tuple{String,DateTime}}))
-end
-      
-function running_jobs(fuzzy=""; server=gethostname())
-    resp = HTTP.get(server, "/running_jobs/" * fuzzy)
-    return reverse(JSON3.read(resp.body, Vector{Tuple{String, Int}}))
-end
-
 function write_calculations(job::Job; fillexecs=true)
-
     server = Server(job.server)
     t = Threads.@spawn if fillexecs
         fill_execs(job, server)
@@ -123,8 +114,6 @@ function write_calculations(job::Job; fillexecs=true)
     return calculations
 end
 
-
-
 """
     save(job::Job)
 
@@ -136,7 +125,7 @@ If a previous job is present in the job directory (indicated by a valid job scri
 it will be copied to the `.versions` sub directory as the previous version of `job`,
 and the version of `job` will be incremented. 
 """
-function save(job::Job, workflow::Union{Nothing, Workflow} = nothing; versioncheck=true, kwargs...)
+function RemoteHPC.save(job::Job, workflow = nothing; versioncheck=true, kwargs...)
     @assert workflow === nothing "Workflows not implemented yet."
     # First we check whether the job is trying to be saved in a archived directory, absolutely not allowed
     @assert !isrunning(job) "Can't save a job in a directory where another is running."
@@ -164,15 +153,15 @@ function save(job::Job, workflow::Union{Nothing, Workflow} = nothing; versionche
         job.version = resp_job_version
         @info "Job version: $(curver) => $(resp_job_version)."
     end
+
+    remote_calcs = RemoteHPC.Calculation[]
+    for c in job.calculations
+        append!(remote_calcs, Calculations.remote_calcs(job, c))
+    end
+    
     file_buffers = write_calculations(job; kwargs...)
-
-    job_buffer = IOBuffer()
-
+    save(server, job.dir, environment, remote_calcs, name = job.name)
                           
-    write(job_buffer, job, environment)
-    push!(file_buffers, "job.sh" => job_buffer)
-    HTTP.post(server, "/jobs/" * apath, Dict([n[1] => n[2].data for n in file_buffers]))
-
     for c in job.calculations
         if c.run
             ofile = joinpath(job, c.outfile)
@@ -220,66 +209,57 @@ end
 
 Saves and launches `job`. 
 """
-function submit(job::Job, workflow=nothing; kwargs...)
+function RemoteHPC.submit(job::Job, workflow=nothing; kwargs...)
     @assert workflow === nothing "Workflows not implemented yet."
     server = Server(job.server)
     save(job, workflow; kwargs...)
-    return HTTP.put(server, "/jobs/" * abspath(job))
+    return submit(server, job.dir)
 end
 
-function submit(jobs::Vector{Job}, run = true)
-    # To verify all execs
-    server_names = Server.(unique(map(x -> x.server, jobs)))
-    buckets = [jobs[findall(x -> x.server == s, jobs)] for s in server_names]
-    outbuckets = [Vector{Job}(undef, length(b)) for b in buckets]
-    Threads.@threads for i in 1:length(server_names)
-        server = server_names[i]
-        bucket = buckets[i]
-        outbucket = outbuckets[i]
-        execs = unique(vcat([map(x->x.exec, j.calculations) for j in bucket]...))
+# function submit(jobs::Vector{Job}, run = true)
+#     # To verify all execs
+#     server_names = Server.(unique(map(x -> x.server, jobs)))
+#     buckets = [jobs[findall(x -> x.server == s, jobs)] for s in server_names]
+#     outbuckets = [Vector{Job}(undef, length(b)) for b in buckets]
+#     Threads.@threads for i in 1:length(server_names)
+#         server = server_names[i]
+#         bucket = buckets[i]
+#         outbucket = outbuckets[i]
+#         execs = unique(vcat([map(x->x.exec, j.calculations) for j in bucket]...))
         
-        replacements = fill_execs(server, execs)
-        Threads.@threads for ij in 1:length(bucket)
-            job = bucket[ij]
-            for c in job.calculations
-                for (e, rep) in replacements
-                    if c.exec == e
-                        c.exec.dir = rep.dir
-                        c.exec.modules = rep.modules
-                    end
-                end
-            end
-            outbucket[ij] = save(job)
-            run && HTTP.put(server, "/jobs/" * abspath(job))
-        end
-    end
-    return outbuckets
-end
+#         replacements = fill_execs(server, execs)
+#         Threads.@threads for ij in 1:length(bucket)
+#             job = bucket[ij]
+#             for c in job.calculations
+#                 for (e, rep) in replacements
+#                     if c.exec == e
+#                         c.exec.dir = rep.dir
+#                         c.exec.modules = rep.modules
+#                     end
+#                 end
+#             end
+#             outbucket[ij] = save(job)
+#             run && HTTP.put(server, "/jobs/" * abspath(job))
+#         end
+#     end
+#     return outbuckets
+# end
 
 """
     abort(job::Job)
-    abort(server::Server, dir::String)
 
 Will try to remove the job from the scheduler's queue.
 If the last running calculation happened to be a `Calculation{QE}`, the correct abort file will be written.
 For other codes the process is not smooth, and restarting is not guaranteed.
 """
-function abort(server::Server, dir::String)
-    id = JSON3.read(HTTP.get(Server(server), "/abort/" * dir).body, Int)
-    @info "Aborted job $id"
-end
-abort(job::Job) = abort(Server(job.server), abspath(job))
+RemoteHPC.abort(job::Job) = abort(Server(job.server), abspath(job))
 
 """
     state(job::Job)
-    state(s::Server, jobdir::String)
 
 Returns the state of a job.
 """
-function state(s::Server, jobdir::String)
-    return JSON3.read(HTTP.get(s, "/job_state/" * jobdir).body, Jobs.JobState)
-end
-state(job::Job) = state(Server(job.server), abspath(job))
+RemoteHPC.state(job::Job) = state(Server(job.server), abspath(job))
 
 """
     isrunning(job::Job)
@@ -291,13 +271,10 @@ running.
 """
 function isrunning(args...)
     s = state(args...)
-    return s == Jobs.Running || s == Jobs.Pending || s == Jobs.Submitted
+    return s == RemoteHPC.Running || s == RemoteHPC.Pending || s == RemoteHPC.Submitted
 end
 
-function submission_time(job::Job)
-    resp = HTTP.get(Server(job.server), "/mtime/" * Jobs.scriptpath(job))
-    return JSON3.read(resp.body, Float64)
-end
+submission_time(job::Job) = mtime(Server(job.server), Jobs.scriptpath(job))
 
 """
     last_running_calculation(job::Job)
@@ -305,13 +282,10 @@ end
 Returns the last `Calculation` for which an output file was created.
 """
 function last_running_calculation(job::Job)
-    server = Server(job.server)
-    resp = HTTP.get(server, "/last_running_calculation/" * abspath(job))
-    if resp.status == 204
-        return nothing
-    else
-        return job[JSON3.read(resp.body, Int)]
-    end
+    server   = Server(job.server)
+    times    = mtime.((server,), map(x->joinpath(job, x.outfile), job.calculations))
+    p        = sortperm(times)
+    return job[p[end]]
 end
 
 
@@ -323,10 +297,7 @@ end
 Returs the valid versions of `job`.
 """
 versions(job::Job) = versions(Server(job.server), abspath(job)) 
-function versions(server::Server, dir::AbstractString)
-    server=Server(server) 
-    return JSON3.read(HTTP.get(server, "/job_versions/" * Jobs.main_job_dir(dir)).body, Vector{Int})
-end
+versions(server::Server, dir::AbstractString) = parse.(Int, readdir(server, joinpath(dir, ".versions")))
 
 """
     last_version(job::Job)
@@ -370,7 +341,7 @@ function rm_version!(job::Job, version::Int)
         error("Version $version does not exist.")
     end
 
-    HTTP.put(server, "/rm_version/" * abspath(job), version)    
+    rm(server, joinpath(job, ".versions", "$version"))    
     if version == job.version
         @warn "Job version is the same as the one to be removed, switching to last known version."
         lv = last_version(job)
@@ -394,11 +365,12 @@ function fill_execs(job::Job, server::Server)
         end
     end
 end
+
 function fill_execs(server::Server, execs::Vector)
     replacements = Dict{Exec, Exec}()
     for e in execs
-        if !Database.exists(server, e)
-            n = Database.name(server, e)
+        if !RemoteHPC.exists(server, e)
+            n = RemoteHPC.name(server, e)
             if n !== nothing
                 e.name = n
             else
@@ -417,30 +389,12 @@ function fill_execs(server::Server, execs::Vector)
                 end
             end
         else
-            replacements[e] = Database.load(server, e)
+            replacements[e] = load(server, e)
         end
     end
     return replacements
 end
-    
 
-########## ENVIRONMENTS #############
-"""
-    environment_from_jobscript([server::Server, name::String,] scriptpath::String)
-    
-Tries to extract an [`Environment`](@ref) from a jobscript.
-"""
-function environment_from_jobscript(server::Server, name::String, scriptpath::String)
-    server = Server(server)
-    tmp = tempname()
-    Servers.pull(server, scriptpath, tmp)
-    env = Jobs.environment_from_jobscript(tmp)
-    env.name = name
-    return env
-end
-
-######## OUTPUTS ############
- 
     
 """
     outputdata(job::Job; server = job.server, calcs::Vector{String}=String[])

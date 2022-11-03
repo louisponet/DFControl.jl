@@ -556,3 +556,22 @@ function rm_tmp_flags!(c::Calculation{QE})
     pop!(c, :outdir, nothing)
     return pop!(c, :nspin, nothing)
 end
+
+infile_outfile_str(c::Calculation) = "< $(c.infile) > $(c.outfile)"
+remote_calcs(job, c::Calculation) = [RemoteHPC.Calculation(c.exec, Calculations.infile_outfile_str(c), c.run)]
+
+hasflag(exec::Exec, s::Symbol) = haskey(exec.flags, s)
+
+#Wannier
+const WAN_EXECS = ["wannier90.x"]
+is_wannier_exec(exec::Exec) = exec.exec ∈ WAN_EXECS
+#QE
+const QE_EXECS = ["pw.x", "projwfc.x", "pp.x", "ld1.x", "ph.x", "pw2wannier90.x", "hp.x", "dos.x", "bands.x"]
+is_qe_exec(exec::Exec) = exec.exec ∈ QE_EXECS
+# Elk
+const ELK_EXECS = ["elk", "elk-omp"]
+is_elk_exec(exec::Exec) = exec.exec ∈ ELK_EXECS
+parseable_execs() = vcat(QE_EXECS, WAN_EXECS, ELK_EXECS, JULIA_EXECS)
+has_parseable_exec(l::String) = occursin(">", l) && any(occursin.(parseable_execs(), (l,)))
+isparseable(exec::Exec) = exec.exec ∈ parseable_execs()
+
