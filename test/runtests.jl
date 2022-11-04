@@ -1,8 +1,8 @@
 using DFControl, Test
-using DFControl.RemoteHPC
+using RemoteHPC: configure_local, julia_main
 
-tconfdir = tempname()
-# tconfdir = "/tmp/remotehpc"
+# tconfdir = tempname()
+tconfdir = "/tmp/remotehpc"
 if ispath(tconfdir)
     rm(tconfdir; recursive = true)
 end
@@ -23,8 +23,8 @@ end
 redirect_stdin(devnull) do
     redirect_stderr(devnull) do
         redirect_stdout(devnull) do
-            RemoteHPC.configure_local(; interactive = false)
-            return t = @async RemoteHPC.julia_main()
+            configure_local(; interactive = false)
+            return t = @async julia_main()
         end
     end
 end
@@ -35,7 +35,7 @@ end
 
 using UUIDs
 testdir = @__DIR__
-
+test_server = local_server()
 @time begin
     @testset "constants" begin
         include("constant_tests.jl")
@@ -45,9 +45,6 @@ testdir = @__DIR__
     end
     @testset "Setting defaults" begin
         include("defaults_tests.jl")
-    end
-    @testset "Database" begin
-        include("database_tests.jl")
     end
     @testset "Job from CIF file" begin
         include("jobfromcif_tests.jl")

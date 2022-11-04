@@ -211,34 +211,9 @@ function wan_parse_calculation(f::IO)
         end
         line = readline(f)
     end
-    return (flags=flags, data=data, atoms=atoms_block, cell=cell_block, projections=proj_block)
-end
-
-"""
-    wan_parse_calculation(file::String)
-
-Reads a `Calculation{Wannier90}` and the included `Structure` from a WANNIER90 calculation file.
-"""
-function wan_parse_calculation(file::String;
-                              exec = Exec(; exec = "wannier90.x"), kwargs...)
-    flags       = Dict{Symbol,Any}()
-    data        = InputData[]
-    atoms_block = nothing
-    cell_block  = nothing
-    proj_block  = nothing
-    if !occursin("\n", file) && ispath(file)
-        f = open(file, "r")
-        flags, data, atoms_block, cell_block, proj_block = wan_parse_calculation(f)
-        close(f)
-    else
-        b = IOBuffer(file)
-        flags, data, atoms_block, cell_block, proj_block = wan_parse_calculation(b)
-        close(b)
-    end
-        
     structure = extract_structure(cell_block, atoms_block, proj_block,
                                   get(flags, :spinors, false))
-    return (flags = flags, data = data, structure = structure)
+    return (flags=flags, data=data, structure = structure)
 end
 
 function wan_parse_array_value(eltyp, value_str)

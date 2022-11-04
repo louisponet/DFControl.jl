@@ -7,6 +7,7 @@ using ..Calculations: Calculation
 using ..Structures
 using ..Utils
 import RemoteHPC
+using RemoteHPC: Server, isalive
 
 include("job.jl")
 include("versioning.jl")

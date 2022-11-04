@@ -1,10 +1,18 @@
 module Utils
     using Dates
+    using RemoteHPC: Server
 #---------------------Parse utils-----------------------------------------------------#
 """
 Searches a directory for all files containing the key.
 """
 searchdir(path::String, key) = joinpath.((path,), filter(x -> occursin(key, x), readdir(path)))
+function searchdir(server::Server, path::String, key)
+    if server.domain == "localhost"
+        return searchdir(path, key)
+    else
+        return joinpath.((path,), filter(x -> occursin(key, x), readdir(server, path)))
+    end
+end
 export searchdir
 
 """

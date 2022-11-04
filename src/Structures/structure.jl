@@ -287,13 +287,22 @@ function polyhedron(at::Atom, str::Structure, order::Int)
     return polyhedron(at, create_supercell(str, -1:1, -1:1, -1:1).atoms, order)
 end
 
-function set_pseudos!(structure::Structure, pseudos::Dict)
+function set_pseudos!(structure::Structure, pseudos::Dict, fuzzy="")
     for at in structure.atoms
         pseudo = get(pseudos, at.element.symbol, nothing)
-        if pseudo === nothing
+        if pseudo === nothing || isempty(pseudo)
             @warn "Pseudo for $(at.name) not found."
         else
-            at.pseudo = pseudo
+            if length(pseudo) > 1
+                id = findfirst(x->occursin(fuzzy, x.path), pseudo)
+                if id === nothing
+                    at.pseudo = pseudo[1]
+                else
+                    at.pseudo = pseudo[id]
+                end
+            else
+                at.pseudo = pseudo[1]
+            end
         end
     end
 end

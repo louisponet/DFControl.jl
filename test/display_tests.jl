@@ -3,10 +3,9 @@ using DFControl
 testjobpath = joinpath(testdir, "testassets", "test_job")
 
 @testset "Basic printing" begin
-    job = load(Job(testjobpath))
+    job = load(test_server, Job(testjobpath))
     show(job.calculations[1])
     show(job.calculations[1].data[1])
-    show(DFC.Calculations.qe_execflag(:nosym))
     show(outputdata(job)["scf"][:bands][1])
     show(job.structure)
     show(job.structure.atoms[1])

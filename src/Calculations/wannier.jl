@@ -180,9 +180,7 @@ function remote_calcs(job, _calculation::Calculation{Wannier90})
     @assert nscf !== nothing "No NSCF found to generate pw2wannier90 from."
     @assert eltype(nscf) == QE "Only QE based Wannier90 jobs are supported."
 
-    pw2wan_exec = Exec(nscf.exec, exec="pw2wannier90.x")
-    pw2wan_exec.name = ""
-    empty!(pw2wan_exec.flags)
+    pw2wan_exec = Exec(name = "", dir=nscf.exec.dir, exec="pw2wannier90.x", modules=nscf.exec.modules)
 
     preprocess   = get(_calculation, :preprocess, false)
     return [RemoteHPC.Calculation(_calculation.exec, "-pp $filename > $(_calculation.outfile)", preprocess || should_run),

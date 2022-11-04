@@ -2,7 +2,7 @@ name = "DFControl"
 uuid = "1e31e15d-4957-550d-a244-318eced754ae"
 authors = ["Louis Ponet <louisponet@gmail.com>"]
 repo = "https://github.com/louisponet/DFControl.jl.git"
-version = "0.5.8"
+version = "0.5.9"
 
 [deps]
 ANSIColoredPrinters = "a4c015fc-c6ff-483c-b24f-f7ea428134e9"
@@ -57,6 +57,7 @@ StructTypes = "^1"
 ThreadPools = "^2"
 UnitfulAtomic = "^1"
 julia = "^1.6"
+RemoteHPC = "^0.1"
 
 [extras]
 BinDeps = "9e28174c-4ba2-5203-b857-d8d62c4213ee"

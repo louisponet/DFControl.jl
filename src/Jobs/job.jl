@@ -7,8 +7,6 @@ const TEMP_CALC_DIR = "outputs"
     Job(name::String, structure::Structure;
           calculations      ::Vector{Calculation} = Calculation[],
           dir               ::String = pwd(),
-          header            ::Vector{String} = getdefault_jobheader(),
-          metadata          ::Dict = Dict(),
           version           ::Int = last_job_version(dir),
           copy_temp_folders ::Bool = false, 
           server            ::String = getdefault_server(),
@@ -18,8 +16,6 @@ A [`Job`](@ref) embodies a set of [`Calculations`](@ref Calculation) to be ran i
 ## Keywords/further attributes
 - `calculations`: calculations to calculations that will be run sequentially.
 - `dir`: the directory where the calculations will be run.
-- `header`: lines that will be pasted at the head of the job script, e.g. exports `export OMP_NUM_THREADS=1`, slurm settings`#SBATCH`, etc.
-- `metadata`: various additional information, will be saved in `.metadata.jld2` in the `dir`.
 - `version`: the current version of the job.
 - `copy_temp_folders`: whether or not the temporary directory associated with intermediate calculation results should be copied when storing a job version. *CAUTION* These can be quite large.
 - `server`: [`Server`](@ref) where to run the [`Job`](@ref).
@@ -41,19 +37,18 @@ The `kwargs...` will be passed to the [`Job`](@ref) constructor.
     structure::Structure = Structure()
     calculations::Vector{Calculation} = Calculation[]
     dir::String = pwd()
-    header::Vector{String} = String[]
-    version::Int = -1
+    version::Int = 0
     copy_temp_folders::Bool = false
     server::String = gethostname()
     environment::String = ""
-    function Job(name, structure, calculations, dir, header, version,
+    function Job(name, structure, calculations, dir, version,
                  copy_temp_folders, server, environment)
         if !isempty(dir)
             if dir[end] == '/'
                 dir = dir[1:end-1]
             end
         end
-        out = new(name, structure, calculations, dir, header, version,
+        out = new(name, structure, calculations, dir, version,
                   copy_temp_folders, server, environment)
         return out
     end
@@ -109,13 +104,7 @@ function Base.pop!(job::Job, name::String)
     return out
 end
 
-function Utils.searchdir(job::Job, str::AbstractString)
-    if runslocal(job)
-        return searchdir(abspath(job), str)
-    else
-        return searchdir(Server(job.server), abspath(job), str)
-    end
-end
+Utils.searchdir(job::Job, str::AbstractString) = searchdir(Server(job.server), abspath(job), str)
 
 function Base.setindex!(job::Job, value, key::Symbol)
     for c in job.calculations
@@ -222,26 +211,6 @@ function set_flow!(job::Job, should_runs...)
     return job
 end
 
-"""
-    set_headerword!(job::Job, old_new::Pair{String, String})
-
-Replaces the specified word in the header with the new word.
-"""
-function set_headerword!(job::Job, old_new::Pair{String,String}; print = true)
-    for (i, line) in enumerate(job.header)
-        if occursin(first(old_new), line)
-            job.header[i] = replace(line, old_new)
-            s = """Old line:
-            $line
-            New line:
-            $(job.header[i])
-            """
-            print && (@info s)
-        end
-    end
-    return job
-end
-
 #TODO
 """
     set_wanenergies!(job::Job, nscf::Calculation{QE}, projwfc::Calculation{QE}, threshold::Real; Epad=5.0)
@@ -292,25 +261,23 @@ for (f, strs) in zip((:cp, :mv), (("copy", "Copies"), ("move", "Moves")))
         `job.copy_temp_folders` and $($(strs[1])) also the temporary calculation directories.
         The `kwargs...` are passed to `Base.$($f)`.
         """
-        function Base.$f(job::Job, dest::AbstractString; all = false, temp = false,
+        function Base.$f(job::Job, dest::AbstractString; 
                          kwargs...)
-            if !ispath(dest)
-                mkpath(dest)
+            server = Server(job.server)
+            if !ispath(server, dest)
+                mkpath(server, dest)
             end
-            for file in readdir(job)
-                if !all
-                    if file == VERSION_DIR_NAME
-                        continue
-                    elseif file == TEMP_CALC_DIR && !(temp || job.copy_temp_folders)
-                        continue
-                    elseif islink(joinpath(job, file))
-                        continue
-                    end
+            for file in readdir(server, job.dir)
+                p = joinpath(job, file)
+                if file == VERSION_DIR_NAME
+                    continue
+                elseif file == TEMP_CALC_DIR && !(temp || job.copy_temp_folders)
+                    continue
                 end
                 if joinpath(job, file) == abspath(dest)
                     continue
                 end
-                $f(joinpath(job, file), joinpath(dest, file); kwargs...)
+                $f(server, p, joinpath(dest, file); kwargs...)
             end
         end
     end
