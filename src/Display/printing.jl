@@ -37,7 +37,7 @@ function df_show(io::IO, job::Job)
     fs[2] = Jobs.main_job_dir(job)
     fns = string.(fieldns)
     push!(fns, "server")
-    if Servers.isalive(server) 
+    if isalive(server) 
         push!(fs, "$(job.server), alive")
     else
         push!(fs, "$(job.server), not alive")
@@ -45,7 +45,7 @@ function df_show(io::IO, job::Job)
         
     
     push!(fns, "versions")
-    if Servers.isalive(server)
+    if isalive(server)
         versions = Client.versions(job)
         push!(fs, join(string.(versions), ", "))
         timestamp = Client.submission_time(job)
@@ -93,7 +93,7 @@ function df_show(io::IO, job::Job)
         dfprintln(io, crayon"cyan", "|", reset)
     end
     is = job.calculations
-    last = Servers.isalive(server) && ispath(server, joinpath(Jobs.main_job_dir(job), "job.sh")) ? Client.last_running_calculation(job) : -1
+    last = isalive(server) && ispath(server, joinpath(Jobs.main_job_dir(job), "job.sh")) ? Client.last_running_calculation(job) : -1
     if !isempty(is)
         dfprintln(io, crayon"cyan", line, reset)
         dfprintln(io, reset, "(", crayon"green", "scheduled", reset, ", ", crayon"red",

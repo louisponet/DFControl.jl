@@ -3,18 +3,17 @@ module FileIO
 using DelimitedFiles, Dates, LinearAlgebra, UnitfulAtomic, CodeTracking
 using UnitfulAtomic.Unitful: ustrip, uconvert
 using UnitfulAtomic: bohr
+using RemoteHPC: Exec
 using ..Utils
 using ..Calculations
+using ..Calculations: Calculation
 using ..Structures
 using ..Structures: Pseudo
 using ..Jobs
-using ..Database
 using ..DFControl: Point,Point3, Vec3, SVector, Mat3, Mat4, Band, TimingData
-using ..Servers
 
 include("qe.jl")
 include("wannier.jl")
-include("job.jl")
 include("julia.jl")
 
 function parse_file(f::IO, parse_funcs::Vector{<:Pair{String}};out = Dict{Symbol,Any}(),
@@ -142,5 +141,14 @@ function outputdata(calculation::Calculation, files...;
                                             extra_parse_funcs) : t
 end
 
+function calculationparser(exec::Exec)
+    if Calculations.is_qe_exec(exec)
+        qe_parse_calculation
+    elseif Calculations.is_wannier_exec(exec)
+        wan_parse_calculation
+    elseif Calculations.is_julia_exec(exec)
+        julia_parse_calculation
+    end
+end
 
 end

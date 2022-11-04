@@ -6,7 +6,7 @@ using ..Jobs
 using ..Client
 using ..DFControl: Band, TimingData
 using ..Utils
-using ..Servers
+using RemoteHPC: Server, isalive
 
 include("printing.jl")
 include("pluto.jl")

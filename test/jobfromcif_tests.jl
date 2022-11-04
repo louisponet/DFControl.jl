@@ -10,9 +10,9 @@ testjobpath = joinpath(testdir, "testassets", "test_job")
     name = "Ni"
     dir = testjobpath
     bin_dir = joinpath(homedir(), "Software/qe/bin")
-    pw_exec = Exec("pw", "pw.x", bin_dir, :nk => 4)
+    pw_exec = load(test_server, Exec("pw"))
+    pw_exec.flags["nk"] = 4
     @test !isempty(pw_exec.flags)
-    pseudoset = :test
 
     str = Structure(joinpath(testdir, "testassets/Ni.cif"))
 
@@ -26,11 +26,11 @@ testjobpath = joinpath(testdir, "testassets", "test_job")
                                                         [4, 4, 4, 1, 1, 1])])]
     job = Job(name, str, calculations, :ecutwfc => 40.0, :occupations => "smearing", :degauss=>0.01, :conv_thr => 1e-6, :nbnd => 18;
                 #kwargs
-                dir = dir, server=gethostname())
+                dir = dir, server=test_server.name)
 
 
-    set_pseudos!(job, :test)
-    job.environment = "test_default"
+    set_pseudos!(job, load(test_server, PseudoSet("test")))
+    job.environment = "test"
 
     set_kpoints!(job["scf"], (6, 6, 6, 1, 1, 1))
 

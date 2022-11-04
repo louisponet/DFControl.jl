@@ -2,4 +2,9 @@ using DFControl, Test
 
 configure_pseudoset(test_server,"test", joinpath(testdir, "testassets", "pseudos"))
 
-save(test_server, DFControl.Client.environment_from_jobscript(test_server, "test_default", joinpath(testdir, "testassets", "reference_job", "job.sh")))
+
+e = Environment("test", Dict("N" => 1, "time" => "00:01:01"),
+                            Dict("OMP_NUM_THREADS" => 1), "", "",
+                            Exec(; name = "srun", exec = "srun"))
+save(test_server, e)
+save(test_server, Exec(; name = "pw", exec = "pw.x"))

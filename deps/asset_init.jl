@@ -32,66 +32,6 @@ function fort2julia(f_type)
 end
 indentabs(indent) = prod(["\t" for i in 1:indent])
 
-open(joinpath(@__DIR__, "mpirunflags.jl"), "w") do wf
-    write(wf, "_MPI_FLAGS() = ExecFlag[\n")
-    # writefbodyline(1, "flags = ")
-    open(joinpath(@__DIR__, "..", "assets", "mpirun_man.txt"), "r") do f
-        line = readline(f)
-        while line != "OPTIONS"
-            line = readline(f)
-        end
-        while line != "Environment Variables"
-            line = strip(readline(f))
-            if !isempty(line) && line[1] == '-'
-                name        = ""     #--
-                symbols     = Symbol[] #-
-                type        = Nothing
-                description = ""
-                sline       = strip.(split(line), ',')
-                for s in sline
-                    if s[2] == '-' #--npernode
-                        name = strip(s, '-')
-                    elseif occursin('<', s) # <#persocket>
-                        type = if occursin("#", s)
-                            occursin(',', s) ? Vector{Int} : Int
-                        elseif occursin("ppr", s) #ppr:N:<object>
-                            Pair{Int,String}
-                        else
-                            occursin(',', s) ? Vector{String} : String
-                        end
-                        break
-                    else  #-np
-                        push!(symbols, Symbol(strip(s, '-')))
-                    end
-                end
-                line = strip(readline(f))
-                while !isempty(line)
-                    description *= join(split(line), " ") * "\n" * indentabs(2)
-                    line = strip(readline(f))
-                end
-                description = replace(strip(description), "\"" => "'")
-                if name != "" && isempty(symbols)
-                    symbols = [Symbol(name)]
-                end
-                if type <: Number
-                    val = zero(type)
-                elseif type <: Pair
-                    val = 0 => ""
-                elseif type === Nothing
-                    val = nothing
-                else
-                    val = "\"\""
-                end
-                for symbol in symbols
-                    writefbodyline(wf, 1,
-                                   """ExecFlag(Symbol("$symbol"), "$name", "$description", $val, 1),""")
-                end
-            end
-        end
-    end
-    return writefbodyline(wf, 0, "]")
-end
-
 open(joinpath(@__DIR__, "wannier90flags.jl"), "w") do wf
     write(wf, "_WAN_FLAGS() = Dict{Symbol, Type}(\n")
     open(joinpath(@__DIR__, "..", "assets", "calculations", "wannier",

@@ -1,76 +1,63 @@
 using ..Structures: Pseudo
-function pseudos(server::Server, pseudoset, atsyms::Vector{Symbol}, fuzzy = "")
-    pseudo_paths = list_pseudoset(server, pseudoset, fuzzy)
-    ps = Dict{Symbol,Pseudo}()
-    for a in atsyms
-        path = get(pseudo_paths, a, nothing)
-        if path === nothing
-            error("No pseudo for atom $a found in set $pseudoset.")
+
+Base.@kwdef struct PseudoSet <: RemoteHPC.Storable
+    name::String
+    pseudos::Dict{Symbol, Vector{Pseudo}} = Dict{Symbol, Vector{Pseudo}}()
+end
+PseudoSet(name::String; kwargs...) = PseudoSet(; name=name, kwargs...)
+
+RemoteHPC.storage_directory(pseudos::PseudoSet) = "pseudos"
+
+function set_server!(set::PseudoSet, s::Server)
+    for ps in values(set.pseudos)
+        for p in ps
+            p.server = s.name
         end
-        ps[a] = Pseudo(server.name, path, "")
     end
-    return ps
+    return set
 end
-
-function list_pseudoset(server::Server, pseudoset, fuzzy="")
-    resp = HTTP.get(server, "/pseudos/$pseudoset", fuzzy)
-    if resp.status == 204
-        error("No pseudoset $pseudoset found on Server $(server.name). Please first configure it using configure_pseudoset.")
+    
+function RemoteHPC.load(server, s::PseudoSet)
+    uri = RemoteHPC.storage_uri(s)
+    if RemoteHPC.exists(server, s) # asking for a stored item
+        set = JSON3.read(JSON3.read(HTTP.get(server, uri).body, String), PseudoSet)
+        return set_server!(set, server)
+    else
+        try
+            return JSON3.read(HTTP.get(server, HTTP.URI(path=splitdir(uri.path)[1])).body, Vector{String})
+        catch
+            error("No PseudoSets found. Use `configure_pseudoset` first.")
+        end
     end
-    return JSON3.read(resp.body, Dict{Symbol,String})
 end
 
 """
-    list_pseudosets(server::Server)
-
-Lists the pseudosets that have previously been set up.
-"""
-function list_pseudosets(server::Server)
-    return JSON3.read(HTTP.get(server, "/pseudos").body, Vector{String})
-end
-
-"""
-    configure_pseudoset(server::Server, set_name::String, dir::String)
+    configure_pseudoset(set_name::String, dir::String)
 
 Reads the specified `dir` and sets up the pseudos for `set`.
 """
 function configure_pseudoset(server::Server, set_name::String, dir::String)
-    p = isabspath(dir) ? dir : joinpath(server, dir)
-    n_pseudos = JSON3.read(HTTP.post(server, "/configure_pseudoset/" * p, 
-                                     set_name).body, Int)
-    @info "Configured $n_pseudos pseudos on Server $(server.name), found in dir $p."
+    files = readdir(server, dir)
+    pseudos = Dict{Symbol,Vector{Pseudo}}([el.symbol => Pseudo[]
+                                           for el in Structures.ELEMENTS])
+    for pseudo_string in files
+        element = Symbol(titlecase(String(split(split(replace(pseudo_string, "-" => "_"), ".")[1], "_")[1])))
+        if haskey(pseudos, element)
+            push!(pseudos[element], Pseudo("", joinpath(dir, pseudo_string), ""))
+        end
+    end
+
+    set = PseudoSet(set_name, pseudos)
+    save(server, set)
+    set_server!(set, server)
+    return set
 end
 
-"""
-    rm_pseudoset!(server::Server, set_name::String)
-
-Removes the pseudo set from the server.
-"""
-function rm_pseudoset!(server::Server, set_name::String)
-    return HTTP.put(server, "/rm_pseudos", set_name)
-end
-#---#
-
-"""
-    set_pseudos!(job::Job, set::String; server=job.server, specifier::String="", kwargs...)
-    set_pseudos!(structure::Structure, set::String; server="localhost", specifier::String="", kwargs...)
-
-Sets the pseudopotentials of the atoms inside the `structure` (or `job.structure`) to the ones of `set`.
-`specifier` can be specified as a fuzzy match to select a specific pseudos if multiple pseudopotentials exist in the set.
-Example:
-```
-set_pseudos!(job, "pbesol", specifier="rrkjus")
-```
-will select the pseudo file that contains "rrkjus" in the filename.
-
-The pseudos will be searched for in the `server`.
-"""
-Structures.set_pseudos!(job::Job, args...; server=job.server,kwargs...) =
-    Structures.set_pseudos!(job.structure, args...; server=server, kwargs...)
+Structures.set_pseudos!(job::Job, set::PseudoSet, args...) = 
+    Structures.set_pseudos!(job.structure, set, args...)
     
-function Structures.set_pseudos!(str::Structures.Structure, set; server = gethostname(), specifier = "", kwargs...)
-    atsyms = unique(map(x -> x.element.symbol, str.atoms))
-    return Structures.set_pseudos!(str, pseudos(Server(server), set, atsyms, specifier);
-                                   kwargs...)
+function Structures.set_pseudos!(str::Structures.Structure, set::PseudoSet, args...)
+    @assert !isempty(set.pseudos) "Error, no pseudos in pseudoset, load it first."
+    return Structures.set_pseudos!(str, set.pseudos, args...)
 end
     
