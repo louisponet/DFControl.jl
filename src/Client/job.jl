@@ -155,7 +155,7 @@ function RemoteHPC.save(job::Job, workflow = nothing; versioncheck=true, kwargs.
         job.version = lastver + 1
         @info "Job version: $(curver) => $(job.version)."
     end
-
+    job.dir = Jobs.main_job_dir(job)
     remote_calcs = RemoteHPC.Calculation[]
     for c in job.calculations
         append!(remote_calcs, Calculations.remote_calcs(job, c))

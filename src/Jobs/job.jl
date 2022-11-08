@@ -187,7 +187,7 @@ function main_job_dir(dir::AbstractString)
     d = split(dir, Jobs.VERSION_DIR_NAME)[1]
     return d[end] == '/' ? d[1:end-1] : d
 end
-main_job_dir(job::Job) = isabspath(job.dir) ? main_job_dir(job.dir) : main_job_dir(joinpath(Server(job), job.dir))
+main_job_dir(job::Job) = isabspath(job.dir) ? main_job_dir(job.dir) : main_job_dir(joinpath(Server(job.server), job.dir))
 
 """
     set_flow!(job::Job, should_runs::Pair{String, Bool}...)
@@ -271,7 +271,7 @@ for (f, strs) in zip((:cp, :mv), (("copy", "Copies"), ("move", "Moves")))
                 p = joinpath(job, file)
                 if file == VERSION_DIR_NAME
                     continue
-                elseif file == TEMP_CALC_DIR && !(temp || job.copy_temp_folders)
+                elseif file == TEMP_CALC_DIR && !job.copy_temp_folders
                     continue
                 end
                 if joinpath(job, file) == abspath(dest)
