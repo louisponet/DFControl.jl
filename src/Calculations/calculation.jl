@@ -558,7 +558,7 @@ function rm_tmp_flags!(c::Calculation{QE})
 end
 
 infile_outfile_str(c::Calculation) = "< $(c.infile) > $(c.outfile)"
-remote_calcs(job, c::Calculation) = [RemoteHPC.Process(c.exec, Calculations.infile_outfile_str(c), c.run)]
+remote_calcs(job, c::Calculation) = [RemoteHPC.Calculation(c.exec, Calculations.infile_outfile_str(c), c.run)]
 
 hasflag(exec::Exec, s::Symbol) = haskey(exec.flags, s)
 

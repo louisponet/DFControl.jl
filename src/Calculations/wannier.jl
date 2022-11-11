@@ -172,7 +172,7 @@ function Emin_from_projwfc(structure::Structure, states, bands::Vector{Band},
 end
 
 function remote_calcs(job, _calculation::Calculation{Wannier90})
-    calcs = RemoteHPC.Process[]
+    calcs = RemoteHPC.Calculation[]
     filename   = _calculation.infile
     should_run = _calculation.run
     nscf = getfirst(x -> Calculations.isnscf(x), job.calculations)
@@ -183,7 +183,7 @@ function remote_calcs(job, _calculation::Calculation{Wannier90})
     pw2wan_exec = Exec(name = "", dir=nscf.exec.dir, exec="pw2wannier90.x", modules=nscf.exec.modules)
 
     preprocess   = get(_calculation, :preprocess, false)
-    return [RemoteHPC.Process(_calculation.exec, "-pp $filename > $(_calculation.outfile)", preprocess || should_run),
-            RemoteHPC.Process(pw2wan_exec, "-pd .true. < pw2wan_$(splitext(filename)[1]).in > pw2wan_$(splitext(filename)[1]).out", preprocess || should_run),
-            RemoteHPC.Process(_calculation.exec, "$filename > $(_calculation.outfile)", should_run)]
+    return [RemoteHPC.Calculation(_calculation.exec, "-pp $filename > $(_calculation.outfile)", preprocess || should_run),
+            RemoteHPC.Calculation(pw2wan_exec, "-pd .true. < pw2wan_$(splitext(filename)[1]).in > pw2wan_$(splitext(filename)[1]).out", preprocess || should_run),
+            RemoteHPC.Calculation(_calculation.exec, "$filename > $(_calculation.outfile)", should_run)]
 end
