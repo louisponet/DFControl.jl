@@ -314,22 +314,17 @@ function fill_execs(server::Server, execs::Vector)
     replacements = Dict{Exec, Exec}()
     for e in execs
         if !RemoteHPC.exists(server, e)
-            n = RemoteHPC.name(server, e)
-            if n !== nothing
-                e.name = n
-            else
-                try
-                    save(server, e)
-                catch
-                    possibilities = load(server, e)
-                    if length(possibilities) == 1
-                        replacements[e] = load(server, Exec(possibilities[1]))
-                    else
-                        error("""
-                        Exec(\"$(e.name)\") not found on Server(\"$(server.name)\").
-                        Either save it, or choose one of the possible substitutions:
-                        $possibilities""")
-                    end
+            try
+                save(server, e)
+            catch
+                possibilities = load(server, e)
+                if length(possibilities) == 1
+                    replacements[e] = load(server, Exec(possibilities[1]))
+                else
+                    error("""
+                    Exec(\"$(e.name)\") not found on Server(\"$(server.name)\").
+                    Either save it, or choose one of the possible substitutions:
+                    $possibilities""")
                 end
             end
         else

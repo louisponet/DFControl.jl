@@ -80,98 +80,94 @@ function extract_structure(cell_block, atoms_block, projections_block,
     return Structure(Mat3(cell), atoms)
 end
 
-function wan_parse_calculation(f::IO)
+function wan_parse_calculation(file)
+    if file isa IO || !occursin("\n", file)
+        contents = readlines(file)
+    else
+        contents = split(file, "\n")
+    end
+    lines = map(contents) do l
+        id = findfirst(isequal('!'), l)
+        if id !== nothing
+            l[1:id]
+        else
+            l
+        end
+    end |> x -> filter(!isempty, x)
+     
     flags       = Dict{Symbol,Any}()
     data        = InputData[]
     atoms_block = nothing
     cell_block  = nothing
     proj_block  = nothing
-    line        = readline(f)
-    while !eof(f)
-        @label start_label
-
-        if occursin("!", line) ||
-           line == "" ||
-           occursin("end", lowercase(line)) ||
-           occursin("#", line)
-            line = readline(f)
-            continue
-        end
-
+    i = 1
+    while i < length(lines)
+        line = lines[i]
         if occursin("begin", lowercase(line))
             block_name = Symbol(split(lowercase(line))[end])
 
             if block_name == :projections
                 proj_dict = Tuple{Symbol,Array{String,1}}[]
-                line      = readline(f)
+                i += 1
+                line = lines[i]
                 while !occursin("end", lowercase(line))
-                    if occursin("!", line) || line == ""
-                        line = readline(f)
-                        continue
-                    end
                     if occursin("random", line)
                         proj_block = InputData(:projections, :random, nothing)
-                        line = readline(f)
-                        break
                     else
                         split_line  = strip_split(line, ':')
                         atom        = Symbol(split_line[1])
                         projections = [proj for proj in strip_split(split_line[2], ';')]
                         push!(proj_dict, (atom, projections))
-                        line = readline(f)
                     end
+                    i += 1
+                    line = lines[i]
                 end
                 proj_block = InputData(:projections, :none, proj_dict)
-                @goto start_label
 
             elseif block_name == :kpoint_path
-                line = readline(f)
+                i += 1
+                line = lines[i]
                 k_path_array = Array{Tuple{Symbol,Array{Float64,1}},1}()
                 while !occursin("end", lowercase(line))
-                    if occursin("!", line) || line == ""
-                        line = readline(f)
-                        continue
-                    end
                     split_line = split(line)
                     push!(k_path_array,
                           (Symbol(split_line[1]), parse.(Float64, split_line[2:4])))
                     push!(k_path_array,
                           (Symbol(split_line[5]), parse.(Float64, split_line[6:8])))
-                    line = readline(f)
+                    i += 1
+                    line = lines[i]
                 end
                 push!(data, InputData(:kpoint_path, :none, k_path_array))
-                @goto start_label
 
             elseif block_name == :unit_cell_cart
-                line = readline(f)
+                i += 1
+                line = lines[i]
                 if length(split(line)) == 1
                     option = Symbol(strip(lowercase(line)))
-                    line = readline(f)
+                    i += 1
+                    line = lines[i]
                 else
                     option = :ang
                 end
                 cell_param = Matrix{Float64}(undef, 3, 3)
                 for i in 1:3
                     cell_param[i, :] = parse_line(Float64, line)
-                    line = readline(f)
+                    i += 1
+                    line = lines[i]
                 end
                 cell_block = InputData(:unit_cell_cart, option, Mat3(cell_param))
                 # line = readline(f)
-                @goto start_label
 
             elseif block_name == :atoms_frac || block_name == :atoms_cart
-                line   = readline(f)
+                i += 1
+                line   = lines[i]
                 atoms  = Dict{Symbol,Array{Point3{Float64},1}}()
                 option = :ang
                 while !occursin("end", lowercase(line))
-                    if occursin("!", line) || line == ""
-                        line = readline(f)
-                        continue
-                    end
                     if length(split(line)) == 1
                         option = Symbol(strip(line))
-                        line = readline(f)
-                        continue
+                        i += 1
+                        line = lines[i]
                     end
                     split_line = strip_split(line)
                     atom       = Symbol(split_line[1])
@@ -181,24 +177,20 @@ function wan_parse_calculation(f::IO)
                     else
                         push!(atoms[atom], position)
                     end
-                    line = readline(f)
+                    i += 1
+                    line = lines[i]
                 end
                 atoms_block = InputData(block_name, option, atoms)
-                @goto start_label
-
             elseif block_name == :kpoints
-                line     = readline(f)
+                i += 1
+                line = lines[i]
                 k_points = Array{NTuple{3,Float64},1}()
                 while !occursin("end", lowercase(line))
-                    if line == ""
-                        line = readline(f)
-                        continue
-                    end
                     push!(k_points, (parse_line(Float64, line)...,))
-                    line = readline(f)
+                    i += 1
+                    line = lines[i]
                 end
                 push!(data, InputData(:kpoints, :none, k_points))
-                @goto start_label
             end
 
         else
@@ -209,7 +201,8 @@ function wan_parse_calculation(f::IO)
                 flags[flag] = val
             end
         end
-        line = readline(f)
+        i += 1
+        line = lines[i]
     end
     structure = extract_structure(cell_block, atoms_block, proj_block,
                                   get(flags, :spinors, false))

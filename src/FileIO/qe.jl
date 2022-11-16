@@ -1092,6 +1092,19 @@ function qe_parse_flags(inflags, nat::Int=0)
                         flags[sym] = zeros(7, 7, 4, nat)
                     end
                 end
+                for dim in 1:length(ids)
+                    id = ids[dim]
+                    if id > size(flags[sym], dim)
+                        old = flags[sym]
+                        dims = [size(old)...]
+                        dims[dim] = id
+                        new = zeros(dims...)
+                        for d in CartesianIndices(old)
+                            new[d] = old[d]
+                        end
+                        flags[sym] = new
+                    end
+                end
                 flags[sym][ids...] = parsed_val
             end
         end
