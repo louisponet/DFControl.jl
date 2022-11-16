@@ -87,9 +87,9 @@ function wan_parse_calculation(file)
         contents = split(file, "\n")
     end
     lines = map(contents) do l
-        id = findfirst(isequal('!'), l)
+        id = findfirst(x->isequal('!',x) ||isequal('#',x) , l)
         if id !== nothing
-            l[1:id]
+            l[1:id-1]
         else
             l
         end
@@ -150,13 +150,12 @@ function wan_parse_calculation(file)
                     option = :ang
                 end
                 cell_param = Matrix{Float64}(undef, 3, 3)
-                for i in 1:3
-                    cell_param[i, :] = parse_line(Float64, line)
+                for j in 1:3
+                    cell_param[j, :] = parse_line(Float64, line)
                     i += 1
                     line = lines[i]
                 end
                 cell_block = InputData(:unit_cell_cart, option, Mat3(cell_param))
-                # line = readline(f)
 
             elseif block_name == :atoms_frac || block_name == :atoms_cart
                 i += 1
@@ -202,7 +201,6 @@ function wan_parse_calculation(file)
             end
         end
         i += 1
-        line = lines[i]
     end
     structure = extract_structure(cell_block, atoms_block, proj_block,
                                   get(flags, :spinors, false))

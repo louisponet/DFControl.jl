@@ -1,8 +1,8 @@
 using DFControl, Test
 using RemoteHPC: configure_local, julia_main
 
-# tconfdir = tempname()
-tconfdir = "/tmp/remotehpc"
+# tconfdir = "/tmp/remotehpc"
+tconfdir = tempname()
 if ispath(tconfdir)
     rm(tconfdir; recursive = true)
 end

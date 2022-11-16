@@ -40,18 +40,6 @@ using Documenter
 using Literate
 
 using UUIDs
-s = Server(name=gethostname(), port=8080, domain = "localhost", scheduler = Servers.Bash(), uuid = string(uuid4()), julia_exec=Sys.BINDIR * "/julia")
-if !exists(s)
-    Servers.initialize_config_dir(s)
-    save(s)
-else
-    s = Servers.local_server()
-end
-if !isalive(s)
-    @info "Starting server here"
-    Servers.initialize_config_dir(s)
-    @async DFC.Resource.run()
-end
 
 # Collect examples from the example index (src/index.md)
 # The chosen examples are taken from the examples/ folder to be processed by Literate
@@ -77,6 +65,43 @@ for (dir, directories, files) in walkdir(SRCPATH)
         end
     end
 end
+
+using RemoteHPC: configure_local, julia_main
+import RemoteHPC: config_path
+if !isempty(literate_files)
+    
+    tconfdir = tempname()
+    if ispath(tconfdir)
+        rm(tconfdir; recursive = true)
+    end
+    config_path(p...) = joinpath(tconfdir, p...)
+
+    paths = ["jobs",
+         "logs/jobs",
+         "logs/runtimes",
+         "storage/servers",
+         "storage/execs",
+         "storage/environments"]
+         
+    for p in paths
+        mkpath(config_path(p))
+    end
+
+    redirect_stdin(devnull) do
+        redirect_stderr(devnull) do
+            redirect_stdout(devnull) do
+                configure_local(; interactive = false)
+                return t = @async julia_main()
+            end
+        end
+    end
+
+    while !isalive(local_server())
+        sleep(0.1)
+    end
+end
+
+
 
 # Run Literate on them all
 for file in literate_files
