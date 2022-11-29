@@ -66,8 +66,8 @@ for (dir, directories, files) in walkdir(SRCPATH)
     end
 end
 
-using RemoteHPC: configure_local, julia_main
-import RemoteHPC: config_path
+using DFControl.RemoteHPC: configure_local, julia_main
+import DFControl.RemoteHPC: config_path
 if !isempty(literate_files)
     
     tconfdir = tempname()
