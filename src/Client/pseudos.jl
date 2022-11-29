@@ -23,10 +23,12 @@ function RemoteHPC.load(server, s::PseudoSet)
         set = JSON3.read(JSON3.read(HTTP.get(server, uri).body, String), PseudoSet)
         return set_server!(set, server)
     else
-        try
-            return JSON3.read(HTTP.get(server, HTTP.URI(path=splitdir(uri.path)[1])).body, Vector{String})
-        catch
-            error("No PseudoSets found. Use `configure_pseudoset` first.")
+        res = HTTP.get(server, HTTP.URI(path="/storage/", query= Dict("path"=> splitdir(HTTP.queryparams(uri)["path"])[1])))
+        if !isempty(res.body)
+            return JSON3.read(res.body, Vector{String})
+        else
+            @warn "No PseudoSets found. Use `configure_pseudoset` first."
+            return String[]
         end
     end
 end
