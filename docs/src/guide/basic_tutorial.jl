@@ -7,17 +7,6 @@
 # starting from a cif file specifying the structure.
 
 using DFControl
-using UUIDs#hide
-s = Server(name=gethostname(), port=8080, domain = "localhost", scheduler = Servers.Bash(), uuid = string(uuid4()), julia_exec=Sys.BINDIR * "/julia")#hide
-if !exists(s)#hide
-    save(s)#hide
-    Servers.initialize_config_dir(s)#hide
-else#hide
-    s = Servers.local_server()#hide
-end#hide
-if !isalive(s)#hide
-    @async DFC.Resource.run()#hide
-end#hide
 
 # First we download the cif file, extract the `Structure` and assign the right pseudos to it.
 # In this case Si (F d -3 m :1) from http://www.crystallography.net/cod/9011998.cif
@@ -26,7 +15,7 @@ cif_file = Downloads.download("http://www.crystallography.net/cod/9011998.cif", 
 
 structure = Structure(cif_file)
 if false#hide
-set_pseudos!(structure, "pbesol")
+set_pseudos!(structure, load(local_server(), PseudoSet("pbesol")))
 end#hide
 
 # This assumes that the `"pbesol"` pseudopotential set was installed during the
@@ -37,7 +26,7 @@ end#hide
 # QE is installed, and to be found in the `/opt/qe/bin`, change this according to your own
 # setup. The first argument to the constructor can be used as a label to later retrieve the executable after it was saved.
 
-pw_exec = Exec("pw", "pw.x", "/opt/qe/bin/", :nk => 4)
+pw_exec = Exec(name="pw", exec="pw.x", dir="/opt/qe/bin/", flags=Dict("-nk" => 4))
 
 # Additional executable flags can be passed as varargs to the constructor of `Exec`,
 # e.g. `Exec("pw.x", "/opt/qe/bin/", :nk => 4, :ndiag => 2)`.
@@ -68,7 +57,7 @@ end#hide
 if false #hide
 submit(job)
 else #hide
-    global job = load(Job(joinpath(splitdir(pathof(DFControl))[1], "..", "docs","src","assets", "job")))#hide
+    global job = load(local_server(), Job(joinpath(splitdir(pathof(DFControl))[1], "..", "docs","src","assets", "job")))#hide
     pop!(job) #hide
 end #hide
 
@@ -105,7 +94,7 @@ job.dir = "job"; #hide
 if false #hide
 submit(job)
 else #hide
-    global job = load(Job(joinpath(splitdir(pathof(DFControl))[1], "..", "docs","src","assets", "job")));#hide
+    global job = load(local_server(),Job(joinpath(splitdir(pathof(DFControl))[1], "..", "docs","src","assets", "job")));#hide
 end #hide
 
 # We can access the bands through

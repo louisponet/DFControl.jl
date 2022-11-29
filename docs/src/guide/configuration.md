@@ -52,12 +52,8 @@ rm_pseudoset!
 Environments specify the skeleton of the job script, i.e. which environment variables need to be set, which scheduler flags, etc.
 Here we will set up an environment and save it on the local [`Server`](@ref). Change the information according to your own setup.
 ```julia
-e = Environment(name="default", MPI_command="mpirun -np 4", scheduler_flags=["-N 1", "--partition=parallel"], exports=["OMP_NUM_THREADS=1"])
+e = Environment(name="default", parallel_exec=Exec(exec="mpirun", flags=Dict("-np"=> 4), directives=Dict("N" => 1, "partition" => "parallel"), exports=Dict("OMP_NUM_THREADS"=>1)))
 save(local_server(), e)
-```
-While not recommended because it doesn't always work, one can try to extract an environment from a preexisting jobscript using
-```@docs
-DFC.Client.environment_from_jobscript
 ```
 
 ## [Execs](@ref execs_header)
@@ -74,9 +70,8 @@ save(local_server(), e)
 ## Loading/Saving
 As shown above there are three main methods related to storing and retrieving data i.e.:
 ```@docs
-Database.load
-Database.save
-rm(::Database.Storable)
+DFControl.Client.RemoteHPC.load
+DFControl.Client.RemoteHPC.save
 ```
 
 After completing this configuration, it is suggested to look at the (Basic Usage)[@ref] for an introduction to the basic usage of `DFControl`.

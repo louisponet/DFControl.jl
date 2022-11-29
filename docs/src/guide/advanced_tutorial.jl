@@ -6,10 +6,10 @@
 # in it.
 using DFControl
 
-tjob = load(Job(joinpath(splitdir(pathof(DFControl))[1], "..", "docs","src","assets", "job")))#hide
-tjob2 = load(Job(joinpath(splitdir(pathof(DFControl))[1], "..", "docs","src","assets", "Job2")))#hide
+tjob = load(local_server(),Job(joinpath(splitdir(pathof(DFControl))[1], "..", "docs","src","assets", "job")))#hide
+tjob2 = load(local_server(),Job(joinpath(splitdir(pathof(DFControl))[1], "..", "docs","src","assets", "Job2")))#hide
 if false#hide
-job = load(Servers.local_server(), Job("job"))
+job = load(local_server(), Job("job"))
 else#hide
     global job = deepcopy(tjob)#hide
     job.dir= "job" #hide

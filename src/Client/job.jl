@@ -69,7 +69,11 @@ function RemoteHPC.load(server::Server, j::Job)
     pseudos = Dict{Symbol, Pseudo}()
     
     for a in unique(map(x->x.element.symbol, structure.atoms))
-        pseudos[a] = Structures.Pseudo(server.name, realpath(server, joinpath(dir, "$a" * ".UPF")), "") 
+        if ispath(server, joinpath(dir, "$a" * ".UPF"))
+            pseudos[a] = Structures.Pseudo(server.name, realpath(server, joinpath(dir, "$a" * ".UPF")), "")
+        else
+            pseudos[a] = Structures.Pseudo("", "", "")
+        end
     end
     for a in structure.atoms
         a.pseudo = pseudos[a.element.symbol]
