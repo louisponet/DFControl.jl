@@ -1,6 +1,6 @@
 using ..Structures: Pseudo
 
-Base.@kwdef struct PseudoSet <: RemoteHPC.Storable
+Base.@kwdef mutable struct PseudoSet <: RemoteHPC.Storable
     name::String
     pseudos::Dict{Symbol, Vector{Pseudo}} = Dict{Symbol, Vector{Pseudo}}()
 end
@@ -33,12 +33,15 @@ function RemoteHPC.load(server, s::PseudoSet)
     end
 end
 
-"""
-    configure_pseudoset(set_name::String, dir::String)
-
-Reads the specified `dir` and sets up the pseudos for `set`.
-"""
-function configure_pseudoset(server::Server, set_name::String, dir::String)
+function RemoteHPC.configure!(set::PseudoSet, server::RemoteHPC.Server)
+    dir = ""
+    while isempty(dir)
+        dir = RemoteHPC.ask_input(String, "Directory with pseudos")
+        if !ispath(server, dir)
+            @error "No such directory"
+            dir = ""
+        end
+    end
     files = readdir(server, dir)
     pseudos = Dict{Symbol,Vector{Pseudo}}([el.symbol => Pseudo[]
                                            for el in Structures.ELEMENTS])
@@ -49,9 +52,19 @@ function configure_pseudoset(server::Server, set_name::String, dir::String)
         end
     end
 
-    set = PseudoSet(set_name, pseudos)
-    save(server, set)
+    set.pseudos = pseudos
     set_server!(set, server)
+    return set 
+end
+"""
+    configure_pseudoset(set_name::String, dir::String)
+
+Reads the specified `dir` and sets up the pseudos for `set`.
+"""
+function configure_pseudoset(server::Server, set_name::String, dir::String)
+    set = PseudoSet(name=set_name)
+    RemoteHPC.configure!(server, set)
+    save(server, set)
     return set
 end
 

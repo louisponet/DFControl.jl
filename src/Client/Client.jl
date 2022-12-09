@@ -13,7 +13,10 @@ import RemoteHPC
 using ..Calculations: set_name!, set_kpoints!, data; export set_name!, set_kpoints!, data
 using ..Structures: set_pseudos!, element; export set_pseudos!, element
 using ..Jobs: set_flow!; export set_flow!
-using RemoteHPC: submit, save, state, abort, Server, Exec, Environment, isalive, start, kill, load, local_server; export submit, save, state, abort, Server, Exec, Environment, isalive, start, kill, load, local_server
+
+using RemoteHPC: submit, save, state, abort, Server, Exec, Environment, isalive, start, kill, load, local_server, configure
+export submit, save, state, abort, Server, Exec, Environment, isalive, start, kill, load, local_server, configure
+
 import RemoteHPC
 import ..DFControl: bandgap
 
