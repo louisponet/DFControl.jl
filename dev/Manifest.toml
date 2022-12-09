@@ -30,9 +30,9 @@ version = "0.1.7"
 
 [[deps.CodeTracking]]
 deps = ["InteractiveUtils", "UUIDs"]
-git-tree-sha1 = "cc4bd91eba9cdbbb4df4746124c22c0832a460d6"
+git-tree-sha1 = "3bf60ba2fae10e10f70d53c070424e40a820dac2"
 uuid = "da1fd8a2-8d9e-5ec2-8556-3022fb5608a2"
-version = "1.1.1"
+version = "1.1.2"
 
 [[deps.CodecZlib]]
 deps = ["TranscodingStreams", "Zlib_jll"]
@@ -69,11 +69,11 @@ version = "4.1.1"
 
 [[deps.DFControl]]
 deps = ["ANSIColoredPrinters", "BinDeps", "CodeTracking", "Colors", "Crayons", "Dates", "DelimitedFiles", "Distributed", "HTTP", "JLD2", "JSON3", "LinearAlgebra", "LoggingExtras", "Media", "Parameters", "Pkg", "ProgressMeter", "REPL", "Reexport", "RemoteHPC", "Requires", "SnoopPrecompile", "Sockets", "StaticArrays", "StructTypes", "ThreadPools", "UUIDs", "UnitfulAtomic", "fzf_jll", "spglib_jll"]
-git-tree-sha1 = "83334f92d322003ec9f40c663192a64d296ff68e"
-repo-rev = "e7d2f75c337affb19303e17f979e333310493563"
+git-tree-sha1 = "84511b686aed5ce8109ef3bcb6fafe95e498e69e"
+repo-rev = "609fc61baf4b09973c5c632c6839c9adfd650a03"
 repo-url = "https://github.com/louisponet/DFControl.jl.git"
 uuid = "1e31e15d-4957-550d-a244-318eced754ae"
-version = "0.5.13"
+version = "0.5.15"
 
 [[deps.Dates]]
 deps = ["Printf"]
@@ -281,9 +281,9 @@ uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [[deps.RecipesBase]]
 deps = ["SnoopPrecompile"]
-git-tree-sha1 = "d12e612bba40d189cead6ff857ddb67bd2e6a387"
+git-tree-sha1 = "18c35ed630d7229c5584b945641a73ca83fb5213"
 uuid = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
-version = "1.3.1"
+version = "1.3.2"
 
 [[deps.Reexport]]
 git-tree-sha1 = "45e428421666073eab6f2da5c9d310d99bb12f9b"
@@ -291,10 +291,10 @@ uuid = "189a3867-3050-52da-a836-e630ba90ab69"
 version = "1.2.2"
 
 [[deps.RemoteHPC]]
-deps = ["Dates", "HTTP", "JSON3", "LoggingExtras", "OpenSSH_jll", "ProgressMeter", "REPL", "SnoopPrecompile", "Sockets", "StructTypes", "TOML", "ThreadPools", "UUIDs"]
-git-tree-sha1 = "b77dd6dae27b082c693dc126472fb003fc97d703"
+deps = ["Dates", "HTTP", "InteractiveUtils", "JSON3", "LoggingExtras", "OpenSSH_jll", "Pkg", "ProgressMeter", "REPL", "SnoopPrecompile", "Sockets", "StructTypes", "TOML", "ThreadPools", "UUIDs"]
+git-tree-sha1 = "66e681d1e68a89dc8dfa65d68a0efc86008631b1"
 uuid = "c4f2a1c4-7655-40d8-82ee-c6ae0a8b7409"
-version = "0.2.3"
+version = "0.2.10"
 
 [[deps.Requires]]
 deps = ["UUIDs"]
@@ -366,9 +366,9 @@ version = "2.1.1"
 
 [[deps.TranscodingStreams]]
 deps = ["Random", "Test"]
-git-tree-sha1 = "8a75929dcd3c38611db2f8d08546decb514fcadf"
+git-tree-sha1 = "e4bdc63f5c6d62e80eb1c0043fcc0360d5950ff7"
 uuid = "3bb67fe8-82b1-5028-8e26-92a6c54297fa"
-version = "0.9.9"
+version = "0.9.10"
 
 [[deps.URIParser]]
 deps = ["Unicode"]
@@ -395,9 +395,9 @@ uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 
 [[deps.Unitful]]
 deps = ["ConstructionBase", "Dates", "LinearAlgebra", "Random"]
-git-tree-sha1 = "bdc60e70c8a2f63626deeb5c177baacfc43f8a59"
+git-tree-sha1 = "d670a70dd3cdbe1c1186f2f17c9a68a7ec24838c"
 uuid = "1986cc42-f94f-5a68-af5c-568840ba703d"
-version = "1.12.1"
+version = "1.12.2"
 
 [[deps.UnitfulAtomic]]
 deps = ["Unitful"]
