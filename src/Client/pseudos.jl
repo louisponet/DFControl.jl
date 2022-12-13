@@ -33,8 +33,7 @@ function RemoteHPC.load(server, s::PseudoSet)
     end
 end
 
-function RemoteHPC.configure!(set::PseudoSet, server::RemoteHPC.Server)
-    dir = ""
+function RemoteHPC.configure!(set::PseudoSet, server::RemoteHPC.Server; dir="")
     while isempty(dir)
         dir = RemoteHPC.ask_input(String, "Directory with pseudos")
         if !ispath(server, dir)
@@ -63,7 +62,7 @@ Reads the specified `dir` and sets up the pseudos for `set`.
 """
 function configure_pseudoset(server::Server, set_name::String, dir::String)
     set = PseudoSet(name=set_name)
-    RemoteHPC.configure!(server, set)
+    RemoteHPC.configure!(set, server; dir=dir)
     save(server, set)
     return set
 end

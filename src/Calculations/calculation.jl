@@ -75,18 +75,18 @@ Creates a new [`Calculation`](@ref) from the `template`, setting the `flags` of 
     outfile::String = name * ".out"
 end
 
-function Calculation(name, flags, data, exec, run, infile,
+function Calculation(name, flags, data, e, run, infile,
                             outfile)
-    if exec.exec ∈ Calculations.WAN_EXECS
+    if exec(e) ∈ Calculations.WAN_EXECS
         p = Wannier90
-    elseif exec.exec ∈ Calculations.QE_EXECS
+    elseif exec(e) ∈ Calculations.QE_EXECS
         p = QE
-    elseif exec.exec ∈ Calculations.ELK_EXECS
+    elseif exec(e) ∈ Calculations.ELK_EXECS
         p = ELK
     else
-        error("Package not identified from execs $(exec.exec).")
+        error("Package not identified from execs $(exec(e)).")
     end
-    return Calculation{p}(name, flags, data, exec, run, infile, outfile)
+    return Calculation{p}(name, flags, data, e, run, infile, outfile)
 end
 
 function Calculation(name, flags...; kwargs...)
@@ -560,18 +560,18 @@ end
 infile_outfile_str(c::Calculation) = "< $(c.infile) > $(c.outfile)"
 remote_calcs(job, c::Calculation) = [RemoteHPC.Calculation(c.exec, Calculations.infile_outfile_str(c), c.run)]
 
-hasflag(exec::Exec, s::Symbol) = haskey(exec.flags, s)
+hasflag(e::Exec, s::Symbol) = haskey(e.flags, s)
 
 #Wannier
 const WAN_EXECS = ["wannier90.x"]
-is_wannier_exec(exec::Exec) = exec.exec ∈ WAN_EXECS
+is_wannier_exec(e::Exec) = exec(e) ∈ WAN_EXECS
 #QE
 const QE_EXECS = ["pw.x", "projwfc.x", "pp.x", "ld1.x", "ph.x", "pw2wannier90.x", "hp.x", "dos.x", "bands.x"]
-is_qe_exec(exec::Exec) = exec.exec ∈ QE_EXECS
+is_qe_exec(e::Exec) = exec(e) ∈ QE_EXECS
 # Elk
 const ELK_EXECS = ["elk", "elk-omp"]
-is_elk_exec(exec::Exec) = exec.exec ∈ ELK_EXECS
+is_elk_exec(e::Exec) = exec(e) ∈ ELK_EXECS
 parseable_execs() = vcat(QE_EXECS, WAN_EXECS, ELK_EXECS, JULIA_EXECS)
 has_parseable_exec(l::String) = occursin(">", l) && any(occursin.(parseable_execs(), (l,)))
-isparseable(exec::Exec) = exec.exec ∈ parseable_execs()
+isparseable(e::Exec) = exec(e) ∈ parseable_execs()
 

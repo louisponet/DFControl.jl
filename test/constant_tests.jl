@@ -1,5 +1,5 @@
 using DFControl, Test
 
-@test eltype(Calculations.qe_flaginfo(Exec(; exec = "projwfc.x"), :calculation)) == Nothing
-@test eltype(Calculations.qe_flaginfo(Exec(; exec = "pw.x"), :calculation)) ==
+@test eltype(Calculations.qe_flaginfo(Exec(; path = "projwfc.x"), :calculation)) == Nothing
+@test eltype(Calculations.qe_flaginfo(Exec(; path = "pw.x"), :calculation)) ==
       eltype(Calculations.qe_flaginfo(:calculation))

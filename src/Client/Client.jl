@@ -6,11 +6,10 @@ using ..FileIO
 # @reexport using ..Servers
 @reexport using ..Structures
 @reexport using ..Calculations
-using ..Calculations: Calculation
 @reexport using ..Jobs
 import RemoteHPC
 
-using ..Calculations: set_name!, set_kpoints!, data; export set_name!, set_kpoints!, data
+using ..Calculations: set_name!, set_kpoints!, data, Calculation; export set_name!, set_kpoints!, data, Calculation
 using ..Structures: set_pseudos!, element; export set_pseudos!, element
 using ..Jobs: set_flow!; export set_flow!
 

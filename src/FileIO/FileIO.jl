@@ -3,7 +3,7 @@ module FileIO
 using DelimitedFiles, Dates, LinearAlgebra, UnitfulAtomic, CodeTracking
 using UnitfulAtomic.Unitful: ustrip, uconvert
 using UnitfulAtomic: bohr
-using RemoteHPC: Exec
+using RemoteHPC: Exec, exec
 using ..Utils
 using ..Calculations
 using ..Calculations: Calculation
@@ -141,12 +141,12 @@ function outputdata(calculation::Calculation, files...;
                                             extra_parse_funcs) : t
 end
 
-function calculationparser(exec::Exec)
-    if Calculations.is_qe_exec(exec)
+function calculationparser(e::Exec)
+    if Calculations.is_qe_exec(e)
         qe_parse_calculation
-    elseif Calculations.is_wannier_exec(exec)
+    elseif Calculations.is_wannier_exec(e)
         wan_parse_calculation
-    elseif Calculations.is_julia_exec(exec)
+    elseif Calculations.is_julia_exec(e)
         julia_parse_calculation
     end
 end

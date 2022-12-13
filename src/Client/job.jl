@@ -28,20 +28,20 @@ function RemoteHPC.load(server::Server, j::Job)
     structures = Structure[]
     outcalcs = Calculation[]
     for calc in remote_calculations
-        exec = calc.exec
+        e = calc.exec
         s = split(calc.args)
         redir_id = findfirst(x -> x == ">", s)
         infile  = redir_id === nothing ? "" : s[redir_id-1]
         outfile = redir_id === nothing ? "" : s[end]
-        if Calculations.is_wannier_exec(exec) && !isempty(outcalcs) && outcalcs[end].infile == infile
+        if Calculations.is_wannier_exec(e) && !isempty(outcalcs) && outcalcs[end].infile == infile
             Calculations.set_flags!(outcalcs[end], :preprocess => outcalcs[end].run, print=false)
             empty!(outcalcs[end].exec.flags)
         elseif !isempty(infile)
-            c = FileIO.calculationparser(exec)(IOBuffer(read(server, joinpath(j, infile))))
+            c = FileIO.calculationparser(e)(IOBuffer(read(server, joinpath(j, infile))))
             if c.structure !== nothing
                 push!(structures, c.structure)
             end
-            push!(outcalcs, Calculation(splitext(infile)[1], c.flags, c.data, exec, calc.run, infile, outfile))
+            push!(outcalcs, Calculation(splitext(infile)[1], c.flags, c.data, e, calc.run, infile, outfile))
         end
     end
     if !isempty(structures)
@@ -306,7 +306,7 @@ function fill_execs(job::Job, server::Server)
     for (e, rep) in replacements
         for c in job.calculations
             if c.exec == e
-                c.exec.dir = rep.dir
+                c.exec.path = rep.path
                 c.exec.modules = rep.modules
                 c.exec.parallel = rep.parallel
             end
