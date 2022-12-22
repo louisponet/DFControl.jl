@@ -7,6 +7,8 @@ If no exact matching directory is found, a list of job directories that comprise
 `j.dir` will be returned.
 """
 function RemoteHPC.load(server::Server, j::Job)
+    j.server = server.name
+    
     if j.version == last_version(server, j.dir)
         dir = Jobs.main_job_dir(j.dir)
     elseif !occursin(Jobs.VERSION_DIR_NAME, j.dir) && j.version != -1
@@ -37,7 +39,7 @@ function RemoteHPC.load(server::Server, j::Job)
             Calculations.set_flags!(outcalcs[end], :preprocess => outcalcs[end].run, print=false)
             empty!(outcalcs[end].exec.flags)
         elseif !isempty(infile)
-            c = FileIO.calculationparser(e)(IOBuffer(read(server, joinpath(j, infile))))
+            c = FileIO.calculationparser(e)(IOBuffer(read(server, joinpath(dir, infile))))
             if c.structure !== nothing
                 push!(structures, c.structure)
             end
@@ -184,6 +186,11 @@ function RemoteHPC.save(job::Job, workflow = nothing; versioncheck=true, kwargs.
     # Here we lazily pull pseudos that are not located on the server we're sending stuff to
     pseudos = unique(y->y[1], map(x->(x.element.symbol, x.pseudo), job.structure.atoms))
     for (el, p) in pseudos
+
+        if p == Pseudo()
+            error("Pseudo not set for element $el. Use `set_pseudos!`.")
+        end
+        
         if p.server !== job.server
             p.pseudo = isempty(p.pseudo) && !isempty(p.server) && isalive(Server(p.server)) && ispath(Server(p.server), p.path) ? read(Server(p.server), p.path, String) : p.pseudo
             p.server = job.server
@@ -208,6 +215,9 @@ function RemoteHPC.save(job::Job, workflow = nothing; versioncheck=true, kwargs.
             catch
                 nothing
             end
+        end
+        if !ispath(server, p.path)
+            error("Pseudo at $(p.path) does not really exist. Use `set_pseudos!` to reset them.")
         end
     end
     Calculations.rm_tmp_flags!.(job.calculations)
