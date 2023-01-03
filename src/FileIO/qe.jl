@@ -707,13 +707,11 @@ function qe_parse_projwfc_output(files...)
 end
 
 function pdos(files, kresolved=false)
-
-    
+   
     dir = splitdir(files[1])[1]
     atsyms = Symbol.(unique(map(x -> x[findfirst("(", x)[1]+1:findfirst(")", x)[1]-1],files)))
     magnetic = (x->occursin("ldosup",x) && occursin("ldosdw",x))(readline(files[1]))
     soc = occursin(".5", files[1])
-    @assert !isempty(files) "No pdos files found in calculation directory $(c.dir)"
     files = joinpath.((dir,), files)
     energies, = kresolved ? qe_parse_kpdos(files[1]) : qe_parse_pdos(files[1])
     if !isempty(energies)
@@ -1282,7 +1280,7 @@ function Base.write(f::IO, calculation::Calculation{QE}, structure)
                                 :calculation => replace(calculation[:calculation],
                                                         "_" => "-"); print = false)
     end
-    if calculation.exec.exec == "ph.x"
+    if exec(calculation.exec) == "ph.x"
         write(f, "--\n")
     end
     writeflag(flag_data) = qe_writeflag(f, flag_data[1], flag_data[2])
@@ -1306,7 +1304,7 @@ function Base.write(f::IO, calculation::Calculation{QE}, structure)
         end
     end
 
-    if calculation.exec.exec == "pw.x"
+    if exec(calculation.exec) == "pw.x"
         write_structure(f, calculation, structure)
     end
     for dat in calculation.data
@@ -1399,7 +1397,7 @@ function qe_generate_pw2wancalculation(c::Calculation{Wannier90}, nscf::Calculat
     if any(get(c, :berry_task, []) .== ("morb"))
         flags[:write_uHu] = true
     end
-    pw2wanexec = Exec(exec ="pw2wannier90.x", dir=nscf.exec.dir, modules = nscf.exec.modules)
+    pw2wanexec = Exec(path =joinpath(dirname(nscf.exec), "pw2wannier90.x"), modules = nscf.exec.modules)
     run = get(c, :preprocess, false) && c.run
     name = "pw2wan_$(flags[:seedname])"
     out = Calculation(; name = name, data = InputData[],

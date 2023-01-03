@@ -1,4 +1,5 @@
 using DFControl, Test, LinearAlgebra
+using RemoteHPC: Exec, exec
 
 testdir = joinpath(dirname(dirname(pathof(DFControl))), "test")
 testjobpath = joinpath(testdir, "testassets", "test_job")
@@ -55,8 +56,8 @@ testjobpath = joinpath(testdir, "testassets", "test_job")
     @test length(job) == 5
     @test data(job["scf"], :k_points).data == [6,6,6,1,1,1]
     @test job["nscf"].exec == pw_exec
-    @test job["projwfc"].exec.exec == "projwfc.x"
-    @test job["projwfc"].exec.dir == pw_exec.dir
+    @test exec(job["projwfc"].exec) == "projwfc.x"
+    @test dirname(job["projwfc"].exec) == pw_exec.dir
     @test show(job) == nothing
     job[:ecutwfc] = 40.0
     for c in job.calculations
@@ -93,7 +94,7 @@ refjobpath =joinpath(testdir, "testassets", "reference_job")
     for a in job.structure.atoms
         a.projections = [Projection("s"), Projection("p"), Projection("d")]
     end
-    wanexec = Exec(name="wan",exec="wannier90.x", dir=joinpath(homedir(), "Software/wannier90"), parallel=false)
+    wanexec = Exec(name="wan", path=joinpath(homedir(), "Software/wannier90/wannier90.x"), parallel=false)
     append!(job, Calculations.gencalc_wan(job, 0.000011, :wannier_plot => true, wanexec = wanexec))
     for (c1, c2) in zip(job2.calculations, job.calculations)
         @test c1 == c2

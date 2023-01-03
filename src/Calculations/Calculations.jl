@@ -1,7 +1,8 @@
 module Calculations
 # This module handles all interactions with calculations
 using Parameters, StructTypes, LinearAlgebra, JSON3
-using RemoteHPC
+using RemoteHPC: Exec, exec
+import RemoteHPC
 using ..DFControl: DEPS_DIR, Band, Point3, Vec3, Mat3, Mat4, SVector, SArray
 using ..Utils
 using ..Structures

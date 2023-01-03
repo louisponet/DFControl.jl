@@ -403,7 +403,7 @@ end
 function find_primitive(s::Structure; kwargs...)
     uats = unique(s.atoms)
     spg = find_primitive!(SPGStructure(s))
-    new_cell = Mat3{Float64}(spg.lattice) * unit(eltype(s.cell))
+    new_cell = Mat3{Float64}(spg.lattice') * unit(eltype(s.cell))
     newats = eltype(uats)[]
     for i in 1:length(spg.species_indices)
         tat = deepcopy(uats[spg.species_indices[i]])

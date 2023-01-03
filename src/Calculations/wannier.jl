@@ -7,13 +7,13 @@ flagtype(::Calculation{Wannier90}, flag) = flagtype(Wannier90, flag)
 """
     gencalc_wan(nscf::Calculation{QE}, structure::Structure, Emin, wanflags...;
                 Epad     = 5.0,
-                wanexec  = Exec(exec="wannier90.x", dir=""))
+                wanexec  = Exec(path="wannier90.x"))
 
 Generates a Wannier90 calculation to follow on the supplied `nscf` calculation. It uses the projections defined in the `structure`, and starts counting the required amount of bands from `Emin`.
 The `nscf` needs to have a valid output since it will be used in conjunction with `Emin` to find the required amount of bands and energy window for the Wannier90 calculation.
 """
 function gencalc_wan(nscf::Calculation{QE}, structure::Structure, bands, Emin, wanflags...; Epad = 5.0,
-                     wanexec = Exec(; name="wannier90", exec = "wannier90.x", dir = ""))
+                     wanexec = Exec(; name="wannier90", path = "wannier90.x"))
     projs = vcat(map(structure.atoms) do x
                      ps = x.projections
                      # @assert !isempty(ps) "Please first set projections for all atoms in the Structure."
@@ -180,7 +180,7 @@ function remote_calcs(job, _calculation::Calculation{Wannier90})
     @assert nscf !== nothing "No NSCF found to generate pw2wannier90 from."
     @assert eltype(nscf) == QE "Only QE based Wannier90 jobs are supported."
 
-    pw2wan_exec = Exec(name = "", dir=nscf.exec.dir, exec="pw2wannier90.x", modules=nscf.exec.modules)
+    pw2wan_exec = Exec(name = "", path=joinpath(dirname(nscf.exec), "pw2wannier90.x"), modules=nscf.exec.modules)
 
     preprocess   = get(_calculation, :preprocess, false)
     return [RemoteHPC.Calculation(_calculation.exec, "-pp $filename > $(_calculation.outfile)", preprocess || should_run),

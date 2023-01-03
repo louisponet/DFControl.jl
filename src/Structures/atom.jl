@@ -87,11 +87,21 @@ end
 
 element(z::Int) = getfirst(x -> x.Z == z, ELEMENTS)
 
-mutable struct Pseudo
-    server::String
-    path::String
-    pseudo::String
+Base.@kwdef mutable struct Pseudo
+    server::String = ""
+    path::String = ""
+    pseudo::String = ""
 end
+Pseudo(d::Dict{Symbol, Any}) = Pseudo(; d...)
+function Pseudo(d::Dict{String, Any})
+    td = Dict{Symbol, Any}()
+    for (k, v) in d
+        td[Symbol(k)] = v
+    end
+    Pseudo(td)
+end
+
+Base.convert(::Type{Pseudo}, d::Dict) = Pseudo(d)
 StructTypes.StructType(::Type{Pseudo}) = StructTypes.Struct()
 Base.write(f::AbstractString, p::Pseudo, args...) = write(f, p.pseudo, args...)
 Base.write(f::IO, p::Pseudo) = write(f, p.pseudo)
