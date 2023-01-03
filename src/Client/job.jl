@@ -219,11 +219,11 @@ end
 
 Saves and launches `job`. 
 """
-function RemoteHPC.submit(job::Job, workflow=nothing; kwargs...)
+function RemoteHPC.submit(job::Job, workflow=nothing; priority=RemoteHPC.DEFAULT_PRIORITY, kwargs...)
     @assert workflow === nothing "Workflows not implemented yet."
     server = Server(job.server)
     save(job, workflow; kwargs...)
-    return submit(server, job.dir)
+    return submit(server, job.dir, priority)
 end
 
 # function submit(jobs::Vector{Job}, run = true)
