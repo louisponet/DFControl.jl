@@ -78,7 +78,7 @@ push!(QECalculationInfos,
                         QEDataBlockInfo[]))
 
 function qe_calculation_info(calculation::Calculation{QE})
-    return getfirst(x -> occursin(x.exec, calculation.exec.exec), QECalculationInfos)
+    return getfirst(x -> occursin(x.exec, exec(calculation.exec)), QECalculationInfos)
 end
 function qe_calculation_info(exec::AbstractString)
     return getfirst(x -> occursin(x.exec, exec), QECalculationInfos)
@@ -115,9 +115,9 @@ function qe_block_variable(calculation_info::QECalculationInfo, variable_name)
     return :error, QEFlagInfo()
 end
 
-function qe_flaginfo(exec::Exec, varname)
+function qe_flaginfo(e::Exec, varname)
     for calculation_info in QECalculationInfos
-        if occursin(calculation_info.exec, exec.exec)
+        if occursin(calculation_info.exec, exec(e))
             return qe_flaginfo(calculation_info, varname)
         end
     end
@@ -135,7 +135,7 @@ function qe_block_info(block_name::Symbol)
 end
 
 function qe_all_block_flags(calculation::Calculation{QE}, block_name)
-    return getfirst(x -> x.name == block, qe_calculation_info(calculation).control).flags
+    return getfirst(x -> x.name == block_name, qe_calculation_info(calculation).control).flags
 end
 function qe_all_block_flags(exec::AbstractString, block_name)
     return getfirst(x -> x.name == block_name, qe_calculation_info(exec).control).flags
@@ -151,14 +151,14 @@ function qe_block_variable(exec::AbstractString, flagname)
 end
 
 function qe_exec(calculation::Calculation{QE})
-    if !(calculation.exec.exec ∈ QE_EXECS)
+    if !(exec(calculation.exec) ∈ QE_EXECS)
         error("Calculation $calculation does not have a valid QE executable, please set it first.")
     end
     return calculation.exec
 end
 
 function qe_block_variable(calculation::Calculation, flagname)
-    return qe_block_variable(qe_exec(calculation).exec, flagname)
+    return qe_block_variable(exec(qe_exec(calculation)), flagname)
 end
 
 function flagtype(calculation::Calculation{QE}, flag)
@@ -171,8 +171,8 @@ isnscf(c::Calculation{QE})    = get(c, :calculation, nothing) == "nscf"
 isscf(c::Calculation{QE})     = get(c, :calculation, nothing) == "scf"
 isvcrelax(c::Calculation{QE}) = get(c, :calculation, nothing) == "vc-relax"
 isrelax(c::Calculation{QE})   = get(c, :calculation, nothing) == "relax"
-isprojwfc(c::Calculation{QE}) = c.exec.exec == "projwfc.x"
-ishp(c::Calculation{QE}) = c.exec.exec == "hp.x"
+isprojwfc(c::Calculation{QE}) = exec(c.exec) == "projwfc.x"
+ishp(c::Calculation{QE}) = exec(c.exec) == "hp.x"
 
 function ispw(c::Calculation{QE})
     return isbands(c) || isnscf(c) || isscf(c) || isvcrelax(c) || isrelax(c)
@@ -337,7 +337,7 @@ function gencalc_projwfc(template::Calculation{QE}, Emin, Emax, DeltaE, extrafla
     end
     tdegaussflag = get(template, :degauss, nothing)
     degauss = tdegaussflag !== nothing ? tdegaussflag : 0.0
-    exec = Exec(path=joinpath(dirname(template.exec), "projwfc.x"), modules = deepcopy(template.exec.modules), flags = deepcopy(template.exec.flags))
+    exec = Exec(path=joinpath(dirname(template.exec.path), "projwfc.x"), modules = deepcopy(template.exec.modules), flags = deepcopy(template.exec.flags))
     empty!(exec.flags)
     out = Calculation(deepcopy(template); name = name, exec = exec, data = InputData[])
     set_name!(out, "projwfc")

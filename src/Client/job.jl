@@ -11,7 +11,7 @@ function RemoteHPC.load(server::Server, j::Job)
     
     if j.version == last_version(server, j.dir)
         dir = Jobs.main_job_dir(j.dir)
-    elseif !occursin(Jobs.VERSION_DIR_NAME, j.dir) && j.version != -1
+    elseif !occursin(Jobs.VERSION_DIR_NAME, j.dir) && j.version != 0
         dir = Jobs.version_dir(Jobs.main_job_dir(j.dir), j.version)
     else
         dir = j.dir
@@ -206,7 +206,7 @@ function RemoteHPC.save(job::Job, workflow = nothing; versioncheck=true, kwargs.
         end
         
         linkpath = joinpath(job, "$el.UPF")
-        if p.path != linkpath
+        if p.path != linkpath || !ispath(server, linkpath)
             if ispath(server, linkpath)
                 rm(server, linkpath)
             end

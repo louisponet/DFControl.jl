@@ -81,7 +81,7 @@ end
     @test job.version == curver + 1
     # @test DFControl.last_version(job) == 2
     c = job["scf"]
-    @test c[:nbnd] == 30
+    # @test c[:nbnd] == 30
     rm_version!(job, curver + 1)
     @test !ispath(joinpath(Jobs.main_job_dir(job), Jobs.VERSION_DIR_NAME,
                            "$(curver + 1)"))

@@ -57,14 +57,14 @@ testjobpath = joinpath(testdir, "testassets", "test_job")
     @test data(job["scf"], :k_points).data == [6,6,6,1,1,1]
     @test job["nscf"].exec == pw_exec
     @test exec(job["projwfc"].exec) == "projwfc.x"
-    @test dirname(job["projwfc"].exec) == pw_exec.dir
+    @test dirname(job["projwfc"].exec.path) == dirname(pw_exec.path)
     @test show(job) == nothing
     job[:ecutwfc] = 40.0
     for c in job.calculations
         pop!(c, :ecutrho, nothing)
     end
+    @test all(values(job[:ecutwfc]) .== 40.0)
     save(job, fillexecs=false)
-
     job2 = load(test_server, Job(abspath(job)))
     
     for (c1, c2) in zip(job2.calculations, job.calculations)
