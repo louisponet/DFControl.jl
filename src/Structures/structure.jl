@@ -402,7 +402,7 @@ end
 
 function find_primitive(s::Structure; kwargs...)
     uats = unique(s.atoms)
-    spg = find_primitive!(SPGStructure(s))
+    spg = find_primitive!(SPGStructure(s); kwargs...)
     new_cell = Mat3{Float64}(spg.lattice') * unit(eltype(s.cell))
     newats = eltype(uats)[]
     for i in 1:length(spg.species_indices)
@@ -431,7 +431,7 @@ function cell_parameters(cell::Mat3)
 end
 
 function crystal_kind(s::Structure; tolerance = DEFAULT_TOLERANCE)
-    n, sym = international(s)
+    n, sym = international(s; tolerance=tolerance)
     f = (i, j) -> i <= n <= j
     cs = [:triclinic => (1, 2), :monoclinic => (3, 15), :orthorhombic => (16, 74),
           :tetragonal => (75, 142), :trigonal => (143, 167), :hexagonal => (168, 194),
@@ -445,7 +445,7 @@ function crystal_kind(s::Structure; tolerance = DEFAULT_TOLERANCE)
 end
 
 function lattice_kind(s::Structure; tolerance = DEFAULT_TOLERANCE)
-    n, sym = international(s)
+    n, sym = international(s; tolerance = tolerance)
     kind = crystal_kind(s; tolerance = tolerance)
     if n ∈ (146, 148, 155, 160, 161, 166, 167)
         return :rhombohedral
@@ -464,7 +464,7 @@ e.g. `set_kpoints!(bands_calculation, kpoints)`.
 """
 function high_symmetry_kpath(s::Structure, npoints_per_segment::Int; package = QE,
                              kwargs...)
-    kpoints, kpath = high_symmetry_kpoints(s)
+    kpoints, kpath = high_symmetry_kpoints(s; kwargs...)
     out_k = NTuple{4,Float64}[]
     if package === QE
         for path in kpath
@@ -485,14 +485,14 @@ end
 Returns `(kpoints, path)` where `kpoints` are the high-symmetry k-points,
 and `path` are the sections of the high symmetry path through the first Brillouin Zone.
 """
-function high_symmetry_kpoints(s::Structure; tolerance = DEFAULT_TOLERANCE)
-    n, sym    = international(s)
-    kind      = lattice_kind(s)
-    primitive = find_primitive(s)
+function high_symmetry_kpoints(s::Structure; tolerance = DEFAULT_TOLERANCE, lower_tolerance=true, kwargs...)
+    primitive = find_primitive(s; tolerance=tolerance)
+    n, sym    = international(primitive; tolerance=tolerance)
+    kind      = lattice_kind(primitive; tolerance=tolerance)
 
     primcell = ustrip.(primitive.cell)
 
-    a, b, c, α, β, γ = cell_parameters(s)
+    a, b, c, α, β, γ = cell_parameters(primitive)
 
     symerror = () -> error("Unexpected value for international symbol: $sym")
     if kind == :cubic
@@ -587,6 +587,9 @@ function high_symmetry_kpoints(s::Structure; tolerance = DEFAULT_TOLERANCE)
 
     else
         error("Unknown lattice type $kind")
+    end
+    if lower_tolerance
+        return high_symmetry_kpoints(s, tolerance=tolerance * 10)
     end
 end
 

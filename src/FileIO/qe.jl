@@ -285,6 +285,11 @@ function qe_parse_k_eigvals(out, line, f)
     readline(f)
     line = readline(f)
     while line != "" && !occursin("--------", line)
+        reg = r"\d-\d"
+        m = match(reg, line)
+        if m !== nothing
+            line = replace(line, "-" => " -")
+        end
         append!(tmp, parse_line(Float64, line))
         line = readline(f)
     end
