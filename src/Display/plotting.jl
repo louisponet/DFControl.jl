@@ -6,9 +6,6 @@ using .Plots.RecipesBase
 # using ..Jobs
 # using ..Structures
 
-Base.:*(f::Number, r::RGB) = RGB(f * r.r, f * r.b, f * r.g)
-Base.:+(r1::RGB, r2::RGB) = RGB(r1.r + r2.r, r1.b + r2.b, r1.g + r2.g)
-
 function blend_color(contribs::Vector, at_colors)
     if any(isnan, contribs)
         return RGB(0.0, 0.0, 0.0)
