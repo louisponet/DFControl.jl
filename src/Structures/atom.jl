@@ -8,7 +8,7 @@
 
 DFT+U parameters for a given [`Atom`](@ref).
 """
-@with_kw mutable struct DFTU
+Base.@kwdef mutable struct DFTU
     l::Int      = -1
     U::Float64  = 0.0
     J0::Float64 = 0.0
