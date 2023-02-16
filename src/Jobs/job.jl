@@ -268,7 +268,7 @@ for (f, strs) in zip((:cp, :mv), (("copy", "Copies"), ("move", "Moves")))
                 mkpath(server, dest)
             end
             for file in readdir(server, job.dir)
-                p = joinpath(job, file)
+                p = realpath(server, joinpath(job, file))
                 if file == VERSION_DIR_NAME
                     continue
                 elseif file == TEMP_CALC_DIR && !job.copy_temp_folders
@@ -277,7 +277,7 @@ for (f, strs) in zip((:cp, :mv), (("copy", "Copies"), ("move", "Moves")))
                 if joinpath(job, file) == abspath(dest)
                     continue
                 end
-                destpath = joinpath(dest, file)
+                destpath = realpath(server, joinpath(dest, file))
                 if destpath != p
                     $f(server, p, destpath; kwargs...)
                 end
