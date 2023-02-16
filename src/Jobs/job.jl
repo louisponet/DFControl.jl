@@ -277,7 +277,8 @@ for (f, strs) in zip((:cp, :mv), (("copy", "Copies"), ("move", "Moves")))
                 if joinpath(job, file) == abspath(dest)
                     continue
                 end
-                destpath = realpath(server, joinpath(dest, file))
+                tp = joinpath(dest, file)
+                destpath = ispath(server, tp) ? realpath(server, tp) : tp
                 if destpath != p
                     $f(server, p, destpath; kwargs...)
                 end
