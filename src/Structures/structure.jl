@@ -414,6 +414,37 @@ function find_primitive(s::Structure; kwargs...)
     return Structure(new_cell, newats)
 end
 
+function standardize_cell!(s::SPGStructure; tolerance = DEFAULT_TOLERANCE, to_primitive=false, no_idealize=false)
+    nat = length(s.species_indices)
+    if !to_primitive
+        t_positions = [s.positions  zeros(Float64, 3, 3*nat)]
+        t_species_indices = [s.species_indices;  zeros(Int, 3*nat)]
+    else
+        t_positions       = s.positions
+        t_species_indices = s.species_indices
+    end
+    # @show t_species_indices
+    numat = ccall((:spg_standardize_cell, SPGLIB), Cint,
+                   (Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cint}, Cint, Cint, Cint, Cdouble),
+                   s.lattice, t_positions, t_species_indices, nat, to_primitive, no_idealize, tolerance)
+    numat == 0 && error("Could not find the standardized cell of the supplied structure.")
+    return SPGStructure(s.lattice, t_positions[:, 1:numat], t_species_indices[1:numat])
+end
+
+function standardize_cell(s::Structure; kwargs...)
+    uats = unique(s.atoms)
+    spg = standardize_cell!(SPGStructure(s); kwargs...)
+    new_cell = Mat3{Float64}(spg.lattice') * unit(eltype(s.cell))
+    newats = eltype(uats)[]
+    for i in 1:length(spg.species_indices)
+        tat = deepcopy(uats[spg.species_indices[i]])
+        set_position!(tat, Point3(spg.positions[:, i]), new_cell)
+        push!(newats, tat)
+    end
+
+    return Structure(new_cell, newats)
+end
+
 """
     cell_parameters(cell::Mat3)
     cell_parameters(str::Structure)

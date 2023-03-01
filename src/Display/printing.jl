@@ -1,5 +1,5 @@
-show_type(io::IO, ::MIME"text/plain", ::Type{T}) where {T} = println(io, crayon"red", "$T:", crayon"reset")
-show_type(io::IO, ::MIME"text/plain", x) = show_type(io, typeof(x))
+show_type(io::IO, ::Type{T}) where {T} = println(io, crayon"red", "$T:", crayon"reset")
+show_type(io::IO, x) = show_type(io, typeof(x))
 
 function Base.show(io::IO, ::MIME"text/plain", block::InputData)
     s = """Block name: $(block.name)

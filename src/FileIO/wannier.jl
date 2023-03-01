@@ -114,9 +114,9 @@ function wan_parse_calculation(file)
                     if occursin("random", line)
                         proj_block = InputData(:projections, :random, nothing)
                     else
-                        split_line  = strip_split(line, ':')
-                        atom        = Symbol(split_line[1])
-                        projections = [proj for proj in strip_split(split_line[2], ';')]
+                        m = match(r"\b([\w\d]+):", line)
+                        atom        = Symbol(m.captures[1])
+                        projections = map(x->x.captures[1], eachmatch(r"[\s,;]([\w\d]+)", line))
                         push!(proj_dict, (atom, projections))
                     end
                     i += 1
