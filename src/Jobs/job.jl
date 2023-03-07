@@ -1,5 +1,6 @@
 const VERSION_DIR_NAME = ".versions"
 const TEMP_CALC_DIR = "outputs"
+const JOB_SCRIPT_NAME = "job.sh"
 
 @enum JobState BootFail Pending Running Completed Configuring Completing Cancelled Deadline Failed NodeFail OutOfMemory Preempted Requeued Resizing Revoked Suspended Timeout Submitted Unknown PostProcessing Saved
 
@@ -343,18 +344,63 @@ function sanitize_cutoffs!(job::Job)
     end
 end
 
-function RemoteHPC.pull(j::Job, f, t)
-    @assert ispath(j, f) "File $f not found in jobdir."
-    RemoteHPC.pull(Server(j.server), joinpath(j, f), t)
+"""
+    pull(j::Job, local_dir; calcs=j.calculations, scriptfile=true, infiles=true, versions=false)
+    
+Pulls output and input files of a given job to a local directory.
+"""
+function RemoteHPC.pull(j::Job, local_dir; calcs=j.calculations, scriptfile=true, infiles=true, versions=false)
+    if !isdir(local_dir) && ispath(local_dir)
+        error("$local_dir is not a directory")
+    end
+    mkpath(local_dir)
+    
+    s = Server(j.server)
+    outfiles = String[]
+    for c in calcs
+        files = Calculations.outfiles(c)
+        if infiles
+            push!(files, c.infile)
+        end
+        for f in files
+            remote_files = searchdir(j, f)
+            for rem in remote_files
+                loc = joinpath(local_dir, splitdir(rem)[end])
+                RemoteHPC.pull(s, rem, loc)
+                push!(outfiles, loc)
+            end
+        end
+    end
+    if scriptfile
+        jdir = joinpath(local_dir, JOB_SCRIPT_NAME)
+        RemoteHPC.pull(s, joinpath(j, JOB_SCRIPT_NAME), jdir)
+        push!(outfiles, jdir)
+    end
+    if versions
+        rdir = joinpath(j, VERSION_DIR_NAME)
+        if ispath(rdir)
+            vdir = joinpath(local_dir, VERSION_DIR_NAME)
+            if isdir(vdir)
+                rm(vdir, recursive=true)
+            end
+            RemoteHPC.pull(s, rdir, vdir)
+            push!(outfiles, vdir)
+        end
+    end
+    tp = joinpath(j, ".remotehpc_info")
+    if ispath(s, tp)
+        lp = joinpath(local_dir, ".remotehpc_info")
+        RemoteHPC.pull(s, tp, lp)
+        push!(outfiles, lp)
+    end
+    return outfiles
 end
 
 function timestamp(jobdir::AbstractString)
-    scriptpath = joinpath(jobdir, "job.sh")
+    scriptpath = joinpath(jobdir, JOB_SCRIPT_NAME)
     if ispath(scriptpath)
         return unix2datetime(mtime(scriptpath))
     else
         return DateTime(0)
     end
 end
-
-
