@@ -357,27 +357,24 @@ Finds the output files for each of the calculations of a [`Job`](@ref), and grou
 function outputdata(job::Job; calcs=map(x->x.name, job.calculations), extra_parse_funcs=Dict())
     server = Server(job.server)
     out = Dict{String, Dict{Symbol, Any}}()
-    for c in calcs
-        calculation = job[c]
-        p = joinpath(job, calculation.outfile)
-        if ispath(server, p)
-            if Calculations.isprojwfc(calculation)
-                dos_files = filter(x->any(y-> occursin(string(y.name), x), job.structure.atoms), searchdir(job, "pdos_a"))
-                extra_files = String[] 
-                dir = mkdir(tempname())
-                for e in dos_files
-                    tfp = joinpath(dir, splitpath(e)[end])
-                    write(tfp, read(server, e))
-                    push!(extra_files, tfp)
+    calculations = map(x->job[x], calcs)
+    tdir = tempname()
+    RemoteHPC.pull(job, tdir, infiles=false, calcs=calculations)
+    for c in calculations
+        of = Calculations.outfiles(c)
+        main_file = joinpath(tdir, of[1])
+        if ispath(main_file)
+            extra_files = String[]
+            if length(of) > 1
+                for f in of[2:end]
+                    append!(extra_files, searchdir(tdir, f))
                 end
-            else
-                extra_files = String[]
             end
             try
-                out[c] = FileIO.outputdata(calculation, IOBuffer(read(server, p)), extra_files...; extra_parse_funcs = get(extra_parse_funcs, c, Pair{String}[]))
+                out[c.name] = FileIO.outputdata(c, IOBuffer(read(main_file)), extra_files...; extra_parse_funcs = get(extra_parse_funcs, c.name, Pair{String}[]))
                 for strkey in (:initial_structure, :final_structure) 
-                    if haskey(out[c], strkey)
-                        for a in out[c][strkey].atoms
+                    if haskey(out[c.name], strkey)
+                        for a in out[c.name][strkey].atoms
                             a.pseudo.server = job.server
                         end
                     end

@@ -39,7 +39,7 @@ function qe_parse_output(c::Calculation{QE}, files...; kwargs...)
     if Calculations.isprojwfc(c)
         return qe_parse_projwfc_output(files...)
     elseif Calculations.ishp(c)
-        return qe_parse_hp_output(files[1]; kwargs...)
+        return qe_parse_hp_output(files...; kwargs...)
     elseif Calculations.ispw(c)
         return qe_parse_pw_output(files[1]; kwargs...)
     end
@@ -874,7 +874,11 @@ end
 
 function qe_parse_pert_at(out, line, f)
     sline = split(line)
-    nat = parse(Int, sline[3])
+    if sline[1] == "Atom"
+        nat = 1
+    else
+        nat = parse(Int, sline[3])
+    end
     out[:pert_at] = []
     readline(f)
     for i in 1:nat
@@ -902,19 +906,10 @@ end
 const QE_HP_PARSE_FUNCS = ["will be perturbed" => qe_parse_pert_at,
                            "Hubbard U parameters:" => qe_parse_Hubbard_U]
 
-function qe_parse_hp_output(file; parse_funcs = Pair{String,<:Function}[])
-    out = parse_file(file, QE_HP_PARSE_FUNCS; extra_parse_funcs = parse_funcs)
-    dir = splitdir(file)[1]
-    hub_files = searchdir(dir, ".Hubbard_parameters.dat")
-    if length(hub_files) > 1
-        @warn "Found multiple .Hubbard_parameters.dat files. Using $(hub_files[1]) (remove and read again if this is undesired)"
-    elseif isempty(hub_files)
-        return out 
-    end
-        
-    hubbard_file = hub_files[1]
-    if ispath(hubbard_file)
-        parse_file(hubbard_file, QE_HP_PARSE_FUNCS; extra_parse_funcs = parse_funcs, out = out)
+function qe_parse_hp_output(hp_file, hubbard_files...; parse_funcs = Pair{String,<:Function}[])
+    out = parse_file(hp_file, QE_HP_PARSE_FUNCS; extra_parse_funcs = parse_funcs)
+    if !isempty(hubbard_files)
+        parse_file(hubbard_files[1], QE_HP_PARSE_FUNCS; extra_parse_funcs = parse_funcs, out = out)
     end
     return out
 end
