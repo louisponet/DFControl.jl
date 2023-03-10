@@ -903,8 +903,18 @@ function qe_parse_Hubbard_U(out, line, f)
     end
 end
 
+function qe_parse_HP_error(out, line, f)
+    out[:error] = true
+    while !occursin("E_Fermi", line)
+        line = readline(f)
+    end
+    fermi_dos = parse(Float64, split(line)[end])
+    out[:fermi_dos] = fermi_dos
+end
+
 const QE_HP_PARSE_FUNCS = ["will be perturbed" => qe_parse_pert_at,
-                           "Hubbard U parameters:" => qe_parse_Hubbard_U]
+                           "Hubbard U parameters:" => qe_parse_Hubbard_U,
+                           "WARNING: The Fermi energy shift is zero or too big!" => qe_parse_HP_error]
 
 function qe_parse_hp_output(hp_file, hubbard_files...; parse_funcs = Pair{String,<:Function}[])
     out = parse_file(hp_file, QE_HP_PARSE_FUNCS; extra_parse_funcs = parse_funcs)

@@ -358,8 +358,14 @@ function outputdata(job::Job; calcs=map(x->x.name, job.calculations), extra_pars
     server = Server(job.server)
     out = Dict{String, Dict{Symbol, Any}}()
     calculations = map(x->job[x], calcs)
-    tdir = tempname()
-    RemoteHPC.pull(job, tdir, infiles=false, calcs=calculations)
+    
+    if !Jobs.runslocal(job)
+        tdir = tempname()
+        RemoteHPC.pull(job, tdir, infiles=false, calcs=calculations)
+    else
+        tdir = job.dir
+    end
+    
     for c in calculations
         of = Calculations.outfiles(c)
         main_file = joinpath(tdir, of[1])
