@@ -147,6 +147,9 @@ end
 function qe_parse_n_KS(out, line, f)
     return out[:n_KS_states] = parse(Int, split(line)[5])
 end
+function qe_parse_n_electrons(out, line, f)
+    return out[:n_electrons] = round(Int, parse(Float64, split(line)[5]))
+end
 
 function qe_parse_crystal_axes(out, line, f)
     m = Mat3(reshape([parse.(Float64, split(readline(f))[4:6]);
@@ -481,6 +484,7 @@ end
 const QE_PW_PARSE_FUNCTIONS = ["C/m^2" => qe_parse_polarization,
                                "lattice parameter" => qe_parse_lattice_parameter,
                                "number of Kohn-Sham states" => qe_parse_n_KS,
+                               "number of electrons" => qe_parse_n_electrons,
                                "crystal axes" => qe_parse_crystal_axes,
                                "EXX-fraction" => (x, y, z) -> x[:hybrid] = true,
                                "EXX self-consistency reached" => (x,y,z) -> x[:hybrid_converged] = true,

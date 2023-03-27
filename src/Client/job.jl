@@ -206,7 +206,7 @@ function RemoteHPC.save(job::Job, workflow = nothing; versioncheck=true, kwargs.
         end
         
         linkpath = joinpath(job, "$el.UPF")
-        if p.path != linkpath || !ispath(server, linkpath)
+        if !ispath(server, linkpath) || p.path != realpath(server, linkpath) 
             if ispath(server, linkpath)
                 rm(server, linkpath)
             end
@@ -394,30 +394,30 @@ function outputdata(job::Job; calcs=map(x->x.name, job.calculations), extra_pars
 end
 
 """
-    bandgap(job::Job, fermi=nothing)
+    bandgap(job::Job, nelec=nothing)
 
 Calculates the bandgap (possibly indirect) around the fermi level.
 Uses the first found bands calculation, if there is none it uses the first found nscf calculation.
 """
-function bandgap(job::Job, fermi = nothing, outdat = outputdata(job))
+function bandgap(job::Job, nelec = nothing, outdat = outputdata(job))
     band_calcs = filter(!isnothing, getfirst.([Calculations.isbands, Calculations.isnscf, Calculations.isscf], (job.calculations,)))
     if isempty(band_calcs)
         error("No valid calculation found to calculate the bandgap.\nMake sure the job has either a valid bands or nscf calculation.")
     end
 
-    if fermi === nothing
-        fermi_calcs = filter(x -> (Calculations.isvcrelax(x) ||
+    if nelec === nothing
+        n_calcs = filter(x -> (Calculations.isvcrelax(x) ||
                                    Calculations.isscf(x) ||
                                    Calculations.isnscf(x)), job.calculations)
 
-        if isempty(fermi_calcs)
-            error("No valid calculation found to extract the fermi level.\nPlease supply the fermi level manually.")
+        if isempty(n_calcs)
+            error("No valid calculation found to extract the number of electrons.\nPlease supply nelec manually.")
         end
-        fermi = maximum(x->get(get(outdat, x.name, Dict()), :fermi, -Inf), fermi_calcs)
+        nelec = maximum(x->get(get(outdat, x.name, Dict()), :fermi, -Inf), n_calcs)
     end
 
     bands = map(x->outdat[x.name][:bands], filter(x -> haskey(outdat, x.name), band_calcs))
-    return minimum(bandgap.(bands, fermi))
+    return minimum(bandgap.(bands, nelec))
 end
 
 """

@@ -87,12 +87,14 @@ function update_geometry!(str1::Structure, str2::Structure)
     str1.cell = copy(str2.cell)
     ats2 = str2.atoms
     for at1 in str1.atoms
-        tats2 = filter(y -> y.name == at1.name, ats2)
-        id = findmin(map(x -> norm(x.position_cart - at1.position_cart), tats2))[2]
+        id = findmin(map(x -> norm(x.position_cart - at1.position_cart), ats2))[2]
+        
         if id === nothing
             @error "No atom of the species $(at1.name) found in the second structure"
         end
-        set_position!(at1, tats2[id].position_cryst, str1.cell)
+        
+        set_position!(at1, ats2[id].position_cryst, str1.cell)
+        at1.name = ats2[id].name
     end
     return str1
 end

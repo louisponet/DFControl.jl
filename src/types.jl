@@ -31,10 +31,37 @@ eigvals(band::Band) = band.eigvals
 StructTypes.StructType(::Type{<:AbstractBand}) = StructTypes.Mutable()
 
 """
+    bandgap(bands::AbstractVector{Band}, n_electrons::Int)
+    bandgap(bands::AbstractVector{Band}, fermi::Float64)
+
+Calculates the bandgap (possibly indirect) around the fermi level.
+"""
+function bandgap(bands::Union{Iterators.Flatten,AbstractVector{<:AbstractBand}},
+                 n_electrons::Int)
+    bands = sort(bands, by = x->maximum(eigvals(x)))
+    if length(bands) < n_electrons+1
+        error("not enough bands for $n_electrons electrons ($(length(bands)) bands)." )
+    end
+    gap = minimum(eigvals(bands[n_electrons+1])) - maximum(eigvals(bands[n_electrons]))
+    return gap < 0 ? 0.0 : gap
+end
+
+"""
     bandgap(bands::AbstractVector{Band}, fermi=0.0)
 
 Calculates the bandgap (possibly indirect) around the fermi level.
 """
+function bandgap(bands::Union{Iterators.Flatten,AbstractVector{<:AbstractBand}},
+                 n_electrons::Int)
+    maxbands = sort(bands, by = x->maximum(eigvals(x)))
+    minbands = sort(bands, by = x->minimum(eigvals(x)))
+    if length(bands) < n_electrons+1
+        error("not enough bands for $n_electrons electrons ($(length(bands)) bands)." )
+    end
+    gap = minimum(eigvals(minbands[n_electrons+1])) - maximum(eigvals(maxbands[n_electrons]))
+    return gap < 0 ? 0.0 : gap
+end
+
 function bandgap(bands::Union{Iterators.Flatten,AbstractVector{<:AbstractBand}},
                  fermi = 0.0)
     max_valence = -Inf
@@ -54,8 +81,9 @@ function bandgap(bands::Union{Iterators.Flatten,AbstractVector{<:AbstractBand}},
     end
     return min_conduction - max_valence
 end
+
 function bandgap(u_d_bands::Union{NamedTuple,Tuple}, args...)
-    return bandgap(Iterators.flatten(u_d_bands), args...)
+    return bandgap([u_d_bands.up; u_d_bands.down], args...)
 end
 
 mutable struct TimingData
