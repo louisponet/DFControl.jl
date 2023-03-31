@@ -38,21 +38,6 @@ Calculates the bandgap (possibly indirect) around the fermi level.
 """
 function bandgap(bands::Union{Iterators.Flatten,AbstractVector{<:AbstractBand}},
                  n_electrons::Int)
-    bands = sort(bands, by = x->maximum(eigvals(x)))
-    if length(bands) < n_electrons+1
-        error("not enough bands for $n_electrons electrons ($(length(bands)) bands)." )
-    end
-    gap = minimum(eigvals(bands[n_electrons+1])) - maximum(eigvals(bands[n_electrons]))
-    return gap < 0 ? 0.0 : gap
-end
-
-"""
-    bandgap(bands::AbstractVector{Band}, fermi=0.0)
-
-Calculates the bandgap (possibly indirect) around the fermi level.
-"""
-function bandgap(bands::Union{Iterators.Flatten,AbstractVector{<:AbstractBand}},
-                 n_electrons::Int)
     maxbands = sort(bands, by = x->maximum(eigvals(x)))
     minbands = sort(bands, by = x->minimum(eigvals(x)))
     if length(bands) < n_electrons+1
@@ -63,7 +48,7 @@ function bandgap(bands::Union{Iterators.Flatten,AbstractVector{<:AbstractBand}},
 end
 
 function bandgap(bands::Union{Iterators.Flatten,AbstractVector{<:AbstractBand}},
-                 fermi = 0.0)
+                 fermi::Float64)
     max_valence = -Inf
     min_conduction = Inf
     for b in bands
