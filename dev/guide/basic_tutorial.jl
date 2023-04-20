@@ -26,10 +26,7 @@ end#hide
 # QE is installed, and to be found in the `/opt/qe/bin`, change this according to your own
 # setup. The first argument to the constructor can be used as a label to later retrieve the executable after it was saved.
 
-pw_exec = Exec(name="pw", exec="pw.x", dir="/opt/qe/bin/", flags=Dict("-nk" => 4))
-
-# Additional executable flags can be passed as varargs to the constructor of `Exec`,
-# e.g. `Exec("pw.x", "/opt/qe/bin/", :nk => 4, :ndiag => 2)`.
+pw_exec = Exec(name="pw", path="/opt/qe/bin/pw.x",flags=Dict("-nk" => 4))
 
 # Then we create the first calculation for our job, we name it scf, which will be used to reference it later.
 # We also pass the executables to be used and additional flags to be set to the constructor.
