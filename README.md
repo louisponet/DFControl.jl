@@ -4,6 +4,7 @@
 [![Coverage Status](https://coveralls.io/repos/github/louisponet/DFControl.jl/badge.svg?branch=master)](https://coveralls.io/github/louisponet/DFControl.jl?branch=master)
 [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://louisponet.github.io/DFControl.jl/stable)
 [![](https://img.shields.io/badge/docs-latest-blue.svg)](https://louisponet.github.io/DFControl.jl/dev)
+[![Package Downloads](https://shields.io/endpoint?url=https://pkgs.genieframework.com/api/v1/badge/DFControl)](https://pkgs.genieframework.com?packages=DFControl)
 
 This package is a tool to interact with DFT related packages. Currently best support is for Quantum-Espresso and WANNIER90.
 The support for Abinit is highly experimental and will get updated very soon.
