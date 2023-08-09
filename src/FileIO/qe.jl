@@ -716,9 +716,10 @@ function qe_parse_projwfc_output(files...)
 end
 
 function pdos(files, kresolved=false)
-   
     dir = splitdir(files[1])[1]
-    atsyms = Symbol.(unique(map(x -> x[findfirst("(", x)[1]+1:findfirst(")", x)[1]-1],files)))
+    atfiles = filter(x -> occursin("atm", x), files)
+    
+    atsyms = Symbol.(unique(map(x -> x[findfirst("(", x)[1]+1:findfirst(")", x)[1]-1], atfiles)))
     magnetic = (x->occursin("ldosup",x) && occursin("ldosdw",x))(readline(files[1]))
     soc = occursin(".5", files[1])
     files = joinpath.((dir,), files)
@@ -1287,8 +1288,8 @@ end
 
 Writes a string represenation to `f`.
 """
-function Base.write(f::IO, calculation::Calculation{QE}, structure)
-    cursize = f.size
+function Base.write(f::IO, calculation::Calculation{QE}, structure=nothing)
+    cursize = f isa IOBuffer ? f.size : 0
     if Calculations.hasflag(calculation, :calculation)
         Calculations.set_flags!(calculation,
                                 :calculation => replace(calculation[:calculation],
@@ -1312,13 +1313,20 @@ function Base.write(f::IO, calculation::Calculation{QE}, structure)
                 # write(f,"  A = $A\n")
                 write(f, "  nat = $nat\n")
                 write(f, "  ntyp = $ntyp\n")
+            elseif name == :projwfc
+                prefix = calculation[:prefix]
+                outdir = calculation[:outdir]
+                write(f, "  prefix = $prefix\n")
+                write(f, "  outdir = $outdir\n")
             end
+            
             map(writeflag, [(flag, data) for (flag, data) in flags])
             write(f, "/\n\n")
         end
     end
 
     if exec(calculation.exec) == "pw.x"
+        @assert structure !== nothing "Supply a structure to write pw.x input"
         write_structure(f, calculation, structure)
     end
     for dat in calculation.data
@@ -1343,8 +1351,9 @@ function Base.write(f::IO, calculation::Calculation{QE}, structure)
     delete!.((calculation,),
              (:Hubbard_U, :Hubbard_J0, :Hubbard_J, :Hubbard_alpha, :Hubbard_beta,
               :starting_magnetization, :angle1, :angle2, :pseudo_dir))
-    return f.size - cursize
+    return f isa IOBuffer ? f.size - cursize : 0
 end
+
 function Base.write(f::AbstractString, c::Calculation{QE}, structure)
     open(f, "w") do file
         write(file, c, structure)

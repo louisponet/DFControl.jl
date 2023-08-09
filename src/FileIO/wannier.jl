@@ -116,7 +116,7 @@ function wan_parse_calculation(file)
                     else
                         m = match(r"\b([\w\d]+):", line)
                         atom        = Symbol(m.captures[1])
-                        projections = map(x->x.captures[1], eachmatch(r"[\s,;]([\w\d]+)", line))
+                        projections = map(x->x.captures[1], eachmatch(r"[:\s,;]([\w\d]+)", line))
                         push!(proj_dict, (atom, projections))
                     end
                     i += 1

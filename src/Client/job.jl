@@ -386,7 +386,7 @@ function outputdata(job::Job; calcs=map(x->x.name, job.calculations), extra_pars
                     end
                 end
             catch e
-                @warn "Error while reading output of calculation: $(c)\n" e
+                @warn "Error while reading output of calculation: $(c)\n" showerror(stdout, e,stacktrace(catch_backtrace()))
             end
         end
     end
@@ -413,7 +413,7 @@ function bandgap(job::Job, nelec = nothing, outdat = outputdata(job))
         if isempty(n_calcs)
             error("No valid calculation found to extract the number of electrons.\nPlease supply nelec manually.")
         end
-        nelec = maximum(x->get(get(outdat, x.name, Dict()), :fermi, -Inf), n_calcs)
+        nelec = maximum(x->get(get(outdat, x.name, Dict()), :n_electrons, 0), n_calcs)
     end
 
     bands = map(x->outdat[x.name][:bands], filter(x -> haskey(outdat, x.name), band_calcs))

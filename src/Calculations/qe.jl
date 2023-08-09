@@ -186,7 +186,7 @@ end
 
 function outfiles(c::Calculation{QE})
     files = [c.outfile]
-    for (is, fuzzies) in zip(("projwfc.x", "hp.x"), (("pdos",), ("Hubbard_parameters",)))
+    for (is, fuzzies) in zip(("projwfc.x", "hp.x", "pp.x"), (("pdos",), ("Hubbard_parameters",), ("filplot", "fileout")))
         if c.exec.exec == is
             append!(files, fuzzies)
         end
@@ -337,13 +337,17 @@ function gencalc_projwfc(template::Calculation{QE}, Emin, Emax, DeltaE, extrafla
     end
     tdegaussflag = get(template, :degauss, nothing)
     degauss = tdegaussflag !== nothing ? tdegaussflag : 0.0
-    exec = Exec(path=joinpath(dirname(template.exec.path), "projwfc.x"), modules = deepcopy(template.exec.modules), flags = deepcopy(template.exec.flags))
-    empty!(exec.flags)
+    exec = Exec(path=joinpath(dirname(template.exec), "projwfc.x"), modules = deepcopy(template.exec.modules))
+    
     out = Calculation(deepcopy(template); name = name, exec = exec, data = InputData[])
+    
     set_name!(out, "projwfc")
+    
     empty!(out.flags)
+    
     set_flags!(out, :Emin => Emin, :Emax => Emax, :DeltaE => DeltaE, :ngauss => ngauss,
                :degauss => degauss; print = false)
+                
     set_flags!(out, extraflags...)
     return out
 end
