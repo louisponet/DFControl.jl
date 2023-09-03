@@ -11,7 +11,7 @@ function Base.show(io::IO, ::MIME"text/plain", block::InputData)
     return
 end
 
-Base.show(io::IO, band::Band) = print(io, "Band($(length(band.k_points_cart)) k_points: $(band.k_points_cart[1]) -> $(band.k_points_cart[end]),  eigvals: $(band.eigvals[1]) -> $(band.eigvals[end]))")
+Base.show(io::IO, band::Band) = print(io, "Band($(length(band.k_points_cart)) k_points,  eigvals: $(band.eigvals[1]) eV -> $(band.eigvals[end]) eV)")
 
 function Base.show(io::IO, ::MIME"text/plain", band::Band)
     show_type(io, band)
