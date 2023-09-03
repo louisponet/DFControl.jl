@@ -87,10 +87,10 @@ end
 const QE7_2CalculationInfos = Ref(QECalculationInfo[])
 
 function maybe_init_QE7_2CalculationInfos()
-    if isempty(QECalculationInfos[])
+    if isempty(QE7_2CalculationInfos[])
         include(joinpath(DEPS_DIR, "qe7.2flags.jl"))
-        QECalculationInfos[] = Base.invokelatest(_QE7_2INPUTINFOS, )
-        push!(QECalculationInfos[],
+        QE7_2CalculationInfos[] = Base.invokelatest(_QE7_2INPUTINFOS, )
+        push!(QE7_2CalculationInfos[],
               QECalculationInfo("pw2wannier90.x",
                                 [QEControlBlockInfo(:inputpp,
                                                     [QEFlagInfo{String}(:outdir,

@@ -1536,12 +1536,13 @@ write_structure(f, calculation::Calculation{QE}, structure) = write_positions_ce
 function write_structure(f, calculation::Calculation{QE7_2}, structure)
     write_positions_cell(f, calculation, structure)
     if haskey(calculation, :lda_plus_u)
-        u_proj = unique(map(x->x.dftu.projection_type, filter(y -> y.dftu.U != 0 || y.dftu.J0 != 0 || y.dftu.J[1] != 0, structure.atoms)))
+        unique_at = unique(structure.atoms)
+        u_proj = unique(map(x->x.dftu.projection_type, filter(y -> y.dftu.U != 0 || y.dftu.J0 != 0 || y.dftu.J[1] != 0, unique_at)))
         if length(u_proj) > 1
             @warn "Found different U proj types for different atoms, this is not supported so we use the first one: $(u_proj[1])"
         end
         write(f, "HUBBARD ($(u_proj[1])) \n")
-        for at in structure.atoms
+        for at in unique_at
             
             atsym = at.element.symbol
             if at.dftu.U != 0.0
@@ -1560,6 +1561,7 @@ function write_structure(f, calculation::Calculation{QE7_2}, structure)
                 end
             end
         end
+        write(f, "\n\n")
     end
 end
 
