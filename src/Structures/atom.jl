@@ -16,6 +16,7 @@ Base.@kwdef mutable struct DFTU
     α::Float64 = 0.0
     β::Float64 = 0.0
     J::Vector{Float64} = [0.0]
+    projection_type::String = "ortho-atomic"
 end
 function DFTU(dict::JSON3.Object)
     return DFTU(;dict...)

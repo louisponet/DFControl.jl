@@ -1,3 +1,4 @@
+const QE_CALCULATION = Union{Calculation{QE}, Calculation{QE7_2}}
 #QE calls these flags
 struct QEFlagInfo{T}
     name::Symbol
@@ -46,42 +47,93 @@ function allflags(info::QECalculationInfo)
     return vcat([[i.flags for i in info.control]; [i.flags for i in info.data]]...)
 end
 
-include(joinpath(DEPS_DIR, "qeflags.jl"))
-const QECalculationInfos = _QEINPUTINFOS()
-push!(QECalculationInfos,
-      QECalculationInfo("pw2wannier90.x",
-                        [QEControlBlockInfo(:inputpp,
-                                            [QEFlagInfo{String}(:outdir,
-                                                                "location of temporary output files"),
-                                             QEFlagInfo{String}(:prefix,
-                                                                "pwscf filename prefix"),
-                                             QEFlagInfo{String}(:seedname,
-                                                                "wannier90 calculation/output filename prefix"),
-                                             QEFlagInfo{String}(:wan_mode,
-                                                                "'standalone' or 'library'"),
-                                             QEFlagInfo{String}(:spin_component,
-                                                                "'none', 'up' or 'down'"),
-                                             QEFlagInfo{Bool}(:write_spn,
-                                                              "Write .spn matrix elements."),
-                                             QEFlagInfo{Bool}(:write_mmn,
-                                                              "compute M_mn matrix"),
-                                             QEFlagInfo{Bool}(:write_amn,
-                                                              "compute A_mn matrix"),
-                                             QEFlagInfo{Bool}(:write_unk,
-                                                              "write wavefunctions to file"),
-                                             QEFlagInfo{Bool}(:write_uHu,
-                                                              "write the hamiltonian elements between different k-values"),
-                                             QEFlagInfo{Bool}(:wvfn_formatted,
-                                                              "formatted or unformatted output for wavefunctions"),
-                                             QEFlagInfo{Bool}(:reduce_unk,
-                                                              "output wavefunctions on a coarse grid to save memory")])],
-                        QEDataBlockInfo[]))
+const QECalculationInfos = Ref(QECalculationInfo[])
+
+function maybe_init_QECalculationInfos()
+    if isempty(QECalculationInfos[])
+        include(joinpath(DEPS_DIR, "qeflags.jl"))
+        QECalculationInfos[] = Base.invokelatest(_QEINPUTINFOS,)
+        push!(QECalculationInfos[],
+              QECalculationInfo("pw2wannier90.x",
+                                [QEControlBlockInfo(:inputpp,
+                                                    [QEFlagInfo{String}(:outdir,
+                                                                        "location of temporary output files"),
+                                                     QEFlagInfo{String}(:prefix,
+                                                                        "pwscf filename prefix"),
+                                                     QEFlagInfo{String}(:seedname,
+                                                                        "wannier90 calculation/output filename prefix"),
+                                                     QEFlagInfo{String}(:wan_mode,
+                                                                        "'standalone' or 'library'"),
+                                                     QEFlagInfo{String}(:spin_component,
+                                                                        "'none', 'up' or 'down'"),
+                                                     QEFlagInfo{Bool}(:write_spn,
+                                                                      "Write .spn matrix elements."),
+                                                     QEFlagInfo{Bool}(:write_mmn,
+                                                                      "compute M_mn matrix"),
+                                                     QEFlagInfo{Bool}(:write_amn,
+                                                                      "compute A_mn matrix"),
+                                                     QEFlagInfo{Bool}(:write_unk,
+                                                                      "write wavefunctions to file"),
+                                                     QEFlagInfo{Bool}(:write_uHu,
+                                                                      "write the hamiltonian elements between different k-values"),
+                                                     QEFlagInfo{Bool}(:wvfn_formatted,
+                                                                      "formatted or unformatted output for wavefunctions"),
+                                                     QEFlagInfo{Bool}(:reduce_unk,
+                                                                      "output wavefunctions on a coarse grid to save memory")])],
+                                QEDataBlockInfo[]))
+    end
+end
+
+const QE7_2CalculationInfos = Ref(QECalculationInfo[])
+
+function maybe_init_QE7_2CalculationInfos()
+    if isempty(QECalculationInfos[])
+        include(joinpath(DEPS_DIR, "qe7.2flags.jl"))
+        QECalculationInfos[] = Base.invokelatest(_QE7_2INPUTINFOS, )
+        push!(QECalculationInfos[],
+              QECalculationInfo("pw2wannier90.x",
+                                [QEControlBlockInfo(:inputpp,
+                                                    [QEFlagInfo{String}(:outdir,
+                                                                        "location of temporary output files"),
+                                                     QEFlagInfo{String}(:prefix,
+                                                                        "pwscf filename prefix"),
+                                                     QEFlagInfo{String}(:seedname,
+                                                                        "wannier90 calculation/output filename prefix"),
+                                                     QEFlagInfo{String}(:wan_mode,
+                                                                        "'standalone' or 'library'"),
+                                                     QEFlagInfo{String}(:spin_component,
+                                                                        "'none', 'up' or 'down'"),
+                                                     QEFlagInfo{Bool}(:write_spn,
+                                                                      "Write .spn matrix elements."),
+                                                     QEFlagInfo{Bool}(:write_mmn,
+                                                                      "compute M_mn matrix"),
+                                                     QEFlagInfo{Bool}(:write_amn,
+                                                                      "compute A_mn matrix"),
+                                                     QEFlagInfo{Bool}(:write_unk,
+                                                                      "write wavefunctions to file"),
+                                                     QEFlagInfo{Bool}(:write_uHu,
+                                                                      "write the hamiltonian elements between different k-values"),
+                                                     QEFlagInfo{Bool}(:wvfn_formatted,
+                                                                      "formatted or unformatted output for wavefunctions"),
+                                                     QEFlagInfo{Bool}(:reduce_unk,
+                                                                      "output wavefunctions on a coarse grid to save memory")])],
+                                QEDataBlockInfo[]))
+    end
+end
 
 function qe_calculation_info(calculation::Calculation{QE})
-    return getfirst(x -> occursin(x.exec, exec(calculation.exec)), QECalculationInfos)
+    maybe_init_QECalculationInfos()        
+    return getfirst(x -> occursin(x.exec, exec(calculation.exec)), QECalculationInfos[])
 end
+
+function qe_calculation_info(calculation::Calculation{QE7_2})
+    maybe_init_QE7_2CalculationInfos()        
+    return getfirst(x -> occursin(x.exec, exec(calculation.exec)), QE7_2CalculationInfos[])
+end
+
 function qe_calculation_info(exec::AbstractString)
-    return getfirst(x -> occursin(x.exec, exec), QECalculationInfos)
+    maybe_init_QECalculationInfos()        
+    return getfirst(x -> occursin(x.exec, exec), QECalculationInfos[])
 end
 qe_calculation_flags(exec::AbstractString) = allflags(qe_calculation_info(exec))
 
@@ -96,7 +148,8 @@ function qe_flaginfo(calculation_info::QECalculationInfo, variable_name::Symbol)
 end
 
 function qe_flaginfo(variable_name::Symbol)
-    for info in QECalculationInfos
+    maybe_init_QECalculationInfos()        
+    for info in QECalculationInfos[]
         var = qe_flaginfo(info, variable_name)
         if eltype(var) != Nothing
             return var
@@ -115,34 +168,9 @@ function qe_block_variable(calculation_info::QECalculationInfo, variable_name)
     return :error, QEFlagInfo()
 end
 
-function qe_flaginfo(e::Exec, varname)
-    for calculation_info in QECalculationInfos
-        if occursin(calculation_info.exec, exec(e))
-            return qe_flaginfo(calculation_info, varname)
-        end
-    end
-    return QEFlagInfo()
-end
-
-function qe_block_info(block_name::Symbol)
-    for calculation_info in QECalculationInfos
-        for block in [calculation_info.control; calculation_info.data]
-            if block.name == block_name
-                return block
-            end
-        end
-    end
-end
-
-function qe_all_block_flags(calculation::Calculation{QE}, block_name)
-    return getfirst(x -> x.name == block_name, qe_calculation_info(calculation).control).flags
-end
-function qe_all_block_flags(exec::AbstractString, block_name)
-    return getfirst(x -> x.name == block_name, qe_calculation_info(exec).control).flags
-end
-
-function qe_block_variable(exec::AbstractString, flagname)
-    for calculation_info in QECalculationInfos
+function qe7_2_block_variable(exec::AbstractString, flagname)
+    maybe_init_QE7_2CalculationInfos()        
+    for calculation_info in QE7_2CalculationInfos[]
         if occursin(calculation_info.exec, exec)
             return qe_block_variable(calculation_info, flagname)
         end
@@ -150,41 +178,84 @@ function qe_block_variable(exec::AbstractString, flagname)
     return :error, QEFlagInfo()
 end
 
-function qe_exec(calculation::Calculation{QE})
-    if !(exec(calculation.exec) ∈ QE_EXECS)
+function qe_block_variable(calculation::Calculation{QE}, flagname)
+    e = exec(calculation.exec)
+    if !(e ∈ QE_EXECS)
         error("Calculation $calculation does not have a valid QE executable, please set it first.")
     end
-    return calculation.exec
+    
+    maybe_init_QECalculationInfos()        
+    for calculation_info in QECalculationInfos[]
+        if occursin(calculation_info.exec, e)
+            return qe_block_variable(calculation_info, flagname)
+        end
+    end
+    return :error, QEFlagInfo()
+    
 end
+function qe_block_variable(calculation::Calculation{QE7_2}, flagname)
+    e = exec(calculation.exec)
 
-function qe_block_variable(calculation::Calculation, flagname)
-    return qe_block_variable(exec(qe_exec(calculation)), flagname)
+    if !(e ∈ QE_EXECS)
+        error("Calculation $calculation does not have a valid QE executable, please set it first.")
+    end
+    maybe_init_QE7_2CalculationInfos()        
+    for calculation_info in QE7_2CalculationInfos[]
+        if occursin(calculation_info.exec, e)
+            return qe_block_variable(calculation_info, flagname)
+        end
+    end
+    return :error, QEFlagInfo()
+    
 end
 
 function flagtype(calculation::Calculation{QE}, flag)
-    return eltype(qe_flaginfo(qe_exec(calculation), flag))
+    e = exec(calculation.exec)
+    if !(e ∈ QE_EXECS)
+        error("Calculation $calculation does not have a valid QE executable, please set it first.")
+    end
+    maybe_init_QECalculationInfos()        
+    for calculation_info in QECalculationInfos[]
+        if occursin(calculation_info.exec, e)
+            return eltype(qe_flaginfo(calculation_info, flag))
+        end
+    end
+    return eltype(QEFlagInfo())
 end
-flagtype(::Type{QE}, exec, flag) = eltype(qe_flaginfo(exec, flag))
 
-isbands(c::Calculation{QE})   = get(c, :calculation, nothing) == "bands"
-isnscf(c::Calculation{QE})    = get(c, :calculation, nothing) == "nscf"
-isscf(c::Calculation{QE})     = get(c, :calculation, nothing) == "scf"
-isvcrelax(c::Calculation{QE}) = get(c, :calculation, nothing) == "vc-relax"
-isrelax(c::Calculation{QE})   = get(c, :calculation, nothing) == "relax"
-isprojwfc(c::Calculation{QE}) = exec(c.exec) == "projwfc.x"
-ishp(c::Calculation{QE}) = exec(c.exec) == "hp.x"
+function flagtype(calculation::Calculation{QE7_2}, flag)
+    e = exec(calculation.exec)
+    if !(e ∈ QE_EXECS)
+        error("Calculation $calculation does not have a valid QE executable, please set it first.")
+    end
+    maybe_init_QE7_2CalculationInfos()        
+    for calculation_info in QE7_2CalculationInfos[]
+        if occursin(calculation_info.exec, e)
+            return eltype(qe_flaginfo(calculation_info, flag))
+        end
+    end
+    return eltype(QEFlagInfo())
+end
 
-function ispw(c::Calculation{QE})
+isbands(c::QE_CALCULATION)   = get(c, :calculation, nothing) == "bands"
+isnscf(c::QE_CALCULATION)    = get(c, :calculation, nothing) == "nscf"
+isscf(c::QE_CALCULATION)     = get(c, :calculation, nothing) == "scf"
+isvcrelax(c::QE_CALCULATION) = get(c, :calculation, nothing) == "vc-relax"
+isrelax(c::QE_CALCULATION)   = get(c, :calculation, nothing) == "relax"
+isprojwfc(c::QE_CALCULATION) = exec(c.exec) == "projwfc.x"
+ishp(c::QE_CALCULATION)      = exec(c.exec) == "hp.x"
+
+function ispw(c::QE_CALCULATION)
     return isbands(c) || isnscf(c) || isscf(c) || isvcrelax(c) || isrelax(c)
 end
 
-issoc(c::Calculation{QE}) = get(c, :lspinorb, false)
+issoc(c::QE_CALCULATION) = get(c, :lspinorb, false)
 
-function ismagnetic(c::Calculation{QE})
+function ismagnetic(c::QE_CALCULATION)
     return get(c, :nspin, 0.0) > 0.0 || get(c, :total_magnetization, 0.0)
 end
 
-function outfiles(c::Calculation{QE})
+function outfiles(c::QE_CALCULATION)
     files = [c.outfile]
     for (is, fuzzies) in zip(("projwfc.x", "hp.x", "pp.x"), (("pdos",), ("Hubbard_parameters",), ("filplot", "fileout")))
         if c.exec.exec == is
@@ -194,10 +265,10 @@ function outfiles(c::Calculation{QE})
     return unique(files)
 end
 
-ψ_cutoff_flag(::Calculation{QE}) = :ecutwfc
-ρ_cutoff_flag(::Calculation{QE}) = :ecutrho
+ψ_cutoff_flag(::QE_CALCULATION) = :ecutwfc
+ρ_cutoff_flag(::QE_CALCULATION) = :ecutrho
 
-function kgrid(na, nb, nc, ::Type{QE})
+function kgrid(na, nb, nc, ::Union{Type{QE}, Type{QE7_2}})
     return reshape([(a, b, c, 1 / (na * nb * nc))
                     for a in collect(range(0; stop = 1, length = na + 1))[1:end-1],
                         b in collect(range(0; stop = 1, length = nb + 1))[1:end-1],
@@ -205,7 +276,7 @@ function kgrid(na, nb, nc, ::Type{QE})
                    (na * nb * nc))
 end
 
-function set_kpoints!(c::Calculation{QE}, k_grid::NTuple{3,Int}; print = true) #nscf
+function set_kpoints!(c::QE_CALCULATION, k_grid::NTuple{3,Int}; print = true) #nscf
     print && !isnscf(c) && (@warn "Expected calculation to be 'nscf'.\nGot $c.")
     d = data(c, :k_points)
     if d !== nothing
@@ -220,7 +291,7 @@ function set_kpoints!(c::Calculation{QE}, k_grid::NTuple{3,Int}; print = true) #
     return c
 end
 
-function set_kpoints!(c::Calculation{QE}, k_grid::NTuple{6,Int}; print = true) #scf
+function set_kpoints!(c::QE_CALCULATION, k_grid::NTuple{6,Int}; print = true) #scf
     print &&
         !(isscf(c) || isvcrelax(c) || isrelax(c)) &&
         (@warn "Expected calculation to be scf, vc-relax, relax.")
@@ -237,7 +308,7 @@ function set_kpoints!(c::Calculation{QE}, k_grid::NTuple{6,Int}; print = true) #
     return c
 end
 
-function set_kpoints!(c::Calculation{QE}, k_grid::Vector{<:NTuple{4}}; print = true,
+function set_kpoints!(c::QE_CALCULATION, k_grid::Vector{<:NTuple{4}}; print = true,
                       k_option = :crystal_b)
     print &&
         isbands(c) != "bands" &&
@@ -268,60 +339,60 @@ function set_kpoints!(c::Calculation{QE}, k_grid::Vector{<:NTuple{4}}; print = t
 end
 
 """
-    gencalc_scf(template::Calculation{QE}, kpoints::NTuple{6, Int}, newflags...; name="scf")
+    gencalc_scf(template::QE_CALCULATION, kpoints::NTuple{6, Int}, newflags...; name="scf")
 
 Uses the information from the template and `supplied` kpoints to generate an scf calculation.
 Extra flags can be supplied which will be set for the generated calculation.
 """
-function gencalc_scf(template::Calculation{QE}, kpoints::NTuple{6,Int}, newflags...;
+function gencalc_scf(template::QE_CALCULATION, kpoints::NTuple{6,Int}, newflags...;
                      name = "scf")
     return calculation_from_kpoints(template, name, kpoints, :calculation => "scf",
                                     newflags...)
 end
 
 """
-    gencalc_vcrelax(template::Calculation{QE}, kpoints::NTuple{6, Int}, newflags...; name="scf")
+    gencalc_vcrelax(template::QE_CALCULATION, kpoints::NTuple{6, Int}, newflags...; name="scf")
 
 Uses the information from the template and supplied `kpoints` to generate a vcrelax calculation.
 Extra flags can be supplied which will be set for the generated calculation.
 """
-function gencalc_vcrelax(template::Calculation{QE}, kpoints::NTuple{6,Int}, newflags...;
+function gencalc_vcrelax(template::QE_CALCULATION, kpoints::NTuple{6,Int}, newflags...;
                          name = "vcrelax")
     return calculation_from_kpoints(template, name, kpoints, :calculation => "vc-relax",
                                     newflags...)
 end
 
 """
-    gencalc_bands(template::Calculation{QE}, kpoints::Vector{NTuple{4}}, newflags...; name="bands")
+    gencalc_bands(template::QE_CALCULATION, kpoints::Vector{NTuple{4}}, newflags...; name="bands")
 
 Uses the information from the template and supplied `kpoints` to generate a bands calculation.
 Extra flags can be supplied which will be set for the generated calculation.
 """
-function gencalc_bands(template::Calculation{QE}, kpoints::Vector{<:NTuple{4}}, newflags...;
+function gencalc_bands(template::QE_CALCULATION, kpoints::Vector{<:NTuple{4}}, newflags...;
                        name = "bands")
     return calculation_from_kpoints(template, name, kpoints, :calculation => "bands",
                                     newflags...)
 end
 
 """
-    gencalc_nscf(template::Calculation{QE}, kpoints::NTuple{3, Int}, newflags...; name="nscf")
+    gencalc_nscf(template::QE_CALCULATION, kpoints::NTuple{3, Int}, newflags...; name="nscf")
 
 Uses the information from the template and supplied `kpoints` to generate an nscf calculation.
 Extra flags can be supplied which will be set for the generated calculation.
 """
-function gencalc_nscf(template::Calculation{QE}, kpoints::NTuple{3,Int}, newflags...;
+function gencalc_nscf(template::QE_CALCULATION, kpoints::NTuple{3,Int}, newflags...;
                       name = "nscf")
     return calculation_from_kpoints(template, name, kpoints, :calculation => "nscf",
                                     newflags...)
 end
 
 """
-    gencalc_projwfc(template::Calculation{QE}, Emin, Emax, DeltaE, newflags...; name="projwfc")
+    gencalc_projwfc(template::QE_CALCULATION, Emin, Emax, DeltaE, newflags...; name="projwfc")
 
 Uses the information from the template and supplied `kpoints` to generate a `projwfc.x` calculation.
 Extra flags can be supplied which will be set for the generated calculation.
 """
-function gencalc_projwfc(template::Calculation{QE}, Emin, Emax, DeltaE, extraflags...;
+function gencalc_projwfc(template::QE_CALCULATION, Emin, Emax, DeltaE, extraflags...;
                          name = "projwfc")
     occflag = get(template, :occupations, "fixed")
     ngauss  = 0
