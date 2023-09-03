@@ -11,7 +11,7 @@ function cardoption(line)
     if length(sline) < 2 && lowercase(sline[1]) == "k_points"
         return :tpiba
     else
-        return Symbol(match(r"((?:[a-z][a-z0-9_]*))", sline[2]).match)
+        return Symbol(match(r"((?:[a-z][a-z0-9_-]*))", sline[2]).match)
     end
 end
 
@@ -963,34 +963,30 @@ function extract_cell!(flags, cell_block)
     end
 end
 
-function qe_DFTU(speciesid::Int, parsed_flags::Dict{Symbol,Any}, hubbard_block)
-    if hubbard_block === nothing
-        U  = 0.0
-        J0 = 0.0
-        J  = [0.0]
-        α  = 0.0
-        β  = 0.0
-        if haskey(parsed_flags, :Hubbard_U) && length(parsed_flags[:Hubbard_U]) >= speciesid
-            U = parsed_flags[:Hubbard_U][speciesid]
-        end
-        if haskey(parsed_flags, :Hubbard_J0) && length(parsed_flags[:Hubbard_J0]) >= speciesid
-            J0 = parsed_flags[:Hubbard_J0][speciesid]
-        end
-        if haskey(parsed_flags, :Hubbard_J) && length(parsed_flags[:Hubbard_J]) >= speciesid
-            J = Float64.(parsed_flags[:Hubbard_J][:, speciesid])
-        end
-        if haskey(parsed_flags, :Hubbard_alpha) &&
-           length(parsed_flags[:Hubbard_alpha]) >= speciesid
-            α = parsed_flags[:Hubbard_alpha][speciesid]
-        end
-        if haskey(parsed_flags, :Hubbard_beta) &&
-           length(parsed_flags[:Hubbard_beta]) >= speciesid
-            β = parsed_flags[:Hubbard_beta][speciesid]
-        end
-        return DFTU(; U = U, J0 = J0, α = α, β = β, J = sum(J) == 0 ? [0.0] : J)
-    else
-        error("needs implementing")
+function qe_DFTU(speciesid::Int, parsed_flags::Dict{Symbol,Any},)
+    U  = 0.0
+    J0 = 0.0
+    J  = [0.0]
+    α  = 0.0
+    β  = 0.0
+    if haskey(parsed_flags, :Hubbard_U) && length(parsed_flags[:Hubbard_U]) >= speciesid
+        U = parsed_flags[:Hubbard_U][speciesid]
     end
+    if haskey(parsed_flags, :Hubbard_J0) && length(parsed_flags[:Hubbard_J0]) >= speciesid
+        J0 = parsed_flags[:Hubbard_J0][speciesid]
+    end
+    if haskey(parsed_flags, :Hubbard_J) && length(parsed_flags[:Hubbard_J]) >= speciesid
+        J = Float64.(parsed_flags[:Hubbard_J][:, speciesid])
+    end
+    if haskey(parsed_flags, :Hubbard_alpha) &&
+       length(parsed_flags[:Hubbard_alpha]) >= speciesid
+        α = parsed_flags[:Hubbard_alpha][speciesid]
+    end
+    if haskey(parsed_flags, :Hubbard_beta) &&
+       length(parsed_flags[:Hubbard_beta]) >= speciesid
+        β = parsed_flags[:Hubbard_beta][speciesid]
+    end
+    return DFTU(; U = U, J0 = J0, α = α, β = β, J = sum(J) == 0 ? [0.0] : J)
 end
 
 degree2π(ang) = ang / 180 * π
@@ -1041,7 +1037,7 @@ function extract_atoms!(parsed_flags, atsyms, atom_block, pseudo_block, hubbard_
                    position_cart = primv * pos,
                    position_cryst = UnitfulAtomic.ustrip.(inv(cell) * pos), pseudo = pseudo,
                    magnetization = qe_magnetization(speciesid, parsed_flags),
-                   dftu = qe_DFTU(speciesid, parsed_flags, hubbard_block)))
+                   dftu = hubbard_block === nothing ? qe_DFTU(speciesid, parsed_flags) : hubbard_block[atsym]))
     end
 
     return atoms
@@ -1130,6 +1126,7 @@ function qe_parse_flags(inflags, nat::Int=0)
     end
     return flags
 end
+
 
 """
     qe_parse_calculation(file)
@@ -1234,13 +1231,42 @@ function qe_parse_calculation(file)
         i_hubbard = findcard("hubbard")
         
         if i_hubbard !== nothing
-            pre_7_2=false
-            error("implement hubbard block parsing")
+            pre_7_2 = false
+            projection_type = String(cardoption(lines[i_hubbard]))
+            push!(used_lineids, i_hubbard)
+
+            dftus = Dict{Symbol, DFTU}()
+            for k in 1:ntyp
+                push!(used_lineids, i_hubbard + k)
+                
+                par, atsym_manifold, sval = split(lines[i_hubbard+k])
+                val = parse(Float64, sval)
+
+                atsym = Symbol(split(atsym_manifold, "-")[1])
+
+                dftu = get!(dftus, atsym, DFTU())
+                dftu.projection_type = projection_type
+                
+                if par == "U"
+                    dftu.U = val
+                elseif par == "J0"
+                    dftu.J0 = val
+                elseif par == "J"
+                    dftu.J[1] = val
+                elseif par == "B" || par == "E2"
+                    dftu.J[2] = val
+                elseif par == "E3"
+                    dftu.J[3] = val
+                end
+            end
+            structure = extract_structure!(sysflags, (option = cell_option, data=cell), atsyms,
+                                       (option = atoms_option, data=atoms), (data=pseudos,), dftus)
+                
+        else
+            structure = extract_structure!(sysflags, (option = cell_option, data=cell), atsyms,
+                                       (option = atoms_option, data=atoms), (data=pseudos,), nothing)
         end
             
-        
-        structure = extract_structure!(sysflags, (option = cell_option, data=cell), atsyms,
-                                   (option = atoms_option, data=atoms), (data=pseudos,), nothing)
         delete!.((sysflags,), (:A, :celldm_1, :celldm, :ibrav, :nat, :ntyp))
         delete!.((sysflags,),
                  [:Hubbard_U, :Hubbard_J0, :Hubbard_alpha, :Hubbard_beta, :Hubbard_J])
@@ -1561,7 +1587,7 @@ function write_structure(f, calculation::Calculation{QE7_2}, structure)
                 end
             end
         end
-        write(f, "\n\n")
+        write(f, "\n")
     end
 end
 

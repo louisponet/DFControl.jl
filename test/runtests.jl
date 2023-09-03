@@ -37,18 +37,18 @@ using UUIDs
 testdir = @__DIR__
 test_server = local_server()
 @time begin
-    # @testset "constants" begin
-    #     include("constant_tests.jl")
-    # end
-    # @testset "documenation" begin
-    #     include("documentation_tests.jl")
-    # end
+    @testset "constants" begin
+        include("constant_tests.jl")
+    end
+    @testset "documenation" begin
+        include("documentation_tests.jl")
+    end
     @testset "Setting defaults" begin
         include("defaults_tests.jl")
     end
-    # @testset "Job from CIF file" begin
-    #     include("jobfromcif_tests.jl")
-    # end
+    @testset "Job from CIF file" begin
+        include("jobfromcif_tests.jl")
+    end
     @testset "Job from CIF file 7.2" begin
         include("jobfromcif_tests_7.2.jl")
     end
