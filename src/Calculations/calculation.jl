@@ -90,13 +90,18 @@ function Calculation(name, flags, data, e, run, infile,
     return Calculation{p}(name, flags, data, e, run, infile, outfile)
 end
 
-function Calculation(name, flags...; kwargs...)
+function Calculation(name::String, flags::Pair{Symbol}...; kwargs...)
     out = Calculation(; name = name, kwargs...)
     set_flags!(out, flags...; print=false)
     return out
 end
+function Calculation{p}(name::String, flags::Pair{Symbol}...; kwargs...) where {p}
+    out = Calculation{p}(; name = name, kwargs...)
+    set_flags!(out, flags...; print=false)
+    return out
+end
 
-function Calculation(template::Calculation, name, newflags...;
+function Calculation(template::Calculation, name::String, newflags::Pair{Symbol}...;
                      excs = deepcopy(template.exec), run  = true, data = nothing)
     newflags = Dict(newflags...)
 
