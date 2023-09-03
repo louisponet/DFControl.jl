@@ -36,6 +36,7 @@ abstract type Package end
 struct NoPackage <: Package end
 struct Wannier90 <: Package end
 struct QE <: Package end
+struct QE7_2 <: Package end
 struct Abinit <: Package end
 struct Elk <: Package end
 StructTypes.StructType(::Type{<:Package}) = StructTypes.Struct()
@@ -293,7 +294,7 @@ function set_flags!(c::Calculation{T}, flags...; print = true) where {T}
             end
             old_data = haskey(c, flag) ? c[flag] : ""
             
-            if eltype(c) == QE
+            if eltype(c) == QE || eltype(c) == QE7_2
                 block, _ = qe_block_variable(c, flag)
                 if block == :error
                     error("""Block for flag $flag could not be found, please set it manually using <c>.flags[<block>][$flag] = $value""")
@@ -441,117 +442,19 @@ function sanitize_flags!(cs::Vector{<:Calculation}, str::Structure, name, outdir
             end
         end
     end
-
-    u_ats = unique(str.atoms)
-    isnc = Structures.isnoncolin(str)
-    flags_to_set = []
-    if any(x -> x.dftu.U != 0 ||
-                    x.dftu.J0 != 0.0 ||
-                    sum(x.dftu.J) != 0 ||
-                    sum(x.dftu.α) != 0, u_ats)
-        Jmap = map(x -> copy(x.dftu.J), u_ats)
-        Jdim = maximum(length.(Jmap))
-        Jarr = zeros(Jdim, length(u_ats))
-        for (i, J) in enumerate(Jmap)
-            diff = Jdim - length(J)
-            if diff > 0
-                for d in 1:diff
-                    push!(J, zero(eltype(J)))
-                end
-            end
-            Jarr[:, i] .= J
-        end
-        append!(flags_to_set,
-                [:Hubbard_U     => map(x -> x.dftu.U, u_ats),
-                 :Hubbard_alpha => map(x -> x.dftu.α, u_ats),
-                 :Hubbard_beta  => map(x -> x.dftu.β, u_ats), :Hubbard_J     => Jarr,
-                 :Hubbard_J0    => map(x -> x.dftu.J0, u_ats)])
-    end
-    if !isempty(flags_to_set) || any(x -> hasflag(x, :Hubbard_parameters), cs)
-        push!(flags_to_set, :lda_plus_u => true)
-        if isnc
-            push!(flags_to_set, :lda_plus_u_kind => 1)
-        end
-    end
-    if !isempty(flags_to_set)
-        for c in cs
-            set_flags!(c, flags_to_set...; print = false)
-        end
-    else
-        for c in cs
-            for f in
-                (:lda_plus_u, :lda_plus_u_kind, :Hubbard_U, :Hubbard_alpha, :Hubbard_beta,
-                 :Hubbard_J, :Hubbard_J0, :U_projection_type)
-                pop!(c, f, nothing)
-            end
-        end
-    end
-
-    flags_to_set = []
-    mags = map(x -> x.magnetization, u_ats)
-    starts = Float64[]
-    θs = Float64[]
-    ϕs = Float64[]
-    ismagcalc = isnc ? true : Structures.ismagnetic(str) || any(x->haskey(x, :tot_magnetization), cs)
-    if ismagcalc
-        if  isnc || any(x -> get(x, :noncolin, false), cs)
-            for m in mags
-                tm = normalize(m)
-                if norm(m) == 0
-                    push!.((starts, θs, ϕs), 0.0)
-                else
-                    θ = acos(tm[3]) * 180 / π
-                    ϕ = atan(tm[2], tm[1]) * 180 / π
-                    start = norm(m)
-                    push!(θs, θ)
-                    push!(ϕs, ϕ)
-                    push!(starts, start)
-                end
-            end
-            push!(flags_to_set, :noncolin => true)
-        else
-            for m in mags
-                push!.((θs, ϕs), 0.0)
-                if norm(m) == 0
-                    push!(starts, 0)
-                else
-                    push!(starts, sign(sum(m)) * norm(m))
-                end
-            end
-        end
-        append!(flags_to_set, [:starting_magnetization => starts, :angle1 => θs, :angle2 => ϕs, :nspin => 2])
-    end
     for c in cs
+        set_flags!(c, :prefix => name, :outdir => outdir, print=false)
         try
-            set_flags!(c, :prefix => "$name", :outdir => "$outdir"; print = false)
-            if ispw(c)
-                set_flags!(c, flags_to_set...; print = false)
-                if isnc
-                    pop!(c, :nspin, nothing)
-                end
-                if isvcrelax(c)
-                    #this is to make sure &ions and &cell are there in the calculation 
-                    !hasflag(c, :ion_dynamics) &&
-                        set_flags!(c, :ion_dynamics => "bfgs"; print = false)
-                    !hasflag(c, :cell_dynamics) &&
-                        set_flags!(c, :cell_dynamics => "bfgs"; print = false)
-                end
-                #TODO add all the required flags
-                @assert hasflag(c, :calculation) "Please set the flag for calculation with name: $(name(c))"
-
-                set_flags!(c, :pseudo_dir => "."; print = false)
-            end
             convert_flags!(c)
         catch
             @warn "Something went wrong trying to sanitize the flags for calc $(c.name)"
         end
     end
-
     return
 end
 
 rm_tmp_flags!(::Calculation) = nothing
-function rm_tmp_flags!(c::Calculation{QE})
+function rm_tmp_flags!(c::Union{Calculation{QE}, Calculation{QE7_2}})
     pop!(c, :prefix, nothing)
     pop!(c, :outdir, nothing)
     return pop!(c, :nspin, nothing)
