@@ -129,10 +129,8 @@ function Calculation(dict::JSON3.Object)
     Calculation(dict[:name], Dict(dict[:flags]), [InputData(t) for t in dict[:data]], Exec(dict[:exec]), dict[:run], dict[:infile], dict[:outfile])
 end
     
-
 # Calculation() = Calculation{NoPackage}(package=NoPackage())
 StructTypes.StructType(::Type{<:Calculation}) = StructTypes.Struct()
-
 
 # Interface Functions
 isbands(c::Calculation)    = false

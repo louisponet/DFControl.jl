@@ -421,3 +421,5 @@ function gencalc_projwfc(template::Calculation{<:AbstractQE}, Emin, Emax, DeltaE
     set_flags!(out, extraflags...)
     return out
 end
+
+convert_to_7_2(c::Calculation{QE}) = Calculation{QE7_2}(name = c.name, flags = c.flags, data = c.data, exec=c.exec, run = c.run, infile=c.infile, outfile=c.outfile)
