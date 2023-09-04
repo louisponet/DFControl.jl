@@ -1,6 +1,6 @@
 import Base: parse
 
-function readoutput(c::Calculation{QE}, files...; kwargs...)
+function readoutput(c::Calculation{<:AbstractQE}, files...; kwargs...)
     return qe_parse_output(c, files...; kwargs...)
 end
 
@@ -35,7 +35,7 @@ function qe_parse_time(str::AbstractString)
     return t
 end
 
-function qe_parse_output(c::Calculation{QE}, files...; kwargs...)
+function qe_parse_output(c::Calculation{<:AbstractQE} , files...; kwargs...)
     if Calculations.isprojwfc(c)
         return qe_parse_projwfc_output(files...)
     elseif Calculations.ishp(c)
@@ -1296,7 +1296,7 @@ function qe_parse_calculation(file)
         end
         push!(datablocks, InputData(:k_points, k_option, k_data))
     end
-    return (flags = allflags, data = datablocks, structure = structure, pre_7_2 = pre_7_2)
+    return (flags = allflags, data = datablocks, structure = structure, package = pre_7_2 ? QE : QE7_2)
 end
 
 function qe_writeflag(f, flag, value)
@@ -1440,7 +1440,7 @@ end
 
 Writes a string represenation to `f`.
 """
-function Base.write(f::IO, calculation::Calculation{T}, structure=nothing) where {T <: Union{QE, QE7_2}}
+function Base.write(f::IO, calculation::Calculation{T}, structure=nothing) where {T <: AbstractQE}
     cursize = f isa IOBuffer ? f.size : 0
     if Calculations.hasflag(calculation, :calculation)
         Calculations.set_flags!(calculation,
@@ -1526,7 +1526,7 @@ end
 function write_data(f, data)
     if typeof(data) <: Matrix
         writedlm(f, data)
-    elseif typeof(data) <: Union{String,Symbol}
+    elseif typeof(data) <: AbstractQE
         write(f, "$data\n")
     elseif typeof(data) <: Vector && length(data[1]) == 1
         write(f, join(string.(data), " "))
@@ -1540,7 +1540,7 @@ function write_data(f, data)
     end
 end
 
-function write_positions_cell(f, calculation::Union{Calculation{QE}, Calculation{QE7_2}}, structure)
+function write_positions_cell(f, calculation::Calculation{<:AbstractQE}, structure)
     unique_at = unique(structure.atoms)
     write(f, "ATOMIC_SPECIES\n")
     write(f,
@@ -1591,7 +1591,7 @@ function write_structure(f, calculation::Calculation{QE7_2}, structure)
     end
 end
 
-function qe_generate_pw2wancalculation(c::Calculation{Wannier90}, nscf::Union{Calculation{QE}, Calculation{QE7_2}})
+function qe_generate_pw2wancalculation(c::Calculation{Wannier90}, nscf::Calculation{<:AbstractQE})
     flags = Dict()
     if haskey(nscf, :prefix)
         flags[:prefix] = nscf[:prefix]

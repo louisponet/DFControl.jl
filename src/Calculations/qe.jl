@@ -1,4 +1,3 @@
-const QE_CALCULATION = Union{Calculation{QE}, Calculation{QE7_2}}
 #QE calls these flags
 struct QEFlagInfo{T}
     name::Symbol
@@ -237,25 +236,25 @@ function flagtype(calculation::Calculation{QE7_2}, flag)
     return eltype(QEFlagInfo())
 end
 
-isbands(c::QE_CALCULATION)   = get(c, :calculation, nothing) == "bands"
-isnscf(c::QE_CALCULATION)    = get(c, :calculation, nothing) == "nscf"
-isscf(c::QE_CALCULATION)     = get(c, :calculation, nothing) == "scf"
-isvcrelax(c::QE_CALCULATION) = get(c, :calculation, nothing) == "vc-relax"
-isrelax(c::QE_CALCULATION)   = get(c, :calculation, nothing) == "relax"
-isprojwfc(c::QE_CALCULATION) = exec(c.exec) == "projwfc.x"
-ishp(c::QE_CALCULATION)      = exec(c.exec) == "hp.x"
+isbands(c::Calculation{<:AbstractQE})   = get(c, :calculation, nothing) == "bands"
+isnscf(c::Calculation{<:AbstractQE})    = get(c, :calculation, nothing) == "nscf"
+isscf(c::Calculation{<:AbstractQE})     = get(c, :calculation, nothing) == "scf"
+isvcrelax(c::Calculation{<:AbstractQE}) = get(c, :calculation, nothing) == "vc-relax"
+isrelax(c::Calculation{<:AbstractQE})   = get(c, :calculation, nothing) == "relax"
+isprojwfc(c::Calculation{<:AbstractQE}) = exec(c.exec) == "projwfc.x"
+ishp(c::Calculation{<:AbstractQE})      = exec(c.exec) == "hp.x"
 
-function ispw(c::QE_CALCULATION)
+function ispw(c::Calculation{<:AbstractQE})
     return isbands(c) || isnscf(c) || isscf(c) || isvcrelax(c) || isrelax(c)
 end
 
-issoc(c::QE_CALCULATION) = get(c, :lspinorb, false)
+issoc(c::Calculation{<:AbstractQE}) = get(c, :lspinorb, false)
 
-function ismagnetic(c::QE_CALCULATION)
+function ismagnetic(c::Calculation{<:AbstractQE})
     return get(c, :nspin, 0.0) > 0.0 || get(c, :total_magnetization, 0.0)
 end
 
-function outfiles(c::QE_CALCULATION)
+function outfiles(c::Calculation{<:AbstractQE})
     files = [c.outfile]
     for (is, fuzzies) in zip(("projwfc.x", "hp.x", "pp.x"), (("pdos",), ("Hubbard_parameters",), ("filplot", "fileout")))
         if c.exec.exec == is
@@ -265,8 +264,8 @@ function outfiles(c::QE_CALCULATION)
     return unique(files)
 end
 
-ψ_cutoff_flag(::QE_CALCULATION) = :ecutwfc
-ρ_cutoff_flag(::QE_CALCULATION) = :ecutrho
+ψ_cutoff_flag(::Calculation{<:AbstractQE}) = :ecutwfc
+ρ_cutoff_flag(::Calculation{<:AbstractQE}) = :ecutrho
 
 function kgrid(na, nb, nc, ::Union{Type{QE}, Type{QE7_2}})
     return reshape([(a, b, c, 1 / (na * nb * nc))
@@ -276,7 +275,7 @@ function kgrid(na, nb, nc, ::Union{Type{QE}, Type{QE7_2}})
                    (na * nb * nc))
 end
 
-function set_kpoints!(c::QE_CALCULATION, k_grid::NTuple{3,Int}; print = true) #nscf
+function set_kpoints!(c::Calculation{<:AbstractQE}, k_grid::NTuple{3,Int}; print = true) #nscf
     print && !isnscf(c) && (@warn "Expected calculation to be 'nscf'.\nGot $c.")
     d = data(c, :k_points)
     if d !== nothing
@@ -291,7 +290,7 @@ function set_kpoints!(c::QE_CALCULATION, k_grid::NTuple{3,Int}; print = true) #n
     return c
 end
 
-function set_kpoints!(c::QE_CALCULATION, k_grid::NTuple{6,Int}; print = true) #scf
+function set_kpoints!(c::Calculation{<:AbstractQE}, k_grid::NTuple{6,Int}; print = true) #scf
     print &&
         !(isscf(c) || isvcrelax(c) || isrelax(c)) &&
         (@warn "Expected calculation to be scf, vc-relax, relax.")
@@ -308,7 +307,7 @@ function set_kpoints!(c::QE_CALCULATION, k_grid::NTuple{6,Int}; print = true) #s
     return c
 end
 
-function set_kpoints!(c::QE_CALCULATION, k_grid::Vector{<:NTuple{4}}; print = true,
+function set_kpoints!(c::Calculation{<:AbstractQE}, k_grid::Vector{<:NTuple{4}}; print = true,
                       k_option = :crystal_b)
     print &&
         isbands(c) != "bands" &&
@@ -339,60 +338,60 @@ function set_kpoints!(c::QE_CALCULATION, k_grid::Vector{<:NTuple{4}}; print = tr
 end
 
 """
-    gencalc_scf(template::QE_CALCULATION, kpoints::NTuple{6, Int}, newflags...; name="scf")
+    gencalc_scf(template::Calculation{<:AbstractQE}, kpoints::NTuple{6, Int}, newflags...; name="scf")
 
 Uses the information from the template and `supplied` kpoints to generate an scf calculation.
 Extra flags can be supplied which will be set for the generated calculation.
 """
-function gencalc_scf(template::QE_CALCULATION, kpoints::NTuple{6,Int}, newflags...;
+function gencalc_scf(template::Calculation{<:AbstractQE}, kpoints::NTuple{6,Int}, newflags...;
                      name = "scf")
     return calculation_from_kpoints(template, name, kpoints, :calculation => "scf",
                                     newflags...)
 end
 
 """
-    gencalc_vcrelax(template::QE_CALCULATION, kpoints::NTuple{6, Int}, newflags...; name="scf")
+    gencalc_vcrelax(template::Calculation{<:AbstractQE}, kpoints::NTuple{6, Int}, newflags...; name="scf")
 
 Uses the information from the template and supplied `kpoints` to generate a vcrelax calculation.
 Extra flags can be supplied which will be set for the generated calculation.
 """
-function gencalc_vcrelax(template::QE_CALCULATION, kpoints::NTuple{6,Int}, newflags...;
+function gencalc_vcrelax(template::Calculation{<:AbstractQE}, kpoints::NTuple{6,Int}, newflags...;
                          name = "vcrelax")
     return calculation_from_kpoints(template, name, kpoints, :calculation => "vc-relax",
                                     newflags...)
 end
 
 """
-    gencalc_bands(template::QE_CALCULATION, kpoints::Vector{NTuple{4}}, newflags...; name="bands")
+    gencalc_bands(template::Calculation{<:AbstractQE}, kpoints::Vector{NTuple{4}}, newflags...; name="bands")
 
 Uses the information from the template and supplied `kpoints` to generate a bands calculation.
 Extra flags can be supplied which will be set for the generated calculation.
 """
-function gencalc_bands(template::QE_CALCULATION, kpoints::Vector{<:NTuple{4}}, newflags...;
+function gencalc_bands(template::Calculation{<:AbstractQE}, kpoints::Vector{<:NTuple{4}}, newflags...;
                        name = "bands")
     return calculation_from_kpoints(template, name, kpoints, :calculation => "bands",
                                     newflags...)
 end
 
 """
-    gencalc_nscf(template::QE_CALCULATION, kpoints::NTuple{3, Int}, newflags...; name="nscf")
+    gencalc_nscf(template::Calculation{<:AbstractQE}, kpoints::NTuple{3, Int}, newflags...; name="nscf")
 
 Uses the information from the template and supplied `kpoints` to generate an nscf calculation.
 Extra flags can be supplied which will be set for the generated calculation.
 """
-function gencalc_nscf(template::QE_CALCULATION, kpoints::NTuple{3,Int}, newflags...;
+function gencalc_nscf(template::Calculation{<:AbstractQE}, kpoints::NTuple{3,Int}, newflags...;
                       name = "nscf")
     return calculation_from_kpoints(template, name, kpoints, :calculation => "nscf",
                                     newflags...)
 end
 
 """
-    gencalc_projwfc(template::QE_CALCULATION, Emin, Emax, DeltaE, newflags...; name="projwfc")
+    gencalc_projwfc(template::Calculation{<:AbstractQE}, Emin, Emax, DeltaE, newflags...; name="projwfc")
 
 Uses the information from the template and supplied `kpoints` to generate a `projwfc.x` calculation.
 Extra flags can be supplied which will be set for the generated calculation.
 """
-function gencalc_projwfc(template::QE_CALCULATION, Emin, Emax, DeltaE, extraflags...;
+function gencalc_projwfc(template::Calculation{<:AbstractQE}, Emin, Emax, DeltaE, extraflags...;
                          name = "projwfc")
     occflag = get(template, :occupations, "fixed")
     ngauss  = 0

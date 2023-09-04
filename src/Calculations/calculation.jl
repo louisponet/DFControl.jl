@@ -35,8 +35,9 @@ StructTypes.StructType(::Type{InputData}) = StructTypes.Struct()
 abstract type Package end
 struct NoPackage <: Package end
 struct Wannier90 <: Package end
-struct QE <: Package end
-struct QE7_2 <: Package end
+abstract type AbstractQE <: Package end
+struct QE <: AbstractQE end
+struct QE7_2 <: AbstractQE end
 struct Abinit <: Package end
 struct Elk <: Package end
 StructTypes.StructType(::Type{<:Package}) = StructTypes.Struct()
