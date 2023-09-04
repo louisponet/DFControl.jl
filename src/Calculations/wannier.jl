@@ -12,7 +12,7 @@ flagtype(::Calculation{Wannier90}, flag) = flagtype(Wannier90, flag)
 Generates a Wannier90 calculation to follow on the supplied `nscf` calculation. It uses the projections defined in the `structure`, and starts counting the required amount of bands from `Emin`.
 The `nscf` needs to have a valid output since it will be used in conjunction with `Emin` to find the required amount of bands and energy window for the Wannier90 calculation.
 """
-function gencalc_wan(nscf::Calculation{QE}, structure::Structure, bands, Emin, wanflags...; Epad = 5.0,
+function gencalc_wan(nscf::Calculation{<:AbstractQE}, structure::Structure, bands, Emin, wanflags...; Epad = 5.0,
                      wanexec = Exec(; name="wannier90", path = "wannier90.x"))
     projs = vcat(map(structure.atoms) do x
                      ps = x.projections
@@ -178,7 +178,7 @@ function remote_calcs(job, _calculation::Calculation{Wannier90})
     nscf = getfirst(x -> Calculations.isnscf(x), job.calculations)
     
     @assert nscf !== nothing "No NSCF found to generate pw2wannier90 from."
-    @assert eltype(nscf) == QE "Only QE based Wannier90 jobs are supported."
+    @assert eltype(nscf) <: AbstractQE "Only QE based Wannier90 jobs are supported."
 
     pw2wan_exec = Exec(name = "", path=joinpath(dirname(nscf.exec.path), "pw2wannier90.x"), modules=nscf.exec.modules)
 
