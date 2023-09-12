@@ -37,3 +37,4 @@ deps/deps\.jl
 deps/spglib/
 
 deps/elkflags\.jl
+deps/qe7.2flags.jl

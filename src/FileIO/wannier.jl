@@ -204,7 +204,7 @@ function wan_parse_calculation(file)
     end
     structure = extract_structure(cell_block, atoms_block, proj_block,
                                   get(flags, :spinors, false))
-    return (flags=flags, data=data, structure = structure)
+    return (flags=flags, data=data, structure = structure, package=Wannier90)
 end
 
 function wan_parse_array_value(eltyp, value_str)

@@ -1,6 +1,6 @@
 import Base: parse
 
-function readoutput(c::Calculation{QE}, files...; kwargs...)
+function readoutput(c::Calculation{<:AbstractQE}, files...; kwargs...)
     return qe_parse_output(c, files...; kwargs...)
 end
 
@@ -11,7 +11,7 @@ function cardoption(line)
     if length(sline) < 2 && lowercase(sline[1]) == "k_points"
         return :tpiba
     else
-        return Symbol(match(r"((?:[a-z][a-z0-9_]*))", sline[2]).match)
+        return Symbol(match(r"((?:[a-z][a-z0-9_-]*))", sline[2]).match)
     end
 end
 
@@ -35,7 +35,7 @@ function qe_parse_time(str::AbstractString)
     return t
 end
 
-function qe_parse_output(c::Calculation{QE}, files...; kwargs...)
+function qe_parse_output(c::Calculation{<:AbstractQE} , files...; kwargs...)
     if Calculations.isprojwfc(c)
         return qe_parse_projwfc_output(files...)
     elseif Calculations.ishp(c)
@@ -551,8 +551,9 @@ function qe_parse_pw_output(str;
         pseudo_data = InputData(:atomic_species, :none, out[:pseudos])
         tmp_flags = Dict{Symbol,Any}(:ibrav => 0)
         tmp_flags[:A] = out[:in_alat]
+        # TODO: Hubbard
         out[:initial_structure] = extract_structure!(tmp_flags, cell_data,
-                                                     out[:atsyms], atoms_data, pseudo_data)
+                                                     out[:atsyms], atoms_data, pseudo_data, nothing)
         # Add starting mag and DFTU
         if haskey(out, :starting_magnetization)
             for (atsym, mag) in out[:starting_magnetization]
@@ -584,8 +585,9 @@ function qe_parse_pw_output(str;
         end
         cell_data = InputData(:cell_parameters, :alat, out[:cell_parameters])
         atoms_data = InputData(:atomic_positions, out[:pos_option], out[:atomic_positions])
+        #TODO: Hubbard
         out[:final_structure] = extract_structure!(tmp_flags, cell_data,
-                                                   out[:atsyms], atoms_data, pseudo_data)
+                                                   out[:atsyms], atoms_data, pseudo_data, nothing)
         # Add starting mag and DFTU
         if haskey(out, :starting_magnetization)
             for (atsym, mag) in out[:starting_magnetization]
@@ -961,7 +963,7 @@ function extract_cell!(flags, cell_block)
     end
 end
 
-function qe_DFTU(speciesid::Int, parsed_flags::Dict{Symbol,Any})
+function qe_DFTU(speciesid::Int, parsed_flags::Dict{Symbol,Any},)
     U  = 0.0
     J0 = 0.0
     J  = [0.0]
@@ -1007,7 +1009,7 @@ function qe_magnetization(atid::Int, parsed_flags::Dict{Symbol,Any})
     end
 end
 
-function extract_atoms!(parsed_flags, atsyms, atom_block, pseudo_block, cell::Mat3)
+function extract_atoms!(parsed_flags, atsyms, atom_block, pseudo_block, hubbard_block, cell::Mat3)
     atoms = Atom[]
 
     option = atom_block.option
@@ -1035,19 +1037,19 @@ function extract_atoms!(parsed_flags, atsyms, atom_block, pseudo_block, cell::Ma
                    position_cart = primv * pos,
                    position_cryst = UnitfulAtomic.ustrip.(inv(cell) * pos), pseudo = pseudo,
                    magnetization = qe_magnetization(speciesid, parsed_flags),
-                   dftu = qe_DFTU(speciesid, parsed_flags)))
+                   dftu = hubbard_block === nothing ? qe_DFTU(speciesid, parsed_flags) : hubbard_block[atsym]))
     end
 
     return atoms
 end
 
 function extract_structure!(parsed_flags, cell_block, atsyms, atom_block,
-                            pseudo_block)
+                            pseudo_block, hubbard_block)
     if atom_block == nothing
         return nothing
     end
     cell = extract_cell!(parsed_flags, cell_block)
-    atoms = extract_atoms!(parsed_flags, atsyms, atom_block, pseudo_block, cell)
+    atoms = extract_atoms!(parsed_flags, atsyms, atom_block, pseudo_block, hubbard_block, cell)
     return Structure(cell, atoms)
 end
 
@@ -1125,6 +1127,7 @@ function qe_parse_flags(inflags, nat::Int=0)
     return flags
 end
 
+
 """
     qe_parse_calculation(file)
 
@@ -1138,6 +1141,8 @@ function qe_parse_calculation(file)
         contents = split(file, "\n")
     end
 
+    pre_7_2=true
+    
     lines = map(contents) do l
         id = findfirst(isequal('!'), l)
         if id !== nothing
@@ -1222,8 +1227,46 @@ function qe_parse_calculation(file)
         end
 
         sysflags = qe_parse_flags(sysblock, nat)
-        structure = extract_structure!(sysflags, (option = cell_option, data=cell), atsyms,
-                                   (option = atoms_option, data=atoms), (data=pseudos,))
+
+        i_hubbard = findcard("hubbard")
+        
+        if i_hubbard !== nothing
+            pre_7_2 = false
+            projection_type = String(cardoption(lines[i_hubbard]))
+            push!(used_lineids, i_hubbard)
+
+            dftus = Dict{Symbol, DFTU}()
+            for k in 1:ntyp
+                push!(used_lineids, i_hubbard + k)
+                
+                par, atsym_manifold, sval = split(lines[i_hubbard+k])
+                val = parse(Float64, sval)
+
+                atsym = Symbol(split(atsym_manifold, "-")[1])
+
+                dftu = get!(dftus, atsym, DFTU())
+                dftu.projection_type = projection_type
+                
+                if par == "U"
+                    dftu.U = val
+                elseif par == "J0"
+                    dftu.J0 = val
+                elseif par == "J"
+                    dftu.J[1] = val
+                elseif par == "B" || par == "E2"
+                    dftu.J[2] = val
+                elseif par == "E3"
+                    dftu.J[3] = val
+                end
+            end
+            structure = extract_structure!(sysflags, (option = cell_option, data=cell), atsyms,
+                                       (option = atoms_option, data=atoms), (data=pseudos,), dftus)
+                
+        else
+            structure = extract_structure!(sysflags, (option = cell_option, data=cell), atsyms,
+                                       (option = atoms_option, data=atoms), (data=pseudos,), nothing)
+        end
+            
         delete!.((sysflags,), (:A, :celldm_1, :celldm, :ibrav, :nat, :ntyp))
         delete!.((sysflags,),
                  [:Hubbard_U, :Hubbard_J0, :Hubbard_alpha, :Hubbard_beta, :Hubbard_J])
@@ -1253,7 +1296,7 @@ function qe_parse_calculation(file)
         end
         push!(datablocks, InputData(:k_points, k_option, k_data))
     end
-    return (flags = allflags, data = datablocks, structure = structure)
+    return (flags = allflags, data = datablocks, structure = structure, package = pre_7_2 ? QE : QE7_2)
 end
 
 function qe_writeflag(f, flag, value)
@@ -1283,21 +1326,146 @@ function qe_writeflag(f, flag, value)
     end
 end
 
+function qe_handle_hubbard_flags!(c::Calculation{QE}, str::Structure)
+    u_ats = unique(str.atoms)
+    isnc = Structures.isnoncolin(str)
+    flags_to_set = []
+    if any(x -> x.dftu.U != 0 ||
+                    x.dftu.J0 != 0.0 ||
+                    sum(x.dftu.J) != 0 ||
+                    sum(x.dftu.α) != 0, u_ats)
+        Jmap = map(x -> copy(x.dftu.J), u_ats)
+        Jdim = maximum(length.(Jmap))
+        Jarr = zeros(Jdim, length(u_ats))
+        for (i, J) in enumerate(Jmap)
+            diff = Jdim - length(J)
+            if diff > 0
+                for d in 1:diff
+                    push!(J, zero(eltype(J)))
+                end
+            end
+            Jarr[:, i] .= J
+        end
+        append!(flags_to_set,
+                [:Hubbard_U     => map(x -> x.dftu.U, u_ats),
+                 :Hubbard_alpha => map(x -> x.dftu.α, u_ats),
+                 :Hubbard_beta  => map(x -> x.dftu.β, u_ats), :Hubbard_J     => Jarr,
+                 :Hubbard_J0    => map(x -> x.dftu.J0, u_ats)])
+    end
+    if !isempty(flags_to_set) || haskey(c, :Hubbard_parameters)
+        push!(flags_to_set, :lda_plus_u => true)
+        if isnc
+            push!(flags_to_set, :lda_plus_u_kind => 1)
+        end
+    end
+    if !isempty(flags_to_set)
+        set_flags!(c, flags_to_set...; print = false)
+    else
+        for f in
+            (:lda_plus_u, :lda_plus_u_kind, :Hubbard_U, :Hubbard_alpha, :Hubbard_beta,
+             :Hubbard_J, :Hubbard_J0, :U_projection_type)
+            pop!(c, f, nothing)
+        end
+    end
+end
+
+function qe_handle_hubbard_flags!(c::Calculation{QE7_2}, str::Structure)
+    u_ats = unique(str.atoms)
+    isnc = Structures.isnoncolin(str)
+    if any(x -> x.dftu.U != 0 ||
+                    x.dftu.J0 != 0.0 ||
+                    sum(x.dftu.J) != 0 ||
+                    sum(x.dftu.α) != 0, u_ats)
+                    
+        set_flags!(c, :lda_plus_u => true; print = false)
+        if isnc
+            set_flags!(c, :lda_plus_u_kind => 1; print = false)
+        end
+    else
+        for f in
+            (:lda_plus_u, :lda_plus_u_kind, :Hubbard_U, :Hubbard_alpha, :Hubbard_beta,
+             :Hubbard_J, :Hubbard_J0, :U_projection_type)
+            pop!(c, f, nothing)
+        end
+    end
+end
+
+function qe_handle_magnetism_flags!(c::Calculation, str::Structure)
+    u_ats = unique(str.atoms)
+    isnc = Structures.isnoncolin(str)
+    
+    flags_to_set = []
+    mags = map(x -> x.magnetization, u_ats)
+    starts = Float64[]
+    θs = Float64[]
+    ϕs = Float64[]
+    ismagcalc = isnc ? true : Structures.ismagnetic(str)
+    if ismagcalc
+        if isnc
+            for m in mags
+                tm = normalize(m)
+                if norm(m) == 0
+                    push!.((starts, θs, ϕs), 0.0)
+                else
+                    θ = acos(tm[3]) * 180 / π
+                    ϕ = atan(tm[2], tm[1]) * 180 / π
+                    start = norm(m)
+                    push!(θs, θ)
+                    push!(ϕs, ϕ)
+                    push!(starts, start)
+                end
+            end
+            push!(flags_to_set, :noncolin => true)
+        else
+            for m in mags
+                push!.((θs, ϕs), 0.0)
+                if norm(m) == 0
+                    push!(starts, 0)
+                else
+                    push!(starts, sign(sum(m)) * norm(m))
+                end
+            end
+        end
+        append!(flags_to_set, [:starting_magnetization => starts, :angle1 => θs, :angle2 => ϕs, :nspin => 2])
+    end
+
+    set_flags!(c, flags_to_set...; print = false)
+    if isnc
+        pop!(c, :nspin, nothing)
+    end
+end
+
 """
     write(f, calculation::Calculation{QE}, structure)
 
 Writes a string represenation to `f`.
 """
-function Base.write(f::IO, calculation::Calculation{QE}, structure=nothing)
+function Base.write(f::IO, calculation::Calculation{T}, structure=nothing) where {T <: AbstractQE}
     cursize = f isa IOBuffer ? f.size : 0
     if Calculations.hasflag(calculation, :calculation)
         Calculations.set_flags!(calculation,
                                 :calculation => replace(calculation[:calculation],
                                                         "_" => "-"); print = false)
     end
+    
     if exec(calculation.exec) == "ph.x"
         write(f, "--\n")
     end
+    if Calculations.ispw(calculation) && structure !== nothing
+        qe_handle_hubbard_flags!(calculation, structure)
+        qe_handle_magnetism_flags!(calculation, structure)
+        if Calculations.isvcrelax(calculation)
+            #this is to make sure &ions and &cell are there in the calculation 
+            !haskey(calculation, :ion_dynamics) &&
+                set_flags!(calculation, :ion_dynamics => "bfgs"; print = false)
+            !haskey(calculation, :cell_dynamics) &&
+                set_flags!(calculation, :cell_dynamics => "bfgs"; print = false)
+        end
+        #TODO add all the required flags
+        @assert haskey(calculation, :calculation) "Please set the flag for calculation with name: $(calculation.name)"
+        set_flags!(calculation, :pseudo_dir => "."; print = false)
+    end
+    
     writeflag(flag_data) = qe_writeflag(f, flag_data[1], flag_data[2])
     write_dat(data) = write_data(f, data)
     for name in unique([[:control, :system, :electrons, :ions, :cell]; keys(calculation.flags)...])
@@ -1313,11 +1481,6 @@ function Base.write(f::IO, calculation::Calculation{QE}, structure=nothing)
                 # write(f,"  A = $A\n")
                 write(f, "  nat = $nat\n")
                 write(f, "  ntyp = $ntyp\n")
-            elseif name == :projwfc
-                prefix = calculation[:prefix]
-                outdir = calculation[:outdir]
-                write(f, "  prefix = $prefix\n")
-                write(f, "  outdir = $outdir\n")
             end
             
             map(writeflag, [(flag, data) for (flag, data) in flags])
@@ -1363,7 +1526,7 @@ end
 function write_data(f, data)
     if typeof(data) <: Matrix
         writedlm(f, data)
-    elseif typeof(data) <: Union{String,Symbol}
+    elseif typeof(data) <: AbstractQE
         write(f, "$data\n")
     elseif typeof(data) <: Vector && length(data[1]) == 1
         write(f, join(string.(data), " "))
@@ -1377,7 +1540,7 @@ function write_data(f, data)
     end
 end
 
-function write_structure(f, calculation::Calculation{QE}, structure)
+function write_positions_cell(f, calculation::Calculation{<:AbstractQE}, structure)
     unique_at = unique(structure.atoms)
     write(f, "ATOMIC_SPECIES\n")
     write(f,
@@ -1393,10 +1556,42 @@ function write_structure(f, calculation::Calculation{QE}, structure)
           join(map(at -> "$(at.name) $(join(at.position_cryst, " "))", structure.atoms),
                "\n"))
     write(f, "\n\n")
-    return
 end
 
-function qe_generate_pw2wancalculation(c::Calculation{Wannier90}, nscf::Calculation{QE})
+write_structure(f, calculation::Calculation{QE}, structure) = write_positions_cell(f, calculation, structure)
+function write_structure(f, calculation::Calculation{QE7_2}, structure)
+    write_positions_cell(f, calculation, structure)
+    if haskey(calculation, :lda_plus_u)
+        unique_at = unique(structure.atoms)
+        u_proj = unique(map(x->x.dftu.projection_type, filter(y -> y.dftu.U != 0 || y.dftu.J0 != 0 || y.dftu.J[1] != 0, unique_at)))
+        if length(u_proj) > 1
+            @warn "Found different U proj types for different atoms, this is not supported so we use the first one: $(u_proj[1])"
+        end
+        write(f, "HUBBARD ($(u_proj[1])) \n")
+        for at in unique_at
+            
+            atsym = at.element.symbol
+            if at.dftu.U != 0.0
+                write(f, "U $(at.name)-$(ELEMENT_TO_N[atsym])$(ELEMENT_TO_L[atsym]) $(at.dftu.U)\n")
+            end
+            if at.dftu.J0 != 0.0
+                write(f, "J0 $(at.name)-$(ELEMENT_TO_N[atsym])$(ELEMENT_TO_L[atsym]) $(at.dftu.J0)\n")
+            end
+            if at.dftu.J[1] != 0.0
+                write(f, "J $(at.name)-$(ELEMENT_TO_N[atsym])$(ELEMENT_TO_L[atsym]) $(at.dftu.J[1])\n")
+                if length(at.dftu.J) == 2
+                    write(f, "B $(at.name)-$(ELEMENT_TO_N[atsym])$(ELEMENT_TO_L[atsym]) $(at.dftu.J[2])\n")
+                else
+                    write(f, "E2 $(at.name)-$(ELEMENT_TO_N[atsym])$(ELEMENT_TO_L[atsym]) $(at.dftu.J[2])\n")
+                    write(f, "E3 $(at.name)-$(ELEMENT_TO_N[atsym])$(ELEMENT_TO_L[atsym]) $(at.dftu.J[3])\n")
+                end
+            end
+        end
+        write(f, "\n")
+    end
+end
+
+function qe_generate_pw2wancalculation(c::Calculation{Wannier90}, nscf::Calculation{<:AbstractQE})
     flags = Dict()
     if haskey(nscf, :prefix)
         flags[:prefix] = nscf[:prefix]
@@ -1428,3 +1623,148 @@ function qe_generate_pw2wancalculation(c::Calculation{Wannier90}, nscf::Calculat
     Calculations.set_flags!(out, flags...; print=false)
     return out 
 end
+
+# This is to automatically set the hubbard manifold based on pre 7.2 QE.
+# TODO: allow for multiple DFTU manifolds
+const ELEMENT_TO_L = Dict(
+    :H => "s",
+    :K => "s",
+    :C => "p",
+    :N  => "p",
+    :O  => "p",
+    :As => "p",
+    :Sb => "p",
+    :Se => "p",
+    :Ti => "d",
+    :V  => "d",
+    :Cr => "d",
+    :Mn => "d",
+    :Fe => "d",
+    :Co => "d",
+    :Ni => "d",
+    :Cu => "d",
+    :Zn => "d",
+    :Zr => "d",
+    :Nb => "d",
+    :Mo => "d",
+    :Tc => "d",
+    :Ru => "d",
+    :Rh => "d",
+    :Pd => "d",
+    :Ag => "d",
+    :Cd => "d",
+    :Hf => "d",
+    :Ta => "d",
+    :W  => "d",
+    :Re => "d",
+    :Os => "d",
+    :Ir => "d",
+    :Pt => "d",
+    :Au => "d",
+    :Hg => "d",
+    :Sc => "d",
+    :Y  => "d",
+    :La => "d",
+    :Ga => "d",
+    :In => "d",
+    :Ce => "f",
+    :Pr => "f",
+    :Nd => "f",
+    :Pm => "f",
+    :Sm => "f",
+    :Eu => "f",
+    :Gd => "f",
+    :Tb => "f",
+    :Dy => "f",
+    :Ho => "f",
+    :Er => "f",
+    :Tm => "f",
+    :Yb => "f",
+    :Lu => "f",
+    :Th => "f",
+    :Pa => "f",
+    :U  => "f",
+    :Np => "f",
+    :Pu => "f",
+    :Am => "f",
+    :Cm => "f",
+    :Bk => "f",
+    :Cf => "f",
+    :Es => "f",
+    :Fm => "f",
+    :Md => "f",
+    :No => "f",
+    :Lr => "f"
+)
+
+const ELEMENT_TO_N = Dict(
+    :H  => 1,
+    :C  => 2,
+    :N  => 2,
+    :O  => 2,
+    :Ti => 3,
+    :V  => 3,
+    :Cr => 3,
+    :Mn => 3,
+    :Fe => 3,
+    :Co => 3,
+    :Ni => 3,
+    :Cu => 3,
+    :Zn => 3,
+    :Sc => 3,
+    :Ga => 3,
+    :Se => 3,
+    :Zr => 4,
+    :Nb => 4,
+    :Mo => 4,
+    :Tc => 4,
+    :Ru => 4,
+    :Rh => 4,
+    :Pd => 4,
+    :Ag => 4,
+    :Cd => 4,
+    :K  => 4,
+    :Y  => 4,
+    :La => 4,
+    :Ce => 4,
+    :Pr => 4,
+    :Nd => 4,
+    :Pm => 4,
+    :Sm => 4,
+    :Eu => 4,
+    :Gd => 4,
+    :Tb => 4,
+    :Dy => 4,
+    :Ho => 4,
+    :Er => 4,
+    :Tm => 4,
+    :Yb => 4,
+    :Lu => 4,
+    :In => 4,
+    :As => 4,
+    :Sb => 4,
+    :Hf => 5,
+    :Ta => 5,
+    :W  => 5,
+    :Re => 5,
+    :Os => 5,
+    :Ir => 5,
+    :Pt => 5,
+    :Au => 5,
+    :Hg => 5,
+    :Th => 5,
+    :Pa => 5,
+    :U  => 5,
+    :Np => 5,
+    :Pu => 5,
+    :Am => 5,
+    :Cm => 5,
+    :Bk => 5,
+    :Cf => 5,
+    :Es => 5,
+    :Fm => 5,
+    :Md => 5,
+    :No => 5,
+    :Lr => 5,
+)
+

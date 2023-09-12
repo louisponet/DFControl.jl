@@ -76,6 +76,6 @@ if Sys.which("cif2cell") === nothing
     end
 end
 
-if any(x->!ispath(joinpath(@__DIR__, x)), ("wannier90flags.jl", "qeflags.jl", "abinitflags.jl", "elkflags.jl"))
+if any(x->!ispath(joinpath(@__DIR__, x)), ("wannier90flags.jl", "qeflags.jl", "abinitflags.jl", "elkflags.jl", "qe7.2flags.jl"))
     include("asset_init.jl")
 end

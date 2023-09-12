@@ -11,6 +11,8 @@ function Base.show(io::IO, ::MIME"text/plain", block::InputData)
     return
 end
 
+Base.show(io::IO, band::Band) = print(io, "Band($(length(band.k_points_cart)) k_points,  eigvals: $(band.eigvals[1]) eV -> $(band.eigvals[end]) eV)")
+
 function Base.show(io::IO, ::MIME"text/plain", band::Band)
     show_type(io, band)
     string = """
@@ -276,5 +278,5 @@ function Base.show(io::IO, ::MIME"text/plain", proj::Projection)
     return println(io, crayon"red", "last index: ", crayon"reset", "$(proj.last)")
 end
 
-Base.show(io::IO, dftu::DFTU) = print(io, "l=$(dftu.l), U=$(dftu.U), J0=$(dftu.J0), α=$(dftu.α), β=$(dftu.β), J=$(dftu.J)")
+Base.show(io::IO, dftu::DFTU) = print(io, "l=$(dftu.l), U=$(dftu.U), J0=$(dftu.J0), α=$(dftu.α), β=$(dftu.β), J=$(dftu.J), projection=$(dftu.projection_type)")
 

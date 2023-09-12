@@ -49,6 +49,9 @@ test_server = local_server()
     @testset "Job from CIF file" begin
         include("jobfromcif_tests.jl")
     end
+    @testset "Job from CIF file 7.2" begin
+        include("jobfromcif_tests_7.2.jl")
+    end
     @testset "Display tests" begin
         include("display_tests.jl")
     end

@@ -43,7 +43,7 @@ function RemoteHPC.load(server::Server, j::Job)
             if c.structure !== nothing
                 push!(structures, c.structure)
             end
-            push!(outcalcs, Calculation(splitext(infile)[1], c.flags, c.data, e, calc.run, infile, outfile))
+            push!(outcalcs, Calculation{c.package}(splitext(infile)[1], c.flags, c.data, e, calc.run, infile, outfile))
         end
     end
     if !isempty(structures)
@@ -107,7 +107,7 @@ function write_calculations(job::Job; fillexecs=true)
         nscf = getfirst(x->Calculations.isnscf(x), job.calculations)
         
         @assert nscf !== nothing "No NSCF found to generate pw2wannier90 from."
-        @assert eltype(nscf) == QE "Only QE based Wannier90 jobs are supported."
+        @assert eltype(nscf) <: AbstractQE "Only QE based Wannier90 jobs are supported."
         
         for c in wcalcs
             pwcalc = FileIO.qe_generate_pw2wancalculation(c, nscf)

@@ -247,6 +247,19 @@ open(joinpath(@__DIR__, "qeflags.jl"), "w") do wf
     return write(wf, "]")
 end
 
+open(joinpath(@__DIR__, "qe7.2flags.jl"), "w") do wf
+    write(wf, "_QE7_2INPUTINFOS() = QECalculationInfo[\n")
+    calculation_files = searchdir(joinpath(@__DIR__, "..", "assets", "calculations", "qe"),
+                                  "INPUT")
+    filepaths = joinpath.(Ref(joinpath(@__DIR__, "..", "assets", "calculations", "qe")),
+                          calculation_files)
+    for _f in filepaths
+        exec_name = join([lowercase(splitext(split(_f, "_")[end])[1]), ".x"], "")
+        write_QECalculationInfo(wf, _f, 1, exec_name)
+    end
+    return write(wf, "]")
+end
+
 open(joinpath(@__DIR__, "abinitflags.jl"), "w") do wf
     flaglines = split.(readlines(joinpath(@__DIR__, "..", "assets", "calculations",
                                           "abinit", "calculation_variables.txt")))
