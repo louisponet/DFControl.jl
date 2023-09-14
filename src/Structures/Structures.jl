@@ -4,6 +4,7 @@ using ..DFControl
 using ..Utils
 using LinearAlgebra, StructTypes, Parameters, StaticArrays, JSON3
 using spglib_jll
+using JLD2
 const SPGLIB = spglib_jll.libsymspg
 
 using UnitfulAtomic.Unitful: angstrom, Length, @unit, FreeUnits, unit, 𝐋, FreeUnits,
