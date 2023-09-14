@@ -68,7 +68,7 @@ end
     end
 end
 
-@recipe function f(job::Job, ymin, ymax, occupy_ratio = 0.2; overlap_spin = false, plot_pdos=true, outdat=Client.outputdata(job))
+@recipe function f(job::Job, ymin, ymax, occupy_ratio = 0.2; overlap_spin = false, plot_pdos=true, outdat=Client.outputdata(job), tot_dos=false, energy_guide = true)
     palette_ = ismissing(Plots.default(:palette)) ? :default : Plots.default(:palette)
     tc = Plots.plot_color(pop!(plotattributes, :seriescolor,
                                               RGB.(Plots.color_list(Plots.palette(palette_)))))
@@ -126,7 +126,7 @@ end
     end
     window_ids === nothing && error("No bands inside window")
     # We define a single band plotting series here
-    function plot_band(band, color, label, subplot)
+    function plot_band(band, color, label, subplot, linestyle=:solid)
         if overlap_spin
             tit = ""
         else
@@ -136,10 +136,11 @@ end
         @series begin
             xticks --> (tick_vals, tick_syms)
             title --> tit
-            yguide := subplot == 1 ? "Energy (eV)" : ""
+            yguide := subplot == 1 && energy_guide ? "Energy (eV)" : ""
             serieslabel := label
             subplot := subplot
             seriescolor := color
+            linestyle := linestyle
             legend --> false
             1:length(kpoints), band.eigvals .- frmi
         end
@@ -148,7 +149,7 @@ end
     # PDOS part
     projwfc = Utils.getfirst(x -> Calculations.isprojwfc(x) && haskey(outdat, x.name), job.calculations)
     plot_pdos = plot_pdos && projwfc !== nothing && haskey(outdat[projwfc.name], :energies)
-    if plot_pdos
+    if plot_pdos && !tot_dos
         if bands isa NamedTuple && !overlap_spin
             doswindow = 3
             layout --> (1, 3)
@@ -198,6 +199,7 @@ end
                     label --> "$(atsym)_$(orb.name)_up"
                     yguide --> ""
                     subplot := doswindow
+                    xguide --> ""
                     seriescolor := atom_colors[1][ia]
                     title := "DOS"
                     pd[:, 1], energies .- frmi
@@ -205,6 +207,7 @@ end
                 @series begin
                     label --> "$(atsym)_$(orb.name)_down"
                     yguide --> ""
+                    xguide --> ""
                     subplot := doswindow
                     seriescolor := atom_colors[2][ia]
                     title := "DOS"
@@ -215,6 +218,7 @@ end
                     label --> "$(atsym)_$(orb.name)"
                     yguide --> ""
                     subplot := doswindow
+                    xguide --> ""
                     seriescolor := atom_colors[1][ia]
                     title := "DOS"
                     pd, energies .- frmi
@@ -255,6 +259,77 @@ end
             end
         end
 
+    elseif plot_pdos && tot_dos
+        if bands isa NamedTuple && !overlap_spin
+            doswindow = 3
+            layout --> @layout [a{0.4w} b{0.4w} c{0.2w}]
+        else
+            doswindow = 2
+            layout --> @layout [a{0.8w} c{0.2w}]
+        end
+        energies = outdat[projwfc.name][:energies]
+        dos = nothing
+        for projs in values(outdat[projwfc.name][:pdos])
+            for proj_dos in values(projs)
+                if dos === nothing
+                    dos = proj_dos
+                else
+                    dos .+= proj_dos
+                end
+            end
+        end
+        if dos isa Vector
+            @series begin
+                label --> ""
+                yguide --> ""
+                xguide --> ""
+                subplot := doswindow
+                seriescolor := :black
+                xticks --> nothing
+                title := "DOS"
+                dos, energies .- frmi
+            end
+        else
+            @series begin
+                label --> "up"
+                yguide --> ""
+                xguide --> ""
+                subplot := doswindow
+                seriescolor := :blue
+                xticks --> nothing
+                title := "DOS"
+                dos[:, 1], energies .- frmi
+            end
+            @series begin
+                label --> "down"
+                yguide --> ""
+                subplot := doswindow
+                xguide --> ""
+                xticks --> nothing
+                seriescolor := :red
+                title := "DOS"
+                -1.0*dos[:, 2], energies .- frmi
+            end
+        end
+            
+        @info "Plotting bands..."
+        if bands isa NamedTuple
+            #loop over up down
+            for (iplt, bnds) in enumerate(bands)
+                lab = iplt == 1 ? "up" : "down"
+                color = iplt == 1 ? :blue : :red
+                linestyle = overlap_spin ? (iplt == 1 ? :solid : :dot) : :solid
+                #loop over bands inside window
+                for (ib, b) in enumerate(bnds[window_ids[iplt]])
+                    plot_band(b, color, ib == 1 ? lab : "", overlap_spin ? 1 : iplt, linestyle)
+                end
+            end
+        else
+            for (ib, b) in enumerate(bands[window_ids[1]])
+                plot_band(b, plt_colors[mod1(ib, length(plt_colors))], "", 1)
+            end
+        end
+        
         # If no pdos is present
     else
         if bands isa NamedTuple && !overlap_spin
@@ -268,9 +343,10 @@ end
             for (iplt, bnds) in enumerate(bands)
                 lab = iplt == 1 ? "up" : "down"
                 color = iplt == 1 ? :blue : :red
+                linestyle = overlap_spin ? (iplt == 1 ? :solid : :dot) : :solid
                 #loop over bands inside window
                 for (ib, b) in enumerate(bnds[window_ids[iplt]])
-                    plot_band(b, color, ib == 1 ? lab : "", overlap_spin ? 1 : iplt)
+                    plot_band(b, color, ib == 1 ? lab : "", overlap_spin ? 1 : iplt, linestyle)
                 end
             end
         else

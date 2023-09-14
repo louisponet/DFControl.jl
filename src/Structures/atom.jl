@@ -34,6 +34,8 @@ end
 
 StructTypes.StructType(::Type{DFTU}) = StructTypes.Struct()
 
+Base.convert(::Type{DFTU}, x::JLD2.ReconstructedMutable{:DFTU, (:l, :U, :J0, :α, :β, :J)}) = DFTU(x.l, x.U, x.J0, x.α, x.β, x.J, "ortho-atomic")
+
 """
     Element(symbol::Symbol, Z::Int, name::String, atomic_weight::Float64, color::NTuple{3, Float64})
     

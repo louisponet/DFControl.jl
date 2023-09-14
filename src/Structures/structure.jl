@@ -62,7 +62,7 @@ function mergestructures(structures::Vector{Structure})
                       position_cryst = zero(Point3{Float64}))
     for structure in nonvoid[2:end]
         for at1 in out.atoms, at2 in structure.atoms
-            if at1.position_cryst == at2.position_cryst
+            if isapprox(at1.position_cryst, at2.position_cryst, atol=1e-5)
                 for fname in fieldnames(typeof(at1))
                     if fname in [:name, :element, :position_cart, :position_cryst]
                         continue

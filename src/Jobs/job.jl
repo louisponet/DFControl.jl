@@ -73,7 +73,7 @@ StructTypes.StructType(::Type{Job}) = StructTypes.Mutable()
 scriptpath(job::Job) = joinpath(job, "job.sh")
 submission_time(job::Job)  = mtime(scriptpath(job))
 
-runslocal(job::Job) = job.server == "localhost"
+runslocal(job::Job) = job.server == RemoteHPC.local_server().name
 isarchived(job::Job) = occursin("archived", job.dir)
 
 """
